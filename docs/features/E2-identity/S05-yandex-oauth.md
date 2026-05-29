@@ -1,0 +1,29 @@
+# Story E2.S05: Yandex ID OAuth: Authorization Code flow, exchange code, get user info, account linking по email
+
+**Feature:** [Authentication & Identity]({FEATURE.md})
+**Статус:** ✅ Готово
+
+## Контекст
+
+Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
+
+Этот шаг — часть Feature `E2`.
+
+## Что сделать
+
+_TODO: заполнить при начале работы над Story._
+
+## Затрагиваемые файлы
+
+_TODO: указать конкретные файлы и модули._
+
+## Критерии приёмки
+
+- [ ] _TODO: заполнить конкретные критерии._
+- [ ] Тесты написаны и проходят
+- [ ] ruff, mypy, eslint — 0 ошибок
+- [ ] Документация обновлена (если применимо)
+
+## Примечания
+
+_TODO: решения, trade-offs, ссылки на ADR._

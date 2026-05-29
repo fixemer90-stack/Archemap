@@ -30,7 +30,6 @@ export function useApiMutation<T, V = unknown>(
   options?: Omit<UseMutationOptions<T, ApiError, V>, "mutationFn">,
 ) {
   const { token } = useAuth();
-  const queryClient = useQueryClient();
 
   return useMutation<T, ApiError, V>({
     mutationFn: (body: V) => {

@@ -40,3 +40,17 @@ class ResendVerificationRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str  # min 8 chars validated in service
+
+
+class RateLimitErrorResponse(BaseModel):
+    detail: str
+    retry_after: int

@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "archemap"
     S3_REGION: str = "us-east-1"
 
+    # ── Rate Limiting ────────────────────────────────────────────────
+    RATE_LIMIT_LOGIN_MAX_ATTEMPTS: int = 5
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 900  # 15 minutes
+
     # ── Logging ───────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"

@@ -69,3 +69,39 @@ Here's a new verification link for your Archemap account:
 This link expires in 24 hours.
 """
     return html.strip(), text.strip()
+
+
+def password_reset_template(link: str) -> tuple[str, str]:
+    """Returns (html_body, text_body) for password-reset email."""
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+     max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
+  <h2 style="margin: 0 0 16px;">Reset your password</h2>
+  <p style="margin: 0 0 24px; color: #666;">
+    You requested a password reset for your Archemap account. Click the button below to set a new password.
+  </p>
+  <a href="{link}"
+     style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
+            border-radius: 6px; text-decoration: none; font-weight: 500;">
+    Reset password
+  </a>
+  <p style="margin: 24px 0 0; color: #999; font-size: 13px;">
+    This link expires in 1 hour. If you didn't request this, ignore this email.
+  </p>
+  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
+  <p style="color: #999; font-size: 12px;">Archemap — Subscription management</p>
+</body>
+</html>
+"""
+    text = f"""Reset your password
+
+You requested a password reset for your Archemap account. Click the link below to set a new password:
+
+{link}
+
+This link expires in 1 hour. If you didn't request this, ignore this email.
+"""
+    return html.strip(), text.strip()

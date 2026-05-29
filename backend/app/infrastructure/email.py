@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import smtplib
+import ssl
 from abc import ABC, abstractmethod
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -33,7 +34,7 @@ class ConsoleEmailProvider(EmailProvider):
 
 
 class SmtpEmailProvider(EmailProvider):
-    """Sends emails via SMTP. For production."""
+    """Sends emails via SMTP/SMTPS. For production."""
 
     async def send(self, to: str, subject: str, html_body: str, text_body: str = "") -> None:
         msg = MIMEMultipart("alternative")
@@ -46,12 +47,17 @@ class SmtpEmailProvider(EmailProvider):
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
         try:
-            if settings.SMTP_USE_TLS:
-                server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
-                server.ehlo()
-                server.starttls()
+            context = ssl.create_default_context()
+
+            # Port 465 = SMTPS (SSL), Port 587 = SMTP + STARTTLS
+            if settings.SMTP_PORT == 465:
+                server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10, context=context)
             else:
                 server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+                server.ehlo()
+                if settings.SMTP_USE_TLS:
+                    server.starttls(context=context)
+                    server.ehlo()
 
             if settings.SMTP_USER and settings.SMTP_PASSWORD:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)

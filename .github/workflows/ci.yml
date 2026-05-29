@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: backend/requirements*.txt
+          cache-dependency-path: backend/pyproject.toml
 
       - uses: actions/setup-node@v4
         with:
@@ -35,7 +35,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Python deps
-        run: pip install -r backend/requirements-dev.txt
+        run: pip install -e ".[dev]"
+        working-directory: backend
 
       - name: Install Node deps
         run: npm ci
@@ -100,10 +101,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: backend/requirements*.txt
+          cache-dependency-path: backend/pyproject.toml
 
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+        run: pip install -e ".[dev]"
+        working-directory: backend
 
       - name: Run unit tests
         run: pytest tests/unit -v --tb=short --cov=app --cov-report=xml

@@ -34,7 +34,7 @@ export default function RegisterPage() {
 
       const user = await res.json();
       setUser(user);
-      router.push("/login");
+      router.push("/verify");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

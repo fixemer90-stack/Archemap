@@ -24,5 +24,9 @@ class AuthorizationError(ArchemapError):
     """User is not allowed to perform the action."""
 
 
+class ValidationError(ArchemapError):
+    """Input validation or business rule violation."""
+
+
 class PaymentError(ArchemapError):
     """Payment processing failed."""

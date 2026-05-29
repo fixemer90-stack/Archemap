@@ -10,24 +10,60 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_db
 from app.modules.auth.schemas import (
     LoginRequest,
+    MessageResponse,
     RegisterRequest,
+    ResendVerificationRequest,
     TokenResponse,
-    UserResponse,
+    VerifyRequest,
 )
 from app.modules.auth.service import AuthService
+from app.modules.auth.verification import VerificationService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Register a new user with email and password."""
+    """Register a new user. Sends verification email."""
     service = AuthService(db)
-    user = await service.register(email=body.email, password=body.password)
-    return UserResponse(id=str(user.id), email=user.email, is_active=user.is_active)
+    await service.register(email=body.email, password=body.password)
+    return MessageResponse(message="Registration successful. Please check your email to verify your account.")
+
+
+@router.post("/verify", response_model=MessageResponse)
+async def verify_email(
+    body: VerifyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Verify email address using token from email."""
+    service = VerificationService(db)
+    await service.verify_email(token=body.token)
+    return MessageResponse(message="Email verified successfully. You can now sign in.")
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+async def resend_verification(
+    body: ResendVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Resend verification email."""
+    from sqlalchemy import select
+
+    from app.modules.users.models import User
+
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    # Always return success to prevent email enumeration
+    if user and not user.is_verified:
+        service = VerificationService(db)
+        token = await service.create_verification(user.id)
+        await service.send_verification_email(user.email, token)
+
+    return MessageResponse(message="If an account with that email exists, a verification link has been sent.")
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -35,7 +71,7 @@ async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Authenticate with email and password."""
+    """Authenticate with email and password. Requires verified email."""
     service = AuthService(db)
     tokens = await service.login(email=body.email, password=body.password)
     return TokenResponse(**tokens)

@@ -14,6 +14,13 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from app.api.middleware import RequestLoggingMiddleware
 from app.api.v1 import api_router
 from app.config import settings
+from app.core.exceptions import (
+    ArchemapError,
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 
 logger = structlog.get_logger()
 
@@ -61,6 +68,20 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # ── exception handlers ──
+    @application.exception_handler(ArchemapError)
+    async def archemap_error_handler(request: object, exc: ArchemapError) -> object:
+        from fastapi.responses import JSONResponse
+
+        status_map: dict[type[ArchemapError], int] = {
+            NotFoundError: 404,
+            ConflictError: 409,
+            AuthorizationError: 401,
+            ValidationError: 422,
+        }
+        status_code = status_map.get(type(exc), 400)
+        return JSONResponse(status_code=status_code, content={"detail": exc.message, "code": exc.code})
 
     # ── routes ──
     application.include_router(api_router, prefix="/api/v1")

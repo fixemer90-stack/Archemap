@@ -25,5 +25,18 @@ class UserResponse(BaseModel):
     id: str
     email: str
     is_active: bool
+    is_verified: bool
 
     model_config = {"from_attributes": True}
+
+
+class VerifyRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class MessageResponse(BaseModel):
+    message: str

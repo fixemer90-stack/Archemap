@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError
+from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -15,6 +15,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.modules.auth.verification import VerificationService
 from app.modules.users.models import User
 
 
@@ -24,13 +25,12 @@ class AuthService:
 
     async def register(self, email: str, password: str) -> User:
         """Register a new user with email and password."""
-        # Check if user exists
         existing = await self.db.execute(select(User).where(User.email == email))
         if existing.scalar_one_or_none():
             raise ConflictError("User with this email already exists")
 
         if len(password) < 8:
-            raise ValueError("Password must be at least 8 characters")
+            raise ValidationError("Password must be at least 8 characters")
 
         user = User(
             email=email,
@@ -39,6 +39,12 @@ class AuthService:
         self.db.add(user)
         await self.db.flush()
         await self.db.refresh(user)
+
+        # Create verification token and send email
+        verification_service = VerificationService(self.db)
+        token = await verification_service.create_verification(user.id)
+        await verification_service.send_verification_email(email, token)
+
         return user
 
     async def login(self, email: str, password: str) -> dict[str, str]:
@@ -51,6 +57,9 @@ class AuthService:
 
         if not user.is_active:
             raise AuthorizationError("Account is deactivated")
+
+        if not user.is_verified:
+            raise AuthorizationError("Email not verified. Please check your inbox.")
 
         access_token = create_access_token(subject=str(user.id))
         refresh_token = create_refresh_token(subject=str(user.id))

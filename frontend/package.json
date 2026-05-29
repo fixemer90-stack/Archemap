@@ -28,7 +28,7 @@
     "js-cookie": "^3.0.5"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "typescript": "^6.0.3",
     "@types/react": "^19.0.0",
     "@types/node": "^22.10.0",
     "@types/js-cookie": "^3.0.6",

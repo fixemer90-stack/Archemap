@@ -6,7 +6,7 @@
 
 Модульный монолит с чёткими доменными границами. C4-модель как код. Contract-first подход через OpenAPI/AsyncAPI.
 
-Документация архитектуры: [docs/deep-research-report.md](docs/deep-research-report.md)
+Документация архитектуры: [docs/deep-research-report.md](deep-research-reportv1.md)
 
 ## Стек технологий
 

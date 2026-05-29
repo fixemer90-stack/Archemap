@@ -60,8 +60,7 @@ async def resend_verification(
     # Always return success to prevent email enumeration
     if user and not user.is_verified:
         service = VerificationService(db)
-        token = await service.create_verification(user.id)
-        await service.send_verification_email(user.email, token)
+        await service.resend_verification(body.email)
 
     return MessageResponse(message="If an account with that email exists, a verification link has been sent.")
 

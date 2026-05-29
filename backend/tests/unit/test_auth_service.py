@@ -28,9 +28,9 @@ class TestRegister:
 
         with (
             patch("app.modules.auth.service.hash_password", return_value="hashed"),
-            patch("app.modules.auth.service.VerificationService") as MockVS,
+            patch("app.modules.auth.service.VerificationService") as mock_verification_cls,
         ):
-            mock_vs = MockVS.return_value
+            mock_vs = mock_verification_cls.return_value
             mock_vs.create_verification = AsyncMock(return_value="token123")
             mock_vs.send_verification_email = AsyncMock()
             user = await service.register("new@example.com", "password123")

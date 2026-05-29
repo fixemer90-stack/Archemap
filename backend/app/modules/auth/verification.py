@@ -10,6 +10,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.infrastructure.email import get_email_provider
+from app.infrastructure.email_templates import resend_verification_template, verify_email_template
 from app.modules.auth.models import EmailVerification
 from app.modules.users.models import User
 
@@ -17,6 +19,8 @@ logger = structlog.get_logger()
 
 VERIFICATION_TOKEN_EXPIRE_HOURS = 24
 VERIFICATION_TOKEN_LENGTH = 32
+
+BASE_URL = "http://localhost:3000"  # TODO: move to settings
 
 
 class VerificationService:
@@ -28,7 +32,6 @@ class VerificationService:
 
     async def create_verification(self, user_id: int) -> str:
         """Create a verification token for a user."""
-        # Invalidate any existing tokens for this user
         await self.db.execute(
             update(EmailVerification)
             .where(EmailVerification.user_id == user_id, EmailVerification.used_at.is_(None))
@@ -63,10 +66,8 @@ class VerificationService:
         if verification.expires_at < datetime.now(UTC):
             raise ValidationError("Verification token has expired")
 
-        # Mark token as used
         verification.used_at = datetime.now(UTC)
 
-        # Mark user as verified
         user_result = await self.db.execute(select(User).where(User.id == verification.user_id))
         user = user_result.scalar_one_or_none()
 
@@ -80,21 +81,34 @@ class VerificationService:
         return user
 
     async def send_verification_email(self, email: str, token: str) -> None:
-        """Send verification email.
+        """Send verification email using configured provider."""
+        link = f"{BASE_URL}/verify?token={token}"
+        html_body, text_body = verify_email_template(link)
 
-        TODO: integrate with actual email provider (SMTP/SendGrid).
-        For now, logs the verification link.
-        """
-        verification_link = f"http://localhost:3000/verify?token={token}"
-        logger.info(
-            "verification_email_sent",
-            email=email,
-            link=verification_link,
+        provider = get_email_provider()
+        await provider.send(
+            to=email,
+            subject="Verify your email — Archemap",
+            html_body=html_body,
+            text_body=text_body,
         )
-        # In production, this would send an actual email:
-        # await email_provider.send(
-        #     to=email,
-        #     subject="Verify your email - Archemap",
-        #     template="verify-email",
-        #     context={"link": verification_link},
-        # )
+
+    async def resend_verification(self, email: str) -> None:
+        """Resend verification email for a user."""
+        result = await self.db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+        if user is None or user.is_verified:
+            return  # anti-enumeration: don't reveal if user exists
+
+        token = await self.create_verification(user.id)
+        link = f"{BASE_URL}/verify?token={token}"
+        html_body, text_body = resend_verification_template(link)
+
+        provider = get_email_provider()
+        await provider.send(
+            to=email,
+            subject="Verify your email — Archemap",
+            html_body=html_body,
+            text_body=text_body,
+        )

@@ -53,7 +53,7 @@ export function Sidebar() {
         {!sidebarOpen && <span className="mx-auto text-lg font-bold">A</span>}
       </div>
 
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 space-y-1 p-2" aria-label="Main navigation">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -67,7 +67,9 @@ export function Sidebar() {
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 !sidebarOpen && "justify-center",
               )}
+              aria-label={item.title}
               title={item.title}
+              aria-current={isActive ? "page" : undefined}
             >
               <item.icon className="h-5 w-5 shrink-0" />
               {sidebarOpen && <span>{item.title}</span>}
@@ -82,6 +84,7 @@ export function Sidebar() {
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
             !sidebarOpen && "justify-center",
           )}
+          aria-label="Sign out"
           title="Sign out"
         >
           <LogOut className="h-5 w-5 shrink-0" />

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -25,18 +26,24 @@ def create_access_token(
     subject: str,
     extra_claims: dict[str, Any] | None = None,
     expires_delta: timedelta | None = None,
-) -> str:
+) -> tuple[str, str]:
+    """Create access token. Returns (token, jti)."""
+    jti = secrets.token_urlsafe(16)
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
-    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": "access"}
+    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": "access", "jti": jti}
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return token, jti
 
 
-def create_refresh_token(subject: str) -> str:
+def create_refresh_token(subject: str) -> tuple[str, str]:
+    """Create refresh token. Returns (token, jti)."""
+    jti = secrets.token_urlsafe(16)
     expire = datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
-    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": "refresh"}
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": "refresh", "jti": jti}
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return token, jti
 
 
 def decode_access_token(token: str) -> dict[str, Any] | None:

@@ -11,10 +11,12 @@ from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decode_access_token,
     decode_refresh_token,
     hash_password,
     verify_password,
 )
+from app.core.token_blacklist import blacklist_token
 from app.modules.auth.verification import VerificationService
 from app.modules.users.models import User
 
@@ -61,14 +63,27 @@ class AuthService:
         if not user.is_verified:
             raise AuthorizationError("Email not verified. Please check your inbox.")
 
-        access_token = create_access_token(subject=str(user.id))
-        refresh_token = create_refresh_token(subject=str(user.id))
+        access_token, _ = create_access_token(subject=str(user.id))
+        refresh_token, _ = create_refresh_token(subject=str(user.id))
 
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
         }
+
+    async def logout(self, access_token: str, refresh_token: str | None = None) -> None:
+        """Blacklist tokens to log out the user."""
+        # Blacklist access token
+        payload = decode_access_token(access_token)
+        if payload and payload.get("jti"):
+            await blacklist_token(payload["jti"])
+
+        # Blacklist refresh token if provided
+        if refresh_token:
+            refresh_payload = decode_refresh_token(refresh_token)
+            if refresh_payload and refresh_payload.get("jti"):
+                await blacklist_token(refresh_payload["jti"])
 
     async def get_user_by_id(self, user_id: UUID) -> User:
         """Get user by ID."""
@@ -90,8 +105,12 @@ class AuthService:
         if not user.is_active:
             raise AuthorizationError("Account is deactivated")
 
-        new_access = create_access_token(subject=str(user.id))
-        new_refresh = create_refresh_token(subject=str(user.id))
+        # Blacklist old refresh token
+        if payload.get("jti"):
+            await blacklist_token(payload["jti"])
+
+        new_access, _ = create_access_token(subject=str(user.id))
+        new_refresh, _ = create_refresh_token(subject=str(user.id))
 
         return {
             "access_token": new_access,

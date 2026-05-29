@@ -74,8 +74,8 @@ class TestLogin:
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=True),
-            patch("app.modules.auth.service.create_access_token", return_value="access"),
-            patch("app.modules.auth.service.create_refresh_token", return_value="refresh"),
+            patch("app.modules.auth.service.create_access_token", return_value=("access", "jti1")),
+            patch("app.modules.auth.service.create_refresh_token", return_value=("refresh", "jti2")),
         ):
             tokens = await service.login("test@example.com", "password123")
 

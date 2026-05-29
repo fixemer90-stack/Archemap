@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -10,7 +11,9 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
+import { getAccessToken } from "@/lib/cookies";
 
 const navItems = [
   {
@@ -37,7 +40,25 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const logout = useAuthStore((s) => s.logout);
+
+  async function handleLogout() {
+    const token = getAccessToken();
+    if (token) {
+      try {
+        await fetch("/api/v1/auth/logout", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // Proceed with local logout even if API fails
+      }
+    }
+    logout();
+    router.push("/login");
+  }
 
   return (
     <aside
@@ -80,6 +101,7 @@ export function Sidebar() {
 
       <div className="border-t p-2">
         <button
+          onClick={handleLogout}
           className={cn(
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
             !sidebarOpen && "justify-center",

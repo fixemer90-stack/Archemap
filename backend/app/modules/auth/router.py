@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db
+from app.dependencies import get_current_user, get_db
 from app.modules.auth.schemas import (
     LoginRequest,
     MessageResponse,
@@ -85,3 +86,17 @@ async def refresh(
     service = AuthService(db)
     tokens = await service.refresh_tokens(body.refresh_token)
     return TokenResponse(**tokens)
+
+
+@router.post("/logout", response_model=MessageResponse)
+async def logout(
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    authorization: str = Header(...),
+    refresh_token: str | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Log out by blacklisting current tokens."""
+    access_token = authorization.replace("Bearer ", "")
+    service = AuthService(db)
+    await service.logout(access_token=access_token, refresh_token=refresh_token)
+    return MessageResponse(message="Logged out successfully.")

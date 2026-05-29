@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import structlog
@@ -30,7 +31,7 @@ class VerificationService:
     def _generate_token(self) -> str:
         return secrets.token_urlsafe(VERIFICATION_TOKEN_LENGTH)
 
-    async def create_verification(self, user_id: int) -> str:
+    async def create_verification(self, user_id: uuid.UUID) -> str:
         """Create a verification token for a user."""
         await self.db.execute(
             update(EmailVerification)

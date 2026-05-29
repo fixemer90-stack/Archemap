@@ -43,7 +43,8 @@ class YandexOAuthProvider:
                 },
             )
             response.raise_for_status()
-            return response.json()
+            result: dict[str, Any] = response.json()
+            return result
 
     async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """Get user profile from Yandex."""
@@ -53,4 +54,5 @@ class YandexOAuthProvider:
                 headers={"Authorization": f"OAuth {access_token}"},
             )
             response.raise_for_status()
-            return response.json()
+            result: dict[str, Any] = response.json()
+            return result

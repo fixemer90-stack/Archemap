@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const setUser = useAuthStore((s) => s.setUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,7 +21,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/v1/auth/login", {
+      const res = await fetch("/api/v1/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -29,22 +29,12 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.detail || "Login failed");
+        throw new Error(data.detail || "Registration failed");
       }
 
-      const tokens = await res.json();
-      setTokens(tokens.access_token, tokens.refresh_token);
-
-      // Fetch user profile
-      const userRes = await fetch("/api/v1/users/me", {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      if (userRes.ok) {
-        const user = await userRes.json();
-        useAuthStore.getState().setUser(user);
-      }
-
-      router.push("/dashboard");
+      const user = await res.json();
+      setUser(user);
+      router.push("/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -56,9 +46,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Sign in</h1>
+          <h1 className="text-2xl font-bold">Create an account</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your credentials to access your account
+            Enter your email and password to get started
           </p>
         </div>
 
@@ -90,22 +80,23 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
-              placeholder="Your password"
+              placeholder="At least 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={8}
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? "Creating account..." : "Create account"}
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Create one
+          Already have an account?{" "}
+          <Link href="/login" className="text-primary hover:underline">
+            Sign in
           </Link>
         </p>
       </div>

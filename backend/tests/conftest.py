@@ -16,7 +16,7 @@ from app.infrastructure.database import Base
 from app.main import app
 
 # ── Use a separate test database ──────────────────────────────────────
-TEST_DATABASE_URL = settings.DATABASE_URL.replace("/archemap", "/archemap_test")
+TEST_DATABASE_URL = settings.DATABASE_URL.rsplit("/", 1)[0] + "/archemap_test"
 TEST_REDIS_URL = settings.REDIS_URL.replace("/0", "/15")
 
 test_engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)

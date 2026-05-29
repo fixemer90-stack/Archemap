@@ -3,14 +3,13 @@ import { persist } from "zustand/middleware";
 import {
   getAccessToken,
   setAccessToken,
-  removeAccessToken,
+  setRefreshToken,
   clearAllTokens,
 } from "@/lib/cookies";
 
 export interface User {
   id: string;
   email: string;
-  full_name: string;
   is_active: boolean;
 }
 
@@ -18,12 +17,11 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
 
+  setTokens: (accessToken: string, refreshToken: string) => void;
+  setUser: (user: User) => void;
   login: (user: User, token: string) => void;
   logout: () => void;
-  setUser: (user: User) => void;
-  setLoading: (loading: boolean) => void;
   initialize: () => void;
 }
 
@@ -33,49 +31,35 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: getAccessToken() || null,
       isAuthenticated: !!getAccessToken(),
-      isLoading: false,
 
-      login: (user: User, token: string) => {
-        setAccessToken(token);
-        set({
-          user,
-          token,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      },
-
-      logout: () => {
-        clearAllTokens();
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
+      setTokens: (accessToken: string, refreshToken: string) => {
+        setAccessToken(accessToken);
+        setRefreshToken(refreshToken);
+        set({ token: accessToken, isAuthenticated: true });
       },
 
       setUser: (user: User) => {
         set({ user });
       },
 
-      setLoading: (isLoading: boolean) => {
-        set({ isLoading });
+      login: (user: User, token: string) => {
+        setAccessToken(token);
+        set({ user, token, isAuthenticated: true });
+      },
+
+      logout: () => {
+        clearAllTokens();
+        set({ user: null, token: null, isAuthenticated: false });
       },
 
       initialize: () => {
         const token = getAccessToken();
-        set({
-          token: token || null,
-          isAuthenticated: !!token,
-        });
+        set({ token: token || null, isAuthenticated: !!token });
       },
     }),
     {
       name: "archemap-auth",
-      partialize: (state) => ({
-        user: state.user,
-      }),
+      partialize: (state) => ({ user: state.user }),
     },
   ),
 );

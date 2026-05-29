@@ -39,7 +39,7 @@ class OAuthService:
         provider = await self.redis.get(key)
         if provider:
             await self.redis.delete(key)
-        return provider
+        return str(provider) if provider else None
 
     # ── Yandex flow ────────────────────────────────────────────────
     async def get_yandex_authorize_url(self) -> str:
@@ -122,13 +122,13 @@ class OAuthService:
 
         # 2. Try to find by email
         if provider_email:
-            result = await self.db.execute(select(User).where(User.email == provider_email))
-            user = result.scalar_one_or_none()
+            email_result = await self.db.execute(select(User).where(User.email == provider_email))
+            matched_user = email_result.scalar_one_or_none()
 
-            if user:
+            if matched_user:
                 # Link existing user
                 new_link = IdentityLink(
-                    user_id=user.id,
+                    user_id=matched_user.id,
                     provider=provider,
                     provider_user_id=provider_user_id,
                     provider_email=provider_email,
@@ -136,10 +136,10 @@ class OAuthService:
                     access_token=provider_access_token,
                 )
                 self.db.add(new_link)
-                user.is_verified = True  # OAuth emails are considered verified
+                matched_user.is_verified = True  # OAuth emails are considered verified
                 await self.db.flush()
-                logger.info("oauth_account_linked", user_id=str(user.id), provider=provider)
-                return user
+                logger.info("oauth_account_linked", user_id=str(matched_user.id), provider=provider)
+                return matched_user
 
         # 3. Create new user
         if not provider_email:

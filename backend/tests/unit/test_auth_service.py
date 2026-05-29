@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,17 +12,17 @@ from app.modules.auth.service import AuthService
 
 
 @pytest.fixture
-def mock_db():
+def mock_db() -> AsyncMock:
     return AsyncMock()
 
 
 @pytest.fixture
-def service(mock_db):
+def service(mock_db: AsyncMock) -> AuthService:
     return AuthService(mock_db)
 
 
 class TestRegister:
-    async def test_register_new_user(self, service, mock_db):
+    async def test_register_new_user(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
@@ -41,7 +42,7 @@ class TestRegister:
         mock_vs.create_verification.assert_awaited_once()
         mock_vs.send_verification_email.assert_awaited_once_with("new@example.com", "token123")
 
-    async def test_register_duplicate_email(self, service, mock_db):
+    async def test_register_duplicate_email(self, service: AuthService, mock_db: AsyncMock) -> None:
         existing_user = MagicMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = existing_user
@@ -50,7 +51,7 @@ class TestRegister:
         with pytest.raises(ConflictError, match="already exists"):
             await service.register("existing@example.com", "password123")
 
-    async def test_register_short_password(self, service, mock_db):
+    async def test_register_short_password(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
@@ -60,7 +61,7 @@ class TestRegister:
 
 
 class TestLogin:
-    async def test_login_success(self, service, mock_db):
+    async def test_login_success(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
         user.id = "user-id"
         user.email = "test@example.com"
@@ -83,7 +84,7 @@ class TestLogin:
         assert tokens["refresh_token"] == "refresh"
         assert tokens["token_type"] == "bearer"
 
-    async def test_login_wrong_password(self, service, mock_db):
+    async def test_login_wrong_password(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
         user.hashed_password = "hashed"
 
@@ -97,7 +98,7 @@ class TestLogin:
         ):
             await service.login("test@example.com", "wrong")
 
-    async def test_login_user_not_found(self, service, mock_db):
+    async def test_login_user_not_found(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
@@ -105,7 +106,7 @@ class TestLogin:
         with pytest.raises(AuthorizationError, match="Invalid"):
             await service.login("nobody@example.com", "password123")
 
-    async def test_login_inactive_user(self, service, mock_db):
+    async def test_login_inactive_user(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
         user.hashed_password = "hashed"
         user.is_active = False
@@ -120,7 +121,7 @@ class TestLogin:
         ):
             await service.login("inactive@example.com", "password123")
 
-    async def test_login_unverified_user(self, service, mock_db):
+    async def test_login_unverified_user(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
         user.hashed_password = "hashed"
         user.is_active = True

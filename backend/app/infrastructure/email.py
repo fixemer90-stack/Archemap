@@ -50,6 +50,7 @@ class SmtpEmailProvider(EmailProvider):
             context = ssl.create_default_context()
 
             # Port 465 = SMTPS (SSL), Port 587 = SMTP + STARTTLS
+            server: smtplib.SMTP | smtplib.SMTP_SSL
             if settings.SMTP_PORT == 465:
                 server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10, context=context)
             else:

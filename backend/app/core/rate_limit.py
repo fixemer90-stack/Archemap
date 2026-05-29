@@ -46,4 +46,4 @@ class RateLimiter:
     async def get_retry_after(self, key: str) -> int:
         """Return the remaining TTL in seconds, or 0 if the key doesn't exist."""
         ttl = await self._redis.ttl(key)
-        return max(ttl, 0)
+        return max(int(ttl), 0)

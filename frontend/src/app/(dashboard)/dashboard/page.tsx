@@ -64,11 +64,24 @@ export default function DashboardPage() {
         </div>
         <div className="divide-y">
           {[
-            { name: "Netflix", amount: "$15.99", date: "May 28", status: "Paid" },
-            { name: "Spotify", amount: "$9.99", date: "May 25", status: "Paid" },
+            {
+              name: "Netflix",
+              amount: "$15.99",
+              date: "May 28",
+              status: "Paid",
+            },
+            {
+              name: "Spotify",
+              amount: "$9.99",
+              date: "May 25",
+              status: "Paid",
+            },
             { name: "AWS", amount: "$42.30", date: "May 22", status: "Paid" },
           ].map((item) => (
-            <div key={item.name} className="flex items-center justify-between p-4">
+            <div
+              key={item.name}
+              className="flex items-center justify-between p-4"
+            >
               <div>
                 <p className="text-sm font-medium">{item.name}</p>
                 <p className="text-xs text-muted-foreground">{item.date}</p>

@@ -50,8 +50,8 @@ export default function HomePage() {
             with Archemap
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground">
-            Track, manage, and optimize all your subscriptions in one place.
-            Get insights into your spending and never miss a renewal.
+            Track, manage, and optimize all your subscriptions in one place. Get
+            insights into your spending and never miss a renewal.
           </p>
           <div className="flex gap-3">
             <Button size="lg" asChild>
@@ -70,7 +70,10 @@ export default function HomePage() {
         <section className="border-t bg-muted/30 py-20">
           <div className="container mx-auto grid gap-6 px-4 sm:grid-cols-2 md:grid-cols-3">
             {features.map((feature) => (
-              <div key={feature.title} className="rounded-lg border bg-card p-6">
+              <div
+                key={feature.title}
+                className="rounded-lg border bg-card p-6"
+              >
                 <feature.icon className="h-8 w-8 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">

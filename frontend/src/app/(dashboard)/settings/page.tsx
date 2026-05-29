@@ -17,8 +17,14 @@ export default function SettingsPage() {
       <div className="space-y-4">
         {[
           { title: "Profile", description: "Update your personal information" },
-          { title: "Notifications", description: "Configure alert preferences" },
-          { title: "Security", description: "Password and two-factor authentication" },
+          {
+            title: "Notifications",
+            description: "Configure alert preferences",
+          },
+          {
+            title: "Security",
+            description: "Password and two-factor authentication",
+          },
           { title: "Appearance", description: "Theme and display settings" },
         ].map((section) => (
           <div

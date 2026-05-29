@@ -68,9 +68,7 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-16 items-center border-b px-4">
-        {sidebarOpen && (
-          <span className="text-lg font-bold">Archemap</span>
-        )}
+        {sidebarOpen && <span className="text-lg font-bold">Archemap</span>}
         {!sidebarOpen && <span className="mx-auto text-lg font-bold">A</span>}
       </div>
 

@@ -9,9 +9,9 @@ export default function VerifyPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [status, setStatus] = useState<"loading" | "success" | "error" | "no-token">(
-    token ? "loading" : "no-token"
-  );
+  const [status, setStatus] = useState<
+    "loading" | "success" | "error" | "no-token"
+  >(token ? "loading" : "no-token");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -83,8 +83,8 @@ export default function VerifyPage() {
           <>
             <h1 className="text-2xl font-bold">Check your email</h1>
             <p className="text-muted-foreground">
-              We sent a verification link to your email address.
-              Click the link to activate your account.
+              We sent a verification link to your email address. Click the link
+              to activate your account.
             </p>
             <Button variant="outline" asChild>
               <Link href="/login">Back to sign in</Link>

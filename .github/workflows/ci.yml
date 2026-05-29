@@ -15,9 +15,9 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  # ── Lint ──────────────────────────────────────────────────────────────────
-  lint:
-    name: Lint & Format
+  # ── Backend Lint & Types ────────────────────────────────────────────────
+  lint-backend:
+    name: Lint Backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,19 +28,9 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Python deps
+      - name: Install deps
         run: pip install -e ".[dev]"
         working-directory: backend
-
-      - name: Install Node deps
-        run: npm ci
-        working-directory: frontend
 
       - name: Ruff lint
         run: ruff check .
@@ -54,6 +44,23 @@ jobs:
         run: mypy .
         working-directory: backend
 
+  # ── Frontend Lint & Types ───────────────────────────────────────────────
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+        working-directory: frontend
+
       - name: ESLint
         run: npx eslint .
         working-directory: frontend
@@ -62,11 +69,15 @@ jobs:
         run: npx prettier --check .
         working-directory: frontend
 
-  # ── Backend Tests ─────────────────────────────────────────────────────────
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: frontend
+
+  # ── Backend Tests ───────────────────────────────────────────────────────
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
-    needs: lint
+    needs: lint-backend
     services:
       postgres:
         image: postgres:16-alpine
@@ -122,11 +133,11 @@ jobs:
           name: coverage-backend
           path: backend/coverage.xml
 
-  # ── Frontend Tests ────────────────────────────────────────────────────────
+  # ── Frontend Tests & Build ──────────────────────────────────────────────
   test-frontend:
-    name: Test Frontend
+    name: Test & Build Frontend
     runs-on: ubuntu-latest
-    needs: lint
+    needs: lint-frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -144,7 +155,11 @@ jobs:
         run: npm test -- --coverage
         working-directory: frontend
 
-  # ── Contract Validation ───────────────────────────────────────────────────
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+  # ── Contract Validation ─────────────────────────────────────────────────
   validate-contracts:
     name: Validate Contracts
     runs-on: ubuntu-latest
@@ -161,11 +176,42 @@ jobs:
       - name: Validate AsyncAPI spec
         run: npx @asyncapi/cli validate contracts/asyncapi.yaml
 
-  # ── Build ─────────────────────────────────────────────────────────────────
+  # ── Security Audit ──────────────────────────────────────────────────────
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Python deps
+        run: pip install -e ".[dev]"
+        working-directory: backend
+
+      - name: pip-audit
+        run: pip-audit
+        working-directory: backend
+
+      - name: npm audit
+        run: npm audit --audit-level=high
+        working-directory: frontend
+
+  # ── Build ───────────────────────────────────────────────────────────────
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, validate-contracts]
+    needs: [test-backend, test-frontend, validate-contracts, security-audit]
     steps:
       - uses: actions/checkout@v4
 

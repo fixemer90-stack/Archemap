@@ -1,12 +1,33 @@
 # Archemap
 
-Платформа подписок и аккаунтов с модульной архитектурой, multi-provider авторизацией и платёжным оркестратором.
+Платформа астрологического анализа личности. Четыре продуктовых вертикали на едином вычислительном ядре.
+
+| Вертикаль | Что получает пользователь |
+|---|---|
+| **Archemap Self** | Натальная карта, архетипический портрет, персональный отчёт |
+| **Archemap Love** | Совместимость, паттерны отношений, триггеры конфликтов |
+| **Archemap Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация |
+| **Archemap Career** | Сильные стороны, подходящие роли, сценарии профессионального развития |
+
+**Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. Детерминированный расчёт и explainable scoring — первичны, narrative layer — вторичен. AI не используется для генерации отчётов в рантайме.
+
+**Документация:** [SPEC.md](docs/SPEC.md) · [ROADMAP.md](docs/ROADMAP.md) · [Design Code](docs/archemap_design_code.md) · [C4 Architecture](docs/C4%20архитектура%20SaaS-платформы%20Archemap.md) · [Business Logic Spec](docs/Спецификация%20бизнес-логики%20и%20доменных%20правил%20Archemap.md)
+
+---
 
 ## Архитектура
 
-Модульный монолит с чёткими доменными границами. C4-модель как код. Contract-first подход через OpenAPI/AsyncAPI.
+Модульный монолит с чёткими доменными границами. Contract-first подход через OpenAPI/AsyncAPI.
 
-Документация архитектуры: [docs/deep-research-report.md](deep-research-reportv1.md)
+Вычислительный конвейер:
+
+```
+input envelope → chart snapshot → normalized features → axes → archetypes/claims → confidence → report assembly → entitlement-aware rendering
+```
+
+Домены разделены на bounded contexts: Auth, Profiles, Chart Engine, Content/Rules, Reports, Billing, Payments, Notifications, Admin.
+
+---
 
 ## Стек технологий
 
@@ -14,13 +35,16 @@
 
 | Компонент | Технология | Обоснование |
 |---|---|---|
-| **Фреймворк** | FastAPI (Python 3.12+) | Async-native, автоматическая OpenAPI-генерация, Pydantic-валидация, высокая производительность |
-| **ORM** | SQLAlchemy 2.0 + Alembic | Зрелый async ORM, миграции схемы, поддержка repository pattern |
-| **База данных** | PostgreSQL 16 | ACID для ledger/подписок, JSONB для гибких атрибутов, расширения (pgcrypto, uuid-ossp) |
-| **Кэш / Rate Limiting** | Redis 7 | Сессии, rate limiting, short-lived cache, pub/sub для инвалидации |
-| **Очередь задач** | Celery + Redis (broker) | Фоновые задачи: renewal, reconciliation, email, retries |
-| **HTTP-клиент** | httpx | Async HTTP для интеграций с PSP/IdP |
-| **Валидация** | Pydantic v2 | Строгая типизация запросов/ответов, автоматическая JSON Schema |
+| **Фреймворк** | FastAPI (Python 3.12+) | Async-native, автоматическая OpenAPI-генерация, Pydantic-валидация |
+| **ORM** | SQLAlchemy 2.0 + Alembic | Зрелый async ORM, миграции схемы, repository pattern |
+| **База данных** | PostgreSQL 16 | ACID для ledger/подписок, JSONB, расширения (pgcrypto, uuid-ossp) |
+| **Кэш / Rate Limiting** | Redis 7 | Сессии, rate limiting, short-lived cache, pub/sub |
+| **Очередь задач** | Celery + Redis (broker) | Фоновые задачи: генерация отчётов, reconciliation, email |
+| **HTTP-клиент** | httpx | Async HTTP для интеграций с PSP/OAuth-провайдерами |
+| **Валидация** | Pydantic v2 | Строгая типизация, автоматическая JSON Schema |
+| **Движок карт** | Swiss Ephemeris (swisseph) + Flatlib | Высокоточные эфемериды, построение астрологических объектов |
+| **Шаблоны** | Jinja2 | Рендеринг отчётов из шаблонов |
+| **Email** | SMTP/SMTPS (smtplib) | Transactional email: верификация, уведомления |
 
 ### Frontend
 
@@ -28,8 +52,7 @@
 |---|---|---|
 | **Фреймворк** | Next.js 15 (React 19) | SSR/SSG, App Router, Server Components, middleware для auth |
 | **UI-библиотека** | shadcn/ui + Tailwind CSS 4 | Кастомизируемые компоненты, дизайн-система, tree-shaking |
-| **State management** | Zustand | Лёгкий, типизированный, без boilerplate |
-| **API-клиент** | OpenAPI Generator (TypeScript) | Автогенерация типов и клиентов из openapi.yaml |
+| **State management** | Zustand + TanStack Query | Лёгкий, типизированный, без boilerplate |
 | **Формы** | React Hook Form + Zod | Валидация на клиенте, типобезопасность |
 
 ### Инфраструктура
@@ -39,18 +62,7 @@
 | **Контейнеризация** | Docker + Docker Compose | Локальная разработка, воспроизводимые окружения |
 | **CI/CD** | GitHub Actions | Lint, тесты, contract validation, build, deploy |
 | **Миграции БД** | Alembic | Версионированная миграция схемы, downgrade support |
-| **Секреты** | .env (dev), Vault/K8s Secrets (prod) | Разделение окружений |
 | **Reverse Proxy** | Caddy (dev), Nginx/Gateway API (prod) | TLS, routing, rate limiting |
-
-### Тестирование
-
-| Компонент | Технология | Обоснование |
-|---|---|---|
-| **Unit-тесты** | pytest + pytest-asyncio | Async-native тестирование FastAPI |
-| **Интеграционные** | Testcontainers (PostgreSQL, Redis) | Тесты с реальными зависимостями |
-| **Contract-тесты** | Pact | Consumer-driven контракты для PSP/IdP интеграций |
-| **E2E** | Playwright | Браузерные тесты фронтенда |
-| **Мокирование** | respx (HTTP), pytest fixtures | Изоляция от внешних сервисов |
 
 ### Качество кода
 
@@ -60,7 +72,6 @@
 | **mypy** | Статическая типизация Python |
 | **ESLint + Prettier** | Линтинг и форматирование TypeScript |
 | **pre-commit** | Автоматические проверки перед коммитом |
-| **OpenAPI Validator** | Валидация контрактов API |
 
 ### Observability
 
@@ -69,7 +80,8 @@
 | **Трейсинг** | OpenTelemetry | Vendor-neutral, совместимость с Jaeger/Tempo |
 | **Метрики** | Prometheus + Grafana | Стандарт де-факто для метрик |
 | **Логи** | structlog | Структурированные JSON-логи с correlation ID |
-| **Алерты** | Alertmanager | Дедупликация и роутинг алертов |
+
+---
 
 ## Структура проекта
 
@@ -77,115 +89,75 @@
 Archemap/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                    # FastAPI application entrypoint
+│   │   ├── main.py                    # FastAPI entrypoint
 │   │   ├── config.py                  # Settings via pydantic-settings
 │   │   ├── dependencies.py            # FastAPI dependencies
-│   │   ├── modules/                   # Доменные модули
-│   │   │   ├── auth/                  # Auth Broker (VK ID, OIDC adapters)
-│   │   │   ├── users/                 # User model, profiles
-│   │   │   ├── authorization/         # RBAC/ABAC, entitlements
-│   │   │   ├── catalog/               # Products, plans, pricing
-│   │   │   ├── subscriptions/         # Subscription lifecycle
-│   │   │   ├── billing/               # Invoices, ledger, dunning
-│   │   │   ├── payments/              # Payment orchestrator, adapters
-│   │   │   ├── webhooks/              # Webhook intake, verification
-│   │   │   ├── reconciliation/        # Finance reconciliation
-│   │   │   ├── notifications/         # Email, SMS, push
-│   │   │   └── admin/                 # Admin operations
 │   │   ├── core/                      # Shared kernel
 │   │   │   ├── models.py              # Base SQLAlchemy models
 │   │   │   ├── security.py            # JWT, hashing, crypto
 │   │   │   ├── exceptions.py          # Domain exceptions
-│   │   │   ├── events.py              # Outbox/event publisher
-│   │   │   └── audit.py               # Audit trail
+│   │   │   ├── rate_limit.py          # Redis-backed rate limiter
+│   │   │   └── token_blacklist.py     # JWT blacklist (logout)
 │   │   ├── infrastructure/            # External integrations
 │   │   │   ├── database.py            # Async engine, session factory
 │   │   │   ├── redis.py               # Redis client
-│   │   │   ├── queue.py               # Celery app
-│   │   │   └── storage.py             # Object storage client
-│   │   └── api/                       # API layer
-│   │       ├── v1/                    # Versioned endpoints
-│   │       ├── schemas/               # Pydantic request/response schemas
-│   │       └── middleware.py          # CORS, rate limit, logging
-│   ├── workers/                       # Celery workers
+│   │   │   ├── email.py               # SMTP/SMTPS sender
+│   │   │   └── email_templates.py     # Email HTML/text templates
+│   │   ├── modules/                   # Доменные модули
+│   │   │   ├── auth/                  # Authentication & OAuth
+│   │   │   │   ├── router.py
+│   │   │   │   ├── service.py
+│   │   │   │   ├── schemas.py
+│   │   │   │   ├── models.py          # User, EmailVerification, IdentityLink
+│   │   │   │   ├── verification.py    # Email verification service
+│   │   │   │   ├── password_reset.py  # Password reset flow
+│   │   │   │   └── oauth/             # OAuth providers
+│   │   │   │       ├── yandex.py      # Yandex ID provider
+│   │   │   │       └── service.py     # OAuth service (state, linking)
+│   │   │   └── users/                 # User management
+│   │   │       ├── router.py
+│   │   │       └── models.py
+│   │   └── api/v1/                    # Versioned router aggregation
 │   ├── alembic/                       # DB migrations
 │   ├── tests/
-│   │   ├── unit/
-│   │   ├── integration/
-│   │   └── contract/
+│   │   ├── unit/                      # Fast, isolated tests
+│   │   ├── integration/               # DB/Redis dependent
+│   │   ├── golden/                    # Golden tests for chart interpretation
+│   │   └── chart/                     # Chart engine tests
 │   ├── pyproject.toml
-│   ├── Dockerfile
 │   └── alembic.ini
 ├── frontend/
 │   ├── src/
 │   │   ├── app/                       # Next.js App Router
-│   │   ├── components/                # UI components
-│   │   ├── lib/                       # Utilities, API client
-│   │   ├── hooks/                     # Custom React hooks
+│   │   │   ├── (marketing)/           # Landing pages per vertical
+│   │   │   ├── (auth)/                # Login, register, verify
+│   │   │   ├── (dashboard)/           # User dashboard
+│   │   │   │   ├── self/              # Archemap Self flow
+│   │   │   │   ├── love/              # Archemap Love flow
+│   │   │   │   ├── child/             # Archemap Child flow
+│   │   │   │   └── career/            # Archemap Career flow
+│   │   │   └── admin/                 # Admin panel
+│   │   ├── components/
+│   │   │   ├── ui/                    # shadcn-style components
+│   │   │   ├── chart/                 # Natal chart visualization (SVG)
+│   │   │   └── reports/               # Report preview components
 │   │   ├── stores/                    # Zustand stores
-│   │   └── types/                     # Generated TypeScript types
-│   ├── public/
-│   ├── package.json
-│   ├── tailwind.config.ts
-│   ├── tsconfig.json
-│   └── Dockerfile
-├── contracts/                         # API contracts (source of truth)
-│   ├── openapi.yaml                   # HTTP API specification
-│   ├── asyncapi.yaml                  # Webhook/event specification
-│   └── schemas/                       # Shared JSON schemas
-├── infrastructure/
-│   ├── docker-compose.yml             # Local dev environment
-│   ├── docker-compose.prod.yml        # Production-like compose
-│   ├── terraform/                     # IaC (when needed)
-│   └── helm/                          # K8s manifests (when needed)
-├── docs/
-│   ├── deep-research-report.md        # Архитектурное исследование
-│   ├── adr/                           # Architecture Decision Records
-│   └── diagrams/                      # C4 diagrams (Structurizr/Mermaid)
-├── scripts/
-│   ├── setup.sh                       # Локальная настройка
-│   ├── seed.sh                        # Начальные данные
-│   └── generate-client.sh             # Генерация API-клиента
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                     # Lint, test, validate contracts
-│       └── deploy.yml                 # Build, sign, deploy
-├── .env.example                       # Шаблон переменных окружения
-├── .pre-commit-config.yaml
+│   │   ├── hooks/                     # Custom hooks
+│   │   └── lib/                       # Utilities, API client
+│   └── public/
+├── docs/                              # Проектная документация
+│   ├── SPEC.md                        # Полная спецификация продукта
+│   ├── ROADMAP.md                     # Дорожная карта эпиков
+│   ├── archemap_design_code.md        # Дизайн-система и бренд
+│   ├── C4 архитектура ...md           # C4-архитектура платформы
+│   └── Спецификация бизнес-логики ...md # Доменные правила и скоринг
+├── .github/workflows/
+│   └── ci.yml                         # Lint, test, validate, build
 ├── Makefile                           # Команды разработки
 └── README.md
 ```
 
-## Модули (доменные границы)
-
-Каждый модуль в `backend/app/modules/` содержит:
-
-```
-module_name/
-├── __init__.py
-├── router.py          # FastAPI endpoints
-├── schemas.py         # Pydantic models (request/response)
-├── service.py         # Business logic (use cases)
-├── repository.py      # Data access (SQLAlchemy queries)
-├── models.py          # SQLAlchemy ORM models
-├── exceptions.py      # Module-specific exceptions
-├── dependencies.py    # FastAPI dependencies for this module
-└── events.py          # Domain events (outbox pattern)
-```
-
-| Модуль | Ответственность |
-|---|---|
-| `auth` | VK ID OAuth 2.1 + PKCE, account linking, session/token issuance, будущие OIDC-провайдеры |
-| `users` | User profiles, preferences, identity links |
-| `authorization` | RBAC/ABAC, entitlement checks, BOLA protection |
-| `catalog` | Products, plans, pricing, trials, coupons |
-| `subscriptions` | Lifecycle: create, pause, cancel, renew, grace, proration |
-| `billing` | Invoices, credit notes, payment attempts, dunning, ledger |
-| `payments` | Orchestrator + provider adapters (Stripe/PayPal/ЮKassa), idempotency |
-| `webhooks` | Verification, deduplication, persistence, fast ACK |
-| `reconciliation` | Ledger vs PSP state comparison, mismatch cases |
-| `notifications` | Email, SMS, push через провайдеров |
-| `admin` | Internal operations, support, finance tools |
+---
 
 ## Запуск локально
 
@@ -194,13 +166,13 @@ module_name/
 - Python 3.12+
 - Node.js 20+
 - Docker + Docker Compose
-- Make
 
 ### Быстрый старт
 
 ```bash
-# 1. Клонировать и перейти в директорию
-cd D:\Python\Balthier\Archemap
+# 1. Клонировать
+git clone git@github.com:fixemer90-stack/Archemap.git
+cd Archemap
 
 # 2. Скопировать переменные окружения
 cp .env.example .env
@@ -208,17 +180,16 @@ cp .env.example .env
 # 3. Запустить инфраструктуру (PostgreSQL, Redis)
 make infra-up
 
-# 4. Установить зависимости backend
-cd backend && pip install -e ".[dev]" && cd ..
+# 4. Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload   # → :8000
 
-# 5. Применить миграции
-make db-migrate
-
-# 6. Запустить backend
-make backend-dev
-
-# 7. Установить зависимости frontend (в отдельном терминале)
-cd frontend && npm install && npm run dev
+# 5. Frontend (в отдельном терминале)
+cd frontend
+npm install && npm run dev      # → :3000
 ```
 
 ### Основные команды
@@ -226,53 +197,47 @@ cd frontend && npm install && npm run dev
 ```bash
 make infra-up          # Запустить Docker-сервисы (PostgreSQL, Redis)
 make infra-down        # Остановить Docker-сервисы
-make backend-dev       # Запустить backend в dev-режиме
-make frontend-dev      # Запустить frontend в dev-режиме
-make db-migrate        # Применить миграции Alembic
-make db-revision       # Создать новую миграцию
-make test              # Запустить все тесты
-make test-unit         # Только unit-тесты
-make test-integration  # Только интеграционные тесты
-make lint              # Линтинг (ruff + eslint)
-make format            # Форматирование (ruff + prettier)
-make typecheck         # Статическая типизация (mypy)
-make contracts-validate # Валидация OpenAPI/AsyncAPI
-make generate-client   # Сгенерировать TypeScript API-клиент
+
+# Backend
+cd backend && source .venv/bin/activate
+ruff check .           # Линтинг
+ruff format .          # Форматирование
+mypy .                 # Статическая типизация
+pytest tests/unit -v   # Unit-тесты
+pytest tests/golden -v # Golden tests для интерпретаций
+
+# Frontend
+cd frontend
+npm run dev            # Dev server
+npm run build          # Production build
+npx eslint .           # Линтинг
+npx tsc --noEmit       # Type check
 ```
 
-## Конвенции
+---
 
-### Именование
+## Дизайн-система
 
-- Модули: `snake_case` (подписки → `subscriptions`)
-- Endpoint paths: `kebab-case` (`/v1/subscriptions/create`)
-- Pydantic schemas: `PascalCase` (`CreateSubscriptionRequest`)
-- DB tables: `snake_case`, plural (`subscriptions`, `ledger_entries`)
+Archemap — не «астро-гадалка», а **премиальная навигационная система для самопознания**.
 
-### API Versioning
+| Роль | Название | HEX |
+|---|---|---:|
+| Основной фон | Deep Space | `#17142A` |
+| Главный акцент | Royal Violet | `#5B3FD6` |
+| Премиальный акцент | Soft Gold | `#D8B45A` |
+| Вторичный текст | Moon Silver | `#D8DCE8` |
+| Интерактивный | Mist Blue | `#8DA8FF` |
+| Основной текст | Warm Ivory | `#F6F1E8` |
 
-- Все публичные эндпоинты под `/v1/`
-- Breaking changes — новая версия (`/v2/`)
-- Deprecation через `Sunset` header и OpenAPI `deprecated` field
+Акценты по вертикалям: Self (фиолетовый + золото), Love (розово-бордовый `#B84A6B`), Child (мягкий голубой `#6BAFBD`), Career (янтарный `#C28A2E`).
 
-### Безопасность
+Полный дизайн-код: [docs/archemap_design_code.md](docs/archemap_design_code.md)
 
-- PKCE обязателен для всех OAuth flows
-- Idempotency-Key для всех mutating запросов
-- Structured logging с correlation ID
-- Secrets только через env/secrets manager, никогда в коде
-
-### Git
-
-- `main` — стабильная ветка, deploy в production
-- `develop` — интеграционная ветка
-- `feature/*` — функциональные ветки
-- `fix/*` — исправления
-- Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
+---
 
 ## Статус
 
-🚧 Начальная стадия разработки
+🟡 Epic 2 (Identity) — в процессе. Дорожная карта: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Лицензия
 

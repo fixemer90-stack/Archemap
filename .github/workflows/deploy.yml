@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    # Ensure CI passes before deploying
+    # needs: [ci]  # Uncomment when CI workflow is fully wired
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy
+        run: |
+          echo "=== Deployment placeholder ==="
+          echo "Environment: ${{ github.event.inputs.environment || 'staging' }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "TODO: Configure deployment steps for your target platform."
+          echo "Options:"
+          echo "  - Docker Compose on a VPS"
+          echo "  - Kubernetes (Helm / kustomize)"
+          echo "  - AWS ECS / Fargate"
+          echo "  - Fly.io / Railway / Render"

@@ -1,0 +1,307 @@
+asyncapi: 2.6.0
+info:
+  title: Archemap Webhook Events
+  version: 1.0.0
+  description: |
+    Asynchronous event contracts for Archemap webhook notifications.
+    Consumers should verify webhook signatures before processing.
+
+servers:
+  production:
+    protocol: webhooks
+    url: https://api.archemap.io
+
+defaultContentType: application/json
+
+channels:
+  payment.completed:
+    subscribe:
+      operationId: onPaymentCompleted
+      summary: Payment successfully completed
+      message:
+        $ref: "#/components/messages/PaymentCompleted"
+    publish:
+      operationId: sendPaymentCompleted
+      message:
+        $ref: "#/components/messages/PaymentCompleted"
+
+  payment.failed:
+    subscribe:
+      operationId: onPaymentFailed
+      summary: Payment attempt failed
+      message:
+        $ref: "#/components/messages/PaymentFailed"
+    publish:
+      operationId: sendPaymentFailed
+      message:
+        $ref: "#/components/messages/PaymentFailed"
+
+  subscription.renewed:
+    subscribe:
+      operationId: onSubscriptionRenewed
+      summary: Subscription successfully renewed
+      message:
+        $ref: "#/components/messages/SubscriptionRenewed"
+    publish:
+      operationId: sendSubscriptionRenewed
+      message:
+        $ref: "#/components/messages/SubscriptionRenewed"
+
+  subscription.cancelled:
+    subscribe:
+      operationId: onSubscriptionCancelled
+      summary: Subscription cancelled
+      message:
+        $ref: "#/components/messages/SubscriptionCancelled"
+    publish:
+      operationId: sendSubscriptionCancelled
+      message:
+        $ref: "#/components/messages/SubscriptionCancelled"
+
+  subscription.expired:
+    subscribe:
+      operationId: onSubscriptionExpired
+      summary: Subscription expired after grace period
+      message:
+        $ref: "#/components/messages/SubscriptionExpired"
+    publish:
+      operationId: sendSubscriptionExpired
+      message:
+        $ref: "#/components/messages/SubscriptionExpired"
+
+components:
+  messages:
+    PaymentCompleted:
+      name: payment.completed
+      title: Payment Completed
+      summary: Emitted when a payment is successfully processed
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PaymentCompletedEvent"
+      headers:
+        type: object
+        properties:
+          X-Webhook-Signature:
+            type: string
+            description: HMAC-SHA256 signature for payload verification
+          X-Webhook-Timestamp:
+            type: string
+            format: date-time
+
+    PaymentFailed:
+      name: payment.failed
+      title: Payment Failed
+      summary: Emitted when a payment attempt fails
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/PaymentFailedEvent"
+      headers:
+        type: object
+        properties:
+          X-Webhook-Signature:
+            type: string
+          X-Webhook-Timestamp:
+            type: string
+            format: date-time
+
+    SubscriptionRenewed:
+      name: subscription.renewed
+      title: Subscription Renewed
+      summary: Emitted when a subscription is automatically renewed
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/SubscriptionRenewedEvent"
+      headers:
+        type: object
+        properties:
+          X-Webhook-Signature:
+            type: string
+          X-Webhook-Timestamp:
+            type: string
+            format: date-time
+
+    SubscriptionCancelled:
+      name: subscription.cancelled
+      title: Subscription Cancelled
+      summary: Emitted when a subscription is cancelled
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/SubscriptionCancelledEvent"
+      headers:
+        type: object
+        properties:
+          X-Webhook-Signature:
+            type: string
+          X-Webhook-Timestamp:
+            type: string
+            format: date-time
+
+    SubscriptionExpired:
+      name: subscription.expired
+      title: Subscription Expired
+      summary: Emitted when a subscription expires after grace period
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/SubscriptionExpiredEvent"
+      headers:
+        type: object
+        properties:
+          X-Webhook-Signature:
+            type: string
+          X-Webhook-Timestamp:
+            type: string
+            format: date-time
+
+  schemas:
+    EventBase:
+      type: object
+      required: [event_id, event_type, occurred_at]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: Unique event identifier for deduplication
+        event_type:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+
+    PaymentCompletedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventBase"
+        - type: object
+          required: [payment_id, amount, currency, user_id]
+          properties:
+            event_type:
+              type: string
+              enum: [payment.completed]
+            payment_id:
+              type: string
+              format: uuid
+            amount:
+              type: integer
+              description: Amount in minor units
+            currency:
+              type: string
+              minLength: 3
+              maxLength: 3
+            user_id:
+              type: string
+              format: uuid
+            subscription_id:
+              type: string
+              format: uuid
+            invoice_id:
+              type: string
+              format: uuid
+            payment_method_id:
+              type: string
+
+    PaymentFailedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventBase"
+        - type: object
+          required: [user_id, failure_code, failure_message]
+          properties:
+            event_type:
+              type: string
+              enum: [payment.failed]
+            payment_id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            subscription_id:
+              type: string
+              format: uuid
+            invoice_id:
+              type: string
+              format: uuid
+            amount:
+              type: integer
+            currency:
+              type: string
+            failure_code:
+              type: string
+              description: Machine-readable failure code
+            failure_message:
+              type: string
+              description: Human-readable failure reason
+
+    SubscriptionRenewedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventBase"
+        - type: object
+          required: [subscription_id, user_id, period_start, period_end]
+          properties:
+            event_type:
+              type: string
+              enum: [subscription.renewed]
+            subscription_id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            plan_id:
+              type: string
+              format: uuid
+            invoice_id:
+              type: string
+              format: uuid
+            period_start:
+              type: string
+              format: date-time
+            period_end:
+              type: string
+              format: date-time
+
+    SubscriptionCancelledEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventBase"
+        - type: object
+          required: [subscription_id, user_id, cancel_reason]
+          properties:
+            event_type:
+              type: string
+              enum: [subscription.cancelled]
+            subscription_id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            cancel_reason:
+              type: string
+              enum: [user_requested, payment_failed, admin_action]
+            cancelled_at:
+              type: string
+              format: date-time
+            effective_at:
+              type: string
+              format: date-time
+              description: When cancellation takes effect (end of current period)
+
+    SubscriptionExpiredEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventBase"
+        - type: object
+          required: [subscription_id, user_id]
+          properties:
+            event_type:
+              type: string
+              enum: [subscription.expired]
+            subscription_id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            expired_at:
+              type: string
+              format: date-time
+            last_period_end:
+              type: string
+              format: date-time

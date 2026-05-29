@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import structlog
 
 from workers.celery_app import app
@@ -9,8 +11,8 @@ from workers.celery_app import app
 logger = structlog.get_logger()
 
 
-@app.task(name="workers.tasks.notifications.send_notification")
-def send_notification(user_id: str, channel: str, template: str, context: dict | None = None) -> bool:
+@app.task(name="workers.tasks.notifications.send_notification")  # type: ignore[untyped-decorator]
+def send_notification(user_id: str, channel: str, template: str, context: dict[str, Any] | None = None) -> bool:
     """Send a notification to a user via the specified channel.
 
     Channels: email, push, in_app.
@@ -20,8 +22,10 @@ def send_notification(user_id: str, channel: str, template: str, context: dict |
     return True
 
 
-@app.task(name="workers.tasks.notifications.send_bulk_notification")
-def send_bulk_notification(user_ids: list[str], channel: str, template: str, context: dict | None = None) -> int:
+@app.task(name="workers.tasks.notifications.send_bulk_notification")  # type: ignore[untyped-decorator]
+def send_bulk_notification(
+    user_ids: list[str], channel: str, template: str, context: dict[str, Any] | None = None
+) -> int:
     """Send notifications to multiple users."""
     count = 0
     for uid in user_ids:

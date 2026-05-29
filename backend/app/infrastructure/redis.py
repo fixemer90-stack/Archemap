@@ -6,13 +6,13 @@ import redis.asyncio as aioredis
 
 from app.config import settings
 
-_client: aioredis.Redis | None = None  # type: ignore[type-arg]
+_client: aioredis.Redis | None = None
 
 
-def get_redis_client() -> aioredis.Redis:  # type: ignore[type-arg]
+def get_redis_client() -> aioredis.Redis:
     global _client
     if _client is None:
-        _client = aioredis.from_url(
+        _client = aioredis.from_url(  # type: ignore[no-untyped-call]
             settings.REDIS_URL,
             decode_responses=True,
             max_connections=20,

@@ -81,7 +81,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "passlib.*", "jose.*", "sentry_sdk.*"]
+module = ["celery.*", "passlib.*", "jose.*", "sentry_sdk.*", "redis.*"]
 ignore_missing_imports = true
 
 # ── Pytest ────────────────────────────────────────────────────────────

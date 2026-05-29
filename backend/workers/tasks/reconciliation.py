@@ -9,7 +9,7 @@ from workers.celery_app import app
 logger = structlog.get_logger()
 
 
-@app.task(name="workers.tasks.reconciliation.run_payment_reconciliation")
+@app.task(name="workers.tasks.reconciliation.run_payment_reconciliation")  # type: ignore[untyped-decorator]
 def run_payment_reconciliation() -> dict[str, int]:
     """Compare internal payment records against provider statements.
 

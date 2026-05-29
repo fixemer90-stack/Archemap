@@ -30,12 +30,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 # ── Redis client ──────────────────────────────────────────────────────
-async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:  # type: ignore[type-arg]
+async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
     client = get_redis_client()
     try:
         yield client
     finally:
-        await client.aclose()  # type: ignore[union-attr]
+        await client.aclose()
 
 
 # ── Current user ──────────────────────────────────────────────────────

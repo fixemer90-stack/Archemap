@@ -9,7 +9,7 @@ from workers.celery_app import app
 logger = structlog.get_logger()
 
 
-@app.task(name="workers.tasks.renewals.check_and_renew_subscriptions")
+@app.task(name="workers.tasks.renewals.check_and_renew_subscriptions")  # type: ignore[untyped-decorator]
 def check_and_renew_subscriptions() -> dict[str, int]:
     """Find subscriptions due for renewal and process them.
 

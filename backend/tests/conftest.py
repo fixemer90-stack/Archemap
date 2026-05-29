@@ -24,7 +24,7 @@ test_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expi
 
 
 @pytest.fixture(scope="session")
-def event_loop():  # type: ignore[no-untyped-def]
+def event_loop() -> asyncio.AbstractEventLoop:  # type: ignore[misc]
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
@@ -47,22 +47,22 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def test_redis() -> AsyncGenerator[aioredis.Redis, None]:  # type: ignore[type-arg]
-    client = aioredis.from_url(TEST_REDIS_URL, decode_responses=True)
+async def test_redis() -> AsyncGenerator[aioredis.Redis, None]:
+    client = aioredis.from_url(TEST_REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call]
     await client.flushdb()
     yield client
     await client.flushdb()
-    await client.aclose()  # type: ignore[union-attr]
+    await client.aclose()
 
 
 @pytest.fixture
-async def client(db_session: AsyncSession, test_redis: aioredis.Redis) -> AsyncGenerator[AsyncClient, None]:  # type: ignore[type-arg]
+async def client(db_session: AsyncSession, test_redis: aioredis.Redis) -> AsyncGenerator[AsyncClient, None]:
     """Async test client with overridden dependencies."""
 
-    async def _override_db():
+    async def _override_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
-    async def _override_redis():
+    async def _override_redis() -> AsyncGenerator[aioredis.Redis, None]:
         yield test_redis
 
     app.dependency_overrides[get_db] = _override_db

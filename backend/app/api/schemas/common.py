@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ class ErrorResponse(BaseModel):
     code: str | None = None
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):  # noqa: UP046
     items: list[T]
     total: int
     page: int = Field(ge=1)
@@ -26,7 +26,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     pages: int
 
     @classmethod
-    def create(cls, items: list[T], total: int, page: int, page_size: int) -> "PaginatedResponse[T]":
+    def create(cls, items: list[T], total: int, page: int, page_size: int) -> PaginatedResponse[T]:
         return cls(
             items=items,
             total=total,

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import sys
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import structlog
 import uvicorn
@@ -35,7 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         logger.warning("Redis unavailable on startup")
     finally:
-        await redis_client.aclose()  # type: ignore[union-attr]
+        await redis_client.aclose()
 
     yield
 
@@ -68,7 +67,8 @@ def create_app() -> FastAPI:
 
     # ── observability ──
     if settings.SENTRY_DSN:
-        import sentry_sdk  # noqa: F811
+        import sentry_sdk
+
         sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE)
 
     FastAPIInstrumentor.instrument_app(application)

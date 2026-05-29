@@ -64,10 +64,13 @@ select = [
     "S",        # flake8-bandit
     "RUF",      # ruff-specific
 ]
-ignore = ["S101"]  # allow assert in tests
+ignore = ["S101", "B008", "S104", "S105"]  # S101: assert in tests; B008: FastAPI Depends(); S104/S105: dev defaults
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "workers"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/*" = ["E402", "F401", "F403"]  # alembic needs late imports for model registration
 
 # ── Mypy ──────────────────────────────────────────────────────────────
 [tool.mypy]
@@ -78,7 +81,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "passlib.*", "jose.*"]
+module = ["celery.*", "passlib.*", "jose.*", "sentry_sdk.*"]
 ignore_missing_imports = true
 
 # ── Pytest ────────────────────────────────────────────────────────────

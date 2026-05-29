@@ -10,7 +10,7 @@ _client: aioredis.Redis | None = None  # type: ignore[type-arg]
 
 
 def get_redis_client() -> aioredis.Redis:  # type: ignore[type-arg]
-    global _client  # noqa: PLW0603
+    global _client
     if _client is None:
         _client = aioredis.from_url(
             settings.REDIS_URL,

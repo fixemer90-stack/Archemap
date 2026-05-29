@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -14,33 +15,35 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ── Passwords ─────────────────────────────────────────────────────────
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return _pwd_context.hash(plain)  # type: ignore[no-any-return]
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return _pwd_context.verify(plain, hashed)  # type: ignore[no-any-return]
 
 
 # ── JWT ───────────────────────────────────────────────────────────────
-def create_access_token(subject: str, extra_claims: dict | None = None, expires_delta: timedelta | None = None) -> str:
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    payload: dict = {"sub": subject, "exp": expire, "type": "access"}
+def create_access_token(
+    subject: str,
+    extra_claims: dict[str, Any] | None = None,
+    expires_delta: timedelta | None = None,
+) -> str:
+    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
+    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": "access"}
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)  # type: ignore[no-any-return]
 
 
 def create_refresh_token(subject: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"sub": subject, "exp": expire, "type": "refresh"}
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    expire = datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    payload: dict[str, Any] = {"sub": subject, "exp": expire, "type": "refresh"}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)  # type: ignore[no-any-return]
 
 
-def decode_access_token(token: str) -> dict | None:
+def decode_access_token(token: str) -> dict[str, Any] | None:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload: dict[str, Any] = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != "access":
             return None
         return payload
@@ -48,9 +51,9 @@ def decode_access_token(token: str) -> dict | None:
         return None
 
 
-def decode_refresh_token(token: str) -> dict | None:
+def decode_refresh_token(token: str) -> dict[str, Any] | None:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload: dict[str, Any] = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("type") != "refresh":
             return None
         return payload

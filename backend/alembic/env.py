@@ -22,21 +22,20 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import all models so Alembic can detect them
-from app.core.audit import AuditLog  # noqa: F401
-from app.core.models import BaseModel  # noqa: F401
-from app.modules.admin.models import *  # noqa: F401, F403
-from app.modules.auth.models import *  # noqa: F401, F403
-from app.modules.authorization.models import *  # noqa: F401, F403
-from app.modules.billing.models import *  # noqa: F401, F403
-from app.modules.catalog.models import *  # noqa: F401, F403
-from app.modules.notifications.models import *  # noqa: F401, F403
-from app.modules.payments.models import *  # noqa: F401, F403
-from app.modules.reconciliation.models import *  # noqa: F401, F403
-from app.modules.subscriptions.models import *  # noqa: F401, F403
-from app.modules.users.models import *  # noqa: F401, F403
-from app.modules.webhooks.models import *  # noqa: F401, F403
-
+from app.core.audit import AuditLog
+from app.core.models import BaseModel
 from app.infrastructure.database import Base
+from app.modules.admin.models import *
+from app.modules.auth.models import *
+from app.modules.authorization.models import *
+from app.modules.billing.models import *
+from app.modules.catalog.models import *
+from app.modules.notifications.models import *
+from app.modules.payments.models import *
+from app.modules.reconciliation.models import *
+from app.modules.subscriptions.models import *
+from app.modules.users.models import *
+from app.modules.webhooks.models import *
 
 target_metadata = Base.metadata
 

@@ -1,190 +1,220 @@
-# Archemap — Roadmap
+# Archemap — Дорожная карта
 
-## Стратегия
+> **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
+> **Обновлено:** 2026-05-29
 
-Модульный монолит. Сначала домен, потом платежи. Каждый Epic завершается рабочим инкрементом.
+---
+
+## Обзор вертикалей
+
+| Вертикаль | Описание | Ключевые сущности |
+|-----------|----------|-------------------|
+| **Self** | Натальная карта, портрет архетипа, персональный отчёт | PersonProfile, ChartSnapshot, SelfReport |
+| **Love** | Совместимость, паттерны отношений, триггеры конфликтов | PairProfile, CompatibilityReport |
+| **Child** | Профиль ребёнка, рекомендации по воспитанию | ChildProfile, ParentingReport |
+| **Career** | Сильные стороны, роли, профессиональное развитие | CareerProfile, CareerReport |
+
+**Общая основа:** Chart & Archetype Engine (Swiss Ephemeris + Flatlib), движок правил, шаблонный контент.
+
+---
+
+## Статус эпиков
+
+| Эпик | Название | Статус |
+|------|----------|--------|
+| E1 | Foundation | ✅ Готово |
+| E2 | Identity | 🟡 В процессе |
+| E3 | Profile & Chart Engine | ⬜ Не начато |
+| E4 | Rules & Content | ⬜ Не начато |
+| E5 | Products & Reports | ⬜ Не начато |
+| E6 | Billing & Subscriptions | ⬜ Не начато |
+| E7 | Notifications & Admin | ⬜ Не начато |
+| E8 | Production & Scale | ⬜ Не начато |
+
+---
+
+## Epic 1: Foundation ✅
+
+**Статус:** Готово
+
+- Скелет проекта, CI/CD, инфраструктура, Docker.
+
+---
+
+## Epic 2: Identity 🟡
+
+**Статус:** В процессе
+**Оценка:** 1.5–2 недели (на завершение оставшегося)
+**Зависимости:** E1 ✅
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 2.1 | Email + пароль | Регистрация, вход, верификация email, logout | `auth/`, `accounts/models.py`, `accounts/views.py` | ✅ Готово |
+| 2.2 | VK ID OAuth | Авторизация через VK ID (OpenID Connect) | `auth/oauth/vk.py`, `auth/pipeline.py`, settings | Пользователь может войти через VK; email привязывается при наличии |
+| 2.3 | Yandex ID OAuth | Авторизация через Yandex ID | `auth/oauth/yandex.py`, `auth/pipeline.py`, settings | Пользователь может войти через Yandex; аккаунт линкуется по email |
+| 2.4 | Привязка аккаунтов | Linking OAuth-провайдеров к существующему аккаунту | `auth/linking.py`, `accounts/models.py` | Пользователь может привязать VK/Yandex к email-аккаунту из настроек |
+| 2.5 | Сброс пароля | Запрос сброса по email, токен, новый пароль | `auth/password_reset.py`, `accounts/views.py` | Письмо отправляется; токен истекает через 24ч; пароль меняется |
+| 2.6 | Rate-limiting входа | Защита от брутфорса (5 попыток / 15 мин) | `auth/throttling.py`, middleware | При превышении — HTTP 429; счётчик сбрасывается через 15 мин |
+
+---
+
+## Epic 3: Profile & Chart Engine
+
+**Статус:** ⬜ Не начато
+**Оценка:** 3–4 недели
+**Зависимости:** E2
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 3.1 | PersonProfile | Модель профиля: дата, время, место рождения | `profiles/models.py`, `profiles/serializers.py`, `profiles/views.py` | CRUD через API; валидация даты (1900–2100), времени; место обязательно |
+| 3.2 | Геокодинг (GeoNames) | Получение координат по названию места | `geo/geocoder.py`, `geo/providers/geonames.py` | API принимает строку → возвращает lat/lon/city/country; кэш 24ч |
+| 3.3 | Определение часового пояса | Разрешение IANA TZ по координатам и дате | `geo/timezone.py`, `tzdata` | Корректный TZ для любого места рождения; учёт исторических изменений |
+| 3.4 | Swiss Ephemeris + Flatlib | Вычисление позиций планет, домов, аспектов | `astro/engine.py`, `astro/swe_wrapper.py`, `astro/flatlib_adapter.py` | Для тестовых дат результат совпадает с reference-калькулятором (±0.01°) |
+| 3.5 | ChartSnapshot | Сохранённый снимок натальной карты (JSON) | `charts/models.py`, `charts/compute.py` | Вычисляется за <2с; сохраняется; повторный запрос отдаёт кэш |
+| 3.6 | Нормализация признаков | Извлечение нормализованных признаков из карты | `astro/features.py`, `astro/normalizers.py` | Для каждого признака — значение 0.0–1.0; детерминировано для одной карты |
+
+---
+
+## Epic 4: Rules & Content
+
+**Статус:** ⬜ Не начато
+**Оценка:** 3–4 недели
+**Зависимости:** E3
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 4.1 | RuleSetVersion | Версионированная модель наборов правил | `rules/models.py`, `rules/migrations.py` | Каждая версия иммутабельна; есть поле `published_at`; несколько версий могут сосуществовать |
+| 4.2 | TemplateVersion | Версионированная модель контентных шаблонов | `content/models.py`, `content/migrations.py` | Шаблоны хранятся как Jinja2; версионируются; привязаны к вертикали |
+| 4.3 | Движок правил | Оценка правил по нормализованным признакам | `rules/engine.py`, `rules/evaluator.py` | Правило: условие (JSON Logic) → скор → категория; проходит 100+ тестов |
+| 4.4 | Content Resolver | Маппинг результатов правил → текстовые шаблоны | `content/resolver.py`, `content/mapper.py` | По набору сработавших правил → генерируется текст отчёта; пустые правила → fallback |
+| 4.5 | Локализация | Поддержка RU/EN для правил и шаблонов | `rules/i18n.py`, `content/i18n.py`, locale files | Для каждой локали — полный набор шаблов; fallback на RU |
+| 4.6 | CMS для редакторов | Интерфейс для редактирования правил и шаблонов | `admin/rules.py`, `admin/templates.py`, `cms/` | Редактор может создать/изменить правило и шаблон; preview генерации |
+
+---
+
+## Epic 5: Products & Reports
+
+**Статус:** ⬜ Не начато
+**Оценка:** 4–5 недель
+**Зависимости:** E3, E4
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 5.1 | Self-отчёт | Генерация персонального отчёта по натальной карте | `reports/self/`, `reports/generator.py` | Отчёт содержит: солнце, луна, асцендент, доминанты, архетип; PDF/API |
+| 5.2 | Love: совместимость | Анализ пары: синастрия, паттерны, триггеры | `reports/love/`, `reports/synastry.py` | Два профиля → отчёт; оценка совместимости 0–100; топ-3 триггера |
+| 5.3 | Child: профиль | Профиль ребёнка + рекомендации родителю | `reports/child/`, `reports/child_profile.py` | По дате/времени/месту → темперамент, сильные стороны, советы по воспитанию |
+| 5.4 | Career: сильные стороны | Карьерные рекомендации по карте | `reports/career/`, `reports/career_profile.py` | Топ-5 профессий, сильные/слабые стороны, рекомендации по развитию |
+| 5.5 | Версионирование отчётов | Хранение версий сгенерированных отчётов | `reports/models.py` | При изменении профиля — новый отчёт (старый сохраняется); история доступна |
+| 5.6 | Хранилище отчётов | Хранение PDF и структурированных данных | `reports/storage.py`, S3/MinIO | PDF генерируется асинхронно; доступен по ссылке; TTL 30 дней для free |
+| 5.7 | API отчётов | REST-эндпоинты для генерации и получения отчётов | `reports/views.py`, `reports/serializers.py` | POST generate, GET list/detail; pagination; permissions |
+
+---
+
+## Epic 6: Billing & Subscriptions
+
+**Статус:** ⬜ Не начато
+**Оценка:** 4–5 недель
+**Зависимости:** E5
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 6.1 | Каталог планов | Планы подписок (по вертикалям: Self, Love, Child, Career, Bundle) | `billing/models.py`, `billing/catalog.py` | CRUD планов; цена, интервал, trial; привязка к вертикалям |
+| 6.2 | Жизненный цикл подписки | Создание, активация, продление, отмена, grace period | `billing/subscription.py`, `billing/lifecycle.py` | Статусы: trial→active→past_due→cancelled→expired; webhook-driven |
+| 6.3 | YooKassa | Провайдер оплаты: создание платежа, подтверждение | `billing/adapters/yookassa.py` | Платёж создаётся → редирект → callback → подписка активна |
+| 6.4 | CloudPayments | Провайдер оплаты: виджет, рекуррентные платежи | `billing/adapters/cloudpayments.py` | Первый платёж + рекуррент; обработка отказа; retry |
+| 6.5 | Stripe | Международный провайдер: Checkout, Billing Portal | `billing/adapters/stripe.py` | Checkout session → success → webhook → subscription active |
+| 6.6 | Webhook handling | Обработка входящих webhook'ов от платёжных систем | `billing/webhooks.py` | Идемпотентность; верификация подписи; логирование; retry |
+| 6.7 | Entitlement engine | Проверка доступа к вертикалям по подписке | `billing/entitlements.py`, middleware | `has_access(user, "love")` → bool; free-план = только Self preview |
+| 6.8 | In-app billing (мобильные) | Мост для Google Play Billing и App Store | `billing/adapters/mobile.py`, API | Мобильный клиент отправляет receipt → сервер верифицирует → entitlement |
+
+---
+
+## Epic 7: Notifications & Admin
+
+**Статус:** ⬜ Не начато
+**Оценка:** 3–4 недели
+**Зависимости:** E5, E6
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 7.1 | Email-уведомления | Отправка email (transactional): отчёт готов, подписка | `notifications/email.py`, templates | Email отправляется через SMTP/SendPulse; шаблоны на RU/EN |
+| 7.2 | SMS-уведомления | Отправка SMS (подтверждение, важные события) | `notifications/sms.py`, provider adapter | SMS через SMS.ru / Infobip; rate-limit 3/день/user |
+| 7.3 | Push-уведомления | Web и мобильные push (FCM/APNs) | `notifications/push.py`, `notifications/fcm.py` | Push при готовности отчёта, напоминание о продлении |
+| 7.4 | Напоминания о продлении | Автоматические напоминания за 7/3/1 день | `notifications/reminders.py`, cron | Письмо+push за 7, 3, 1 день до окончания подписки |
+| 7.5 | Admin Dashboard | Админ-панель: пользователи, подписки, отчёты | `admin/dashboard.py`, frontend | Поиск пользователя; просмотр подписок; ручная активация/отмена |
+| 7.6 | Content Editor | Редактор правил и шаблонов через UI | `admin/content_editor.py`, frontend | WYSIWYG для шаблонов; JSON editor для правил; preview |
+| 7.7 | Analytics (PostHog) | Трекинг событий: регистрация, оплата, отчёт | `analytics/posthog.py`, middleware | События: signup, login, report_generated, payment_success; dashboard |
+| 7.8 | Audit trail | Лог действий: кто, что, когда | `audit/models.py`, `audit/middleware.py` | Каждое изменение подписки/профиля логируется; доступно в admin |
+
+---
+
+## Epic 8: Production & Scale
+
+**Статус:** ⬜ Не начато
+**Оценка:** 3–4 недели
+**Зависимости:** E6, E7
+
+| # | Фича | Описание | Файлы/модули | Критерии приёмки |
+|---|------|----------|---------------|------------------|
+| 8.1 | Rate limiting | Ограничение запросов по API | `middleware/rate_limit.py`, Redis | 100 req/min/user для API; 10 req/min для auth; 429 при превышении |
+| 8.2 | WAF | Web Application Firewall (ModSecurity / Cloudflare) | infra/, nginx config | Блокировка SQLi, XSS, path traversal; логирование |
+| 8.3 | Secrets manager | Хранение секретов (Yandex Lockbox / Vault) | `config/secrets.py`, deploy scripts | Ни одного секрета в коде/env-файлах; ротация через CI |
+| 8.4 | Observability | Трассировка, метрики, логи | `observability/`, OTEL config, Prometheus, Loki | Traces в Jaeger; метрики в Grafana; логи в Loki; alerting |
+| 8.5 | Load testing | Нагрузочное тестирование | `tests/load/`, k6/locust scripts | 500 concurrent users; p95 < 500ms для report generation |
+| 8.6 | Yandex Managed K8s | Деплой на Yandex Managed Kubernetes | `deploy/k8s/`, Helm charts | Pod autoscaling; health checks; rolling updates; zero-downtime deploy |
+| 8.7 | GitOps (Argo CD) | Автоматический деплой из Git | `deploy/argocd/`, `deploy/apps/` | Push в main → Argo CD sync → deploy; rollback через revert commit |
+
+---
+
+## Зависимости между эпиками
 
 ```
-Epic 1 → Epic 2 → Epic 3 → Epic 4 → Epic 5 → Epic 6 → Epic 7
-Foundation   Identity   Catalog   Payments   Billing   Security   Scale
-  (4 нед)    (4 нед)    (3 нед)   (5 нед)    (4 нед)   (3 нед)   (4 нед)
-                                                        ─────────────
-                                                         ~27 недель
+E1 (Foundation) ✅
+  └─► E2 (Identity) 🟡
+        └─► E3 (Profile & Chart Engine)
+              └─► E4 (Rules & Content)
+                    └─► E5 (Products & Reports)
+                          ├─► E6 (Billing & Subscriptions)
+                          │     └─► E7 (Notifications & Admin) ──► E8 (Production & Scale)
+                          └─► E7 (Notifications & Admin)
+```
+
+**Критический путь:** E2 → E3 → E4 → E5 → E6 → E7 → E8
+
+---
+
+## MVP: Что нужно для первого запуска
+
+**MVP = вертикаль "Self" с бесплатным превью + платная подписка**
+
+| Эпик | Что входит в MVP | Что исключено |
+|------|-------------------|---------------|
+| E2 | Email + VK OAuth | Yandex OAuth, account linking |
+| E3 | PersonProfile, геокодинг, эфемериды, ChartSnapshot | — |
+| E4 | RuleSetVersion, TemplateVersion, движок правил, resolver | CMS для редакторов |
+| E5 | Только Self-отчёт (free preview + полная версия по подписке) | Love, Child, Career |
+| E6 | 1 план подписки (Self), 1 платёжный провайдер (YooKassa) | CloudPayments, Stripe, mobile billing |
+| E7 | Email-уведомления, базовый admin | SMS, push, analytics |
+| E8 | Rate limiting, базовая observability | WAF, load testing, GitOps |
+
+**Оценка MVP:** 12–16 недель от текущего состояния.
+
+---
+
+## Таймлайн
+
+```
+Неделя:  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+E2       ████
+E3           ████████████
+E4                       ████████████
+E5                                   ████████████████
+E6                                                   ████████████████
+E7                                                                   ████████████
+E8                                                                               ████████████
+MVP ──────────────────────────────────────────────────┤
 ```
 
 ---
 
-## Epic 1: Foundation
-
-**Goal:** Рабочий backend + frontend + infra, готовый к разработке фич.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 1.1 | Health & Config | Health endpoint, pydantic-settings, .env | config.py, health.py | `GET /api/v1/health` → `{"status":"ok","database":"ok","redis":"ok"}` |
-| 1.2 | Database Setup | PostgreSQL connection, async engine, Base model, Alembic migrations | database.py, alembic/ | `alembic upgrade head` создаёт таблицы |
-| 1.3 | Redis Setup | Async Redis client, connection pooling | redis.py | Redis ping из health endpoint |
-| 1.4 | CI Pipeline | GitHub Actions: lint, typecheck, test, build, security audit | ci.yml | Все gates зелёные на push |
-| 1.5 | OpenAPI Contract | API spec для всех endpoints v1 | openapi.yaml | `redocly lint` проходит |
-| 1.6 | AsyncAPI Contract | Webhook event schemas | asyncapi.yaml | `asyncapi validate` проходит |
-| 1.7 | Frontend Scaffold | Next.js 15, Tailwind, shadcn, Zustand, TanStack Query | frontend/ | `npm run build` без ошибок |
-| 1.8 | Dev Environment | docker-compose, Makefile, setup script | docker-compose.yml, Makefile | `make infra-up && make backend-dev` работает |
-
-**Status:** ✅ Done
-
----
-
-## Epic 2: Identity & Auth
-
-**Goal:** Пользователь может войти через VK ID и получить JWT.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 2.1 | User Model | SQLAlchemy модель User, миграция, CRUD repository | modules/users/ | Таблица `users` в БД, базовые CRUD операции |
-| 2.2 | Auth Module | Auth service, JWT issuance, password hashing | modules/auth/ | `POST /api/v1/auth/register` создаёт пользователя |
-| 2.3 | VK ID OAuth Flow | Authorization Code + PKCE, redirect handling | modules/auth/ | Редирект на VK → callback → JWT |
-| 2.4 | Token Management | Access + refresh tokens, rotation, expiration | core/security.py | Access 30min, refresh 30d, rotation работает |
-| 2.5 | Session & Middleware | Bearer auth middleware, get_current_user dependency | dependencies.py, middleware.py | Защищённые эндпоинты требуют JWT |
-| 2.6 | Account Linking | Привязка нескольких IdP к одному пользователю | modules/auth/ | Один user может иметь VK + будущие IdP |
-| 2.7 | Login Page (FE) | Форма входа, OAuth редирект, обработка callback | app/(auth)/ | Клик "Войти через VK" → редирект → dashboard |
-| 2.8 | Auth Store (FE) | Zustand store для user/token, cookie persistence | stores/auth-store.ts | Токен сохраняется, user данные доступны |
-
-**Dependencies:** Epic 1
-
----
-
-## Epic 3: Catalog & Subscriptions
-
-**Goal:** Пользователь видит тарифы и может оформить подписку.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 3.1 | Product Model | Product, Plan, Price — SQLAlchemy модели | modules/catalog/ | Таблицы `products`, `plans`, `prices` |
-| 3.2 | Plan CRUD | API для управления тарифными планами | modules/catalog/ | `GET /api/v1/plans` возвращает список планов |
-| 3.3 | Subscription Model | Подписка со статусами: active, paused, cancelled, expired | modules/subscriptions/ | State machine с валидными переходами |
-| 3.4 | Subscription Lifecycle | Create, pause, cancel, renew, grace period | modules/subscriptions/ | `POST /api/v1/subscriptions` создаёт подписку |
-| 3.5 | Trial & Grace | Пробный период, grace period при ошибке оплаты | modules/subscriptions/ | trial_days из плана, grace = 7 дней |
-| 3.6 | Entitlement Engine | Проверка доступа к premium-функциям по подписке | modules/authorization/ | `has_access(user_id, feature)` → bool |
-| 3.7 | Plans Page (FE) | Карточки тарифов, выбор плана | app/(dashboard)/plans | Отображение планов с ценами |
-| 3.8 | Subscriptions Page (FE) | Список подписок, статусы, действия | app/(dashboard)/subscriptions | Активные/архивные подписки |
-
-**Dependencies:** Epic 2
-
----
-
-## Epic 4: Payments
-
-**Goal:** Пользователь оплачивает подписку через PSP, webhook обрабатывается.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 4.1 | Payment Provider Interface | Абстрактный `PaymentProvider` протокол | modules/payments/ | Интерфейс: create_checkout, charge, refund, verify_webhook |
-| 4.2 | Stripe Adapter | Реализация PaymentProvider для Stripe | modules/payments/adapters/ | Checkout session создаётся, webhook верифицируется |
-| 4.3 | Checkout Flow | Создание checkout session, редирект на PSP | modules/payments/ | `POST /api/v1/payments/checkout` → URL для оплаты |
-| 4.4 | Webhook Ingress | Верификация подписей, dedup, fast ACK, queue | modules/webhooks/ | Webhook сохраняется, ACK < 500ms, дубликат игнорируется |
-| 4.5 | Idempotency | Idempotency-Key для всех mutating запросов | core/ | Повторный запрос с тем же ключом → тот же ответ |
-| 4.6 | Payment State Machine | Статусы платежа: pending, succeeded, failed, refunded | modules/payments/ | Переходы валидируются, audit trail |
-| 4.7 | Checkout Page (FE) | Страница оплаты, редирект, success/cancel | app/(dashboard)/checkout | Пользователь попадает на Stripe → возвращается |
-| 4.8 | Payment Methods (FE) | Сохранённые способы оплаты | app/(dashboard)/billing | Список карт, привязка новой |
-
-**Dependencies:** Epic 3
-
----
-
-## Epic 5: Billing & Reconciliation
-
-**Goal:** Полный цикл биллинга: инвойсы, автосписание, сверка с PSP.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 5.1 | Invoice Model | Инвойс со статусами, line items, суммы | modules/billing/ | Таблица `invoices`, связь с подпиской |
-| 5.2 | Auto-Renewal | Celery task: проверка expiring подписок, списание | workers/tasks/renewals.py | Подписка продлевается за 3 дня до expiry |
-| 5.3 | Dunning | Retry policy при неудачном списании | modules/billing/ | 3 попытки: сразу, +3 дня, +7 дней |
-| 5.4 | Refund Flow | Возврат средств через PSP adapter | modules/payments/ | `POST /api/v1/payments/refund` → refund в PSP |
-| 5.5 | Ledger | Двойная запись: credit/debit для всех операций | modules/billing/ | Баланс всегда = сумме credit - debit |
-| 5.6 | Reconciliation | Сверка internal ledger vs PSP state | workers/tasks/reconciliation.py | Мismatch → alert, case management |
-| 5.7 | Finance Export | Экспорт инвойсов в CSV/JSON для бухгалтерии | modules/billing/ | `GET /api/v1/billing/export?format=csv` |
-| 5.8 | Billing Page (FE) | История платежей, инвойсы, скачивание | app/(dashboard)/billing | Список транзакций, ссылки на инвойсы |
-
-**Dependencies:** Epic 4
-
----
-
-## Epic 6: Notifications & Admin
-
-**Goal:** Пользователи получают уведомления, админы управляют системой.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 6.1 | Email Provider | Интеграция с SMTP/SendGrid | modules/notifications/ | Email отправляется, delivery status tracking |
-| 6.2 | Notification Templates | Шаблоны: renewal_reminder, payment_failed, welcome | modules/notifications/ | Jinja2/микро-шаблоны с переменными |
-| 6.3 | Notification Preferences | Пользователь настраивает каналы и частоту | modules/notifications/ | `PATCH /api/v1/notifications/preferences` |
-| 6.4 | Renewal Reminders | Уведомление за 7 дней и за 1 день до списания | workers/tasks/notifications.py | Email отправляется по расписанию |
-| 6.5 | Admin Dashboard | Управление пользователями, подписками, планами | modules/admin/ | CRUD для admin role |
-| 6.6 | Admin Analytics | MRR, churn, active subscriptions, revenue | modules/admin/ | `GET /api/v1/admin/analytics` → метрики |
-| 6.7 | Audit Trail | Логирование всех admin/payment действий | core/audit.py | Таблица `audit_log`, immutable append-only |
-| 6.8 | Settings Page (FE) | Профиль, уведомления, привязанные аккаунты | app/(dashboard)/settings | Редактирование профиля |
-
-**Dependencies:** Epic 5
-
----
-
-## Epic 7: Security & Scale
-
-**Goal:** Production-ready: безопасность, observability, масштабирование.
-
-| # | Feature | Описание | Файлы | Acceptance Criteria |
-|---|---------|----------|-------|---------------------|
-| 7.1 | Rate Limiting | Лимиты на gateway и app level | middleware.py, redis.py | 429 при превышении лимита |
-| 7.2 | WAF Rules | OWASP CRS rule set перед edge | infrastructure/ | Блокировка SQL injection, XSS |
-| 7.3 | Secrets Manager | Внешний Vault вместо .env в prod | infrastructure/ | Ротация ключей без downtime |
-| 7.4 | Structured Logging | JSON-логи с correlation ID | core/audit.py, middleware.py | Каждый запрос имеет trace_id |
-| 7.5 | Metrics & Traces | OpenTelemetry traces, Prometheus metrics | infrastructure/ | Jaeger/Tempo dashboard |
-| 7.6 | Alerting | Alertmanager rules для error rate, latency | infrastructure/ | Alert при p99 > 1s или error rate > 1% |
-| 7.7 | Load Testing | k6/locust сценарии для critical paths | tests/load/ | 1000 RPS на health, 100 RPS на subscriptions |
-| 7.8 | Incident Playbook | Runbook для типовых инцидентов | docs/runbook.md | Payment failure, DB down, Redis down |
-
-**Dependencies:** Epic 5
-
----
-
-## Epic 8: Regional Expansion (future)
-
-**Goal:** Multi-provider, multi-region, mobile-ready.
-
-| # | Feature | Описание | Acceptance Criteria |
-|---|---------|----------|---------------------|
-| 8.1 | Second PSP | PayPal или ЮKassa adapter | Checkout через нового провайдера работает |
-| 8.2 | Second IdP | Google OIDC / Apple Sign In | Вход через Google → тот же аккаунт |
-| 8.3 | Mobile BFF | API adjustments для mobile clients | Mobile app может использовать все API |
-| 8.4 | Multi-Currency | Валюты, локализация цен | Планы отображаются в валюте пользователя |
-| 8.5 | Feature Flags | OpenFeature + flag provider | Поэтапный rollout новых функций |
-
-**Dependencies:** Epic 7
-
----
-
-## Приоритеты
-
-```
-MVP (Epic 1-3):   ~11 недель  — пользователь может зарегистрироваться,
-                                 выбрать план и оформить подписку
-
-Revenue (Epic 4-5): ~9 недель  — платёжный цикл работает end-to-end
-
-Production (Epic 6-7): ~7 недель — система готова к продакшену
-
-Growth (Epic 8):   ~4 недели  — масштабирование на новые рынки
-```
-
-## Текущий статус
-
-```
-Epic 1: Foundation      ✅ Done
-Epic 2: Identity        ⬜ Not started
-Epic 3: Catalog         ⬜ Not started
-Epic 4: Payments        ⬜ Not started
-Epic 5: Billing         ⬜ Not started
-Epic 6: Notifications   ⬜ Not started
-Epic 7: Security        ⬜ Not started
-Epic 8: Expansion       ⬜ Future
-```
+*Документ живой — обновляется по мере продвижения.*

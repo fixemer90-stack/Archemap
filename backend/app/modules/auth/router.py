@@ -5,14 +5,15 @@ from __future__ import annotations
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Header, Query, status
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.rate_limit import RateLimiter
 from app.dependencies import get_current_user, get_db
 from app.infrastructure.redis import get_redis_client
+from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.password_reset import PasswordResetService
 from app.modules.auth.schemas import (
     LoginRequest,
@@ -156,3 +157,35 @@ async def confirm_password_reset(
     service = PasswordResetService(db)
     await service.confirm_reset(token=body.token, new_password=body.new_password)
     return MessageResponse(message="Password reset successfully. You can now sign in with your new password.")
+
+
+# ── OAuth endpoints ─────────────────────────────────────────────────
+
+
+@router.get("/oauth/yandex/start")
+async def yandex_oauth_start(
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Redirect user to Yandex authorization page."""
+    service = OAuthService(db)
+    url = await service.get_yandex_authorize_url()
+    return RedirectResponse(url=url)
+
+
+@router.get("/oauth/yandex/callback")
+async def yandex_oauth_callback(
+    code: str = Query(...),
+    state: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Handle Yandex OAuth callback. Redirects to frontend with tokens."""
+    service = OAuthService(db)
+    tokens = await service.handle_yandex_callback(code=code, state=state)
+
+    # Redirect to frontend with tokens as query params
+    redirect_url = (
+        f"{settings.FRONTEND_URL}/auth/callback"
+        f"?access_token={tokens['access_token']}"
+        f"&refresh_token={tokens['refresh_token']}"
+    )
+    return RedirectResponse(url=redirect_url)

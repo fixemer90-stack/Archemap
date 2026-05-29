@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     YOOKASSA_SECRET_KEY: str = ""
     YOOKASSA_WEBHOOK_SECRET: str = ""
 
+    # ── OAuth / Yandex ID ──────────────────────────────────────────────
+    YANDEX_CLIENT_ID: str = ""
+    YANDEX_CLIENT_SECRET: str = ""
+    YANDEX_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/oauth/yandex/callback"
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # ── Email / SMTP ───────────────────────────────────────────────────
     EMAIL_PROVIDER: str = "console"  # "console" or "smtp"
     SMTP_HOST: str = "smtp.gmail.com"

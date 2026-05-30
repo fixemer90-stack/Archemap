@@ -33,11 +33,11 @@ def main() -> None:
     )
 
     # Pretty print
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Natal Chart: {dt.strftime('%Y-%m-%d %H:%M UTC')}")
     print(f"Location: {args.lat}, {args.lon} ({args.tz})")
     print(f"House System: {chart.house_system}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     print("PLANETS:")
     for p in chart.planets:

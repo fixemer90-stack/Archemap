@@ -70,9 +70,7 @@ class TestCacheHit:
         assert tz == "Europe/Moscow"
         mock_redis.get.assert_awaited_once()
 
-    async def test_cache_miss_computes_and_stores(
-        self, resolver: TimezoneResolver, mock_redis: AsyncMock
-    ) -> None:
+    async def test_cache_miss_computes_and_stores(self, resolver: TimezoneResolver, mock_redis: AsyncMock) -> None:
         mock_redis.get = AsyncMock(return_value=None)
 
         tz = await resolver.resolve(55.7558, 37.6173)
@@ -80,9 +78,7 @@ class TestCacheHit:
         assert tz == "Europe/Moscow"
         mock_redis.set.assert_awaited_once()
 
-    async def test_redis_error_falls_through(
-        self, resolver: TimezoneResolver, mock_redis: AsyncMock
-    ) -> None:
+    async def test_redis_error_falls_through(self, resolver: TimezoneResolver, mock_redis: AsyncMock) -> None:
         mock_redis.get = AsyncMock(side_effect=Exception("redis down"))
         mock_redis.set = AsyncMock(side_effect=Exception("redis down"))
 

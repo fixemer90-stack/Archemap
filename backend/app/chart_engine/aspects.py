@@ -13,8 +13,10 @@ def _angular_distance(lon_a: float, lon_b: float) -> float:
 
 
 def _is_applying(
-    lon_a: float, speed_a: float,
-    lon_b: float, speed_b: float,
+    lon_a: float,
+    speed_a: float,
+    lon_b: float,
+    speed_b: float,
     aspect_angle: float,
 ) -> bool:
     """Determine if aspect is applying (orb decreasing).
@@ -48,7 +50,7 @@ def find_aspects(
     aspects: list[Aspect] = []
 
     for i, pa in enumerate(planets):
-        for pb in planets[i + 1:]:
+        for pb in planets[i + 1 :]:
             distance = _angular_distance(pa.longitude, pb.longitude)
 
             for aspect_name, exact_angle in ASPECT_ANGLES.items():
@@ -57,8 +59,10 @@ def find_aspects(
 
                 if orb <= max_orb:
                     applying = _is_applying(
-                        pa.longitude, pa.speed,
-                        pb.longitude, pb.speed,
+                        pa.longitude,
+                        pa.speed,
+                        pb.longitude,
+                        pb.speed,
                         exact_angle,
                     )
                     aspects.append(

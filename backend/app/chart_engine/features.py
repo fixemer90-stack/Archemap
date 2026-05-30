@@ -12,24 +12,50 @@ from app.chart_engine.types import ChartData, PlanetPosition
 
 # ── Element mapping ───────────────────────────────────────────────────
 SIGN_ELEMENTS: dict[str, str] = {
-    "Aries": "fire", "Leo": "fire", "Sagittarius": "fire",
-    "Taurus": "earth", "Virgo": "earth", "Capricorn": "earth",
-    "Gemini": "air", "Libra": "air", "Aquarius": "air",
-    "Cancer": "water", "Scorpio": "water", "Pisces": "water",
+    "Aries": "fire",
+    "Leo": "fire",
+    "Sagittarius": "fire",
+    "Taurus": "earth",
+    "Virgo": "earth",
+    "Capricorn": "earth",
+    "Gemini": "air",
+    "Libra": "air",
+    "Aquarius": "air",
+    "Cancer": "water",
+    "Scorpio": "water",
+    "Pisces": "water",
 }
 
 # ── Modality mapping ─────────────────────────────────────────────────
 SIGN_MODALITIES: dict[str, str] = {
-    "Aries": "cardinal", "Cancer": "cardinal", "Libra": "cardinal", "Capricorn": "cardinal",
-    "Taurus": "fixed", "Leo": "fixed", "Scorpio": "fixed", "Aquarius": "fixed",
-    "Gemini": "mutable", "Virgo": "mutable", "Sagittarius": "mutable", "Pisces": "mutable",
+    "Aries": "cardinal",
+    "Cancer": "cardinal",
+    "Libra": "cardinal",
+    "Capricorn": "cardinal",
+    "Taurus": "fixed",
+    "Leo": "fixed",
+    "Scorpio": "fixed",
+    "Aquarius": "fixed",
+    "Gemini": "mutable",
+    "Virgo": "mutable",
+    "Sagittarius": "mutable",
+    "Pisces": "mutable",
 }
 
 # ── Planet weights for emphasis calculation ───────────────────────────
 PLANET_WEIGHTS: dict[str, float] = {
-    "Sun": 1.0, "Moon": 0.9, "Mercury": 0.6, "Venus": 0.6, "Mars": 0.7,
-    "Jupiter": 0.7, "Saturn": 0.7, "Uranus": 0.5, "Neptune": 0.5, "Pluto": 0.5,
-    "North Node": 0.3, "Chiron": 0.3,
+    "Sun": 1.0,
+    "Moon": 0.9,
+    "Mercury": 0.6,
+    "Venus": 0.6,
+    "Mars": 0.7,
+    "Jupiter": 0.7,
+    "Saturn": 0.7,
+    "Uranus": 0.5,
+    "Neptune": 0.5,
+    "Pluto": 0.5,
+    "North Node": 0.3,
+    "Chiron": 0.3,
 }
 
 

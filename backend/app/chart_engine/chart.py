@@ -90,9 +90,7 @@ def build_chart(
     houses: list[HousePosition] = []
     for cusp_lon, house_num in house_cusps:
         sign, _ = longitude_to_sign(cusp_lon)
-        houses.append(
-            HousePosition(number=house_num, longitude=cusp_lon, sign=sign)
-        )
+        houses.append(HousePosition(number=house_num, longitude=cusp_lon, sign=sign))
 
     # Assign houses to planets
     planets = _assign_houses(planets, house_cusps)

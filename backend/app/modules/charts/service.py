@@ -143,10 +143,7 @@ def _chart_to_dict(chart: ChartData) -> dict[str, object]:
             }
             for p in chart.planets
         ],
-        "houses": [
-            {"number": h.number, "longitude": round(h.longitude, 4), "sign": h.sign}
-            for h in chart.houses
-        ],
+        "houses": [{"number": h.number, "longitude": round(h.longitude, 4), "sign": h.sign} for h in chart.houses],
         "aspects": [
             {
                 "planet_a": a.planet_a,

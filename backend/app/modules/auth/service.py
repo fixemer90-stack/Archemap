@@ -86,14 +86,26 @@ class AuthService:
         await self.db.flush()
 
         # Compute natal chart
-        chart_data, socionics_result = await self._compute_chart(profile)
+        chart_data, features_data, strengths_data, socionics_result = await self._compute_chart(profile)
 
-        # Store chart snapshot
+        # Store chart snapshot with all intermediate data
         snapshot = ChartSnapshot(
             profile_id=profile.id,
             user_id=user.id,
             engine_version="0.1.0",
+            birth_data={
+                "date": profile.birth_date.isoformat(),
+                "time": profile.birth_time.isoformat() if profile.birth_time else None,
+                "time_accuracy": profile.birth_time_accuracy,
+                "place": profile.birth_place,
+                "latitude": profile.latitude,
+                "longitude": profile.longitude,
+                "timezone": profile.timezone,
+            },
             chart_data=chart_data,
+            features=features_data,
+            function_strengths=strengths_data,
+            socionics=socionics_result,
         )
         self.db.add(snapshot)
         await self.db.flush()
@@ -120,8 +132,11 @@ class AuthService:
             "socionics": socionics_result,
         }
 
-    async def _compute_chart(self, profile: PersonProfile) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Compute natal chart and socionics type from profile data."""
+    async def _compute_chart(self, profile: PersonProfile) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Compute natal chart and socionics type from profile data.
+
+        Returns: (chart_data, features, function_strengths, socionics)
+        """
         # Combine date and time into UTC datetime
         # birth_time is guaranteed to be non-None (set to 12:00 if not provided)
         birth_time = profile.birth_time or time(12, 0)
@@ -170,6 +185,24 @@ class AuthService:
             ],
         }
 
+        # Prepare features data
+        features_json = {
+            "fire": round(features.fire, 3),
+            "earth": round(features.earth, 3),
+            "air": round(features.air, 3),
+            "water": round(features.water, 3),
+            "cardinal": round(features.cardinal, 3),
+            "fixed": round(features.fixed, 3),
+            "mutable": round(features.mutable, 3),
+        }
+
+        # Prepare function strengths
+        top1 = socionics_results[0]
+        strengths_json = {
+            fn: round(top1.breakdown.get(fn, 0), 3)
+            for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
+        }
+
         # Prepare socionics result
         top3 = socionics_results[:3]
         socionics_json = {
@@ -180,16 +213,13 @@ class AuthService:
                     "score": round(r.score, 3),
                     "confidence": round(r.confidence, 3),
                     "functions": r.functions,
+                    "model_a": round(r.breakdown.get("model_a", 0), 3),
                 }
                 for r in top3
             ],
-            "function_strengths": {
-                fn: round(socionics_results[0].breakdown.get(fn, 0), 3)
-                for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
-            },
         }
 
-        return chart_json, socionics_json
+        return chart_json, features_json, strengths_json, socionics_json
 
     async def login(self, email: str, password: str) -> dict[str, str]:
         """Authenticate user and return tokens."""

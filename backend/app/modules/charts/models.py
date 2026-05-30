@@ -16,7 +16,8 @@ class ChartSnapshot(BaseModel):
     """Stores a computed chart snapshot as JSON.
 
     Each snapshot is tied to a PersonProfile and includes the
-    engine version for reproducibility.
+    engine version for reproducibility. Stores all intermediate
+    computation results for analysis and debugging.
     """
 
     __tablename__ = "chart_snapshots"
@@ -29,4 +30,23 @@ class ChartSnapshot(BaseModel):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     engine_version: Mapped[str] = mapped_column(String(20), nullable=False, default="0.1.0")
+
+    # Birth data snapshot (factual)
+    birth_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # {date, time, time_accuracy, place, lat, lon, timezone}
+
+    # Raw chart data (factual)
     chart_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # {planets, houses, aspects}
+
+    # Feature vector (normalized)
+    features: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # {fire, earth, air, water, cardinal, fixed, mutable}
+
+    # Function strengths (computed)
+    function_strengths: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # {Se, Si, Ne, Ni, Fe, Fi, Te, Ti}
+
+    # Socionics results (computed)
+    socionics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    # {top3, model_a_scores}

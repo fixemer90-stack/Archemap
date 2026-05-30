@@ -2,7 +2,7 @@
 
 ## Цель
 
-Первая кликабельная страница продукта: пользователь вводит данные рождения, получает натальную карту и соционический тип с интерпретацией. Это MVP-путь "ввёл дату → увидел результат".
+Первая кликабельная страница продукта: пользователь регистрируется с полными данными рождения, получает натальную карту и соционический тип. Это MVP-путь "зарегистрировался → увидел результат".
 
 ## Зависимости
 
@@ -12,35 +12,35 @@
 
 ## Критерии приёмки
 
-- [ ] Форма ввода: дата, время, место рождения с геокодингом
+- [ ] Регистрация собирает всё: email, password, дата, время, место рождения
+- [ ] OAuth через Яндекс с получением birthday
 - [ ] Карта отображается: планеты в знаках/домах, аспекты
 - [ ] Соционический тип: топ-3 с scores и Model A breakdown
 - [ ] Функциональный профиль: 8 функций (Se/Si/Ne/Ni/Fe/Fi/Te/Ti) с визуализацией
 - [ ] Адаптивный дизайн (mobile-first)
-- [ ] Авторизация: гость видит демо, авторизованный — полный отчёт
 
 ## Stories
 
 | ID | Описание | Статус |
 |---|---|---|
-| S01 | [Birth Data Form: форма ввода даты/времени/места с геокодингом и валидацией](S01-birth-data-form.md) | ⬜ Не начато |
+| S01 | [Auth Screens: login, register с birth data, OAuth callback, geocoding](S01-auth-screens.md) | ⬜ Не начато |
 | S02 | [Chart Visualization: отображение натальной карты (планеты, дома, аспекты)](S02-chart-visualization.md) | ⬜ Не начато |
 | S03 | [Socionics Result: топ-3 типа, scores, Model A breakdown, функциональный профиль](S03-socionics-result.md) | ⬜ Не начато |
-| S04 | [Report Page: сборка страницы отчёта из компонентов формы, карты, результата](S04-report-page.md) | ⬜ Не начато |
-| S05 | [Auth Integration: гостевой доступ (демо) + полный доступ для авторизованных](S05-auth-integration.md) | ⬜ Не начато |
-| S06 | [Auth Screens: login, register с birth data, OAuth callback, geocoding](S06-auth-screens.md) | ⬜ Не начато |
+| S04 | [Report Page: сборка страницы отчёта из компонентов карты и результата](S04-report-page.md) | ⬜ Не начато |
 
 ## Архитектура
 
 ```mermaid
 flowchart TD
-    A[Birth Data Form] -->|POST /profiles| B[Backend API]
-    B -->|chart + socionics| C[Chart Visualization]
-    B -->|type + scores| D[Socionics Result]
-    C --> E[Report Page]
-    D --> E
-    E -->|guest| F[Demo View]
-    E -->|auth| G[Full Report]
+    A[Register с birth data] -->|POST /auth/register| B[Backend API]
+    B -->|User + PersonProfile| C[Auto Chart Computation]
+    C -->|chart + socionics| D[Report Page]
+    D --> E[Chart Visualization]
+    D --> F[Socionics Result]
+    
+    G[OAuth Яндекс] -->|GET /auth/callback| H{needs_profile?}
+    H -->|yes| A
+    H -->|no| D
 ```
 
 ## Технологический стек

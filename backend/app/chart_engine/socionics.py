@@ -46,12 +46,12 @@ TYPES = [
 PLANET_NATURAL: dict[str, dict[str, float]] = {
     "Sun": {"Te": 0.34, "Fe": 0.22, "Se": 0.18, "Ti": 0.14, "Ni": 0.12},
     "Moon": {"Si": 0.32, "Fi": 0.28, "Fe": 0.22, "Ni": 0.18},
-    "Mercury": {"Ti": 0.32, "Te": 0.28, "Ne": 0.28, "Ni": 0.12},
+    "Mercury": {"Ne": 0.34, "Ti": 0.30, "Te": 0.22, "Ni": 0.10, "Fe": 0.04},
     "Venus": {"Fi": 0.38, "Fe": 0.26, "Si": 0.20, "Se": 0.10, "Ni": 0.06},
     "Mars": {"Se": 0.42, "Te": 0.24, "Ti": 0.14, "Fe": 0.12, "Ni": 0.08},
     "Jupiter": {"Ne": 0.26, "Fe": 0.24, "Te": 0.20, "Ni": 0.18, "Se": 0.12},
     "Saturn": {"Ti": 0.32, "Te": 0.26, "Si": 0.24, "Ni": 0.14, "Fi": 0.04},
-    "Uranus": {"Ne": 0.44, "Ti": 0.22, "Ni": 0.18, "Te": 0.12, "Se": 0.04},
+    "Uranus": {"Ne": 0.46, "Ti": 0.24, "Ni": 0.16, "Te": 0.10, "Se": 0.04},
     "Neptune": {"Ni": 0.42, "Fi": 0.24, "Fe": 0.22, "Si": 0.08, "Ne": 0.04},
     "Pluto": {"Se": 0.26, "Ni": 0.24, "Fi": 0.20, "Ti": 0.18, "Te": 0.12},
     "Chiron": {"Fi": 0.26, "Ni": 0.24, "Ti": 0.18, "Fe": 0.18, "Si": 0.14},
@@ -61,17 +61,25 @@ PLANET_NATURAL: dict[str, dict[str, float]] = {
 }
 
 SIGN_ELEMENT = {
-    "Aries": "fire", "Leo": "fire", "Sagittarius": "fire",
-    "Taurus": "earth", "Virgo": "earth", "Capricorn": "earth",
-    "Gemini": "air", "Libra": "air", "Aquarius": "air",
-    "Cancer": "water", "Scorpio": "water", "Pisces": "water",
+    "Aries": "fire",
+    "Leo": "fire",
+    "Sagittarius": "fire",
+    "Taurus": "earth",
+    "Virgo": "earth",
+    "Capricorn": "earth",
+    "Gemini": "air",
+    "Libra": "air",
+    "Aquarius": "air",
+    "Cancer": "water",
+    "Scorpio": "water",
+    "Pisces": "water",
 }
 
 # ── Element → function boost ──
 ELEMENT_FUNCTION: dict[str, dict[str, float]] = {
     "fire": {"Se": 0.34, "Fe": 0.30, "Ni": 0.18, "Ne": 0.12, "Te": 0.06},
     "earth": {"Te": 0.36, "Si": 0.30, "Ti": 0.22, "Fi": 0.08, "Se": 0.04},
-    "air": {"Ne": 0.34, "Ti": 0.30, "Ni": 0.18, "Te": 0.12, "Fe": 0.06},
+    "air": {"Ne": 0.40, "Ti": 0.28, "Ni": 0.14, "Te": 0.12, "Fe": 0.06},
     "water": {"Ni": 0.34, "Fi": 0.30, "Fe": 0.22, "Si": 0.10, "Se": 0.04},
 }
 
@@ -79,7 +87,7 @@ ELEMENT_FUNCTION: dict[str, dict[str, float]] = {
 HOUSE_FUNCTION: dict[int, dict[str, float]] = {
     1: {"Se": 0.36, "Ti": 0.22, "Fi": 0.18, "Fe": 0.12, "Ni": 0.12},
     2: {"Si": 0.30, "Te": 0.26, "Fi": 0.20, "Se": 0.12, "Ni": 0.12},
-    3: {"Ne": 0.32, "Ti": 0.28, "Te": 0.22, "Fe": 0.08, "Se": 0.06, "Ni": 0.04},
+    3: {"Ne": 0.38, "Ti": 0.30, "Te": 0.16, "Fe": 0.08, "Ni": 0.04, "Se": 0.04},
     4: {"Fi": 0.32, "Si": 0.26, "Ni": 0.24, "Fe": 0.14, "Te": 0.04},
     5: {"Fi": 0.30, "Fe": 0.26, "Se": 0.22, "Ne": 0.14, "Ni": 0.08},
     6: {"Te": 0.34, "Si": 0.30, "Ti": 0.18, "Se": 0.08, "Fi": 0.06, "Ni": 0.04},
@@ -87,7 +95,7 @@ HOUSE_FUNCTION: dict[int, dict[str, float]] = {
     8: {"Ni": 0.32, "Fe": 0.28, "Fi": 0.20, "Se": 0.14, "Ti": 0.06},
     9: {"Ni": 0.30, "Fe": 0.26, "Te": 0.22, "Ne": 0.14, "Ti": 0.08},
     10: {"Te": 0.36, "Si": 0.26, "Se": 0.14, "Fe": 0.10, "Ni": 0.08, "Ti": 0.06},
-    11: {"Ne": 0.36, "Fe": 0.24, "Te": 0.20, "Ti": 0.10, "Ni": 0.06, "Se": 0.04},
+    11: {"Ne": 0.40, "Te": 0.20, "Fe": 0.18, "Ti": 0.14, "Ni": 0.06, "Se": 0.02},
     12: {"Ni": 0.40, "Fi": 0.28, "Fe": 0.16, "Si": 0.10, "Ne": 0.06},
 }
 
@@ -116,7 +124,7 @@ PLANET_RELATION_FUNCTION: dict[tuple[str, str], dict[str, float]] = {
     ("Mercury", "Mars"): {"Ti": 0.28, "Te": 0.26, "Se": 0.24, "Fe": 0.10, "Ne": 0.08, "Ni": 0.04},
     ("Mercury", "Jupiter"): {"Ne": 0.28, "Te": 0.24, "Fe": 0.18, "Ni": 0.14, "Ti": 0.12, "Si": 0.04},
     ("Mercury", "Saturn"): {"Ti": 0.32, "Te": 0.28, "Si": 0.20, "Ni": 0.12, "Ne": 0.08},
-    ("Mercury", "Uranus"): {"Ne": 0.42, "Ti": 0.22, "Te": 0.18, "Ni": 0.10, "Fe": 0.08},
+    ("Mercury", "Uranus"): {"Ne": 0.48, "Ti": 0.26, "Te": 0.12, "Ni": 0.10, "Fe": 0.04},
     ("Venus", "Mars"): {"Fi": 0.28, "Se": 0.26, "Fe": 0.22, "Si": 0.12, "Te": 0.08, "Ni": 0.04},
     ("Venus", "Saturn"): {"Fi": 0.30, "Si": 0.24, "Ti": 0.18, "Fe": 0.14, "Ni": 0.10, "Te": 0.04},
     ("Mars", "Saturn"): {"Ti": 0.28, "Se": 0.26, "Te": 0.24, "Si": 0.12, "Ni": 0.06, "Fi": 0.04},
@@ -132,10 +140,14 @@ PLANET_RELATION_FUNCTION: dict[tuple[str, str], dict[str, float]] = {
 
 # ── Retrograde shift ──
 EXTRO_TO_INTRO: dict[str, str] = {
-    "Te": "Ti", "Ti": "Te",
-    "Se": "Si", "Si": "Se",
-    "Fe": "Fi", "Fi": "Fe",
-    "Ne": "Ni", "Ni": "Ne",
+    "Te": "Ti",
+    "Ti": "Te",
+    "Se": "Si",
+    "Si": "Se",
+    "Fe": "Fi",
+    "Fi": "Fe",
+    "Ne": "Ni",
+    "Ni": "Ne",
 }
 
 # ── Global layer weights ──
@@ -256,15 +268,22 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
         e1_score = elements[e1]
         e2_score = elements[e2]
 
+        order_alignment = max(f1_score - f2_score, 0.0)
+        axis_bonus = min(f1_score, f2_score)
+
         raw = (
             W_FUNCTION_SCORE * (f1_score + f2_score * SECOND_FUNCTION_FACTOR)
             + W_ELEMENT_SCORE * (e1_score + e2_score * SECOND_FUNCTION_FACTOR)
             + W_MODALITY_SCORE * modalities.get(mod, 0)
+            + W_ORDER_SCORE * order_alignment
+            + AXIS_BONUS_FACTOR * axis_bonus
         )
         max_possible = (
             W_FUNCTION_SCORE * (1 + SECOND_FUNCTION_FACTOR)
             + W_ELEMENT_SCORE * (1 + SECOND_FUNCTION_FACTOR)
             + W_MODALITY_SCORE
+            + W_ORDER_SCORE
+            + AXIS_BONUS_FACTOR
         )
 
         score = min(raw / max_possible, 1.0) if max_possible > 0 else 0
@@ -284,6 +303,16 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
                     "func2": round(f2_score, 3),
                     "elem1": round(e1_score, 3),
                     "elem2": round(e2_score, 3),
+                    "Se": round(func_strengths.get("Se", 0), 3),
+                    "Si": round(func_strengths.get("Si", 0), 3),
+                    "Ne": round(func_strengths.get("Ne", 0), 3),
+                    "Ni": round(func_strengths.get("Ni", 0), 3),
+                    "Fe": round(func_strengths.get("Fe", 0), 3),
+                    "Fi": round(func_strengths.get("Fi", 0), 3),
+                    "Te": round(func_strengths.get("Te", 0), 3),
+                    "Ti": round(func_strengths.get("Ti", 0), 3),
+                    "mental_ne_ti": round(func_strengths.get("Ne", 0) * 0.6 + func_strengths.get("Ti", 0) * 0.4, 3),
+                    "business_te": round(func_strengths.get("Te", 0), 3),
                 },
             )
         )

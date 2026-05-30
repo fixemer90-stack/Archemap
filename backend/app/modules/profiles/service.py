@@ -69,17 +69,13 @@ class ProfileService:
         total = count_result.scalar_one()
 
         result = await self.db.execute(
-            select(PersonProfile)
-            .where(PersonProfile.user_id == user_id)
-            .order_by(PersonProfile.created_at.desc())
+            select(PersonProfile).where(PersonProfile.user_id == user_id).order_by(PersonProfile.created_at.desc())
         )
         profiles = list(result.scalars().all())
         return profiles, total
 
     # ── Update ────────────────────────────────────────────────────────
-    async def update(
-        self, profile_id: UUID, user_id: UUID, data: UpdateProfileRequest
-    ) -> PersonProfile:
+    async def update(self, profile_id: UUID, user_id: UUID, data: UpdateProfileRequest) -> PersonProfile:
         profile = await self.get_by_id(profile_id, user_id)
 
         update_data = data.model_dump(exclude_unset=True)

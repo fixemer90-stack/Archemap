@@ -12,11 +12,11 @@ from app.modules.billing.router import router as billing_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.router import router as payments_router
+from app.modules.profiles.router import router as profiles_router
 from app.modules.reconciliation.router import router as reconciliation_router
 from app.modules.subscriptions.router import router as subscriptions_router
 from app.modules.users.router import router as users_router
 from app.modules.webhooks.router import router as webhooks_router
-from app.modules.profiles.router import router as profiles_router
 
 api_router = APIRouter()
 

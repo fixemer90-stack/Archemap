@@ -57,9 +57,7 @@ class NominatimGeocoder:
         return results
 
     # ── Nominatim HTTP call ───────────────────────────────────────────
-    async def _fetch_from_nominatim(
-        self, query: str, limit: int
-    ) -> list[GeocodeResult]:
+    async def _fetch_from_nominatim(self, query: str, limit: int) -> list[GeocodeResult]:
         params = {
             "q": query,
             "format": "jsonv2",
@@ -71,9 +69,7 @@ class NominatimGeocoder:
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.get(
-                    NOMINATIM_SEARCH_URL, params=params, headers=headers
-                )
+                response = await client.get(NOMINATIM_SEARCH_URL, params=params, headers=headers)
                 response.raise_for_status()
                 data = response.json()
         except (httpx.HTTPError, httpx.TimeoutException):
@@ -116,9 +112,7 @@ class NominatimGeocoder:
         except (json.JSONDecodeError, TypeError):
             return None
 
-    async def _set_in_cache(
-        self, query: str, results: list[GeocodeResult]
-    ) -> None:
+    async def _set_in_cache(self, query: str, results: list[GeocodeResult]) -> None:
         if not results:
             return
         try:
@@ -135,8 +129,6 @@ class NominatimGeocoder:
                 ],
                 ensure_ascii=False,
             )
-            await self._redis.set(
-                self._cache_key(query), data, ex=CACHE_TTL_SECONDS
-            )
+            await self._redis.set(self._cache_key(query), data, ex=CACHE_TTL_SECONDS)
         except Exception:
             logger.exception("geocoding_cache_set_failed", query=query)

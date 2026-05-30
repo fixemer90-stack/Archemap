@@ -19,6 +19,7 @@ BIRTH_DATA = {
     "birth_time": time(14, 30),
     "birth_time_accuracy": "exact",
 }
+TEST_PASSWORD = "password123"  # noqa: S106
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ class TestRegister:
             mock_vs.send_verification_email = AsyncMock()
             result = await service.register(
                 email="new@example.com",
-                password="password123",
+                password=TEST_PASSWORD,
                 **BIRTH_DATA,
             )
 
@@ -66,7 +67,7 @@ class TestRegister:
         with pytest.raises(ConflictError, match="already exists"):
             await service.register(
                 email="existing@example.com",
-                password="password123",
+                password=TEST_PASSWORD,
                 **BIRTH_DATA,
             )
 

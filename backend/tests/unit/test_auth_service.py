@@ -19,7 +19,7 @@ BIRTH_DATA = {
     "birth_time": time(14, 30),
     "birth_time_accuracy": "exact",
 }
-TEST_PASSWORD = "password123"  # noqa: S106
+TEST_PASSWORD = "password123"
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ class TestRegister:
         with pytest.raises(ValidationError, match="at least 8"):
             await service.register(
                 email="new@example.com",
-                password="short",
+                password="short",  # noqa: S106
                 **BIRTH_DATA,
             )
 

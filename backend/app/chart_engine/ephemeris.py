@@ -74,7 +74,10 @@ def compute_planet_positions(
 ) -> list[PlanetPosition]:
     """Compute ecliptic positions of all planets for a given datetime (UTC)."""
     if _HAS_SWISSEPH:
-        return _compute_real(dt, latitude, longitude)
+        try:
+            return _compute_real(dt, latitude, longitude)
+        except Exception:
+            pass
     return _compute_stub(dt, latitude, longitude)
 
 
@@ -86,7 +89,10 @@ def compute_houses(
 ) -> tuple[list[tuple[float, int]], tuple[float, float]]:
     """Compute house cusps and ASC/MC."""
     if _HAS_SWISSEPH:
-        return _houses_real(julian_day, latitude, longitude, system)
+        try:
+            return _houses_real(julian_day, latitude, longitude, system)
+        except Exception:
+            pass
     return _houses_stub(julian_day, latitude, longitude)
 
 

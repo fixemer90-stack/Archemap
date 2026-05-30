@@ -31,8 +31,8 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.50b0",
     "python-multipart>=0.0.18",
     "email-validator>=2.2,<3",
-    "timezonefinder>=6.5,<7",
-    "pyswisseph>=2.8,<3",
+    "timezonefinder>=8.0,<9",
+    "pyswisseph>=2.10,<3",
     "flatlib>=0.2,<1",
 ]
 

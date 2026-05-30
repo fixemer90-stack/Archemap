@@ -66,7 +66,7 @@ export default function RegisterPage() {
   const [placeResults, setPlaceResults] = useState<GeocodeResult[]>([]);
   const [placeLoading, setPlaceLoading] = useState(false);
   const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
-  const placeDebounceRef = useRef<NodeJS.Timeout>();
+  const placeDebounceRef = useRef<NodeJS.Timeout>(undefined);
 
   // Pre-fill from OAuth callback
   useEffect(() => {

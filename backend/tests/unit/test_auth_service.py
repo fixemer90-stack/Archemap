@@ -2,12 +2,23 @@
 
 from __future__ import annotations
 
+from datetime import date, time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.core.exceptions import AuthorizationError, ConflictError, ValidationError
 from app.modules.auth.service import AuthService
+
+BIRTH_DATA = {
+    "birth_date": date(1990, 5, 15),
+    "birth_place": "Москва",
+    "latitude": 55.7558,
+    "longitude": 37.6173,
+    "timezone": "Europe/Moscow",
+    "birth_time": time(14, 30),
+    "birth_time_accuracy": "exact",
+}
 
 
 @pytest.fixture
@@ -29,17 +40,22 @@ class TestRegister:
         with (
             patch("app.modules.auth.service.hash_password", return_value="hashed"),
             patch("app.modules.auth.service.VerificationService") as mock_verification_cls,
+            patch("app.modules.auth.service.create_access_token", return_value=("access", "jti1")),
+            patch("app.modules.auth.service.create_refresh_token", return_value=("refresh", "jti2")),
         ):
             mock_vs = mock_verification_cls.return_value
             mock_vs.create_verification = AsyncMock(return_value="token123")
             mock_vs.send_verification_email = AsyncMock()
-            user = await service.register("new@example.com", "password123")
+            result = await service.register(
+                email="new@example.com",
+                password="password123",
+                **BIRTH_DATA,
+            )
 
-        assert user.email == "new@example.com"
-        assert user.hashed_password == "hashed"
-        mock_db.add.assert_called_once()  # Only User; VerificationService handles its own add
-        mock_vs.create_verification.assert_awaited_once()
-        mock_vs.send_verification_email.assert_awaited_once_with("new@example.com", "token123")
+        assert result["email"] == "new@example.com"
+        assert result["access_token"] == "access"
+        assert "chart" in result
+        assert "socionics" in result
 
     async def test_register_duplicate_email(self, service: AuthService, mock_db: AsyncMock) -> None:
         existing_user = MagicMock()
@@ -48,7 +64,11 @@ class TestRegister:
         mock_db.execute.return_value = mock_result
 
         with pytest.raises(ConflictError, match="already exists"):
-            await service.register("existing@example.com", "password123")
+            await service.register(
+                email="existing@example.com",
+                password="password123",
+                **BIRTH_DATA,
+            )
 
     async def test_register_short_password(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_result = MagicMock()
@@ -56,7 +76,11 @@ class TestRegister:
         mock_db.execute.return_value = mock_result
 
         with pytest.raises(ValidationError, match="at least 8"):
-            await service.register("new@example.com", "short")
+            await service.register(
+                email="new@example.com",
+                password="short",
+                **BIRTH_DATA,
+            )
 
 
 class TestLogin:

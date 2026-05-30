@@ -23,4 +23,10 @@ async def get_me(
     """Get current authenticated user profile."""
     service = AuthService(db)
     user = await service.get_user_by_id(current_user_id)
-    return UserResponse(id=str(user.id), email=user.email, is_active=user.is_active, is_verified=user.is_verified)
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        birth_date=user.birth_date,
+        is_active=user.is_active,
+        is_verified=user.is_verified,
+    )

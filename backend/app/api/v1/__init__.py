@@ -10,6 +10,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.authorization.router import router as authorization_router
 from app.modules.billing.router import router as billing_router
 from app.modules.catalog.router import router as catalog_router
+from app.modules.charts.router import router as charts_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.router import router as payments_router
 from app.modules.profiles.router import router as profiles_router
@@ -33,3 +34,4 @@ api_router.include_router(reconciliation_router)
 api_router.include_router(notifications_router)
 api_router.include_router(admin_router)
 api_router.include_router(profiles_router)
+api_router.include_router(charts_router)

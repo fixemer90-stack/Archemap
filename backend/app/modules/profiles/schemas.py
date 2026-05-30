@@ -55,3 +55,19 @@ class ProfileListResponse(BaseModel):
 
     items: list[ProfileResponse]
     total: int
+
+
+class GeocodeResultItem(BaseModel):
+    """A single geocoding search result."""
+
+    display_name: str
+    latitude: float
+    longitude: float
+    city: str
+    country: str
+
+
+class GeocodeSearchResponse(BaseModel):
+    """Geocoding search results."""
+
+    items: list[GeocodeResultItem]

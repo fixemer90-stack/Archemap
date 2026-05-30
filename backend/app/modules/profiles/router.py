@@ -9,8 +9,12 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
+from app.infrastructure.geocoding import NominatimGeocoder
+from app.infrastructure.redis import get_redis_client
 from app.modules.profiles.schemas import (
     CreateProfileRequest,
+    GeocodeResultItem,
+    GeocodeSearchResponse,
     ProfileListResponse,
     ProfileResponse,
     UpdateProfileRequest,
@@ -19,6 +23,27 @@ from app.modules.profiles.service import ProfileService
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
+
+@router.get("/geocode", response_model=GeocodeSearchResponse)
+async def geocode_search(
+    q: str,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+) -> Any:
+    """Search for places by name. Returns lat/lon/city/country. Cached 24h."""
+    geocoder = NominatimGeocoder(get_redis_client())
+    results = await geocoder.search(q, limit=5)
+    return GeocodeSearchResponse(
+        items=[
+            GeocodeResultItem(
+                display_name=r.display_name,
+                latitude=r.latitude,
+                longitude=r.longitude,
+                city=r.city,
+                country=r.country,
+            )
+            for r in results
+        ]
+    )
 
 @router.post("", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
 async def create_profile(

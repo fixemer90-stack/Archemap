@@ -16,6 +16,7 @@ from app.modules.reconciliation.router import router as reconciliation_router
 from app.modules.subscriptions.router import router as subscriptions_router
 from app.modules.users.router import router as users_router
 from app.modules.webhooks.router import router as webhooks_router
+from app.modules.profiles.router import router as profiles_router
 
 api_router = APIRouter()
 
@@ -31,3 +32,4 @@ api_router.include_router(webhooks_router)
 api_router.include_router(reconciliation_router)
 api_router.include_router(notifications_router)
 api_router.include_router(admin_router)
+api_router.include_router(profiles_router)

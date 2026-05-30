@@ -22,7 +22,7 @@
 
 | ID | Описание | Статус |
 |---|---|---|
-| S01 | [PersonProfile: модель (дата, время, место, TZ), CRUD API, валидация даты (1900–2100)](S01-person-profile.md) | ⬜ Не начато |
+| S01 | [PersonProfile: модель (дата, время, место, TZ), CRUD API, валидация даты (1900–2100)](S01-person-profile.md) | ✅ Готово |
 | S02 | [Геокодинг (GeoNames): строка места → lat/lon/city/country, кэш 24ч в Redis](S02-geocoding.md) | ⬜ Не начато |
 | S03 | [Определение часового пояса: IANA TZ по координатам + дате, tzdata, исторические изменения](S03-timezone-resolution.md) | ⬜ Не начато |
 | S04 | [Swiss Ephemeris + Flatlib: позиции планет, дома (Placidus), аспекты с орбами, CLI для тестирования](S04-swiss-ephemeris.md) | ⬜ Не начато |

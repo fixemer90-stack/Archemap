@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
@@ -25,8 +26,8 @@ class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def register(self, email: str, password: str) -> User:
-        """Register a new user with email and password."""
+    async def register(self, email: str, password: str, birth_date: date) -> User:
+        """Register a new user with email, password and birth date."""
         existing = await self.db.execute(select(User).where(User.email == email))
         if existing.scalar_one_or_none():
             raise ConflictError("User with this email already exists")
@@ -37,6 +38,7 @@ class AuthService:
         user = User(
             email=email,
             hashed_password=hash_password(password),
+            birth_date=birth_date,
         )
         self.db.add(user)
         await self.db.flush()

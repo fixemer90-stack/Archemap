@@ -39,7 +39,7 @@ async def register(
 ) -> Any:
     """Register a new user. Sends verification email."""
     service = AuthService(db)
-    await service.register(email=body.email, password=body.password)
+    await service.register(email=body.email, password=body.password, birth_date=body.birth_date)
     return MessageResponse(message="Registration successful. Please check your email to verify your account.")
 
 

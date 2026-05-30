@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr
+from datetime import date
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str  # min 8 chars validated in service
+    birth_date: date = Field(..., description="Date of birth (YYYY-MM-DD)")
 
 
 class LoginRequest(BaseModel):
@@ -24,6 +27,7 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
+    birth_date: date | None
     is_active: bool
     is_verified: bool
 

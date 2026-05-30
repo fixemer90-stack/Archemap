@@ -120,21 +120,6 @@ W_ELEMENT_SCORE = 0.17
 W_MODALITY_SCORE = 0.15
 SECOND_FUNCTION_FACTOR = 0.62
 
-# Soft calibration priors. These are intentionally small: they can move a close
-# candidate into top-3, but should not override a strong chart signal.
-TYPE_PRIOR: dict[str, float] = {
-    "EIE": 0.20,
-    "LSI": 0.30,
-    "LIE": 0.04,
-    "SLE": 0.12,
-    "ESI": 0.18,
-    "LSE": -0.08,
-    "ILI": -0.06,
-    "SEE": -0.04,
-    "SLI": -0.04,
-    "SEI": -0.02,
-}
-
 
 def _compute_function_strengths(chart: object) -> dict[str, float]:
     """Compute function strengths from chart data using planet positions."""
@@ -207,20 +192,16 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
 
         # Combined score:
         # - dominant + creative functions are primary;
-        # - element and modality are secondary tie-breakers;
-        # - type prior is a soft calibration term.
-        type_prior = TYPE_PRIOR.get(code, 0.0)
+        # - element and modality are secondary tie-breakers.
         raw = (
             W_FUNCTION_SCORE * (f1_score + f2_score * SECOND_FUNCTION_FACTOR)
             + W_ELEMENT_SCORE * (e1_score + e2_score * SECOND_FUNCTION_FACTOR)
             + W_MODALITY_SCORE * modalities.get(mod, 0)
-            + type_prior
         )
         max_possible = (
             W_FUNCTION_SCORE * (1 + SECOND_FUNCTION_FACTOR)
             + W_ELEMENT_SCORE * (1 + SECOND_FUNCTION_FACTOR)
             + W_MODALITY_SCORE
-            + max(TYPE_PRIOR.values(), default=0.0)
         )
 
         score = min(raw / max_possible, 1.0) if max_possible > 0 else 0
@@ -241,7 +222,6 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
                     "func2": round(f2_score, 3),
                     "elem1": round(e1_score, 3),
                     "elem2": round(e2_score, 3),
-                    "type_prior": round(type_prior, 3),
                 },
             )
         )

@@ -37,17 +37,7 @@ TYPES = [
     ("SLI", "Мастер", "Si+Te", "earth", "air", "mutable"),
 ]
 
-# ── Planet → function strength (0.0-1.0) ──
-# This is the PRIMARY signal. Each planet contributes to specific functions
-# based on its sign element and natural rulership.
-#
-# Logic:
-# - Planet's natural function affinity (e.g. Mars→Se, Venus→Fi)
-# - Planet's sign element (e.g. Mars in Virgo → earth → Si/Te boost)
-# - Planet's house (e.g. 10th house → Te/Fe boost)
-#
-# Weights: natural_affinity=0.6, sign_element=0.3, house=0.1
-
+# ── Planet → function strength ──
 PLANET_NATURAL: dict[str, dict[str, float]] = {
     "Sun": {"Te": 0.5, "Ti": 0.3, "Se": 0.2},
     "Moon": {"Fe": 0.4, "Fi": 0.3, "Si": 0.3},
@@ -63,24 +53,14 @@ PLANET_NATURAL: dict[str, dict[str, float]] = {
 }
 
 SIGN_ELEMENT = {
-    "Aries": "fire",
-    "Leo": "fire",
-    "Sagittarius": "fire",
-    "Taurus": "earth",
-    "Virgo": "earth",
-    "Capricorn": "earth",
-    "Gemini": "air",
-    "Libra": "air",
-    "Aquarius": "air",
-    "Cancer": "water",
-    "Scorpio": "water",
-    "Pisces": "water",
+    "Aries": "fire", "Leo": "fire", "Sagittarius": "fire",
+    "Taurus": "earth", "Virgo": "earth", "Capricorn": "earth",
+    "Gemini": "air", "Libra": "air", "Aquarius": "air",
+    "Cancer": "water", "Scorpio": "water", "Pisces": "water",
 }
 
-# Element → function boost when planet is in that element
+# Element → function boost
 ELEMENT_FUNCTION_BOOST: dict[str, dict[str, float]] = {
-    # Calibrated: signs should not directly mean "temperament".
-    # They only shift the functional vocabulary of a planet.
     "fire": {"Se": 0.50, "Fe": 0.28, "Ni": 0.12, "Ne": 0.10},
     "earth": {"Te": 0.35, "Ti": 0.30, "Si": 0.20, "Fi": 0.15},
     "air": {"Ti": 0.38, "Ne": 0.28, "Ni": 0.20, "Te": 0.14},
@@ -89,10 +69,6 @@ ELEMENT_FUNCTION_BOOST: dict[str, dict[str, float]] = {
 
 # House → function boost
 HOUSE_FUNCTION_BOOST: dict[int, dict[str, float]] = {
-    # Calibrated for target sample:
-    # - stronger house signal;
-    # - 1/3/7/8/10 can produce Se/Ti axis;
-    # - 8/9/12 preserve Ni/Fe/Fi depth instead of collapsing into Te/Si.
     1: {"Se": 0.50, "Ti": 0.25, "Fi": 0.15, "Ni": 0.10},
     2: {"Te": 0.30, "Si": 0.25, "Se": 0.20, "Ti": 0.15, "Ni": 0.10},
     3: {"Ti": 0.45, "Se": 0.25, "Te": 0.20, "Ne": 0.10},
@@ -107,14 +83,32 @@ HOUSE_FUNCTION_BOOST: dict[int, dict[str, float]] = {
     12: {"Ni": 0.40, "Fi": 0.30, "Si": 0.20, "Fe": 0.10},
 }
 
-# Natural planetary affinity is mostly a prior: all charts have all planets,
-# therefore it must be weaker than sign/house placement.
+# ── Weights ──
 W_NATURAL = 0.08
 W_ELEMENT = 0.32
 W_HOUSE = 0.60
+W_ASPECT = 0.12  # aspect between two planets
+W_RETROGRADE = 0.10  # retrograde shift
 
-# Score composition. Function placement is the main signal; element/modality
-# are tie-breakers, not independent evidence of socionic type.
+# Extraverted ↔ Introverted for retrograde planets
+EXTRO_TO_INTRO: dict[str, str] = {
+    "Te": "Ti", "Ti": "Te",
+    "Se": "Si", "Si": "Se",
+    "Fe": "Fi", "Fi": "Fe",
+    "Ne": "Ni", "Ni": "Ne",
+}
+
+# Aspect type → boost multiplier
+ASPECT_BOOST: dict[str, float] = {
+    "conjunction": 0.6,
+    "trine": 0.5,
+    "sextile": 0.4,
+    "square": 0.35,
+    "opposition": 0.3,
+    "quincunx": 0.2,
+}
+
+# Score composition
 W_FUNCTION_SCORE = 0.68
 W_ELEMENT_SCORE = 0.17
 W_MODALITY_SCORE = 0.15
@@ -128,27 +122,54 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
     if not hasattr(chart, "planets"):
         return strengths
 
+    # Build planet lookup for aspect processing
+    planet_map: dict[str, object] = {}
+    for planet in chart.planets:
+        planet_map[planet.name] = planet
+
     for planet in chart.planets:
         name = planet.name
         sign = planet.sign
         house = planet.house
         elem = SIGN_ELEMENT.get(sign, "fire")
+        is_retrograde = getattr(planet, "is_retrograde", False)
 
-        # Natural affinity
+        # Natural affinity (shifted if retrograde)
         natural = PLANET_NATURAL.get(name, {})
         for func, weight in natural.items():
-            strengths[func] += W_NATURAL * weight
+            target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
+            strengths[target] += W_NATURAL * weight
 
-        # Element boost
+        # Element boost (shifted if retrograde)
         elem_boost = ELEMENT_FUNCTION_BOOST.get(elem, {})
         for func, weight in elem_boost.items():
-            strengths[func] += W_ELEMENT * weight
+            target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
+            strengths[target] += W_ELEMENT * weight
 
-        # House boost
+        # House boost (shifted if retrograde)
         if house:
             house_boost = HOUSE_FUNCTION_BOOST.get(house, {})
             for func, weight in house_boost.items():
-                strengths[func] += W_HOUSE * weight
+                target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
+                strengths[target] += W_HOUSE * weight
+
+    # Aspect-based function boosting
+    if hasattr(chart, "aspects"):
+        for aspect in chart.aspects:
+            boost = ASPECT_BOOST.get(aspect.aspect_type, 0.2)
+            p1 = planet_map.get(aspect.planet_a)
+            p2 = planet_map.get(aspect.planet_b)
+            if not p1 or not p2:
+                continue
+
+            # Both planets get function boost from the aspect
+            for p in (p1, p2):
+                pname = getattr(p, "name", "")
+                natural = PLANET_NATURAL.get(pname, {})
+                is_retro = getattr(p, "is_retrograde", False)
+                for func, weight in natural.items():
+                    target = EXTRO_TO_INTRO.get(func, func) if is_retro else func
+                    strengths[target] += W_ASPECT * boost * weight
 
     # Normalize to 0-1
     max_val = max(strengths.values()) if strengths else 1.0
@@ -161,10 +182,8 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
 def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[SocionicsResult]:
     """Evaluate all 16 socionics types. Planet-first approach."""
 
-    # Compute function strengths from planets (primary signal)
     func_strengths = _compute_function_strengths(chart)
 
-    # Element scores (secondary signal)
     elements = {
         "fire": features.fire,
         "earth": features.earth,
@@ -182,17 +201,11 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
     for code, name, funcs, e1, e2, mod in TYPES:
         func1, func2 = funcs.split("+")
 
-        # Primary: function strengths from planets
         f1_score = func_strengths.get(func1, 0)
         f2_score = func_strengths.get(func2, 0)
-
-        # Secondary: element alignment
         e1_score = elements[e1]
         e2_score = elements[e2]
 
-        # Combined score:
-        # - dominant + creative functions are primary;
-        # - element and modality are secondary tie-breakers.
         raw = (
             W_FUNCTION_SCORE * (f1_score + f2_score * SECOND_FUNCTION_FACTOR)
             + W_ELEMENT_SCORE * (e1_score + e2_score * SECOND_FUNCTION_FACTOR)
@@ -206,7 +219,6 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
 
         score = min(raw / max_possible, 1.0) if max_possible > 0 else 0
 
-        # Confidence: higher when function strengths are decisive
         spread = max(func_strengths.values()) - min(func_strengths.values())
         confidence = min(0.4 + spread * 0.6, 1.0)
 

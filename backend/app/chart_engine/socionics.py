@@ -166,6 +166,28 @@ W_HOUSE = 0.32
 W_ASPECT = 0.22
 W_RELATION = 0.12
 
+# ── Differential planet importance ──
+# Personal (Sun/Moon/Mercury/Venus/Mars): 1.0-1.8
+# Social (Jupiter/Saturn): 0.7-0.8
+# Generational (Uranus/Neptune/Pluto): 0.3-0.4
+# Points (Nodes/Lilith/Chiron): 0.15-0.25
+PLANET_WEIGHT: dict[str, float] = {
+    "Sun": 1.8,
+    "Moon": 1.6,
+    "Mercury": 1.3,
+    "Venus": 1.2,
+    "Mars": 1.3,
+    "Jupiter": 0.8,
+    "Saturn": 0.9,
+    "Uranus": 0.4,
+    "Neptune": 0.4,
+    "Pluto": 0.5,
+    "North Node": 0.2,
+    "South Node": 0.2,
+    "Lilith": 0.2,
+    "Chiron": 0.25,
+}
+
 # ── Type scoring weights ──
 W_FUNCTION_SCORE = 0.70
 W_ELEMENT_SCORE = 0.08

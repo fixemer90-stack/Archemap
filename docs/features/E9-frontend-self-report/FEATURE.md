@@ -28,6 +28,7 @@
 | S03 | [Socionics Result: топ-3 типа, scores, Model A breakdown, функциональный профиль](S03-socionics-result.md) | ⬜ Не начато |
 | S04 | [Report Page: сборка страницы отчёта из компонентов формы, карты, результата](S04-report-page.md) | ⬜ Не начато |
 | S05 | [Auth Integration: гостевой доступ (демо) + полный доступ для авторизованных](S05-auth-integration.md) | ⬜ Не начато |
+| S06 | [Auth Screens: login, register с birth data, OAuth callback, geocoding](S06-auth-screens.md) | ⬜ Не начато |
 
 ## Архитектура
 

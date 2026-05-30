@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import UTC, date, datetime, time
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from zoneinfo import ZoneInfo
 
+from app.chart_engine.chart import build_chart
+from app.chart_engine.features import extract_features
+from app.chart_engine.socionics import evaluate_socionics
 from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.core.security import (
     create_access_token,
@@ -19,6 +24,7 @@ from app.core.security import (
 )
 from app.core.token_blacklist import blacklist_token
 from app.modules.auth.verification import VerificationService
+from app.modules.charts.models import ChartSnapshot
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
 
@@ -38,8 +44,12 @@ class AuthService:
         timezone: str,
         birth_time: time | None = None,
         birth_time_accuracy: str = "unknown",
-    ) -> User:
-        """Register a new user with email, password and full birth data."""
+    ) -> dict[str, Any]:
+        """Register a new user with email, password and full birth data.
+
+        Automatically computes natal chart and socionics type.
+        Returns user data, tokens, and chart results.
+        """
         existing = await self.db.execute(select(User).where(User.email == email))
         if existing.scalar_one_or_none():
             raise ConflictError("User with this email already exists")
@@ -74,6 +84,19 @@ class AuthService:
         )
         self.db.add(profile)
         await self.db.flush()
+
+        # Compute natal chart
+        chart_data, socionics_result = await self._compute_chart(profile)
+
+        # Store chart snapshot
+        snapshot = ChartSnapshot(
+            profile_id=profile.id,
+            user_id=user.id,
+            engine_version="0.1.0",
+            chart_data=chart_data,
+        )
+        self.db.add(snapshot)
+        await self.db.flush()
         await self.db.refresh(user)
 
         # Create verification token and send email
@@ -81,7 +104,92 @@ class AuthService:
         token = await verification_service.create_verification(user.id)
         await verification_service.send_verification_email(email, token)
 
-        return user
+        # Issue tokens
+        jwt_access, _ = create_access_token(subject=str(user.id))
+        jwt_refresh, _ = create_refresh_token(subject=str(user.id))
+
+        return {
+            "user_id": str(user.id),
+            "email": email,
+            "birth_date": birth_date.isoformat(),
+            "profile_id": str(profile.id),
+            "access_token": jwt_access,
+            "refresh_token": jwt_refresh,
+            "token_type": "bearer",
+            "chart": chart_data,
+            "socionics": socionics_result,
+        }
+
+    async def _compute_chart(self, profile: PersonProfile) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Compute natal chart and socionics type from profile data."""
+        # Combine date and time into UTC datetime
+        # birth_time is guaranteed to be non-None (set to 12:00 if not provided)
+        birth_time = profile.birth_time or time(12, 0)
+        local_tz = ZoneInfo(profile.timezone)
+        dt_local = datetime.combine(profile.birth_date, birth_time).replace(tzinfo=local_tz)
+        dt_utc = dt_local.astimezone(UTC)
+
+        # Compute chart
+        chart = build_chart(
+            birth_datetime=dt_utc,
+            latitude=profile.latitude,
+            longitude=profile.longitude,
+            timezone_name=profile.timezone,
+            house_system="P",
+        )
+
+        # Extract features and compute socionics
+        features = extract_features(chart)
+        socionics_results = evaluate_socionics(features, chart)
+
+        # Prepare chart data for JSON storage
+        chart_json = {
+            "planets": [
+                {
+                    "name": p.name,
+                    "sign": p.sign,
+                    "degree": round(p.sign_degree, 2),
+                    "house": p.house,
+                    "is_retrograde": p.is_retrograde,
+                }
+                for p in chart.planets
+            ],
+            "houses": [
+                {"number": h.number, "sign": h.sign, "longitude": round(h.longitude, 2)}
+                for h in chart.houses
+            ],
+            "aspects": [
+                {
+                    "planet_a": a.planet_a,
+                    "aspect_type": a.aspect_type,
+                    "planet_b": a.planet_b,
+                    "orb": round(a.orb, 2),
+                    "is_applying": a.is_applying,
+                }
+                for a in chart.aspects
+            ],
+        }
+
+        # Prepare socionics result
+        top3 = socionics_results[:3]
+        socionics_json = {
+            "top3": [
+                {
+                    "type": r.type_code,
+                    "name": r.type_name,
+                    "score": round(r.score, 3),
+                    "confidence": round(r.confidence, 3),
+                    "functions": r.functions,
+                }
+                for r in top3
+            ],
+            "function_strengths": {
+                fn: round(socionics_results[0].breakdown.get(fn, 0), 3)
+                for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
+            },
+        }
+
+        return chart_json, socionics_json
 
     async def login(self, email: str, password: str) -> dict[str, str]:
         """Authenticate user and return tokens."""

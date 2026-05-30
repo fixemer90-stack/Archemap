@@ -32,14 +32,14 @@ from app.modules.auth.verification import VerificationService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Register a new user with birth data. Sends verification email."""
+    """Register a new user with birth data. Returns tokens and computed chart."""
     service = AuthService(db)
-    await service.register(
+    result = await service.register(
         email=body.email,
         password=body.password,
         birth_date=body.birth_date,
@@ -50,7 +50,7 @@ async def register(
         longitude=body.longitude,
         timezone=body.timezone,
     )
-    return MessageResponse(message="Registration successful. Please check your email to verify your account.")
+    return result
 
 
 @router.post("/verify", response_model=MessageResponse)

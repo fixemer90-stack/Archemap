@@ -1,29 +1,34 @@
-# Story E2.S03: Email верификация: генерация токена, отправка email, подтверждение, anti-enumeration
+# Story E2.03: Email верификация
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+Подтверждение email через одноразовый токен.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. EmailVerification model
+2. VerificationService: create, verify, resend
+3. Email sending через SMTP/Console
+4. Anti-enumeration
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/modules/auth/verification.py` | Создан — VerificationService |
+| `app/modules/auth/models.py` | Создан — EmailVerification model |
+| `app/infrastructure/email.py` | Создан — SMTP provider |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Токен генерируется при регистрации
+- [x] Email отправляется
+- [x] Подтверждение по токену
+- [x] Anti-enumeration на resend
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

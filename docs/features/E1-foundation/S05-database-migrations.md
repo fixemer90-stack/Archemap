@@ -1,29 +1,32 @@
-# Story E1.S05: Database migrations: Alembic setup, базовые миграции, downgrade support
+# Story E1.S05: Database migrations: Alembic setup, базовые миграции
 
-**Feature:** [Foundation]({FEATURE.md})
+**Feature:** [Foundation](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Инфраструктурная основа проекта: скелет backend/frontend, CI/CD, Docker, миграции, quality gates. Без этого фичи не могут разрабатываться и деплоиться.
-
-Этот шаг — часть Feature `E1`.
+Настройка Alembic для миграций базы данных.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. Alembic setup с async engine
+2. Базовые миграции: users, email_verification, identity_links
+3. Downgrade support
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `alembic.ini` | Создан |
+| `alembic/env.py` | Создан — async env |
+| `alembic/versions/*.py` | Созданы — миграции |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] alembic upgrade head работает
+- [x] Downgrade работает
+- [x] Async engine support
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть начального scaffolding.

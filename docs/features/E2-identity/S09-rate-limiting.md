@@ -1,29 +1,31 @@
-# Story E2.S09: Rate limiting входа: Redis INCR+EXPIRE, 5 попыток/15 мин, HTTP 429
+# Story E2.09: Rate limiting входа
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+Защита от брутфорса: 5 попыток / 15 мин.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. RateLimiter: Redis INCR + EXPIRE
+2. 5 попыток / 15 мин на login
+3. HTTP 429 при превышении
+4. Сброс после успешного входа
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/core/rate_limit.py` | Создан — RateLimiter |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] 5 попыток / 15 мин
+- [x] HTTP 429 с retry_after
+- [x] Сброс после успешного login
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

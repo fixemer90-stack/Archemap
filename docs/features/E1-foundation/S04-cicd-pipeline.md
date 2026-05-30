@@ -1,29 +1,33 @@
 # Story E1.S04: CI/CD: GitHub Actions — lint, typecheck, tests, build
 
-**Feature:** [Foundation]({FEATURE.md})
+**Feature:** [Foundation](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Инфраструктурная основа проекта: скелет backend/frontend, CI/CD, Docker, миграции, quality gates. Без этого фичи не могут разрабатываться и деплоиться.
-
-Этот шаг — часть Feature `E1`.
+Настройка CI/CD pipeline в GitHub Actions с проверками качества.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. ci.yml: lint backend/frontend, typecheck, tests, build
+2. Deploy workflow
+3. Quality gates: ruff, mypy, eslint, prettier
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `.github/workflows/ci.yml` | Создан — CI pipeline |
+| `.github/workflows/deploy.yml` | Создан — Deploy workflow |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] CI проходит при push
+- [x] Lint backend (ruff) + frontend (eslint)
+- [x] Typecheck (mypy + tsc)
+- [x] Tests (pytest + npm test)
+- [x] Docker build
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть начального scaffolding.

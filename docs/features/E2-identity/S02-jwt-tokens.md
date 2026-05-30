@@ -1,29 +1,32 @@
-# Story E2.S02: JWT access/refresh токены: создание, валидация, decode, refresh flow
+# Story E2.02: JWT access/refresh токены
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+Создание и валидация JWT access/refresh токенов.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. create_access_token / create_refresh_token
+2. decode_access_token / decode_refresh_token
+3. Refresh flow: POST /auth/refresh
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/core/security.py` | Создан — JWT functions |
+| `app/modules/auth/router.py` | Изменён — login + refresh endpoints |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Access token 30 мин
+- [x] Refresh token 30 дней
+- [x] HS256 algorithm
+- [x] Refresh flow работает
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

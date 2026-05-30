@@ -1,29 +1,39 @@
-# Story E1.S01: Backend scaffolding: FastAPI, структура проекта, pyproject.toml, зависимости
+# Story E1.S01: Backend scaffolding: FastAPI, структура проекта, pyproject.toml
 
-**Feature:** [Foundation]({FEATURE.md})
+**Feature:** [Foundation](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Инфраструктурная основа проекта: скелет backend/frontend, CI/CD, Docker, миграции, quality gates. Без этого фичи не могут разрабатываться и деплоиться.
-
-Этот шаг — часть Feature `E1`.
+Создание backend-скелета: FastAPI приложение, структура модулей, pyproject.toml с зависимостями.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. FastAPI app с lifespan, CORS, exception handlers
+2. Структура: app/modules/, app/core/, app/infrastructure/, app/api/
+3. pyproject.toml с hatchling, dependencies
+4. config.py через pydantic-settings
+5. Base SQLAlchemy model с UUID + timestamps
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/main.py` | Создан — FastAPI entrypoint |
+| `app/config.py` | Создан — Settings |
+| `app/core/models.py` | Создан — BaseModel |
+| `app/core/exceptions.py` | Создан — domain exceptions |
+| `app/infrastructure/database.py` | Создан — async engine |
+| `pyproject.toml` | Создан |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] FastAPI app запускается
+- [x] Структура модульная
+- [x] pydantic-settings конфиг
+- [x] SQLAlchemy async engine
+- [x] BaseModel с UUID + timestamps
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть начального scaffolding.

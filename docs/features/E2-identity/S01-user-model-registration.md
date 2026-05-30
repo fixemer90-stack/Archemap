@@ -1,29 +1,35 @@
-# Story E2.S01: User model + регистрация по email/password: модели User, EmailVerification, хеширование паролей, endpoint POST /auth/register
+# Story E2.01: User model + регистрация по email/password
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+Создание модели User и endpoint'а регистрации с хешированием паролей.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. User SQLAlchemy model: email, hashed_password, is_active, is_verified
+2. Registration service с hash_password
+3. POST /auth/register endpoint
+4. Pydantic schemas
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/modules/users/models.py` | Создан — User model |
+| `app/modules/auth/service.py` | Создан — AuthService.register |
+| `app/modules/auth/router.py` | Создан — POST /auth/register |
+| `app/modules/auth/schemas.py` | Создан — RegisterRequest |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] User model с UUID PK
+- [x] Пароль хешируется (bcrypt)
+- [x] Регистрация через POST /auth/register
+- [x] Duplicate email → 409 Conflict
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

@@ -1,29 +1,39 @@
-# Story E1.S02: Frontend scaffolding: Next.js 15, shadcn/ui, Tailwind 4, структура App Router
+# Story E1.S02: Frontend scaffolding: Next.js 15, shadcn/ui, Tailwind 4
 
-**Feature:** [Foundation]({FEATURE.md})
+**Feature:** [Foundation](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Инфраструктурная основа проекта: скелет backend/frontend, CI/CD, Docker, миграции, quality gates. Без этого фичи не могут разрабатываться и деплоиться.
-
-Этот шаг — часть Feature `E1`.
+Создание frontend-скелета: Next.js 15 с App Router, shadcn/ui компоненты, Tailwind CSS 4.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. Next.js 15 с App Router
+2. shadcn/ui + Tailwind CSS 4
+3. Структура: app/(auth)/, app/(dashboard)/, components/, stores/, hooks/
+4. Zustand store для auth
+5. API client с httpx-style fetch wrapper
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `frontend/src/app/layout.tsx` | Создан — root layout |
+| `frontend/src/app/page.tsx` | Создан — landing page |
+| `frontend/src/stores/auth-store.ts` | Создан — Zustand auth store |
+| `frontend/src/hooks/use-auth.ts` | Создан — auth hook |
+| `frontend/src/lib/api-client.ts` | Создан — API client |
+| `frontend/package.json` | Создан |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Next.js 15 App Router
+- [x] shadcn/ui компоненты
+- [x] Tailwind CSS 4
+- [x] Zustand auth store
+- [x] API client
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть начального scaffolding.

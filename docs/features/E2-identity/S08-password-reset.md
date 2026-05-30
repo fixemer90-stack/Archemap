@@ -1,29 +1,33 @@
-# Story E2.S08: Сброс пароля: запрос по email, токен 24ч, новый пароль, anti-enumeration
+# Story E2.08: Сброс пароля
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+Сброс пароля по email с токеном.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. PasswordResetService: request, confirm
+2. Token TTL 24h
+3. Anti-enumeration
+4. POST /auth/password-reset/request + confirm
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/modules/auth/password_reset.py` | Создан — PasswordResetService |
+| `app/modules/auth/models.py` | Создан — PasswordReset model |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Запрос сброса по email
+- [x] Токен истекает через 24ч
+- [x] Новый пароль устанавливается
+- [x] Anti-enumeration
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

@@ -1,29 +1,31 @@
-# Story E2.S04: Token blacklist (logout): Redis-based blacklist, POST /auth/logout, проверка при валидации
+# Story E2.04: Token blacklist (logout)
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+Blacklist токенов для logout через Redis.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. Redis-based token blacklist
+2. POST /auth/logout endpoint
+3. Проверка blacklist при валидации токена
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/core/token_blacklist.py` | Создан — Redis blacklist |
+| `app/modules/auth/router.py` | Изменён — logout endpoint |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Logout blacklists access token
+- [x] Blacklisted token → 401
+- [x] Optional refresh token blacklist
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

@@ -1,29 +1,34 @@
-# Story E2.S05: Yandex ID OAuth: Authorization Code flow, exchange code, get user info, account linking по email
+# Story E2.05: Yandex ID OAuth
 
-**Feature:** [Authentication & Identity]({FEATURE.md})
+**Feature:** [Authentication & Identity](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь может зарегистрироваться, войти, подтвердить email, выйти, восстановить пароль и войти через OAuth-провайдера. Безопасность: JWT, rate limiting, token blacklist.
-
-Этот шаг — часть Feature `E2`.
+OAuth 2.0 flow через Yandex ID с account linking.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. YandexOAuthProvider: authorize URL, code exchange, user info
+2. OAuthService: state management, callback handling
+3. Account linking по email
+4. GET /auth/oauth/yandex/start + callback
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `app/modules/auth/oauth/yandex.py` | Создан — YandexOAuthProvider |
+| `app/modules/auth/oauth/service.py` | Создан — OAuthService |
+| `app/modules/auth/models.py` | Создан — IdentityLink model |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Authorization Code flow
+- [x] State validation
+- [x] Account linking по email
+- [x] Новый user создаётся при отсутствии
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть Epic 2: Identity.

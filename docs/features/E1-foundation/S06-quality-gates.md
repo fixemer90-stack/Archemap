@@ -1,29 +1,34 @@
-# Story E1.S06: Quality gates: ruff, mypy, eslint, prettier, pre-commit hooks
+# Story E1.S06: Quality gates: ruff, mypy, eslint, prettier, pre-commit
 
-**Feature:** [Foundation]({FEATURE.md})
+**Feature:** [Foundation](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Инфраструктурная основа проекта: скелет backend/frontend, CI/CD, Docker, миграции, quality gates. Без этого фичи не могут разрабатываться и деплоиться.
-
-Этот шаг — часть Feature `E1`.
+Настройка инструментов качества кода.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. ruff: lint + format
+2. mypy: static typing
+3. eslint + prettier: frontend
+4. pre-commit hooks
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `pyproject.toml` | Изменён — ruff, mypy config |
+| `frontend/.eslintrc.*` | Создан |
+| `.pre-commit-config.yaml` | Создан |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] ruff check/format
+- [x] mypy strict
+- [x] eslint + prettier
+- [x] pre-commit hooks
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть начального scaffolding.

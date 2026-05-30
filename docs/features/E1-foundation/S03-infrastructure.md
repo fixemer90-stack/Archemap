@@ -1,29 +1,33 @@
-# Story E1.S03: Infrastructure: Docker Compose (PostgreSQL 16, Redis 7), .env.example
+# Story E1.S03: Infrastructure: Docker Compose, PostgreSQL 16, Redis 7
 
-**Feature:** [Foundation]({FEATURE.md})
+**Feature:** [Foundation](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Инфраструктурная основа проекта: скелет backend/frontend, CI/CD, Docker, миграции, quality gates. Без этого фичи не могут разрабатываться и деплоиться.
-
-Этот шаг — часть Feature `E1`.
+Настройка локальной инфраструктуры: Docker Compose с PostgreSQL и Redis.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+1. docker-compose.yml с PostgreSQL 16 + Redis 7
+2. .env.example с переменными
+3. Health check endpoint
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Файл | Действие |
+|---|---|
+| `docker-compose.yml` | Создан — PostgreSQL + Redis |
+| `.env.example` | Создан — template переменных |
+| `app/api/v1/health.py` | Создан — health endpoint |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] PostgreSQL 16 через Docker
+- [x] Redis 7 через Docker
+- [x] .env.example
+- [x] Health endpoint с DB + Redis checks
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Часть начального scaffolding.

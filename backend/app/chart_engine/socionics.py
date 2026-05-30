@@ -13,6 +13,16 @@ from app.chart_engine.features import FeatureVector
 
 
 @dataclass(frozen=True, slots=True)
+class FunctionProfile:
+    """Multi-dimensional function strength."""
+
+    strength: float = 0.0  # base power (Sun/Moon/Mercury/Venus/Mars/Saturn/Jupiter/MC)
+    tension: float = 0.0  # Chiron/Pluto/square aspects — vulnerability, compensation
+    harmony: float = 0.0  # trine/sextile aspects — easy flow, natural talent
+    distortion: float = 0.0  # Lilith/square/opposition — shadow, overcompensation
+
+
+@dataclass(frozen=True, slots=True)
 class SocionicsResult:
     type_code: str
     type_name: str
@@ -56,7 +66,6 @@ PLANET_NATURAL: dict[str, dict[str, float]] = {
     "Pluto": {"Se": 0.26, "Ni": 0.24, "Fi": 0.20, "Ti": 0.18, "Te": 0.12},
     "Chiron": {"Fi": 0.26, "Ni": 0.24, "Ti": 0.18, "Fe": 0.18, "Si": 0.14},
     "Lilith": {"Se": 0.28, "Fi": 0.24, "Ni": 0.20, "Fe": 0.14, "Ti": 0.14},
-    "Selena": {"Fi": 0.26, "Fe": 0.24, "Ni": 0.20, "Si": 0.18, "Ne": 0.12},
     "North Node": {"Ni": 0.30, "Ne": 0.24, "Fi": 0.20, "Te": 0.14, "Fe": 0.12},
 }
 
@@ -241,10 +250,120 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
     return strengths
 
 
+# ── Layered computation for tension/harmony/distortion ──
+
+# Planets that create tension (vulnerability, compensation)
+TENSION_PLANETS = {"Chiron", "Pluto"}
+# Planets that create distortion (shadow, overcompensation)
+DISTORTION_PLANETS = {"Lilith"}
+
+ASPECT_HARMONY = {"trine", "sextile"}
+ASPECT_TENSION = {"square", "opposition"}
+
+
+def _compute_function_profiles(chart: object) -> dict[str, FunctionProfile]:
+    """Compute multi-dimensional function profiles.
+
+    Layers:
+    - strength: base power from Sun/Moon/Mercury/Venus/Mars/Saturn/Jupiter
+    - tension: Chiron/Pluto + square/opposition aspects
+    - harmony: trine/sextile aspects
+    - distortion: Lilith + harsh aspects
+    """
+    funcs = ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
+    strength = {f: 0.0 for f in funcs}
+    tension = {f: 0.0 for f in funcs}
+    harmony = {f: 0.0 for f in funcs}
+    distortion = {f: 0.0 for f in funcs}
+
+    if not hasattr(chart, "planets"):
+        return {f: FunctionProfile() for f in funcs}
+
+    planet_map: dict[str, object] = {}
+    for planet in chart.planets:
+        planet_map[planet.name] = planet
+
+    for planet in chart.planets:
+        name = planet.name
+        sign = planet.sign
+        house = planet.house
+        elem = SIGN_ELEMENT.get(sign, "fire")
+        is_retrograde = getattr(planet, "is_retrograde", False)
+
+        natural = PLANET_NATURAL.get(name, {})
+        for func, weight in natural.items():
+            target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
+
+            # Base strength from all planets
+            strength[target] += W_PLANET * weight
+
+            # Element boost
+            elem_boost = ELEMENT_FUNCTION.get(elem, {})
+            for efunc, eweight in elem_boost.items():
+                etarget = EXTRO_TO_INTRO.get(efunc, efunc) if is_retrograde else efunc
+                strength[etarget] += W_ELEMENT * eweight
+
+            # House boost
+            if house:
+                house_boost = HOUSE_FUNCTION.get(house, {})
+                for hfunc, hweight in house_boost.items():
+                    htarget = EXTRO_TO_INTRO.get(hfunc, hfunc) if is_retrograde else hfunc
+                    strength[htarget] += W_HOUSE * hweight
+
+            # Tension layer: Chiron/Pluto contribute to tension
+            if name in TENSION_PLANETS:
+                tension[target] += weight * 0.5
+
+            # Distortion layer: Lilith contributes to distortion
+            if name in DISTORTION_PLANETS:
+                distortion[target] += weight * 0.5
+
+    # Aspect-based layers
+    if hasattr(chart, "aspects"):
+        for aspect in chart.aspects:
+            aspect_type = aspect.aspect_type
+            orb = getattr(aspect, "orb", 5.0)
+            orb_factor = max(0.2, 1.0 - orb / 10.0)
+
+            # Harmony from trine/sextile
+            if aspect_type in ASPECT_HARMONY:
+                aspect_funcs = ASPECT_FUNCTION.get(aspect_type, {})
+                for func, weight in aspect_funcs.items():
+                    harmony[func] += W_ASPECT * weight * orb_factor
+
+            # Tension from square/opposition
+            if aspect_type in ASPECT_TENSION:
+                aspect_funcs = ASPECT_FUNCTION.get(aspect_type, {})
+                for func, weight in aspect_funcs.items():
+                    tension[func] += W_ASPECT * weight * orb_factor * 0.5
+                    distortion[func] += W_ASPECT * weight * orb_factor * 0.3
+
+    # Normalize each layer
+    def normalize(d: dict[str, float]) -> dict[str, float]:
+        mx = max(d.values()) if d else 1.0
+        return {k: v / mx for k, v in d.items()} if mx > 0 else d
+
+    strength = normalize(strength)
+    tension = normalize(tension)
+    harmony = normalize(harmony)
+    distortion = normalize(distortion)
+
+    return {
+        f: FunctionProfile(
+            strength=round(strength[f], 3),
+            tension=round(tension[f], 3),
+            harmony=round(harmony[f], 3),
+            distortion=round(distortion[f], 3),
+        )
+        for f in funcs
+    }
+
+
 def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[SocionicsResult]:
     """Evaluate all 16 socionics types. Planet-first approach."""
 
     func_strengths = _compute_function_strengths(chart)
+    func_profiles = _compute_function_profiles(chart)
 
     elements = {
         "fire": features.fire,
@@ -303,6 +422,7 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
                     "func2": round(f2_score, 3),
                     "elem1": round(e1_score, 3),
                     "elem2": round(e2_score, 3),
+                    # Full function strengths
                     "Se": round(func_strengths.get("Se", 0), 3),
                     "Si": round(func_strengths.get("Si", 0), 3),
                     "Ne": round(func_strengths.get("Ne", 0), 3),
@@ -311,6 +431,15 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
                     "Fi": round(func_strengths.get("Fi", 0), 3),
                     "Te": round(func_strengths.get("Te", 0), 3),
                     "Ti": round(func_strengths.get("Ti", 0), 3),
+                    # Layered profiles
+                    "Ne_tension": func_profiles["Ne"].tension,
+                    "Ne_harmony": func_profiles["Ne"].harmony,
+                    "Ti_tension": func_profiles["Ti"].tension,
+                    "Ti_harmony": func_profiles["Ti"].harmony,
+                    "Te_tension": func_profiles["Te"].tension,
+                    "Te_harmony": func_profiles["Te"].harmony,
+                    "Fe_tension": func_profiles["Fe"].tension,
+                    # Diagnostics
                     "mental_ne_ti": round(func_strengths.get("Ne", 0) * 0.6 + func_strengths.get("Ti", 0) * 0.4, 3),
                     "business_te": round(func_strengths.get("Te", 0), 3),
                 },

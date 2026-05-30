@@ -42,6 +42,7 @@ PLANET_NAMES = [
     "Neptune",
     "Pluto",
     "North Node",
+    "Lilith",
     "Chiron",
 ]
 
@@ -132,6 +133,7 @@ def _get_planet_ids() -> list[int]:
             swe.NEPTUNE,
             swe.PLUTO,
             swe.TRUE_NODE,
+            swe.MEAN_APOG,
             swe.CHIRON,
         ]
     return _PLANET_IDS
@@ -196,7 +198,8 @@ def _compute_stub(dt: datetime, lat: float, lon: float) -> list[PlanetPosition]:
         310.0,
         250.0,  # Jupiter-Pluto
         125.0,
-        75.0,  # Node, Chiron
+        180.0,  # Lilith
+        75.0,  # Chiron
     ]
     # Simple deterministic shift based on date
     day_offset = (dt - datetime(2000, 1, 1, tzinfo=UTC)).days

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import date, datetime
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -14,6 +15,7 @@ from app.core.security import create_access_token, create_refresh_token
 from app.infrastructure.redis import get_redis_client
 from app.modules.auth.models import IdentityLink
 from app.modules.auth.oauth.yandex import YandexOAuthProvider
+from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -49,7 +51,7 @@ class OAuthService:
         provider = YandexOAuthProvider()
         return provider.get_authorize_url(state)
 
-    async def handle_yandex_callback(self, code: str, state: str) -> dict[str, str]:
+    async def handle_yandex_callback(self, code: str, state: str) -> dict[str, Any]:
         """Handle Yandex OAuth callback. Returns tokens."""
         # Validate state
         provider = await self.validate_state(state)
@@ -96,10 +98,19 @@ class OAuthService:
         jwt_access, _ = create_access_token(subject=str(user.id))
         jwt_refresh, _ = create_refresh_token(subject=str(user.id))
 
+        # Check if user has a complete profile
+        profile_result = await self.db.execute(
+            select(PersonProfile).where(PersonProfile.user_id == user.id)
+        )
+        has_profile = profile_result.scalar_one_or_none() is not None
+
         return {
             "access_token": jwt_access,
             "refresh_token": jwt_refresh,
             "token_type": "bearer",
+            "birth_date": birth_date.isoformat() if birth_date else None,
+            "has_profile": has_profile,
+            "email": email,
         }
 
     # ── Account linking ────────────────────────────────────────────

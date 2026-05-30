@@ -53,7 +53,9 @@ export default function RegisterPage() {
   // Step 2: Birth data
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
-  const [birthTimeAccuracy, setBirthTimeAccuracy] = useState<"exact" | "approximate" | "unknown">("unknown");
+  const [birthTimeAccuracy, setBirthTimeAccuracy] = useState<
+    "exact" | "approximate" | "unknown"
+  >("unknown");
   const [birthPlace, setBirthPlace] = useState("");
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
@@ -84,7 +86,9 @@ export default function RegisterPage() {
 
     setPlaceLoading(true);
     try {
-      const res = await fetch(`/api/v1/profiles/geocode?q=${encodeURIComponent(query)}`);
+      const res = await fetch(
+        `/api/v1/profiles/geocode?q=${encodeURIComponent(query)}`,
+      );
       if (res.ok) {
         const data = await res.json();
         setPlaceResults(data.items || []);
@@ -362,9 +366,7 @@ export default function RegisterPage() {
           </div>
         )}
         {birthPlace && (
-          <p className="text-xs text-muted-foreground">
-            Выбрано: {birthPlace}
-          </p>
+          <p className="text-xs text-muted-foreground">Выбрано: {birthPlace}</p>
         )}
       </div>
 
@@ -447,9 +449,7 @@ export default function RegisterPage() {
           >
             <div
               className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                step >= s.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
+                step >= s.id ? "bg-primary text-primary-foreground" : "bg-muted"
               }`}
             >
               {s.id}

@@ -17,12 +17,27 @@ down_revision: str | None = "c3d4e5f6a7b8"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+_json_col = postgresql.JSON(astext_type=sa.Text())
+_default = sa.text("'{}'::jsonb")
+
 
 def upgrade() -> None:
-    op.add_column("chart_snapshots", sa.Column("birth_data", postgresql.JSON(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")))
-    op.add_column("chart_snapshots", sa.Column("features", postgresql.JSON(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")))
-    op.add_column("chart_snapshots", sa.Column("function_strengths", postgresql.JSON(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")))
-    op.add_column("chart_snapshots", sa.Column("socionics", postgresql.JSON(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")))
+    op.add_column(
+        "chart_snapshots",
+        sa.Column("birth_data", _json_col, nullable=False, server_default=_default),
+    )
+    op.add_column(
+        "chart_snapshots",
+        sa.Column("features", _json_col, nullable=False, server_default=_default),
+    )
+    op.add_column(
+        "chart_snapshots",
+        sa.Column("function_strengths", _json_col, nullable=False, server_default=_default),
+    )
+    op.add_column(
+        "chart_snapshots",
+        sa.Column("socionics", _json_col, nullable=False, server_default=_default),
+    )
 
 
 def downgrade() -> None:

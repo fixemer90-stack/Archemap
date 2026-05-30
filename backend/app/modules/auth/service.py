@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, time
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from zoneinfo import ZoneInfo
 
 from app.chart_engine.chart import build_chart
 from app.chart_engine.features import extract_features
@@ -132,7 +132,9 @@ class AuthService:
             "socionics": socionics_result,
         }
 
-    async def _compute_chart(self, profile: PersonProfile) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    async def _compute_chart(
+        self, profile: PersonProfile
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Compute natal chart and socionics type from profile data.
 
         Returns: (chart_data, features, function_strengths, socionics)
@@ -169,10 +171,7 @@ class AuthService:
                 }
                 for p in chart.planets
             ],
-            "houses": [
-                {"number": h.number, "sign": h.sign, "longitude": round(h.longitude, 2)}
-                for h in chart.houses
-            ],
+            "houses": [{"number": h.number, "sign": h.sign, "longitude": round(h.longitude, 2)} for h in chart.houses],
             "aspects": [
                 {
                     "planet_a": a.planet_a,
@@ -199,8 +198,7 @@ class AuthService:
         # Prepare function strengths
         top1 = socionics_results[0]
         strengths_json = {
-            fn: round(top1.breakdown.get(fn, 0), 3)
-            for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
+            fn: round(top1.breakdown.get(fn, 0), 3) for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
         }
 
         # Prepare socionics result

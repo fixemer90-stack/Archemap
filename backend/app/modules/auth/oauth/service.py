@@ -99,9 +99,7 @@ class OAuthService:
         jwt_refresh, _ = create_refresh_token(subject=str(user.id))
 
         # Check if user has a complete profile
-        profile_result = await self.db.execute(
-            select(PersonProfile).where(PersonProfile.user_id == user.id)
-        )
+        profile_result = await self.db.execute(select(PersonProfile).where(PersonProfile.user_id == user.id))
         has_profile = profile_result.scalar_one_or_none() is not None
 
         return {
@@ -196,5 +194,10 @@ class OAuthService:
         self.db.add(new_link)
         await self.db.flush()
 
-        logger.info("oauth_user_created", user_id=str(user.id), provider=provider, has_birth_date=birth_date is not None)
+        logger.info(
+            "oauth_user_created",
+            user_id=str(user.id),
+            provider=provider,
+            has_birth_date=birth_date is not None,
+        )
         return user

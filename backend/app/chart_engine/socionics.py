@@ -1,4 +1,9 @@
-"""Socionics rule engine v2 — planet-first weighted scoring."""
+"""Socionics rule engine v3 — planet-first weighted scoring.
+
+No TYPE_PRIOR. Calibration through real astrological parameters:
+PLANET_NATURAL, ELEMENT_FUNCTION, HOUSE_FUNCTION, ASPECT_FUNCTION,
+PLANET_RELATION_FUNCTION.
+"""
 
 from __future__ import annotations
 
@@ -39,17 +44,20 @@ TYPES = [
 
 # ── Planet → function strength ──
 PLANET_NATURAL: dict[str, dict[str, float]] = {
-    "Sun": {"Te": 0.5, "Ti": 0.3, "Se": 0.2},
-    "Moon": {"Fe": 0.4, "Fi": 0.3, "Si": 0.3},
-    "Mercury": {"Ti": 0.5, "Te": 0.3, "Ne": 0.2},
-    "Venus": {"Fi": 0.5, "Fe": 0.3, "Si": 0.2},
-    "Mars": {"Se": 0.6, "Te": 0.2, "Fe": 0.2},
-    "Jupiter": {"Ne": 0.3, "Fe": 0.3, "Te": 0.2, "Ni": 0.2},
-    "Saturn": {"Ti": 0.4, "Si": 0.3, "Te": 0.2, "Ni": 0.1},
-    "Uranus": {"Ne": 0.5, "Ni": 0.3, "Ti": 0.2},
-    "Neptune": {"Ni": 0.5, "Fi": 0.3, "Fe": 0.2},
-    "Pluto": {"Se": 0.3, "Fi": 0.3, "Ni": 0.2, "Ti": 0.2},
-    "North Node": {"Ni": 0.4, "Ne": 0.3, "Fi": 0.3},
+    "Sun": {"Te": 0.34, "Fe": 0.22, "Se": 0.18, "Ti": 0.14, "Ni": 0.12},
+    "Moon": {"Si": 0.32, "Fi": 0.28, "Fe": 0.22, "Ni": 0.18},
+    "Mercury": {"Ti": 0.36, "Te": 0.30, "Ne": 0.20, "Ni": 0.14},
+    "Venus": {"Fi": 0.38, "Fe": 0.26, "Si": 0.20, "Se": 0.10, "Ni": 0.06},
+    "Mars": {"Se": 0.42, "Te": 0.24, "Ti": 0.14, "Fe": 0.12, "Ni": 0.08},
+    "Jupiter": {"Ne": 0.26, "Fe": 0.24, "Te": 0.20, "Ni": 0.18, "Se": 0.12},
+    "Saturn": {"Ti": 0.32, "Te": 0.26, "Si": 0.24, "Ni": 0.14, "Fi": 0.04},
+    "Uranus": {"Ne": 0.36, "Ti": 0.24, "Ni": 0.22, "Te": 0.12, "Se": 0.06},
+    "Neptune": {"Ni": 0.42, "Fi": 0.24, "Fe": 0.22, "Si": 0.08, "Ne": 0.04},
+    "Pluto": {"Se": 0.26, "Ni": 0.24, "Fi": 0.20, "Ti": 0.18, "Te": 0.12},
+    "Chiron": {"Fi": 0.26, "Ni": 0.24, "Ti": 0.18, "Fe": 0.18, "Si": 0.14},
+    "Lilith": {"Se": 0.28, "Fi": 0.24, "Ni": 0.20, "Fe": 0.14, "Ti": 0.14},
+    "Selena": {"Fi": 0.26, "Fe": 0.24, "Ni": 0.20, "Si": 0.18, "Ne": 0.12},
+    "North Node": {"Ni": 0.30, "Ne": 0.24, "Fi": 0.20, "Te": 0.14, "Fe": 0.12},
 }
 
 SIGN_ELEMENT = {
@@ -59,38 +67,69 @@ SIGN_ELEMENT = {
     "Cancer": "water", "Scorpio": "water", "Pisces": "water",
 }
 
-# Element → function boost
-ELEMENT_FUNCTION_BOOST: dict[str, dict[str, float]] = {
-    "fire": {"Se": 0.50, "Fe": 0.28, "Ni": 0.12, "Ne": 0.10},
-    "earth": {"Te": 0.35, "Ti": 0.30, "Si": 0.20, "Fi": 0.15},
-    "air": {"Ti": 0.38, "Ne": 0.28, "Ni": 0.20, "Te": 0.14},
-    "water": {"Se": 0.30, "Ni": 0.27, "Fi": 0.25, "Fe": 0.18},
+# ── Element → function boost ──
+ELEMENT_FUNCTION: dict[str, dict[str, float]] = {
+    "fire": {"Se": 0.34, "Fe": 0.30, "Ni": 0.18, "Ne": 0.12, "Te": 0.06},
+    "earth": {"Te": 0.36, "Si": 0.30, "Ti": 0.22, "Fi": 0.08, "Se": 0.04},
+    "air": {"Ti": 0.32, "Ne": 0.30, "Ni": 0.20, "Te": 0.12, "Fe": 0.06},
+    "water": {"Ni": 0.34, "Fi": 0.30, "Fe": 0.22, "Si": 0.10, "Se": 0.04},
 }
 
-# House → function boost
-HOUSE_FUNCTION_BOOST: dict[int, dict[str, float]] = {
-    1: {"Se": 0.50, "Ti": 0.25, "Fi": 0.15, "Ni": 0.10},
-    2: {"Te": 0.30, "Si": 0.25, "Se": 0.20, "Ti": 0.15, "Ni": 0.10},
-    3: {"Ti": 0.45, "Se": 0.25, "Te": 0.20, "Ne": 0.10},
-    4: {"Fi": 0.30, "Si": 0.30, "Ni": 0.25, "Fe": 0.15},
-    5: {"Se": 0.32, "Fi": 0.28, "Fe": 0.25, "Ne": 0.15},
-    6: {"Te": 0.35, "Ti": 0.32, "Se": 0.18, "Si": 0.15},
-    7: {"Se": 0.38, "Fi": 0.28, "Fe": 0.18, "Ti": 0.16},
-    8: {"Se": 0.35, "Ni": 0.28, "Fi": 0.20, "Fe": 0.17},
-    9: {"Te": 0.30, "Ti": 0.25, "Ni": 0.20, "Fe": 0.15, "Ne": 0.10},
-    10: {"Se": 0.38, "Te": 0.30, "Ti": 0.20, "Fe": 0.12},
-    11: {"Ne": 0.35, "Fe": 0.30, "Ti": 0.20, "Se": 0.15},
-    12: {"Ni": 0.40, "Fi": 0.30, "Si": 0.20, "Fe": 0.10},
+# ── House → function boost ──
+HOUSE_FUNCTION: dict[int, dict[str, float]] = {
+    1: {"Se": 0.36, "Ti": 0.22, "Fi": 0.18, "Fe": 0.12, "Ni": 0.12},
+    2: {"Si": 0.30, "Te": 0.26, "Fi": 0.20, "Se": 0.12, "Ni": 0.12},
+    3: {"Ti": 0.38, "Te": 0.24, "Ne": 0.22, "Se": 0.10, "Fe": 0.06},
+    4: {"Fi": 0.32, "Si": 0.26, "Ni": 0.24, "Fe": 0.14, "Te": 0.04},
+    5: {"Fi": 0.30, "Fe": 0.26, "Se": 0.22, "Ne": 0.14, "Ni": 0.08},
+    6: {"Te": 0.34, "Si": 0.30, "Ti": 0.18, "Se": 0.08, "Fi": 0.06, "Ni": 0.04},
+    7: {"Fi": 0.32, "Se": 0.28, "Fe": 0.22, "Ti": 0.12, "Ni": 0.06},
+    8: {"Ni": 0.32, "Fe": 0.28, "Fi": 0.20, "Se": 0.14, "Ti": 0.06},
+    9: {"Ni": 0.30, "Fe": 0.26, "Te": 0.22, "Ne": 0.14, "Ti": 0.08},
+    10: {"Te": 0.36, "Si": 0.26, "Se": 0.14, "Fe": 0.10, "Ni": 0.08, "Ti": 0.06},
+    11: {"Ne": 0.30, "Fe": 0.28, "Te": 0.18, "Ti": 0.12, "Se": 0.08, "Ni": 0.04},
+    12: {"Ni": 0.40, "Fi": 0.28, "Fe": 0.16, "Si": 0.10, "Ne": 0.06},
 }
 
-# ── Weights ──
-W_NATURAL = 0.08
-W_ELEMENT = 0.32
-W_HOUSE = 0.60
-W_ASPECT = 0.12  # aspect between two planets
-W_RETROGRADE = 0.10  # retrograde shift
+# ── Aspect type → function boost ──
+ASPECT_FUNCTION: dict[str, dict[str, float]] = {
+    "conjunction": {"Te": 0.18, "Si": 0.18, "Ni": 0.16, "Se": 0.14, "Ti": 0.12, "Fe": 0.12, "Fi": 0.10},
+    "sextile": {"Ne": 0.22, "Fe": 0.20, "Te": 0.18, "Fi": 0.16, "Si": 0.12, "Ni": 0.08, "Ti": 0.04},
+    "square": {"Se": 0.26, "Te": 0.22, "Ti": 0.16, "Si": 0.12, "Fe": 0.10, "Ni": 0.08, "Fi": 0.06},
+    "trine": {"Ni": 0.20, "Si": 0.18, "Ne": 0.18, "Fi": 0.16, "Fe": 0.14, "Te": 0.10, "Ti": 0.04},
+    "opposition": {"Ti": 0.24, "Fi": 0.20, "Se": 0.18, "Ni": 0.16, "Te": 0.12, "Fe": 0.10},
+    "quincunx": {"Ni": 0.16, "Ne": 0.14, "Ti": 0.14, "Fi": 0.12, "Fe": 0.12, "Se": 0.10, "Te": 0.10, "Si": 0.08},
+}
 
-# Extraverted ↔ Introverted for retrograde planets
+# ── Planet pair → function boost ──
+PLANET_RELATION_FUNCTION: dict[tuple[str, str], dict[str, float]] = {
+    ("Sun", "Moon"): {"Fe": 0.24, "Fi": 0.22, "Ni": 0.18, "Si": 0.18, "Te": 0.10, "Se": 0.08},
+    ("Sun", "Mercury"): {"Te": 0.30, "Ti": 0.26, "Ni": 0.18, "Fe": 0.12, "Ne": 0.10, "Se": 0.04},
+    ("Sun", "Venus"): {"Fe": 0.26, "Fi": 0.24, "Si": 0.16, "Se": 0.12, "Ni": 0.12, "Te": 0.10},
+    ("Sun", "Mars"): {"Se": 0.34, "Te": 0.24, "Fe": 0.16, "Ti": 0.14, "Ni": 0.12},
+    ("Moon", "Mercury"): {"Fe": 0.24, "Ti": 0.20, "Si": 0.20, "Ne": 0.14, "Fi": 0.12, "Te": 0.10},
+    ("Moon", "Venus"): {"Fi": 0.32, "Fe": 0.26, "Si": 0.24, "Ni": 0.12, "Se": 0.06},
+    ("Moon", "Mars"): {"Se": 0.28, "Fe": 0.22, "Fi": 0.18, "Si": 0.14, "Te": 0.10, "Ni": 0.08},
+    ("Moon", "Saturn"): {"Si": 0.32, "Ti": 0.24, "Fi": 0.18, "Te": 0.14, "Ni": 0.12},
+    ("Moon", "Neptune"): {"Ni": 0.36, "Fi": 0.24, "Fe": 0.22, "Si": 0.12, "Ne": 0.06},
+    ("Mercury", "Venus"): {"Fe": 0.24, "Fi": 0.22, "Ne": 0.18, "Ti": 0.18, "Si": 0.10, "Te": 0.08},
+    ("Mercury", "Mars"): {"Ti": 0.28, "Te": 0.26, "Se": 0.24, "Fe": 0.10, "Ne": 0.08, "Ni": 0.04},
+    ("Mercury", "Jupiter"): {"Ne": 0.28, "Te": 0.24, "Fe": 0.18, "Ni": 0.14, "Ti": 0.12, "Si": 0.04},
+    ("Mercury", "Saturn"): {"Ti": 0.32, "Te": 0.28, "Si": 0.20, "Ni": 0.12, "Ne": 0.08},
+    ("Venus", "Mars"): {"Fi": 0.28, "Se": 0.26, "Fe": 0.22, "Si": 0.12, "Te": 0.08, "Ni": 0.04},
+    ("Venus", "Saturn"): {"Fi": 0.30, "Si": 0.24, "Ti": 0.18, "Fe": 0.14, "Ni": 0.10, "Te": 0.04},
+    ("Mars", "Saturn"): {"Ti": 0.28, "Se": 0.26, "Te": 0.24, "Si": 0.12, "Ni": 0.06, "Fi": 0.04},
+    ("Mars", "Pluto"): {"Se": 0.36, "Te": 0.20, "Ni": 0.18, "Fi": 0.14, "Ti": 0.12},
+    ("Jupiter", "Saturn"): {"Te": 0.28, "Ti": 0.22, "Si": 0.18, "Ni": 0.16, "Ne": 0.10, "Fe": 0.06},
+    ("Jupiter", "Neptune"): {"Ni": 0.30, "Fe": 0.24, "Ne": 0.20, "Fi": 0.16, "Te": 0.10},
+    ("Saturn", "Uranus"): {"Ti": 0.28, "Te": 0.24, "Ne": 0.20, "Si": 0.16, "Ni": 0.12},
+    ("Saturn", "Neptune"): {"Ni": 0.28, "Si": 0.22, "Ti": 0.20, "Fi": 0.16, "Te": 0.14},
+    ("Uranus", "Neptune"): {"Ni": 0.30, "Ne": 0.28, "Ti": 0.16, "Fe": 0.12, "Fi": 0.08, "Te": 0.06},
+    ("Uranus", "Pluto"): {"Se": 0.24, "Ne": 0.24, "Ti": 0.20, "Ni": 0.18, "Te": 0.14},
+    ("Neptune", "Pluto"): {"Ni": 0.34, "Fi": 0.22, "Se": 0.18, "Fe": 0.14, "Ti": 0.12},
+}
+
+# ── Retrograde shift ──
 EXTRO_TO_INTRO: dict[str, str] = {
     "Te": "Ti", "Ti": "Te",
     "Se": "Si", "Si": "Se",
@@ -98,31 +137,29 @@ EXTRO_TO_INTRO: dict[str, str] = {
     "Ne": "Ni", "Ni": "Ne",
 }
 
-# Aspect type → boost multiplier
-ASPECT_BOOST: dict[str, float] = {
-    "conjunction": 0.6,
-    "trine": 0.5,
-    "sextile": 0.4,
-    "square": 0.35,
-    "opposition": 0.3,
-    "quincunx": 0.2,
-}
+# ── Global layer weights ──
+W_PLANET = 0.14
+W_ELEMENT = 0.20
+W_HOUSE = 0.32
+W_ASPECT = 0.22
+W_RELATION = 0.12
 
-# Score composition
-W_FUNCTION_SCORE = 0.68
-W_ELEMENT_SCORE = 0.17
-W_MODALITY_SCORE = 0.15
-SECOND_FUNCTION_FACTOR = 0.62
+# ── Type scoring weights ──
+W_FUNCTION_SCORE = 0.70
+W_ELEMENT_SCORE = 0.08
+W_MODALITY_SCORE = 0.14
+W_ORDER_SCORE = 0.08
+SECOND_FUNCTION_FACTOR = 0.48
+AXIS_BONUS_FACTOR = 0.05
 
 
 def _compute_function_strengths(chart: object) -> dict[str, float]:
-    """Compute function strengths from chart data using planet positions."""
+    """Compute function strengths from chart data."""
     strengths: dict[str, float] = {f: 0.0 for f in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]}
 
     if not hasattr(chart, "planets"):
         return strengths
 
-    # Build planet lookup for aspect processing
     planet_map: dict[str, object] = {}
     for planet in chart.planets:
         planet_map[planet.name] = planet
@@ -134,21 +171,21 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
         elem = SIGN_ELEMENT.get(sign, "fire")
         is_retrograde = getattr(planet, "is_retrograde", False)
 
-        # Natural affinity (shifted if retrograde)
+        # Planet natural affinity
         natural = PLANET_NATURAL.get(name, {})
         for func, weight in natural.items():
             target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
-            strengths[target] += W_NATURAL * weight
+            strengths[target] += W_PLANET * weight
 
-        # Element boost (shifted if retrograde)
-        elem_boost = ELEMENT_FUNCTION_BOOST.get(elem, {})
+        # Element boost
+        elem_boost = ELEMENT_FUNCTION.get(elem, {})
         for func, weight in elem_boost.items():
             target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
             strengths[target] += W_ELEMENT * weight
 
-        # House boost (shifted if retrograde)
+        # House boost
         if house:
-            house_boost = HOUSE_FUNCTION_BOOST.get(house, {})
+            house_boost = HOUSE_FUNCTION.get(house, {})
             for func, weight in house_boost.items():
                 target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
                 strengths[target] += W_HOUSE * weight
@@ -156,20 +193,32 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
     # Aspect-based function boosting
     if hasattr(chart, "aspects"):
         for aspect in chart.aspects:
-            boost = ASPECT_BOOST.get(aspect.aspect_type, 0.2)
-            p1 = planet_map.get(aspect.planet_a)
-            p2 = planet_map.get(aspect.planet_b)
-            if not p1 or not p2:
+            aspect_type = aspect.aspect_type
+            aspect_funcs = ASPECT_FUNCTION.get(aspect_type, {})
+            if not aspect_funcs:
                 continue
 
-            # Both planets get function boost from the aspect
-            for p in (p1, p2):
-                pname = getattr(p, "name", "")
-                natural = PLANET_NATURAL.get(pname, {})
-                is_retro = getattr(p, "is_retrograde", False)
-                for func, weight in natural.items():
-                    target = EXTRO_TO_INTRO.get(func, func) if is_retro else func
-                    strengths[target] += W_ASPECT * boost * weight
+            # Apply aspect functions weighted by orb (tighter = stronger)
+            orb = getattr(aspect, "orb", 5.0)
+            orb_factor = max(0.2, 1.0 - orb / 10.0)  # 0°=1.0, 10°=0.2
+
+            for func, weight in aspect_funcs.items():
+                strengths[func] += W_ASPECT * weight * orb_factor
+
+    # Planet relation function boosting
+    if hasattr(chart, "aspects"):
+        for aspect in chart.aspects:
+            key_forward = (aspect.planet_a, aspect.planet_b)
+            key_reverse = (aspect.planet_b, aspect.planet_a)
+            relation = PLANET_RELATION_FUNCTION.get(key_forward) or PLANET_RELATION_FUNCTION.get(key_reverse)
+            if not relation:
+                continue
+
+            orb = getattr(aspect, "orb", 5.0)
+            orb_factor = max(0.2, 1.0 - orb / 10.0)
+
+            for func, weight in relation.items():
+                strengths[func] += W_RELATION * weight * orb_factor
 
     # Normalize to 0-1
     max_val = max(strengths.values()) if strengths else 1.0

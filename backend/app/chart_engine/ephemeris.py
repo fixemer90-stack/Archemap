@@ -141,7 +141,13 @@ def _compute_real(dt: datetime, lat: float, lon: float) -> list[PlanetPosition]:
     jd = datetime_to_julian_day(dt)
     positions: list[PlanetPosition] = []
     for name, pid in zip(PLANET_NAMES, _get_planet_ids(), strict=True):
-        result = swe.calc_ut(jd, pid, swe.FLG_SPEED | swe.FLG_SWIEPH)
+        # Moshier ephemeris (built-in, no files needed)
+        # Chiron may fail without ephemeris files — skip gracefully
+        try:
+            result = swe.calc_ut(jd, pid, swe.FLG_SPEED)
+        except swe.Error:
+            logger.warning("swisseph_planet_skip", planet=name)
+            continue
         plon, plat, _, pspeed = result[0][:4]
         sign, sign_deg = longitude_to_sign(plon)
         positions.append(

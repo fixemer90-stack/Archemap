@@ -9,7 +9,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import structlog
+
 from app.chart_engine.types import PlanetPosition, longitude_to_sign
+
+logger = structlog.get_logger()
 
 # ── Try importing swisseph ────────────────────────────────────────────
 try:
@@ -76,8 +80,8 @@ def compute_planet_positions(
     if _HAS_SWISSEPH:
         try:
             return _compute_real(dt, latitude, longitude)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("swisseph_fallback", error=str(e))
     return _compute_stub(dt, latitude, longitude)
 
 
@@ -91,8 +95,8 @@ def compute_houses(
     if _HAS_SWISSEPH:
         try:
             return _houses_real(julian_day, latitude, longitude, system)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("swisseph_fallback", error=str(e))
     return _houses_stub(julian_day, latitude, longitude)
 
 

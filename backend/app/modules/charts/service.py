@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -122,7 +123,7 @@ class ChartService:
         return profile
 
 
-def _chart_to_dict(chart: ChartData) -> dict[str, object]:
+def _chart_to_dict(chart: ChartData) -> dict[str, Any]:
     """Serialize ChartData to a JSON-compatible dict."""
     return {
         "birth_datetime": chart.birth_datetime.isoformat(),

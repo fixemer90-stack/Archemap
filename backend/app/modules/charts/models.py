@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -28,4 +29,4 @@ class ChartSnapshot(BaseModel):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     engine_version: Mapped[str] = mapped_column(String(20), nullable=False, default="0.1.0")
-    chart_data: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    chart_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)

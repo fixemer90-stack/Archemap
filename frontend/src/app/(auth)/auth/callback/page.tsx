@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
-export default function AuthCallbackPage() {
+function CallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const setTokens = useAuthStore((s) => s.setTokens);
@@ -18,10 +18,8 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // Store tokens
     setTokens(accessToken, refreshToken);
 
-    // Fetch user profile
     fetch("/api/v1/users/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
@@ -42,5 +40,19 @@ export default function AuthCallbackPage() {
         <p className="text-muted-foreground">Completing sign in...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
+      <CallbackContent />
+    </Suspense>
   );
 }

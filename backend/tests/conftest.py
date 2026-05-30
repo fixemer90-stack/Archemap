@@ -30,9 +30,15 @@ def event_loop() -> asyncio.AbstractEventLoop:  # type: ignore[misc]
     loop.close()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def _setup_database() -> AsyncGenerator[None, None]:
-    """Create all tables before each test and drop them after."""
+    """Create all tables before each test and drop them after.
+
+    Use only in integration tests that need a real database::
+
+        @pytest.mark.usefixtures("_setup_database")
+        def test_something(db_session): ...
+    """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

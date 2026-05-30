@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import date, datetime
 
 import structlog
 from sqlalchemy import select
@@ -69,6 +70,15 @@ class OAuthService:
         email = user_info.get("default_email") or (emails[0] if emails else None)
         name = user_info.get("real_name") or user_info.get("display_name") or user_info.get("login")
 
+        # Parse birthday (YYYY-MM-DD format from Yandex)
+        birth_date: date | None = None
+        birthday_str = user_info.get("birthday")
+        if birthday_str:
+            try:
+                birth_date = datetime.strptime(birthday_str, "%Y-%m-%d").date()
+            except ValueError:
+                logger.warning("yandex_birthday_parse_failed", birthday=birthday_str)
+
         if not yandex_id:
             raise AuthorizationError("Failed to get user ID from Yandex")
 
@@ -79,6 +89,7 @@ class OAuthService:
             provider_email=email,
             provider_name=name,
             provider_access_token=access_token,
+            birth_date=birth_date,
         )
 
         # Issue our tokens
@@ -99,6 +110,7 @@ class OAuthService:
         provider_email: str | None,
         provider_name: str | None,
         provider_access_token: str | None,
+        birth_date: date | None = None,
     ) -> User:
         """Find existing user by identity link or email, or create new."""
         # 1. Check if identity link exists
@@ -117,6 +129,9 @@ class OAuthService:
             if user and user.is_active:
                 # Update tokens
                 link.access_token = provider_access_token
+                # Update birth_date if we got it and user doesn't have one
+                if birth_date and not user.birth_date:
+                    user.birth_date = birth_date
                 await self.db.flush()
                 return user
 
@@ -137,6 +152,9 @@ class OAuthService:
                 )
                 self.db.add(new_link)
                 matched_user.is_verified = True  # OAuth emails are considered verified
+                # Update birth_date if we got it and user doesn't have one
+                if birth_date and not matched_user.birth_date:
+                    matched_user.birth_date = birth_date
                 await self.db.flush()
                 logger.info("oauth_account_linked", user_id=str(matched_user.id), provider=provider)
                 return matched_user
@@ -148,6 +166,7 @@ class OAuthService:
         user = User(
             email=provider_email,
             hashed_password="",  # OAuth users don't have a password
+            birth_date=birth_date,
             is_active=True,
             is_verified=True,  # OAuth emails are considered verified
         )
@@ -166,5 +185,5 @@ class OAuthService:
         self.db.add(new_link)
         await self.db.flush()
 
-        logger.info("oauth_user_created", user_id=str(user.id), provider=provider)
+        logger.info("oauth_user_created", user_id=str(user.id), provider=provider, has_birth_date=birth_date is not None)
         return user

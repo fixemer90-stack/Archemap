@@ -255,10 +255,10 @@ MODEL_A: dict[str, dict[str, str]] = {
         "creative": "Se",
         "role": "Fi",
         "pain": "Ne",
-        "suggestive": "Fe",
-        "activation": "Si",
+        "suggestive": "Ni",
+        "activation": "Fe",
         "restrictive": "Te",
-        "background": "Ni",
+        "background": "Si",
     },
     "SLE": {
         "base": "Se",
@@ -315,9 +315,9 @@ MODEL_A: dict[str, dict[str, str]] = {
         "creative": "Se",
         "role": "Ti",
         "pain": "Ne",
-        "suggestive": "Fe",
+        "suggestive": "Te",
         "activation": "Ni",
-        "restrictive": "Te",
+        "restrictive": "Fe",
         "background": "Si",
     },
     "LSE": {
@@ -403,10 +403,7 @@ def _model_a_fit(type_code: str, strengths: dict[str, float]) -> float:
     role_fit = _window_score(role, target=0.50, tolerance=0.50) * 0.05
 
     # Id functions can be strong but should not pull the type.
-    id_penalty = (
-        max(0.0, restrictive - base) * 0.10
-        + max(0.0, background - creative) * 0.08
-    )
+    id_penalty = max(0.0, restrictive - base) * 0.10 + max(0.0, background - creative) * 0.08
 
     raw = ego_strength + super_id_fit + pain_fit + role_fit - pain_penalty - id_penalty
     return max(0.0, min(raw, 1.0))

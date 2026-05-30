@@ -86,8 +86,8 @@ SIGN_ELEMENT = {
 
 # ── Element → function boost ──
 ELEMENT_FUNCTION: dict[str, dict[str, float]] = {
-    "fire": {"Se": 0.34, "Fe": 0.30, "Ni": 0.18, "Ne": 0.12, "Te": 0.06},
-    "earth": {"Te": 0.36, "Si": 0.30, "Ti": 0.22, "Fi": 0.08, "Se": 0.04},
+    "fire": {"Se": 0.42, "Fe": 0.22, "Ni": 0.06, "Ne": 0.12, "Te": 0.06},
+    "earth": {"Te": 0.28, "Si": 0.30, "Ti": 0.30, "Fi": 0.08, "Se": 0.04},
     "air": {"Ne": 0.40, "Ti": 0.28, "Ni": 0.14, "Te": 0.12, "Fe": 0.06},
     "water": {"Ni": 0.34, "Fi": 0.30, "Fe": 0.22, "Si": 0.10, "Se": 0.04},
 }
@@ -95,15 +95,15 @@ ELEMENT_FUNCTION: dict[str, dict[str, float]] = {
 # ── House → function boost ──
 HOUSE_FUNCTION: dict[int, dict[str, float]] = {
     1: {"Se": 0.36, "Ti": 0.22, "Fi": 0.18, "Fe": 0.12, "Ni": 0.12},
-    2: {"Si": 0.30, "Te": 0.26, "Fi": 0.20, "Se": 0.12, "Ni": 0.12},
-    3: {"Ne": 0.38, "Ti": 0.30, "Te": 0.16, "Fe": 0.08, "Ni": 0.04, "Se": 0.04},
+    2: {"Si": 0.30, "Te": 0.26, "Fi": 0.20, "Se": 0.12, "Ni": 0.12, "Ti": 0.12},
+    3: {"Ne": 0.38, "Ti": 0.30, "Te": 0.16, "Fe": 0.08, "Ni": 0.04, "Se": 0.20},
     4: {"Fi": 0.32, "Si": 0.26, "Ni": 0.24, "Fe": 0.14, "Te": 0.04},
     5: {"Fi": 0.30, "Fe": 0.26, "Se": 0.22, "Ne": 0.14, "Ni": 0.08},
-    6: {"Te": 0.34, "Si": 0.30, "Ti": 0.18, "Se": 0.08, "Fi": 0.06, "Ni": 0.04},
+    6: {"Te": 0.34, "Si": 0.30, "Ti": 0.18, "Se": 0.14, "Fi": 0.06, "Ni": 0.04},
     7: {"Fi": 0.32, "Se": 0.28, "Fe": 0.22, "Ti": 0.12, "Ni": 0.06},
     8: {"Ni": 0.32, "Fe": 0.28, "Fi": 0.20, "Se": 0.14, "Ti": 0.06},
-    9: {"Ni": 0.30, "Fe": 0.26, "Te": 0.22, "Ne": 0.14, "Ti": 0.08},
-    10: {"Te": 0.36, "Si": 0.26, "Se": 0.14, "Fe": 0.10, "Ni": 0.08, "Ti": 0.06},
+    9: {"Ni": 0.30, "Fe": 0.26, "Te": 0.22, "Ne": 0.14, "Ti": 0.14},
+    10: {"Te": 0.36, "Si": 0.26, "Se": 0.14, "Fe": 0.10, "Ni": 0.08, "Ti": 0.22},
     11: {"Ne": 0.40, "Te": 0.20, "Fe": 0.18, "Ti": 0.14, "Ni": 0.06, "Se": 0.02},
     12: {"Ni": 0.40, "Fi": 0.28, "Fe": 0.16, "Si": 0.10, "Ne": 0.06},
 }
@@ -111,9 +111,9 @@ HOUSE_FUNCTION: dict[int, dict[str, float]] = {
 # ── Aspect type → function boost ──
 ASPECT_FUNCTION: dict[str, dict[str, float]] = {
     "conjunction": {"Te": 0.18, "Si": 0.18, "Ni": 0.16, "Se": 0.14, "Ti": 0.12, "Fe": 0.12, "Fi": 0.10},
-    "sextile": {"Ne": 0.22, "Fe": 0.20, "Te": 0.18, "Fi": 0.16, "Si": 0.12, "Ni": 0.08, "Ti": 0.04},
+    "sextile": {"Ne": 0.22, "Fe": 0.20, "Te": 0.18, "Fi": 0.16, "Si": 0.12, "Ni": 0.08, "Se": 0.08, "Ti": 0.04},
     "square": {"Se": 0.26, "Te": 0.22, "Ti": 0.16, "Si": 0.12, "Fe": 0.10, "Ni": 0.08, "Fi": 0.06},
-    "trine": {"Ni": 0.20, "Si": 0.18, "Ne": 0.18, "Fi": 0.16, "Fe": 0.14, "Te": 0.10, "Ti": 0.04},
+    "trine": {"Ni": 0.20, "Si": 0.18, "Ne": 0.18, "Fi": 0.16, "Fe": 0.14, "Te": 0.10, "Ti": 0.10, "Se": 0.10},
     "opposition": {"Ti": 0.24, "Fi": 0.20, "Se": 0.18, "Ni": 0.16, "Te": 0.12, "Fe": 0.10},
     "quincunx": {"Ni": 0.16, "Ne": 0.14, "Ti": 0.14, "Fi": 0.12, "Fe": 0.12, "Se": 0.10, "Te": 0.10, "Si": 0.08},
 }
@@ -160,41 +160,256 @@ EXTRO_TO_INTRO: dict[str, str] = {
 }
 
 # ── Global layer weights ──
-W_PLANET = 0.14
-W_ELEMENT = 0.20
+# House and planet dominate; element is secondary.
+W_PLANET = 0.20
+W_ELEMENT = 0.12
 W_HOUSE = 0.32
-W_ASPECT = 0.22
-W_RELATION = 0.12
+W_ASPECT = 0.20
+W_RELATION = 0.16
 
 # ── Differential planet importance ──
-# Personal (Sun/Moon/Mercury/Venus/Mars): 1.0-1.8
-# Social (Jupiter/Saturn): 0.7-0.8
-# Generational (Uranus/Neptune/Pluto): 0.3-0.4
-# Points (Nodes/Lilith/Chiron): 0.15-0.25
 PLANET_WEIGHT: dict[str, float] = {
-    "Sun": 1.8,
-    "Moon": 1.6,
-    "Mercury": 1.3,
-    "Venus": 1.2,
-    "Mars": 1.3,
-    "Jupiter": 0.8,
-    "Saturn": 0.9,
-    "Uranus": 0.4,
-    "Neptune": 0.4,
-    "Pluto": 0.5,
-    "North Node": 0.2,
-    "South Node": 0.2,
-    "Lilith": 0.2,
-    "Chiron": 0.25,
+    "Sun": 1.30,
+    "Moon": 1.30,
+    "Mercury": 1.30,
+    "Venus": 1.18,
+    "Mars": 1.30,
+    "Jupiter": 0.70,
+    "Saturn": 1.22,
+    "Uranus": 0.25,
+    "Neptune": 0.28,
+    "Pluto": 0.36,
+    "North Node": 0.10,
+    "South Node": 0.10,
+    "Lilith": 0.12,
+    "Chiron": 0.16,
 }
 
 # ── Type scoring weights ──
-W_FUNCTION_SCORE = 0.70
-W_ELEMENT_SCORE = 0.08
-W_MODALITY_SCORE = 0.14
-W_ORDER_SCORE = 0.08
-SECOND_FUNCTION_FACTOR = 0.48
-AXIS_BONUS_FACTOR = 0.05
+# Function + Model A dominate; elements/modalities are tie-breakers.
+W_FUNCTION_SCORE = 0.68
+W_MODEL_A_SCORE = 0.22
+W_ELEMENT_SCORE = 0.025
+W_MODALITY_SCORE = 0.045
+W_ORDER_SCORE = 0.075
+SECOND_FUNCTION_FACTOR = 0.66
+AXIS_BONUS_FACTOR = 0.035
+WRONG_ORDER_PENALTY = 0.07
+
+
+# ── Model A function map ──
+# Standard Model A positions for all 16 socionics types.
+MODEL_A: dict[str, dict[str, str]] = {
+    "ILE": {
+        "base": "Ne",
+        "creative": "Ti",
+        "role": "Se",
+        "pain": "Fi",
+        "suggestive": "Si",
+        "activation": "Fe",
+        "restrictive": "Ni",
+        "background": "Te",
+    },
+    "SEI": {
+        "base": "Si",
+        "creative": "Fe",
+        "role": "Ni",
+        "pain": "Te",
+        "suggestive": "Ne",
+        "activation": "Ti",
+        "restrictive": "Se",
+        "background": "Fi",
+    },
+    "ESE": {
+        "base": "Fe",
+        "creative": "Si",
+        "role": "Te",
+        "pain": "Ni",
+        "suggestive": "Ti",
+        "activation": "Ne",
+        "restrictive": "Fi",
+        "background": "Se",
+    },
+    "LII": {
+        "base": "Ti",
+        "creative": "Ne",
+        "role": "Fi",
+        "pain": "Se",
+        "suggestive": "Fe",
+        "activation": "Si",
+        "restrictive": "Te",
+        "background": "Ni",
+    },
+    "EIE": {
+        "base": "Fe",
+        "creative": "Ni",
+        "role": "Te",
+        "pain": "Si",
+        "suggestive": "Ti",
+        "activation": "Se",
+        "restrictive": "Fi",
+        "background": "Ne",
+    },
+    "LSI": {
+        "base": "Ti",
+        "creative": "Se",
+        "role": "Fi",
+        "pain": "Ne",
+        "suggestive": "Fe",
+        "activation": "Si",
+        "restrictive": "Te",
+        "background": "Ni",
+    },
+    "SLE": {
+        "base": "Se",
+        "creative": "Ti",
+        "role": "Ne",
+        "pain": "Fi",
+        "suggestive": "Ni",
+        "activation": "Fe",
+        "restrictive": "Si",
+        "background": "Te",
+    },
+    "IEI": {
+        "base": "Ni",
+        "creative": "Fe",
+        "role": "Si",
+        "pain": "Te",
+        "suggestive": "Se",
+        "activation": "Ti",
+        "restrictive": "Ne",
+        "background": "Fi",
+    },
+    "SEE": {
+        "base": "Se",
+        "creative": "Fi",
+        "role": "Ne",
+        "pain": "Ti",
+        "suggestive": "Ni",
+        "activation": "Te",
+        "restrictive": "Si",
+        "background": "Fe",
+    },
+    "ILI": {
+        "base": "Ni",
+        "creative": "Te",
+        "role": "Si",
+        "pain": "Fe",
+        "suggestive": "Se",
+        "activation": "Fi",
+        "restrictive": "Ne",
+        "background": "Ti",
+    },
+    "LIE": {
+        "base": "Te",
+        "creative": "Ni",
+        "role": "Fe",
+        "pain": "Si",
+        "suggestive": "Fi",
+        "activation": "Se",
+        "restrictive": "Ti",
+        "background": "Ne",
+    },
+    "ESI": {
+        "base": "Fi",
+        "creative": "Se",
+        "role": "Ti",
+        "pain": "Ne",
+        "suggestive": "Fe",
+        "activation": "Ni",
+        "restrictive": "Te",
+        "background": "Si",
+    },
+    "LSE": {
+        "base": "Te",
+        "creative": "Si",
+        "role": "Fe",
+        "pain": "Ni",
+        "suggestive": "Fi",
+        "activation": "Ne",
+        "restrictive": "Ti",
+        "background": "Se",
+    },
+    "EII": {
+        "base": "Fi",
+        "creative": "Ne",
+        "role": "Ti",
+        "pain": "Se",
+        "suggestive": "Te",
+        "activation": "Si",
+        "restrictive": "Fe",
+        "background": "Ni",
+    },
+    "IEE": {
+        "base": "Ne",
+        "creative": "Fi",
+        "role": "Se",
+        "pain": "Ti",
+        "suggestive": "Si",
+        "activation": "Te",
+        "restrictive": "Ni",
+        "background": "Fe",
+    },
+    "SLI": {
+        "base": "Si",
+        "creative": "Te",
+        "role": "Ni",
+        "pain": "Fe",
+        "suggestive": "Ne",
+        "activation": "Fi",
+        "restrictive": "Se",
+        "background": "Ti",
+    },
+}
+
+
+def _window_score(value: float, target: float, tolerance: float) -> float:
+    """1.0 near target, falls to 0.0 outside tolerance."""
+    return max(0.0, 1.0 - abs(value - target) / tolerance)
+
+
+def _model_a_fit(type_code: str, strengths: dict[str, float]) -> float:
+    """Score how well function distribution matches Model A structure.
+
+    This is not TYPE_PRIOR.
+    It does not say "this person is LSI because we want LSI".
+    It says: strong/weak/valued/non-valued function pattern resembles this type.
+    """
+    m = MODEL_A.get(type_code)
+    if not m:
+        return 0.0
+
+    base = strengths.get(m["base"], 0.0)
+    creative = strengths.get(m["creative"], 0.0)
+    role = strengths.get(m["role"], 0.0)
+    pain = strengths.get(m["pain"], 0.0)
+    suggestive = strengths.get(m["suggestive"], 0.0)
+    activation = strengths.get(m["activation"], 0.0)
+    restrictive = strengths.get(m["restrictive"], 0.0)
+    background = strengths.get(m["background"], 0.0)
+
+    ego_strength = base * 0.34 + creative * 0.24
+
+    # Suggestive and activation are valued but should not dominate.
+    suggestive_fit = _window_score(suggestive, target=0.45, tolerance=0.45)
+    activation_fit = _window_score(activation, target=0.55, tolerance=0.45)
+    super_id_fit = suggestive_fit * 0.10 + activation_fit * 0.07
+
+    # Pain should be below ego block.
+    pain_fit = max(0.0, min(base, creative) - pain) * 0.18
+    pain_penalty = max(0.0, pain - min(base, creative)) * 0.22
+
+    # Role should be moderate: not zero, not dominant.
+    role_fit = _window_score(role, target=0.50, tolerance=0.50) * 0.05
+
+    # Id functions can be strong but should not pull the type.
+    id_penalty = (
+        max(0.0, restrictive - base) * 0.10
+        + max(0.0, background - creative) * 0.08
+    )
+
+    raw = ego_strength + super_id_fit + pain_fit + role_fit - pain_penalty - id_penalty
+    return max(0.0, min(raw, 1.0))
 
 
 def _compute_function_strengths(chart: object) -> dict[str, float]:
@@ -214,25 +429,26 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
         house = planet.house
         elem = SIGN_ELEMENT.get(sign, "fire")
         is_retrograde = getattr(planet, "is_retrograde", False)
+        planet_factor = PLANET_WEIGHT.get(name, 1.0)
 
         # Planet natural affinity
         natural = PLANET_NATURAL.get(name, {})
         for func, weight in natural.items():
             target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
-            strengths[target] += W_PLANET * weight
+            strengths[target] += W_PLANET * weight * planet_factor
 
         # Element boost
         elem_boost = ELEMENT_FUNCTION.get(elem, {})
         for func, weight in elem_boost.items():
             target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
-            strengths[target] += W_ELEMENT * weight
+            strengths[target] += W_ELEMENT * weight * planet_factor
 
         # House boost
         if house:
             house_boost = HOUSE_FUNCTION.get(house, {})
             for func, weight in house_boost.items():
                 target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
-                strengths[target] += W_HOUSE * weight
+                strengths[target] += W_HOUSE * weight * planet_factor
 
     # Aspect-based function boosting
     if hasattr(chart, "aspects"):
@@ -311,34 +527,35 @@ def _compute_function_profiles(chart: object) -> dict[str, FunctionProfile]:
         house = planet.house
         elem = SIGN_ELEMENT.get(sign, "fire")
         is_retrograde = getattr(planet, "is_retrograde", False)
+        planet_factor = PLANET_WEIGHT.get(name, 1.0)
 
         natural = PLANET_NATURAL.get(name, {})
         for func, weight in natural.items():
             target = EXTRO_TO_INTRO.get(func, func) if is_retrograde else func
 
-            # Base strength from all planets
-            strength[target] += W_PLANET * weight
-
-            # Element boost
-            elem_boost = ELEMENT_FUNCTION.get(elem, {})
-            for efunc, eweight in elem_boost.items():
-                etarget = EXTRO_TO_INTRO.get(efunc, efunc) if is_retrograde else efunc
-                strength[etarget] += W_ELEMENT * eweight
-
-            # House boost
-            if house:
-                house_boost = HOUSE_FUNCTION.get(house, {})
-                for hfunc, hweight in house_boost.items():
-                    htarget = EXTRO_TO_INTRO.get(hfunc, hfunc) if is_retrograde else hfunc
-                    strength[htarget] += W_HOUSE * hweight
+            # Base strength from planet's natural affinity
+            strength[target] += W_PLANET * weight * planet_factor
 
             # Tension layer: Chiron/Pluto contribute to tension
             if name in TENSION_PLANETS:
-                tension[target] += weight * 0.5
+                tension[target] += weight * 0.5 * planet_factor
 
             # Distortion layer: Lilith contributes to distortion
             if name in DISTORTION_PLANETS:
-                distortion[target] += weight * 0.5
+                distortion[target] += weight * 0.5 * planet_factor
+
+        # Element boost
+        elem_boost = ELEMENT_FUNCTION.get(elem, {})
+        for efunc, eweight in elem_boost.items():
+            etarget = EXTRO_TO_INTRO.get(efunc, efunc) if is_retrograde else efunc
+            strength[etarget] += W_ELEMENT * eweight * planet_factor
+
+        # House boost
+        if house:
+            house_boost = HOUSE_FUNCTION.get(house, {})
+            for hfunc, hweight in house_boost.items():
+                htarget = EXTRO_TO_INTRO.get(hfunc, hfunc) if is_retrograde else hfunc
+                strength[htarget] += W_HOUSE * hweight * planet_factor
 
     # Aspect-based layers
     if hasattr(chart, "aspects"):
@@ -410,17 +627,23 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
         e2_score = elements[e2]
 
         order_alignment = max(f1_score - f2_score, 0.0)
+        wrong_order_penalty = max(f2_score - f1_score, 0.0)
         axis_bonus = min(f1_score, f2_score)
+
+        model_a_score = _model_a_fit(code, func_strengths)
 
         raw = (
             W_FUNCTION_SCORE * (f1_score + f2_score * SECOND_FUNCTION_FACTOR)
+            + W_MODEL_A_SCORE * model_a_score
             + W_ELEMENT_SCORE * (e1_score + e2_score * SECOND_FUNCTION_FACTOR)
             + W_MODALITY_SCORE * modalities.get(mod, 0)
             + W_ORDER_SCORE * order_alignment
             + AXIS_BONUS_FACTOR * axis_bonus
+            - WRONG_ORDER_PENALTY * wrong_order_penalty
         )
         max_possible = (
             W_FUNCTION_SCORE * (1 + SECOND_FUNCTION_FACTOR)
+            + W_MODEL_A_SCORE
             + W_ELEMENT_SCORE * (1 + SECOND_FUNCTION_FACTOR)
             + W_MODALITY_SCORE
             + W_ORDER_SCORE
@@ -444,6 +667,9 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
                     "func2": round(f2_score, 3),
                     "elem1": round(e1_score, 3),
                     "elem2": round(e2_score, 3),
+                    "order_alignment": round(order_alignment, 3),
+                    "wrong_order_penalty": round(wrong_order_penalty, 3),
+                    "model_a": round(model_a_score, 3),
                     # Full function strengths
                     "Se": round(func_strengths.get("Se", 0), 3),
                     "Si": round(func_strengths.get("Si", 0), 3),

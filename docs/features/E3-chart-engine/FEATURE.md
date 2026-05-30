@@ -24,7 +24,7 @@
 |---|---|---|
 | S01 | [PersonProfile: модель (дата, время, место, TZ), CRUD API, валидация даты (1900–2100)](S01-person-profile.md) | ✅ Готово |
 | S02 | [Геокодинг (GeoNames): строка места → lat/lon/city/country, кэш 24ч в Redis](S02-geocoding.md) | ✅ Готово |
-| S03 | [Определение часового пояса: IANA TZ по координатам + дате, tzdata, исторические изменения](S03-timezone-resolution.md) | ⬜ Не начато |
+| S03 | [Определение часового пояса: IANA TZ по координатам + дате, tzdata, исторические изменения](S03-timezone-resolution.md) | ✅ Готово |
 | S04 | [Swiss Ephemeris + Flatlib: позиции планет, дома (Placidus), аспекты с орбами, CLI для тестирования](S04-swiss-ephemeris.md) | ⬜ Не начато |
 | S05 | [ChartSnapshot: вычисление за <2с, сохранение в БД, кэширование, повторный запрос отдаёт кэш](S05-chart-snapshot.md) | ⬜ Не начато |
 | S06 | [Нормализация признаков: извлечение feature vector из карты, значения 0.0–1.0, quality flags](S06-feature-normalization.md) | ⬜ Не начато |

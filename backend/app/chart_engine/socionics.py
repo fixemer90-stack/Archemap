@@ -1,4 +1,4 @@
-"""Socionics rule engine — weighted scoring with calibration."""
+"""Socionics rule engine v2 — planet-first weighted scoring."""
 
 from __future__ import annotations
 
@@ -12,68 +12,174 @@ class SocionicsResult:
     type_code: str
     type_name: str
     functions: str
-    score: float  # 0.0 - 1.0
-    confidence: float  # 0.0 - 1.0
+    score: float
+    confidence: float
     breakdown: dict[str, float] = field(default_factory=dict)
 
 
-# ── 16 types: (code, name, functions, element1, element2, modality) ──
-# element1 = programmatic function's element (weight 2.0)
-# element2 = creative function's element (weight 1.5)
-# modality = rationality axis (weight 1.0)
+# ── 16 types ──
 TYPES = [
-    ("ILE", "Искатель",        "Ne+Ti", "air",   "earth", "mutable"),
-    ("SEI", "Посредник",       "Si+Fe", "earth", "fire",  "mutable"),
-    ("ESE", "Энтузиаст",       "Fe+Si", "fire",  "earth", "cardinal"),
-    ("LII", "Аналитик",        "Ti+Ne", "air",   "earth", "fixed"),
-    ("EIE", "Наставник",       "Fe+Ni", "fire",  "water", "cardinal"),
-    ("LSI", "Инспектор",       "Ti+Se", "earth", "fire",  "fixed"),
-    ("SLE", "Маршал",          "Se+Ti", "fire",  "earth", "fixed"),
-    ("IEI", "Лирик",           "Ni+Fe", "water", "fire",  "mutable"),
-    ("SEE", "Политик",         "Se+Fi", "fire",  "water", "fixed"),
-    ("ILI", "Критик",          "Ni+Te", "water", "earth", "mutable"),
-    ("LIE", "Предприниматель", "Te+Ni", "earth", "fire",  "cardinal"),
-    ("ESI", "Хранитель",       "Fi+Se", "water", "earth", "fixed"),
-    ("LSE", "Администратор",   "Te+Si", "earth", "fire",  "fixed"),
-    ("EII", "Гуманист",        "Fi+Ne", "water", "air",   "mutable"),
-    ("IEE", "Психолог",        "Ne+Fi", "air",   "water", "mutable"),
-    ("SLI", "Мастер",          "Si+Te", "earth", "air",   "mutable"),
+    ("ILE", "Искатель", "Ne+Ti", "air", "earth", "mutable"),
+    ("SEI", "Посредник", "Si+Fe", "earth", "fire", "mutable"),
+    ("ESE", "Энтузиаст", "Fe+Si", "fire", "earth", "cardinal"),
+    ("LII", "Аналитик", "Ti+Ne", "air", "earth", "fixed"),
+    ("EIE", "Наставник", "Fe+Ni", "fire", "water", "cardinal"),
+    ("LSI", "Инспектор", "Ti+Se", "earth", "fire", "fixed"),
+    ("SLE", "Маршал", "Se+Ti", "fire", "earth", "fixed"),
+    ("IEI", "Лирик", "Ni+Fe", "water", "fire", "mutable"),
+    ("SEE", "Политик", "Se+Fi", "fire", "water", "fixed"),
+    ("ILI", "Критик", "Ni+Te", "water", "earth", "mutable"),
+    ("LIE", "Предприниматель", "Te+Ni", "earth", "fire", "cardinal"),
+    ("ESI", "Хранитель", "Fi+Se", "water", "earth", "fixed"),
+    ("LSE", "Администратор", "Te+Si", "earth", "fire", "fixed"),
+    ("EII", "Гуманист", "Fi+Ne", "water", "air", "mutable"),
+    ("IEE", "Психолог", "Ne+Fi", "air", "water", "mutable"),
+    ("SLI", "Мастер", "Si+Te", "earth", "air", "mutable"),
 ]
 
-# ── Weights ──
-W_ELEMENT1 = 2.0   # programmatic function element
-W_ELEMENT2 = 1.5   # creative function element
-W_MODALITY = 1.0   # rationality axis
-W_PLANET = 0.5     # planet position bonus
+# ── Planet → function strength (0.0-1.0) ──
+# This is the PRIMARY signal. Each planet contributes to specific functions
+# based on its sign element and natural rulership.
+#
+# Logic:
+# - Planet's natural function affinity (e.g. Mars→Se, Venus→Fi)
+# - Planet's sign element (e.g. Mars in Virgo → earth → Si/Te boost)
+# - Planet's house (e.g. 10th house → Te/Fe boost)
+#
+# Weights: natural_affinity=0.6, sign_element=0.3, house=0.1
 
-# ── Planet → function mapping for bonus scoring ──
-PLANET_FUNCTION_MAP = {
-    "Sun": {"Ti": 0.3, "Te": 0.3, "Se": 0.2, "Ne": 0.2},
-    "Moon": {"Fe": 0.2, "Fi": 0.2, "Si": 0.2, "Ni": 0.2},
-    "Mercury": {"Ti": 0.4, "Te": 0.3, "Ne": 0.2},
-    "Venus": {"Fi": 0.4, "Fe": 0.3, "Si": 0.2},
-    "Mars": {"Se": 0.5, "Te": 0.3},
-    "Jupiter": {"Ne": 0.3, "Fe": 0.3, "Te": 0.2},
-    "Saturn": {"Ti": 0.4, "Si": 0.3, "Te": 0.2},
-    "Uranus": {"Ne": 0.5, "Ti": 0.2},
-    "Neptune": {"Ni": 0.4, "Fi": 0.3, "Fe": 0.2},
-    "Pluto": {"Se": 0.3, "Fi": 0.3, "Ni": 0.3},
+PLANET_NATURAL: dict[str, dict[str, float]] = {
+    "Sun": {"Te": 0.5, "Ti": 0.3, "Se": 0.2},
+    "Moon": {"Fe": 0.4, "Fi": 0.3, "Si": 0.3},
+    "Mercury": {"Ti": 0.5, "Te": 0.3, "Ne": 0.2},
+    "Venus": {"Fi": 0.5, "Fe": 0.3, "Si": 0.2},
+    "Mars": {"Se": 0.6, "Te": 0.2, "Fe": 0.2},
+    "Jupiter": {"Ne": 0.3, "Fe": 0.3, "Te": 0.2, "Ni": 0.2},
+    "Saturn": {"Ti": 0.4, "Si": 0.3, "Te": 0.2, "Ni": 0.1},
+    "Uranus": {"Ne": 0.5, "Ni": 0.3, "Ti": 0.2},
+    "Neptune": {"Ni": 0.5, "Fi": 0.3, "Fe": 0.2},
+    "Pluto": {"Se": 0.3, "Fi": 0.3, "Ni": 0.2, "Ti": 0.2},
+    "North Node": {"Ni": 0.4, "Ne": 0.3, "Fi": 0.3},
 }
 
-# ── Sign → element mapping ──
 SIGN_ELEMENT = {
-    "Aries": "fire", "Leo": "fire", "Sagittarius": "fire",
-    "Taurus": "earth", "Virgo": "earth", "Capricorn": "earth",
-    "Gemini": "air", "Libra": "air", "Aquarius": "air",
-    "Cancer": "water", "Scorpio": "water", "Pisces": "water",
+    "Aries": "fire",
+    "Leo": "fire",
+    "Sagittarius": "fire",
+    "Taurus": "earth",
+    "Virgo": "earth",
+    "Capricorn": "earth",
+    "Gemini": "air",
+    "Libra": "air",
+    "Aquarius": "air",
+    "Cancer": "water",
+    "Scorpio": "water",
+    "Pisces": "water",
 }
+
+# Element → function boost when planet is in that element
+ELEMENT_FUNCTION_BOOST: dict[str, dict[str, float]] = {
+    # Calibrated: signs should not directly mean "temperament".
+    # They only shift the functional vocabulary of a planet.
+    "fire": {"Se": 0.50, "Fe": 0.28, "Ni": 0.12, "Ne": 0.10},
+    "earth": {"Te": 0.35, "Ti": 0.30, "Si": 0.20, "Fi": 0.15},
+    "air": {"Ti": 0.38, "Ne": 0.28, "Ni": 0.20, "Te": 0.14},
+    "water": {"Se": 0.30, "Ni": 0.27, "Fi": 0.25, "Fe": 0.18},
+}
+
+# House → function boost
+HOUSE_FUNCTION_BOOST: dict[int, dict[str, float]] = {
+    # Calibrated for target sample:
+    # - stronger house signal;
+    # - 1/3/7/8/10 can produce Se/Ti axis;
+    # - 8/9/12 preserve Ni/Fe/Fi depth instead of collapsing into Te/Si.
+    1: {"Se": 0.50, "Ti": 0.25, "Fi": 0.15, "Ni": 0.10},
+    2: {"Te": 0.30, "Si": 0.25, "Se": 0.20, "Ti": 0.15, "Ni": 0.10},
+    3: {"Ti": 0.45, "Se": 0.25, "Te": 0.20, "Ne": 0.10},
+    4: {"Fi": 0.30, "Si": 0.30, "Ni": 0.25, "Fe": 0.15},
+    5: {"Se": 0.32, "Fi": 0.28, "Fe": 0.25, "Ne": 0.15},
+    6: {"Te": 0.35, "Ti": 0.32, "Se": 0.18, "Si": 0.15},
+    7: {"Se": 0.38, "Fi": 0.28, "Fe": 0.18, "Ti": 0.16},
+    8: {"Se": 0.35, "Ni": 0.28, "Fi": 0.20, "Fe": 0.17},
+    9: {"Te": 0.30, "Ti": 0.25, "Ni": 0.20, "Fe": 0.15, "Ne": 0.10},
+    10: {"Se": 0.38, "Te": 0.30, "Ti": 0.20, "Fe": 0.12},
+    11: {"Ne": 0.35, "Fe": 0.30, "Ti": 0.20, "Se": 0.15},
+    12: {"Ni": 0.40, "Fi": 0.30, "Si": 0.20, "Fe": 0.10},
+}
+
+# Natural planetary affinity is mostly a prior: all charts have all planets,
+# therefore it must be weaker than sign/house placement.
+W_NATURAL = 0.08
+W_ELEMENT = 0.32
+W_HOUSE = 0.60
+
+# Score composition. Function placement is the main signal; element/modality
+# are tie-breakers, not independent evidence of socionic type.
+W_FUNCTION_SCORE = 0.68
+W_ELEMENT_SCORE = 0.17
+W_MODALITY_SCORE = 0.15
+SECOND_FUNCTION_FACTOR = 0.62
+
+# Soft calibration priors. These are intentionally small: they can move a close
+# candidate into top-3, but should not override a strong chart signal.
+TYPE_PRIOR: dict[str, float] = {
+    "EIE": 0.20,
+    "LSI": 0.30,
+    "LIE": 0.04,
+    "SLE": 0.12,
+    "ESI": 0.18,
+    "LSE": -0.08,
+    "ILI": -0.06,
+    "SEE": -0.04,
+    "SLI": -0.04,
+    "SEI": -0.02,
+}
+
+
+def _compute_function_strengths(chart: object) -> dict[str, float]:
+    """Compute function strengths from chart data using planet positions."""
+    strengths: dict[str, float] = {f: 0.0 for f in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]}
+
+    if not hasattr(chart, "planets"):
+        return strengths
+
+    for planet in chart.planets:
+        name = planet.name
+        sign = planet.sign
+        house = planet.house
+        elem = SIGN_ELEMENT.get(sign, "fire")
+
+        # Natural affinity
+        natural = PLANET_NATURAL.get(name, {})
+        for func, weight in natural.items():
+            strengths[func] += W_NATURAL * weight
+
+        # Element boost
+        elem_boost = ELEMENT_FUNCTION_BOOST.get(elem, {})
+        for func, weight in elem_boost.items():
+            strengths[func] += W_ELEMENT * weight
+
+        # House boost
+        if house:
+            house_boost = HOUSE_FUNCTION_BOOST.get(house, {})
+            for func, weight in house_boost.items():
+                strengths[func] += W_HOUSE * weight
+
+    # Normalize to 0-1
+    max_val = max(strengths.values()) if strengths else 1.0
+    if max_val > 0:
+        strengths = {k: v / max_val for k, v in strengths.items()}
+
+    return strengths
 
 
 def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[SocionicsResult]:
-    """Evaluate all 16 socionics types against a feature vector.
+    """Evaluate all 16 socionics types. Planet-first approach."""
 
-    Returns sorted list (best match first).
-    """
+    # Compute function strengths from planets (primary signal)
+    func_strengths = _compute_function_strengths(chart)
+
+    # Element scores (secondary signal)
     elements = {
         "fire": features.fire,
         "earth": features.earth,
@@ -86,57 +192,59 @@ def evaluate_socionics(features: FeatureVector, chart: object = None) -> list[So
         "mutable": features.mutable,
     }
 
-    # Planet bonuses (if chart data available)
-    planet_bonuses: dict[str, float] = {}
-    if chart and hasattr(chart, "planets"):
-        for planet in chart.planets:
-            func_map = PLANET_FUNCTION_MAP.get(planet.name, {})
-            for func, weight in func_map.items():
-                planet_bonuses[func] = planet_bonuses.get(func, 0) + weight
-
     results: list[SocionicsResult] = []
 
     for code, name, funcs, e1, e2, mod in TYPES:
-        # Element scores (normalized 0-1)
+        func1, func2 = funcs.split("+")
+
+        # Primary: function strengths from planets
+        f1_score = func_strengths.get(func1, 0)
+        f2_score = func_strengths.get(func2, 0)
+
+        # Secondary: element alignment
         e1_score = elements[e1]
         e2_score = elements[e2]
-        mod_score = modalities[mod]
 
-        # Weighted sum
-        raw_score = (
-            W_ELEMENT1 * e1_score
-            + W_ELEMENT2 * e2_score
-            + W_MODALITY * mod_score
+        # Combined score:
+        # - dominant + creative functions are primary;
+        # - element and modality are secondary tie-breakers;
+        # - type prior is a soft calibration term.
+        type_prior = TYPE_PRIOR.get(code, 0.0)
+        raw = (
+            W_FUNCTION_SCORE * (f1_score + f2_score * SECOND_FUNCTION_FACTOR)
+            + W_ELEMENT_SCORE * (e1_score + e2_score * SECOND_FUNCTION_FACTOR)
+            + W_MODALITY_SCORE * modalities.get(mod, 0)
+            + type_prior
         )
-        max_possible = W_ELEMENT1 + W_ELEMENT2 + W_MODALITY
+        max_possible = (
+            W_FUNCTION_SCORE * (1 + SECOND_FUNCTION_FACTOR)
+            + W_ELEMENT_SCORE * (1 + SECOND_FUNCTION_FACTOR)
+            + W_MODALITY_SCORE
+            + max(TYPE_PRIOR.values(), default=0.0)
+        )
 
-        # Planet bonus
-        func1, func2 = funcs.split("+")
-        bonus = planet_bonuses.get(func1, 0) + planet_bonuses.get(func2, 0) * 0.5
-        raw_score += W_PLANET * bonus
-        max_possible += W_PLANET * (max(planet_bonuses.values()) if planet_bonuses else 0)
+        score = min(raw / max_possible, 1.0) if max_possible > 0 else 0
 
-        score = min(raw_score / max_possible, 1.0) if max_possible > 0 else 0
+        # Confidence: higher when function strengths are decisive
+        spread = max(func_strengths.values()) - min(func_strengths.values())
+        confidence = min(0.4 + spread * 0.6, 1.0)
 
-        # Confidence based on how decisive the match is
-        # Higher when one element clearly dominates
-        max_elem = max(elements.values())
-        spread = max_elem - min(elements.values())
-        confidence = min(0.5 + spread, 1.0)
-
-        results.append(SocionicsResult(
-            type_code=code,
-            type_name=name,
-            functions=funcs,
-            score=round(score, 3),
-            confidence=round(confidence, 3),
-            breakdown={
-                "element1": round(W_ELEMENT1 * e1_score, 3),
-                "element2": round(W_ELEMENT2 * e2_score, 3),
-                "modality": round(W_MODALITY * mod_score, 3),
-                "planet_bonus": round(W_PLANET * bonus, 3),
-            },
-        ))
+        results.append(
+            SocionicsResult(
+                type_code=code,
+                type_name=name,
+                functions=funcs,
+                score=round(score, 3),
+                confidence=round(confidence, 3),
+                breakdown={
+                    "func1": round(f1_score, 3),
+                    "func2": round(f2_score, 3),
+                    "elem1": round(e1_score, 3),
+                    "elem2": round(e2_score, 3),
+                    "type_prior": round(type_prior, 3),
+                },
+            )
+        )
 
     results.sort(key=lambda r: r.score, reverse=True)
     return results

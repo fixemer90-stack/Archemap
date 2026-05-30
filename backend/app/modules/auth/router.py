@@ -37,9 +37,19 @@ async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Register a new user. Sends verification email."""
+    """Register a new user with birth data. Sends verification email."""
     service = AuthService(db)
-    await service.register(email=body.email, password=body.password, birth_date=body.birth_date)
+    await service.register(
+        email=body.email,
+        password=body.password,
+        birth_date=body.birth_date,
+        birth_time=body.birth_time,
+        birth_time_accuracy=body.birth_time_accuracy,
+        birth_place=body.birth_place,
+        latitude=body.latitude,
+        longitude=body.longitude,
+        timezone=body.timezone,
+    )
     return MessageResponse(message="Registration successful. Please check your email to verify your account.")
 
 

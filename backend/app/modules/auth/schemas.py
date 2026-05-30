@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
+    """Register with full birth data for immediate chart computation."""
+
     email: EmailStr
     password: str  # min 8 chars validated in service
     birth_date: date = Field(..., description="Date of birth (YYYY-MM-DD)")
+    birth_time: time | None = Field(None, description="Time of birth (HH:MM). Null if unknown")
+    birth_time_accuracy: str = Field(
+        default="unknown",
+        pattern=r"^(exact|approximate|unknown)$",
+        description="Time accuracy: exact, approximate, or unknown",
+    )
+    birth_place: str = Field(..., min_length=1, max_length=300, description="City of birth")
+    latitude: float = Field(..., ge=-90, le=90, description="Birth place latitude")
+    longitude: float = Field(..., ge=-180, le=180, description="Birth place longitude")
+    timezone: str = Field(..., min_length=1, max_length=60, description="IANA timezone, e.g. Europe/Moscow")
 
 
 class LoginRequest(BaseModel):

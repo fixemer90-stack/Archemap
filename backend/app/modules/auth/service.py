@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,6 +19,7 @@ from app.core.security import (
 )
 from app.core.token_blacklist import blacklist_token
 from app.modules.auth.verification import VerificationService
+from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
 
 
@@ -26,8 +27,19 @@ class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def register(self, email: str, password: str, birth_date: date) -> User:
-        """Register a new user with email, password and birth date."""
+    async def register(
+        self,
+        email: str,
+        password: str,
+        birth_date: date,
+        birth_place: str,
+        latitude: float,
+        longitude: float,
+        timezone: str,
+        birth_time: time | None = None,
+        birth_time_accuracy: str = "unknown",
+    ) -> User:
+        """Register a new user with email, password and full birth data."""
         existing = await self.db.execute(select(User).where(User.email == email))
         if existing.scalar_one_or_none():
             raise ConflictError("User with this email already exists")
@@ -35,12 +47,32 @@ class AuthService:
         if len(password) < 8:
             raise ValidationError("Password must be at least 8 characters")
 
+        # If time not provided, default to 12:00 and mark as unknown
+        if birth_time is None:
+            birth_time = time(12, 0)
+            birth_time_accuracy = "unknown"
+
         user = User(
             email=email,
             hashed_password=hash_password(password),
             birth_date=birth_date,
         )
         self.db.add(user)
+        await self.db.flush()
+
+        # Create PersonProfile with birth data for chart computation
+        profile = PersonProfile(
+            user_id=user.id,
+            name=email.split("@")[0],  # default name from email
+            birth_date=birth_date,
+            birth_time=birth_time,
+            birth_time_accuracy=birth_time_accuracy,
+            birth_place=birth_place,
+            latitude=latitude,
+            longitude=longitude,
+            timezone=timezone,
+        )
+        self.db.add(profile)
         await self.db.flush()
         await self.db.refresh(user)
 

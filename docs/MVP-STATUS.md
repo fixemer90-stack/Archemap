@@ -29,6 +29,19 @@
 - Нет frontend-страницы для ввода данных
 - Нет PDF-отчёта
 
+### E4: Rules & Content 🟡 (Model A layer готов)
+**Бизнес-смысл:** интерпретация карты в текст. Сейчас socionics.py содержит:
+- MODEL_A — 16 типов, 8 функций (base/creative/role/pain/suggestive/activation/restrictive/background)
+- _model_a_fit() — структурное соответствие Model A (не TYPE_PRIOR)
+- Weighted scoring: W_FUNCTION_SCORE=0.68, W_MODEL_A_SCORE=0.22
+- Calibration: 4/4 контрольных кейсов в топ-3 (EIE#1, LSI#2, LIE#1, ESI#1)
+
+**Что нужно:**
+- YAML-правила для интерпретации (текст, не только scoring)
+- Jinja2-шаблоны для отчётов
+- Content Resolver (правила → текст)
+- Локализация RU/EN
+
 ---
 
 ## Путь до MVP: "Ввёл дату → увидел результат"
@@ -64,8 +77,10 @@ sequenceDiagram
 | 1 | **E4.S03: Rule engine** | Правила интерпретируют карту в текст | 2 нед |
 | 2 | **E4.S01-02: Rules + Templates** | YAML-правила + Jinja2 шаблоны | 1 нед |
 | 3 | **E5.S01: Self report** | Сборка отчёта из правил + шаблонов | 1 нед |
-| 4 | **Frontend: страница ввода** | Форма: дата, время, место → результат | 1 нед |
-| 5 | **Frontend: страница отчёта** | Отображение карты + интерпретации | 1 нед |
+| 4 | **E9.S01: Birth Data Form** | Форма ввода даты/времени/места | 1 нед |
+| 5 | **E9.S02: Chart Visualization** | Визуализация натальной карты | 1 нед |
+| 6 | **E9.S03: Socionics Result** | Топ-3 типа, Model A, функциональный профиль | 1 нед |
+| 7 | **E9.S04: Report Page** | Сборка страницы отчёта | 1 нед |
 
 **Итого: ~5-6 недель до кликабельного демо.**
 
@@ -78,11 +93,12 @@ sequenceDiagram
 | E1 Foundation | ✅ | — |
 | E2 Identity | 🟡 7/9 | VK OAuth (S06), Account linking (S07) |
 | E3 Chart Engine | ✅ | — |
-| E4 Rules & Content | ⬜ | Rule engine, templates, localization |
+| E4 Rules & Content | 🟡 | Model A готов, нужны YAML-правила и шаблоны |
 | E5 Self Report | ⬜ | Отчёт, PDF, API |
 | E6 Billing | ⬜ | 1 план, 1 PSP (YooKassa) |
 | E7 Notifications | ⬜ | Email-уведомления |
 | E8 Production | ⬜ | Rate limiting, observability |
+| E9 Frontend Self Report | ⬜ | Форма ввода, визуализация, результат |
 
 **MVP-estimate:** 12-16 недель от текущего состояния (ROADMAP.md).
 

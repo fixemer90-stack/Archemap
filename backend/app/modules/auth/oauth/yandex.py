@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 import structlog
@@ -28,8 +29,7 @@ class YandexOAuthProvider:
             "state": state,
             "scope": "login:birthday login:email",
         }
-        query = "&".join(f"{k}={v}" for k, v in params.items())
-        return f"{YANDEX_AUTHORIZE_URL}?{query}"
+        return f"{YANDEX_AUTHORIZE_URL}?{urlencode(params)}"
 
     async def exchange_code(self, code: str) -> dict[str, Any]:
         """Exchange authorization code for tokens."""

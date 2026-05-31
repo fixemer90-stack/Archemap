@@ -59,7 +59,7 @@ class TestConditionEvaluation:
         assert _check_condition(cond, facts) is True
 
     def test_missing_fact(self) -> None:
-        facts = {}
+        facts: dict[str, float] = {}
         cond = Condition(fact="feature.earth", op=ConditionOp.GTE, value=0.40)
         assert _check_condition(cond, facts) is False
 

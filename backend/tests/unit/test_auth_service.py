@@ -136,7 +136,7 @@ class TestLogin:
             patch("app.modules.auth.service.verify_password", return_value=False),
             pytest.raises(AuthorizationError, match="Invalid"),
         ):
-            await service.login("test@example.com", "wrong")  # noqa: S106
+            await service.login("test@example.com", "wrong")
 
     async def test_login_user_not_found(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_result = MagicMock()

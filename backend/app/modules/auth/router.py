@@ -16,6 +16,7 @@ from app.infrastructure.redis import get_redis_client
 from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.password_reset import PasswordResetService
 from app.modules.auth.schemas import (
+    CompleteProfileRequest,
     LoginRequest,
     MessageResponse,
     PasswordResetConfirm,
@@ -55,7 +56,7 @@ async def register(
 
 @router.post("/complete-profile", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def complete_oauth_profile(
-    body: RegisterRequest,
+    body: CompleteProfileRequest,
     current_user_id: Annotated[UUID, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),
 ) -> Any:

@@ -129,6 +129,19 @@ export function FunctionProfile({
 }: {
   strengths: FunctionStrengths;
 }) {
+  if (!strengths) {
+    return (
+      <div className="glass p-4">
+        <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+          Функциональный профиль
+        </h3>
+        <p className="text-sm text-[rgba(216,220,232,0.50)]">
+          Данные загружаются...
+        </p>
+      </div>
+    );
+  }
+
   const functions = Object.entries(strengths).sort(([, a], [, b]) => b - a);
 
   return (
@@ -167,6 +180,19 @@ export function FunctionProfile({
 
 // ── Radar Chart Component ──────────────────────────────────────────
 export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
+  if (!strengths) {
+    return (
+      <div className="glass p-4">
+        <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+          Радар функций
+        </h3>
+        <p className="text-sm text-[rgba(216,220,232,0.50)]">
+          Данные загружаются...
+        </p>
+      </div>
+    );
+  }
+
   const size = 200;
   const center = size / 2;
   const radius = size / 2 - 30;
@@ -273,6 +299,18 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
 
 // ── Full Socionics Component ───────────────────────────────────────
 export function SocionicsResult({ data }: { data: SocionicsData }) {
+  if (!data) {
+    return (
+      <div className="space-y-4">
+        <div className="glass p-4">
+          <p className="text-sm text-[rgba(216,220,232,0.50)]">
+            Данные загружаются...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <SocionicsTopTypes types={data.top3} />

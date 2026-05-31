@@ -1,7 +1,7 @@
-# Story E9.S06: Auth Screens
+# Story E9.S01: Auth Screens
 
 **Feature:** [Frontend Self Report](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 В процессе
 
 ## Контекст
 

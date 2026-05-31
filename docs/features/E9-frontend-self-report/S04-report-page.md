@@ -1,7 +1,7 @@
 # Story E9.S04: Report Page
 
 **Feature:** [Frontend Self Report](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 В процессе
 
 ## Контекст
 

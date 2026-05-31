@@ -72,17 +72,17 @@ sequenceDiagram
 
 ## Что нужно для первого кликабельного демо
 
-| # | Что сделать | Зачем | Оценка |
+| # | Что сделать | Зачем | Статус |
 |---|-------------|-------|--------|
-| 1 | **E4.S03: Rule engine** | Правила интерпретируют карту в текст | 2 нед |
-| 2 | **E4.S01-02: Rules + Templates** | YAML-правила + Jinja2 шаблоны | 1 нед |
-| 3 | **E5.S01: Self report** | Сборка отчёта из правил + шаблонов | 1 нед |
-| 4 | **E9.S01: Birth Data Form** | Форма ввода даты/времени/места | 1 нед |
-| 5 | **E9.S02: Chart Visualization** | Визуализация натальной карты | 1 нед |
-| 6 | **E9.S03: Socionics Result** | Топ-3 типа, Model A, функциональный профиль | 1 нед |
-| 7 | **E9.S04: Report Page** | Сборка страницы отчёта | 1 нед |
+| 1 | **E9.S01: Auth Screens** | Регистрация с birth data + OAuth | 🟡 В процессе |
+| 2 | **E9.S02: Chart Visualization** | Визуализация натальной карты | ✅ Готово |
+| 3 | **E9.S03: Socionics Result** | Топ-3 типа, Model A, функциональный профиль | ✅ Готово |
+| 4 | **E9.S04: Report Page** | Сборка страницы отчёта | 🟡 В процессе |
+| 5 | **E4.S03: Rule engine** | Правила интерпретируют карту в текст | ⬜ Не начато |
+| 6 | **E4.S01-02: Rules + Templates** | YAML-правила + Jinja2 шаблоны | ⬜ Не начато |
+| 7 | **E5.S01: Self report** | Сборка отчёта из правил + шаблонов | ⬜ Не начато |
 
-**Итого: ~5-6 недель до кликабельного демо.**
+**Итого: ~3-4 недели до кликабельного демо (E9 почти готова).**
 
 ---
 
@@ -91,14 +91,14 @@ sequenceDiagram
 | Эпик | Статус | Что нужно |
 |------|--------|-----------|
 | E1 Foundation | ✅ | — |
-| E2 Identity | 🟡 7/9 | VK OAuth (S06), Account linking (S07) |
+| E2 Identity | ✅ | JWT + OAuth Яндекс |
 | E3 Chart Engine | ✅ | — |
 | E4 Rules & Content | 🟡 | Model A готов, нужны YAML-правила и шаблоны |
 | E5 Self Report | ⬜ | Отчёт, PDF, API |
 | E6 Billing | ⬜ | 1 план, 1 PSP (YooKassa) |
 | E7 Notifications | ⬜ | Email-уведомления |
 | E8 Production | ⬜ | Rate limiting, observability |
-| E9 Frontend Self Report | ⬜ | Форма ввода, визуализация, результат |
+| E9 Frontend Self Report | 🟡 | S02/S03 готовы, S01/S04 в процессе |
 
 **MVP-estimate:** 12-16 недель от текущего состояния (ROADMAP.md).
 

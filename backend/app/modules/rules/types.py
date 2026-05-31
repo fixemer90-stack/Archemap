@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ConditionOp(str, Enum):
+class ConditionOp(StrEnum):
     """Condition operators for rule evaluation."""
+
     GTE = "gte"
     LTE = "lte"
     GT = "gt"
@@ -23,6 +24,7 @@ class ConditionOp(str, Enum):
 @dataclass(frozen=True, slots=True)
 class Condition:
     """A single condition in a rule."""
+
     fact: str
     op: ConditionOp
     value: Any
@@ -32,6 +34,7 @@ class Condition:
 @dataclass(frozen=True, slots=True)
 class ConditionGroup:
     """A group of conditions with conjunction (all/any/not)."""
+
     conjunction: str  # "all", "any", "not"
     conditions: list[ConditionGroup | Condition]
 
@@ -39,6 +42,7 @@ class ConditionGroup:
 @dataclass(frozen=True, slots=True)
 class ConfidenceAdjustment:
     """Confidence delta triggered by a condition."""
+
     when: Condition
     delta: float
 
@@ -46,6 +50,7 @@ class ConfidenceAdjustment:
 @dataclass(frozen=True, slots=True)
 class EvidenceSpec:
     """Evidence template specification."""
+
     template_key: str
     show_basis_features: list[str] = field(default_factory=list)
 
@@ -53,6 +58,7 @@ class EvidenceSpec:
 @dataclass(frozen=True, slots=True)
 class ArchetypeRule:
     """A single archetype rule from YAML."""
+
     archetype_id: str
     name: str
     description: str
@@ -66,6 +72,7 @@ class ArchetypeRule:
 @dataclass(frozen=True, slots=True)
 class RuleSet:
     """Complete ruleset for a vertical."""
+
     product: str
     version: str
     effective_from: str
@@ -78,6 +85,7 @@ class RuleSet:
 @dataclass(slots=True)
 class RuleEvaluation:
     """Result of evaluating a single rule."""
+
     rule_id: str
     archetype_id: str
     activated: bool
@@ -91,6 +99,7 @@ class RuleEvaluation:
 @dataclass(frozen=True, slots=True)
 class ConfidenceResult:
     """Computed confidence with reason codes."""
+
     value: float
     label: str
     reason_codes: list[str]
@@ -100,6 +109,7 @@ class ConfidenceResult:
 @dataclass(frozen=True, slots=True)
 class BasisItem:
     """Evidence basis item."""
+
     rule_id: str
     feature: str
     value: float
@@ -109,6 +119,7 @@ class BasisItem:
 @dataclass(slots=True)
 class Claim:
     """Interpretive claim with evidence trail."""
+
     claim_id: str
     section: str
     archetype: str
@@ -123,6 +134,7 @@ class Claim:
 @dataclass(slots=True)
 class InterpretationResult:
     """Complete interpretation output."""
+
     product: str
     primary_archetype: str
     primary_score: float

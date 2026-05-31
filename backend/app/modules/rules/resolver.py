@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -40,41 +41,46 @@ def render_claim_message(claim: Claim, templates: dict[str, Any], features: dict
     summary = template.get("summary", claim.message)
     evidence_text = template.get("evidence_text", "")
 
-    try:
+    with contextlib.suppress(KeyError, ValueError):
         evidence_text = evidence_text.format(**ctx)
-    except (KeyError, ValueError):
-        pass
 
     return f"{summary} {evidence_text}".strip()
 
 
-def render_full_report(result: InterpretationResult, features: dict[str, Any], product: str = "self", version: str = "v1") -> dict[str, Any]:
+def render_full_report(
+    result: InterpretationResult,
+    features: dict[str, Any],
+    product: str = "self",
+    version: str = "v1",
+) -> dict[str, Any]:
     """Render a full interpretation result into a structured report dict."""
     templates = load_evidence_templates(product, version)
 
     rendered_claims = []
     for claim in result.claims:
-        rendered_claims.append({
-            "claim_id": claim.claim_id,
-            "section": claim.section,
-            "archetype": claim.archetype,
-            "score": claim.score,
-            "confidence": {
-                "value": claim.confidence.value,
-                "label": claim.confidence.label,
-                "reason_codes": claim.confidence.reason_codes,
-            },
-            "message": render_claim_message(claim, templates, features),
-            "basis": [
-                {"rule_id": b.rule_id, "feature": b.feature, "value": b.value, "contribution": b.contribution}
-                for b in claim.basis
-            ],
-            "counter_evidence": [
-                {"rule_id": c.rule_id, "feature": c.feature, "value": c.value, "contribution": c.contribution}
-                for c in claim.counter_evidence
-            ],
-            "provenance": claim.provenance,
-        })
+        rendered_claims.append(
+            {
+                "claim_id": claim.claim_id,
+                "section": claim.section,
+                "archetype": claim.archetype,
+                "score": claim.score,
+                "confidence": {
+                    "value": claim.confidence.value,
+                    "label": claim.confidence.label,
+                    "reason_codes": claim.confidence.reason_codes,
+                },
+                "message": render_claim_message(claim, templates, features),
+                "basis": [
+                    {"rule_id": b.rule_id, "feature": b.feature, "value": b.value, "contribution": b.contribution}
+                    for b in claim.basis
+                ],
+                "counter_evidence": [
+                    {"rule_id": c.rule_id, "feature": c.feature, "value": c.value, "contribution": c.contribution}
+                    for c in claim.counter_evidence
+                ],
+                "provenance": claim.provenance,
+            }
+        )
 
     return {
         "product": result.product,

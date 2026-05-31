@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class InterpretRequest(BaseModel):
     """Request to interpret a chart."""
+
     profile_id: str = Field(..., description="Person profile UUID")
     product: str = Field("self", description="Vertical: self, love, child, career")
     ruleset_version: str = Field("v1", description="Ruleset version tag")
@@ -16,6 +17,7 @@ class InterpretRequest(BaseModel):
 
 class ConfidenceResponse(BaseModel):
     """Confidence assessment."""
+
     value: float
     label: str
     reason_codes: list[str]
@@ -23,6 +25,7 @@ class ConfidenceResponse(BaseModel):
 
 class BasisItemResponse(BaseModel):
     """Evidence basis item."""
+
     rule_id: str
     feature: str
     value: float
@@ -31,6 +34,7 @@ class BasisItemResponse(BaseModel):
 
 class ClaimResponse(BaseModel):
     """Interpretive claim with evidence."""
+
     claim_id: str
     section: str
     archetype: str
@@ -44,6 +48,7 @@ class ClaimResponse(BaseModel):
 
 class InterpretResponse(BaseModel):
     """Full interpretation response."""
+
     product: str
     primary_archetype: str
     primary_score: float
@@ -56,6 +61,7 @@ class InterpretResponse(BaseModel):
 
 class RuleSetInfo(BaseModel):
     """Available ruleset info."""
+
     product: str
     version: str
     path: str

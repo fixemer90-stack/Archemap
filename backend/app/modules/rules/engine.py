@@ -56,10 +56,7 @@ def interpret(
     facts = _build_facts(features)
 
     # Evaluate all rules
-    evaluations = [
-        _evaluate_rule(arch, facts, ruleset)
-        for arch in ruleset.archetypes
-    ]
+    evaluations = [_evaluate_rule(arch, facts, ruleset) for arch in ruleset.archetypes]
 
     # Aggregate scores
     archetype_scores = _aggregate_scores(evaluations, ruleset)
@@ -124,7 +121,9 @@ def interpret(
         (e for e in evaluations if e.archetype_id == primary_id),
         None,
     )
-    primary_confidence = _compute_confidence(primary_eval, evaluations, facts, conf_config) if primary_eval else _zero_confidence()
+    primary_confidence = (
+        _compute_confidence(primary_eval, evaluations, facts, conf_config) if primary_eval else _zero_confidence()
+    )
 
     primary_arch = next(
         (a for a in ruleset.archetypes if a.archetype_id == primary_id),
@@ -196,7 +195,8 @@ def _evaluate_rule(archetype: ArchetypeRule, facts: dict[str, Any], ruleset: Rul
 
 
 def _evaluate_conditions(
-    group: ConditionGroup, facts: dict[str, Any],
+    group: ConditionGroup,
+    facts: dict[str, Any],
 ) -> tuple[float, list[tuple[str, Any, Any]], list[tuple[str, Any, Any]]]:
     """Evaluate condition group, return (score, matched_facts, unmatched_facts)."""
     matched: list[tuple[str, Any, Any]] = []
@@ -265,7 +265,7 @@ def _aggregate_scores(evaluations: list[RuleEvaluation], ruleset: RuleSet) -> di
             continue
         for key, contrib in ev.contributions.items():
             if key.startswith("archetype."):
-                aid = key[len("archetype."):]
+                aid = key[len("archetype.") :]
                 support[aid] = support.get(aid, 0.0) + contrib
 
     # Counter-evidence: if a counter-rule is activated, subtract its contribution
@@ -299,16 +299,34 @@ def _compute_confidence(
     conf_config: dict[str, Any],
 ) -> ConfidenceResult:
     """Compute confidence using 4-factor model."""
-    weights = conf_config.get("weights", {
-        "q_input": 0.35, "q_coverage": 0.30, "q_margin": 0.20, "q_consistency": 0.15,
-    })
-    thresholds = conf_config.get("thresholds", {
-        "good_input": 0.70, "low_coverage": 0.30, "high_contradiction": 0.40, "low_margin": 0.10,
-    })
-    labels = conf_config.get("labels", {
-        "high": [0.80, 1.0], "medium_high": [0.60, 0.80], "medium": [0.40, 0.60],
-        "medium_low": [0.20, 0.40], "low": [0.0, 0.20],
-    })
+    weights = conf_config.get(
+        "weights",
+        {
+            "q_input": 0.35,
+            "q_coverage": 0.30,
+            "q_margin": 0.20,
+            "q_consistency": 0.15,
+        },
+    )
+    thresholds = conf_config.get(
+        "thresholds",
+        {
+            "good_input": 0.70,
+            "low_coverage": 0.30,
+            "high_contradiction": 0.40,
+            "low_margin": 0.10,
+        },
+    )
+    labels = conf_config.get(
+        "labels",
+        {
+            "high": [0.80, 1.0],
+            "medium_high": [0.60, 0.80],
+            "medium": [0.40, 0.60],
+            "medium_low": [0.20, 0.40],
+            "low": [0.0, 0.20],
+        },
+    )
 
     q_input = facts.get("quality.birth_time_quality", 1.0)
 
@@ -322,10 +340,7 @@ def _compute_confidence(
         best_other = max(other_scores) if other_scores else 0.0
         q_margin = max(0.0, this_score - best_other)
 
-        contradicted = sum(
-            1 for e in all_evaluations
-            if e.activated and e.archetype_id != eval_result.archetype_id
-        )
+        contradicted = sum(1 for e in all_evaluations if e.activated and e.archetype_id != eval_result.archetype_id)
         q_consistency = max(0.0, 1.0 - contradicted / max(total_count, 1))
     else:
         q_margin = 0.0
@@ -404,12 +419,14 @@ def _build_counter_evidence(
     for other in all_evaluations:
         if other.archetype_id != eval_result.archetype_id and other.activated:
             for fact_name, _expected, actual in other.matched_facts:
-                result.append(BasisItem(
-                    rule_id=other.rule_id,
-                    feature=fact_name,
-                    value=float(actual) if actual is not None else 0.0,
-                    contribution=-other.contributions.get(f"archetype.{other.archetype_id}", 0.0),
-                ))
+                result.append(
+                    BasisItem(
+                        rule_id=other.rule_id,
+                        feature=fact_name,
+                        value=float(actual) if actual is not None else 0.0,
+                        contribution=-other.contributions.get(f"archetype.{other.archetype_id}", 0.0),
+                    )
+                )
     return result
 
 
@@ -424,6 +441,14 @@ def _quality_warning(features: FeatureVector) -> str | None:
 
 def _zero_confidence() -> ConfidenceResult:
     """Return zero confidence."""
-    return ConfidenceResult(value=0.0, label="low", reason_codes=["LOW_RULE_COVERAGE"], factors={
-        "q_input": 0.0, "q_coverage": 0.0, "q_margin": 0.0, "q_consistency": 0.0,
-    })
+    return ConfidenceResult(
+        value=0.0,
+        label="low",
+        reason_codes=["LOW_RULE_COVERAGE"],
+        factors={
+            "q_input": 0.0,
+            "q_coverage": 0.0,
+            "q_margin": 0.0,
+            "q_consistency": 0.0,
+        },
+    )

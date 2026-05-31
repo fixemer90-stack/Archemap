@@ -59,11 +59,13 @@ def list_available_rulesets() -> list[dict[str, str]]:
             continue
         for rule_file in sorted(product_dir.glob("archetypes_*.yaml")):
             version = rule_file.stem.replace("archetypes_", "")
-            result.append({
-                "product": product_dir.name,
-                "version": version,
-                "path": str(rule_file),
-            })
+            result.append(
+                {
+                    "product": product_dir.name,
+                    "version": version,
+                    "path": str(rule_file),
+                }
+            )
     return result
 
 
@@ -92,10 +94,7 @@ def _parse_archetype(archetype_id: str, data: dict[str, Any]) -> ArchetypeRule:
         description=data.get("description", ""),
         conditions=_parse_condition_group(data.get("conditions", {})),
         effects=data.get("effects", {}),
-        confidence_adjustments=[
-            _parse_confidence_adjustment(adj)
-            for adj in data.get("confidence_adjustments", [])
-        ],
+        confidence_adjustments=[_parse_confidence_adjustment(adj) for adj in data.get("confidence_adjustments", [])],
         counter_rules=data.get("counter_rules", []),
         evidence=_parse_evidence(data.get("evidence")),
     )

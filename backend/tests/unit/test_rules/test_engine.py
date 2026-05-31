@@ -5,12 +5,12 @@ from __future__ import annotations
 import pytest
 
 from app.chart_engine.features import FeatureVector
-from app.modules.rules.engine import interpret, _build_facts, _check_condition
+from app.modules.rules.engine import _build_facts, _check_condition, interpret
 from app.modules.rules.loader import load_ruleset
-from app.modules.rules.types import Condition, ConditionOp, ConditionGroup
-
+from app.modules.rules.types import Condition, ConditionOp
 
 # ── Fixtures ─────────────────────────────────────────────────────────
+
 
 def make_features(
     fire: float = 0.25,
@@ -38,6 +38,7 @@ def make_features(
 
 
 # ── Condition evaluation tests ───────────────────────────────────────
+
 
 class TestConditionEvaluation:
     """Test single condition evaluation."""
@@ -70,6 +71,7 @@ class TestConditionEvaluation:
 
 # ── Fact building tests ──────────────────────────────────────────────
 
+
 class TestFactBuilding:
     """Test FeatureVector → fact dictionary conversion."""
 
@@ -96,6 +98,7 @@ class TestFactBuilding:
 
 
 # ── Rule engine integration tests ────────────────────────────────────
+
 
 class TestRuleEngine:
     """Test full rule engine interpretation."""
@@ -158,9 +161,12 @@ class TestRuleEngine:
     def test_counter_evidence(self) -> None:
         """Both earth+fixed AND fire+mutable → counter-evidence should appear."""
         features = make_features(
-            earth=0.40, fixed=0.35,
-            fire=0.35, mutable=0.30,
-            air=0.15, water=0.20,
+            earth=0.40,
+            fixed=0.35,
+            fire=0.35,
+            mutable=0.30,
+            air=0.15,
+            water=0.20,
         )
         ruleset = load_ruleset("self", "v1")
         result = interpret(features, ruleset)
@@ -180,6 +186,7 @@ class TestRuleEngine:
 
 
 # ── Loader tests ─────────────────────────────────────────────────────
+
 
 class TestLoader:
     """Test YAML ruleset loading."""

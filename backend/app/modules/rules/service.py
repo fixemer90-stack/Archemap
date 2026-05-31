@@ -9,12 +9,12 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.chart_engine.features import FeatureVector, extract_features
+from app.chart_engine.features import extract_features
 from app.chart_engine.types import ChartData
 from app.core.exceptions import NotFoundError
 from app.modules.charts.models import ChartSnapshot
 from app.modules.rules.engine import interpret
-from app.modules.rules.loader import load_ruleset, list_available_rulesets
+from app.modules.rules.loader import list_available_rulesets, load_ruleset
 from app.modules.rules.resolver import render_full_report
 
 logger = structlog.get_logger()
@@ -103,7 +103,7 @@ def _dict_to_chart(data: dict[str, Any]) -> ChartData:
     """Convert a chart dict back to ChartData for feature extraction."""
     from datetime import datetime
 
-    from app.chart_engine.types import Aspect, ChartData, HousePosition, PlanetPosition, ZODIAC_SIGNS
+    from app.chart_engine.types import ZODIAC_SIGNS, Aspect, ChartData, HousePosition, PlanetPosition
 
     # Parse planets — handle both stored format (sign_degree) and computed format (longitude)
     planets = []
@@ -113,36 +113,42 @@ def _dict_to_chart(data: dict[str, Any]) -> ChartData:
         if longitude == 0 and "sign" in p and "degree" in p:
             sign_index = ZODIAC_SIGNS.index(p["sign"]) if p["sign"] in ZODIAC_SIGNS else 0
             longitude = sign_index * 30 + p.get("degree", 0)
-        planets.append(PlanetPosition(
-            name=p["name"],
-            longitude=longitude,
-            latitude=p.get("latitude", 0),
-            speed=p.get("speed", 0),
-            sign=p.get("sign", ""),
-            sign_degree=p.get("degree", p.get("sign_degree", 0)),
-            house=p.get("house"),
-        ))
+        planets.append(
+            PlanetPosition(
+                name=p["name"],
+                longitude=longitude,
+                latitude=p.get("latitude", 0),
+                speed=p.get("speed", 0),
+                sign=p.get("sign", ""),
+                sign_degree=p.get("degree", p.get("sign_degree", 0)),
+                house=p.get("house"),
+            )
+        )
 
     # Parse houses
     houses = []
     for h in data.get("houses", []):
-        houses.append(HousePosition(
-            number=h["number"],
-            longitude=h["longitude"],
-            sign=h["sign"],
-        ))
+        houses.append(
+            HousePosition(
+                number=h["number"],
+                longitude=h["longitude"],
+                sign=h["sign"],
+            )
+        )
 
     # Parse aspects
     aspects = []
     for a in data.get("aspects", []):
-        aspects.append(Aspect(
-            planet_a=a["planet_a"],
-            planet_b=a["planet_b"],
-            aspect_type=a["aspect_type"],
-            angle=a.get("angle", 0),
-            orb=a.get("orb", 0),
-            is_applying=a.get("is_applying", False),
-        ))
+        aspects.append(
+            Aspect(
+                planet_a=a["planet_a"],
+                planet_b=a["planet_b"],
+                aspect_type=a["aspect_type"],
+                angle=a.get("angle", 0),
+                orb=a.get("orb", 0),
+                is_applying=a.get("is_applying", False),
+            )
+        )
 
     # Parse birth datetime
     birth_dt_str = data.get("birth_datetime", "")

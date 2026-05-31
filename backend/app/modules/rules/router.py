@@ -47,5 +47,6 @@ async def list_rulesets(
 ) -> list[RuleSetInfo]:
     """List all available rulesets."""
     from app.modules.rules.loader import list_available_rulesets
+
     rulesets = list_available_rulesets()
     return [RuleSetInfo(**rs) for rs in rulesets]

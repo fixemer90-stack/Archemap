@@ -21,9 +21,10 @@ function CallbackContent() {
       return;
     }
 
+    // Store tokens
     setTokens(accessToken, refreshToken);
 
-    // If user needs to complete profile, redirect to register step 2
+    // If user needs to complete profile → register step 2
     if (needsProfile === "true") {
       let registerUrl = "/register?step=2";
       if (birthDate) {
@@ -36,26 +37,28 @@ function CallbackContent() {
       return;
     }
 
-    // Otherwise, fetch user and go to dashboard
+    // Existing user with profile → fetch user info → dashboard
     fetch("/api/v1/users/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Failed to fetch user");
+      })
       .then((user) => {
         useAuthStore.getState().setUser(user);
         router.push("/dashboard");
       })
       .catch(() => {
+        // Token is valid but user fetch failed — still go to dashboard
         router.push("/dashboard");
       });
   }, [searchParams, router, setTokens]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <p className="text-muted-foreground">Завершение входа...</p>
-      </div>
+    <div className="w-full max-w-sm space-y-6 text-center">
+      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#5B3FD6] border-t-[#D8B45A]" />
+      <p className="text-[#D8DCE8]">Завершение входа через Яндекс...</p>
     </div>
   );
 }
@@ -64,8 +67,9 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Загрузка...</p>
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#5B3FD6] border-t-[#D8B45A]" />
+          <p className="text-[#D8DCE8]">Загрузка...</p>
         </div>
       }
     >

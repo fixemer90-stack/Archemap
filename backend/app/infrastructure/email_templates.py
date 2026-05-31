@@ -9,30 +9,33 @@ def verify_email_template(link: str) -> tuple[str, str]:
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
      max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-  <h2 style="margin: 0 0 16px;">Verify your email</h2>
+  <h2 style="margin: 0 0 16px;">Подтвердите email</h2>
   <p style="margin: 0 0 24px; color: #666;">
-    Thanks for signing up for Archemap. Click the button below to verify your email address.
+    Спасибо за регистрацию в Archemap. Нажмите кнопку ниже, чтобы подтвердить ваш email.
   </p>
   <a href="{link}"
      style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
             border-radius: 6px; text-decoration: none; font-weight: 500;">
-    Verify email
+    Подтвердить email
   </a>
   <p style="margin: 24px 0 0; color: #999; font-size: 13px;">
-    This link expires in 24 hours. If you didn't create an account, you can ignore this email.
+    Ссылка действует 24 часа. Если вы не регистрировались, просто ignore this email.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
-  <p style="color: #999; font-size: 12px;">Archemap — Subscription management</p>
+  <p style="color: #999; font-size: 12px;">Archemap — астрологический анализ личности</p>
 </body>
 </html>
 """
-    text = f"""Verify your email
+    text = f"""Подтвердите email
 
-Thanks for signing up for Archemap. Click the link below to verify your email address:
+Спасибо за регистрацию в Archemap. Перейдите по ссылке для подтверждения:
 
 {link}
 
-This link expires in 24 hours. If you didn't create an account, you can ignore this email.
+Ссылка действует 24 часа. Если вы не регистрировались, ignore this email.
+
+--
+Archemap
 """
     return html.strip(), text.strip()
 
@@ -45,28 +48,31 @@ def resend_verification_template(link: str) -> tuple[str, str]:
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
      max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-  <h2 style="margin: 0 0 16px;">Verify your email</h2>
+  <h2 style="margin: 0 0 16px;">Новая ссылка для подтверждения</h2>
   <p style="margin: 0 0 24px; color: #666;">
-    Here's a new verification link for your Archemap account.
+    Вот новая ссылка для подтверждения вашего email в Archemap.
   </p>
   <a href="{link}"
      style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
             border-radius: 6px; text-decoration: none; font-weight: 500;">
-    Verify email
+    Подтвердить email
   </a>
   <p style="margin: 24px 0 0; color: #999; font-size: 13px;">
-    This link expires in 24 hours.
+    Ссылка действует 24 часа.
   </p>
 </body>
 </html>
 """
-    text = f"""Verify your email
+    text = f"""Новая ссылка для подтверждения
 
-Here's a new verification link for your Archemap account:
+Вот новая ссылка для подтверждения email в Archemap:
 
 {link}
 
-This link expires in 24 hours.
+Ссылка действует 24 часа.
+
+--
+Archemap
 """
     return html.strip(), text.strip()
 
@@ -79,29 +85,32 @@ def password_reset_template(link: str) -> tuple[str, str]:
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
      max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
-  <h2 style="margin: 0 0 16px;">Reset your password</h2>
+  <h2 style="margin: 0 0 16px;">Сброс пароля</h2>
   <p style="margin: 0 0 24px; color: #666;">
-    You requested a password reset for your Archemap account. Click the button below to set a new password.
+    Вы запросили сброс пароля для Archemap. Нажмите кнопку ниже.
   </p>
   <a href="{link}"
      style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
             border-radius: 6px; text-decoration: none; font-weight: 500;">
-    Reset password
+    Сбросить пароль
   </a>
   <p style="margin: 24px 0 0; color: #999; font-size: 13px;">
-    This link expires in 1 hour. If you didn't request this, ignore this email.
+    Ссылка действует 1 час. Если вы не запрашивали сброс, ignore this email.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
-  <p style="color: #999; font-size: 12px;">Archemap — Subscription management</p>
+  <p style="color: #999; font-size: 12px;">Archemap — астрологический анализ личности</p>
 </body>
 </html>
 """
-    text = f"""Reset your password
+    text = f"""Сброс пароля
 
-You requested a password reset for your Archemap account. Click the link below to set a new password:
+Вы запросили сброс пароля для Archemap. Перейдите по ссылке:
 
 {link}
 
-This link expires in 1 hour. If you didn't request this, ignore this email.
+Ссылка действует 1 час. Если вы не запрашивали сброс, ignore this email.
+
+--
+Archemap
 """
     return html.strip(), text.strip()

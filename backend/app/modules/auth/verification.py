@@ -89,7 +89,7 @@ class VerificationService:
         provider = get_email_provider()
         await provider.send(
             to=email,
-            subject="Verify your email — Archemap",
+            subject="Подтвердите email — Archemap",
             html_body=html_body,
             text_body=text_body,
         )
@@ -109,7 +109,7 @@ class VerificationService:
         provider = get_email_provider()
         await provider.send(
             to=email,
-            subject="Verify your email — Archemap",
+            subject="Подтвердите email — Archemap",
             html_body=html_body,
             text_body=text_body,
         )

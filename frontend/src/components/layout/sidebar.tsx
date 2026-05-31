@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  User,
+  Heart,
+  Baby,
+  Briefcase,
   CreditCard,
-  Receipt,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -21,15 +24,47 @@ const navItems = [
     href: "/dashboard",
     icon: LayoutDashboard,
   },
+];
+
+const productItems = [
+  {
+    title: "Self",
+    href: "/products/self",
+    icon: User,
+    color: "#5B3FD6",
+    description: "Архетипический профиль",
+  },
+  {
+    title: "Love",
+    href: "/products/love",
+    icon: Heart,
+    color: "#B84A6B",
+    description: "Совместимость пары",
+    disabled: true,
+  },
+  {
+    title: "Child",
+    href: "/products/child",
+    icon: Baby,
+    color: "#6BAFBD",
+    description: "Профиль ребёнка",
+    disabled: true,
+  },
+  {
+    title: "Career",
+    href: "/products/career",
+    icon: Briefcase,
+    color: "#C28A2E",
+    description: "Карьерные сценарии",
+    disabled: true,
+  },
+];
+
+const settingsItems = [
   {
     title: "Подписки",
     href: "/subscriptions",
     icon: CreditCard,
-  },
-  {
-    title: "Оплата",
-    href: "/billing",
-    icon: Receipt,
   },
   {
     title: "Настройки",
@@ -69,18 +104,25 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center border-b border-[rgba(216,220,232,0.10)] px-4">
         {sidebarOpen && (
-          <span className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]">
+          <Link
+            href="/dashboard"
+            className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]"
+          >
             Archemap
-          </span>
+          </Link>
         )}
         {!sidebarOpen && (
-          <span className="mx-auto font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#D8B45A]">
+          <Link
+            href="/dashboard"
+            className="mx-auto font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#D8B45A]"
+          >
             A
-          </span>
+          </Link>
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 p-2" aria-label="Главная навигация">
+      {/* Main nav */}
+      <nav className="space-y-1 p-2" aria-label="Главная навигация">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -105,7 +147,79 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-[rgba(216,220,232,0.10)] p-2">
+      {/* Products */}
+      <div className="flex-1 space-y-1 p-2">
+        {sidebarOpen && (
+          <p className="px-3 py-1 text-xs text-[rgba(216,220,232,0.30)] uppercase tracking-wider">
+            Продукты
+          </p>
+        )}
+        {productItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.disabled ? "#" : item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+                item.disabled
+                  ? "text-[rgba(216,220,232,0.25)] cursor-not-allowed"
+                  : isActive
+                    ? "bg-gradient-to-br from-[rgba(91,63,214,0.30)] to-[rgba(216,180,90,0.10)] text-[#F6F1E8] border border-[rgba(91,63,214,0.30)]"
+                    : "text-[#D8DCE8] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
+                !sidebarOpen && "justify-center",
+              )}
+              aria-label={item.title}
+              title={item.disabled ? `${item.title} — скоро` : item.title}
+              aria-current={isActive ? "page" : undefined}
+              onClick={item.disabled ? (e) => e.preventDefault() : undefined}
+            >
+              <item.icon
+                className="h-5 w-5 shrink-0"
+                style={{ color: item.disabled ? undefined : item.color }}
+              />
+              {sidebarOpen && (
+                <div className="flex-1 min-w-0">
+                  <span>{item.title}</span>
+                  {item.disabled && (
+                    <span className="ml-2 text-[10px] text-[rgba(216,220,232,0.30)]">
+                      скоро
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Settings */}
+      <nav
+        className="space-y-1 p-2 border-t border-[rgba(216,220,232,0.10)]"
+        aria-label="Настройки"
+      >
+        {settingsItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+                isActive
+                  ? "bg-gradient-to-br from-[rgba(91,63,214,0.30)] to-[rgba(216,180,90,0.10)] text-[#F6F1E8] border border-[rgba(91,63,214,0.30)]"
+                  : "text-[#D8DCE8] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
+                !sidebarOpen && "justify-center",
+              )}
+              aria-label={item.title}
+              title={item.title}
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              {sidebarOpen && <span>{item.title}</span>}
+            </Link>
+          );
+        })}
+
         <button
           onClick={handleLogout}
           className={cn(
@@ -118,7 +232,7 @@ export function Sidebar() {
           <LogOut className="h-5 w-5 shrink-0" />
           {sidebarOpen && <span>Выйти</span>}
         </button>
-      </div>
+      </nav>
     </aside>
   );
 }

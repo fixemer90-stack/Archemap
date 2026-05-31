@@ -207,22 +207,23 @@ Frontend не содержит бизнес-логики. Вся логика �
 
 ### 5.1 Карта маршрутов
 
-| Route Group | URL | Страница | Авторизация |
-|---|---|---|---|
-| — | `/` | Landing page | Нет |
-| `(auth)` | `/login` | Вход | Нет |
-| `(auth)` | `/register` | Регистрация | Нет |
-| `(auth)` | `/verify` | Верификация email | Нет |
-| `(auth)` | `/auth/callback` | OAuth callback | Нет |
-| `(dashboard)` | `/dashboard` | Dashboard | Да |
-| `(dashboard)` | `/profiles` | Профили (planned) | Да |
-| `(dashboard)` | `/profiles/[id]` | Профиль (planned) | Да |
-| `(dashboard)` | `/profiles/[id]/chart` | Карта (planned) | Да |
-| `(dashboard)` | `/reports` | Отчёты (planned) | Да |
-| `(dashboard)` | `/settings` | Настройки | Да |
-| `(dashboard)` | `/billing` | Биллинг | Да |
-| `(dashboard)` | `/subscriptions` | Подписки | Да |
-| — | `/admin` | Admin panel (planned) | Admin |
+| Route Group | URL | Страница | Авторизация | Статус |
+|---|---|---|---|---|
+| — | `/` | Landing page (Archemap design code) | Нет | ✅ |
+| `(auth)` | `/login` | Вход (email + Yandex OAuth) | Нет | ✅ |
+| `(auth)` | `/register` | Регистрация (3 шага + birth data) | Нет | ✅ |
+| `(auth)` | `/verify` | Верификация email | Нет | ✅ |
+| `(auth)` | `/auth/callback` | OAuth callback (Yandex) | Нет | ✅ |
+| `(dashboard)` | `/dashboard` | Dashboard: отчёты + продукты | Да | ✅ |
+| `(dashboard)` | `/products/self` | Archemap Self — список отчётов | Да | ✅ |
+| `(dashboard)` | `/products/love` | Archemap Love — скоро | Да | ✅ (placeholder) |
+| `(dashboard)` | `/products/child` | Archemap Child — скоро | Да | ✅ (placeholder) |
+| `(dashboard)` | `/products/career` | Archemap Career — скоро | Да | ✅ (placeholder) |
+| `(dashboard)` | `/report/[profileId]` | Отчёт: карта + соционика + архетипы | Да | ✅ |
+| `(dashboard)` | `/settings` | Настройки | Да | ✅ |
+| `(dashboard)` | `/subscriptions` | Подписки | Да | ✅ |
+| `(dashboard)` | `/billing` | Биллинг | Да | ✅ |
+| — | `/admin` | Admin panel | Admin | ⬜ planned |
 
 ### 5.2 Layouts
 

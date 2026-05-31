@@ -99,13 +99,13 @@ export default function HomePage() {
             Карта внутренних архетипов
           </h1>
           <p className="max-w-2xl text-lg text-[#D8DCE8] leading-relaxed">
-            Archemap — это не гадалка и не предсказание судьбы. Это{" "}
+            Введите дату, время и место рождения — Archemap построит натальную
+            карту, вычислит соционический тип и покажет ваш архетипический
+            профиль.{" "}
             <span className="text-[#F6F1E8]">
-              премиальная система самопознания
+              Каждый вывод — с числовым score, уровнем уверенности и цепочкой
+              оснований.
             </span>
-            , которая строит вашу натальную карту, вычисляет соционический тип и
-            показывает{" "}
-            <span className="text-[#8DA8FF]">основания каждого вывода</span>.
           </p>
           <div className="flex gap-3">
             <Button asChild>
@@ -132,9 +132,10 @@ export default function HomePage() {
                 Натальная карта
               </h3>
               <p className="text-sm text-[#D8DCE8] leading-relaxed">
-                12 планет, 12 домов, аспекты с орбами. Вычисляется по Swiss
-                Ephemeris с точностью ±0.01°. Каждая позиция — факт, не
-                интерпретация.
+                12 планет в знаках и домах, аспекты между ними. Вы увидите, где
+                стоит ваше Солнце, как расположен Меркурий, какие планеты
+                ретроградны. Считается по Swiss Ephemeris — тому же движку, что
+                используют профессиональные астрологи.
               </p>
             </div>
 
@@ -145,8 +146,9 @@ export default function HomePage() {
                 Соционический тип
               </h3>
               <p className="text-sm text-[#D8DCE8] leading-relaxed">
-                Model A: 8 функций, 16 типов. Top-3 с score и confidence. Радар
-                функционального профиля — Se, Si, Ne, Ni, Fe, Fi, Te, Ti.
+                16 типов личности по Model A. Вы увидите свой тип (например, LIE
+                — Предприниматель), его описание, сильные функции и радар
+                профиля. Top-3 кандидата с процентом совпадения.
               </p>
             </div>
 
@@ -158,7 +160,9 @@ export default function HomePage() {
               </h3>
               <p className="text-sm text-[#D8DCE8] leading-relaxed">
                 8 архетипов: Стратег, Творец, Исследователь, Опора, Дипломат,
-                Катализатор, Наставник, Строитель. Каждый — с evidence trail.
+                Катализатор, Наставник, Строитель. Узнаете, какой паттерн
+                выражен сильнее всего и почему — с указанием конкретных
+                планетных позиций.
               </p>
             </div>
           </div>
@@ -181,8 +185,8 @@ export default function HomePage() {
                   Данные рождения
                 </h3>
                 <p className="text-sm text-[#D8DCE8]">
-                  Дата, время, место. Если время неизвестно — система это укажет
-                  и снизит confidence.
+                  Дата, время и место рождения. Если время неизвестно — можно
+                  указать «не знаю», система предупредит о снижении точности.
                 </p>
               </div>
             </div>
@@ -196,8 +200,9 @@ export default function HomePage() {
                   Вычисление
                 </h3>
                 <p className="text-sm text-[#D8DCE8]">
-                  Swiss Ephemeris строит карту. Нормализованные признаки
-                  извлекаются автоматически: стихии, модальности, дома, аспекты.
+                  Система вычисляет позиции планет, домов и аспектов. Затем
+                  извлекает признаки: доли стихий (огонь, земля, воздух, вода),
+                  модальности, акценты домов.
                 </p>
               </div>
             </div>
@@ -211,9 +216,10 @@ export default function HomePage() {
                   Интерпретация
                 </h3>
                 <p className="text-sm text-[#D8DCE8]">
-                  Rule-based движок оценивает архетипы. Каждый вывод — score,
-                  confidence, evidence, counter-evidence. Никакого AI в
-                  рантайме.
+                  Движок сопоставляет признаки с правилами и выдаёт архетипы,
+                  соционический тип и профиль. Каждый вывод — числовой score,
+                  уровень уверенности и список оснований. Никакого AI — только
+                  правила.
                 </p>
               </div>
             </div>
@@ -229,12 +235,12 @@ export default function HomePage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2 max-w-2xl mx-auto">
             {[
-              "Натальную карту с позициями 12 планет",
-              "Соционический тип с Model A (8 функций)",
-              "Архетипический профиль (8 архетипов)",
-              "Score и confidence для каждого вывода",
-              "Evidence trail: факты → правила → выводы",
-              "Версию движка и правил для воспроизводимости",
+              "Натальную карту: 12 планет в знаках и домах, аспекты",
+              "Соционический тип: 16 типов, 8 функций, радар профиля",
+              "Архетип: какой паттерн выражен сильнее и почему",
+              "Score: числовой показатель выраженности (0–100%)",
+              "Confidence: насколько надёжен вывод с учётом входных данных",
+              "Основания: какие планетные позиции привели к выводу",
             ].map((item) => (
               <div key={item} className="flex items-start gap-3">
                 <span className="text-[#D8B45A] mt-0.5">✦</span>
@@ -246,17 +252,36 @@ export default function HomePage() {
 
         <Divider />
 
-        {/* Настроение */}
+        {/* Для кого */}
         <section className="container mx-auto px-4 pb-20">
-          <div className="glass p-8 max-w-2xl mx-auto text-center space-y-4">
-            <p className="font-[family-name:var(--font-cormorant)] text-lg text-[#F6F1E8]">
-              Спокойный. Глубокий. Объяснимый.
-            </p>
-            <p className="text-[#D8DCE8] text-sm leading-relaxed">
-              Тонкая звёздная сетка, компасная роза, радиальные оси,
-              приглушённое золото, глубокий тёмный фон.
-              Точность — не мистика.
-            </p>
+          <h2 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-center text-[#F6F1E8] mb-10">
+            Для кого
+          </h2>
+          <div className="grid gap-4 md:grid-cols-3 max-w-3xl mx-auto">
+            <div className="text-center space-y-2">
+              <p className="text-sm text-[#F6F1E8]">
+                Хотите понять свои сильные стороны
+              </p>
+              <p className="text-xs text-[rgba(216,220,232,0.50)]">
+                Не через онлайн-тест, а через систему с объяснимой логикой
+              </p>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-[#F6F1E8]">
+                Интересуетесь астрологией серьёзно
+              </p>
+              <p className="text-xs text-[rgba(216,220,232,0.50)]">
+                Не гороскоп на день, а натальная карта с конкретными позициями
+              </p>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-[#F6F1E8]">
+                Важно видеть основания, а не только вывод
+              </p>
+              <p className="text-xs text-[rgba(216,220,232,0.50)]">
+                Каждый результат — с score, confidence и цепочкой фактов
+              </p>
+            </div>
           </div>
         </section>
       </main>

@@ -243,13 +243,7 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
 
         {/* Points */}
         {points.map((p) => (
-          <circle
-            key={p.fn}
-            cx={p.x}
-            cy={p.y}
-            r={4}
-            fill="#D8B45A"
-          />
+          <circle key={p.fn} cx={p.x} cy={p.y} r={4} fill="#D8B45A" />
         ))}
 
         {/* Labels */}

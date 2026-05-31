@@ -159,7 +159,9 @@ export function ChartAspects({ aspects }: { aspects: Aspect[] }) {
                 {aspect.planet_a}
               </span>
               <span
-                className={ASPECT_COLORS[aspect.aspect_type] || "text-[#D8DCE8]"}
+                className={
+                  ASPECT_COLORS[aspect.aspect_type] || "text-[#D8DCE8]"
+                }
               >
                 {aspect.aspect_type}
               </span>

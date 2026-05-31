@@ -309,9 +309,7 @@ class AuthService:
             raise AuthorizationError("Account is deactivated")
 
         # Check if profile already exists
-        existing = await self.db.execute(
-            select(PersonProfile).where(PersonProfile.user_id == user_id)
-        )
+        existing = await self.db.execute(select(PersonProfile).where(PersonProfile.user_id == user_id))
         if existing.scalar_one_or_none() is not None:
             raise ValidationError("Profile already exists")
 

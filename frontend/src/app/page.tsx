@@ -246,19 +246,16 @@ export default function HomePage() {
 
         <Divider />
 
-        {/* Позиционирование */}
+        {/* Настроение */}
         <section className="container mx-auto px-4 pb-20">
           <div className="glass p-8 max-w-2xl mx-auto text-center space-y-4">
-            <p className="text-[#D8DCE8] text-sm leading-relaxed">
-              Archemap — это{" "}
-              <span className="text-[#F6F1E8]">не эзотерическая гадалка</span>.
-              Это премиальная карта самопознания: астрологическая символика,
-              психологическая структура, объяснимые выводы и спокойный
-              навигационный интерфейс.
+            <p className="font-[family-name:var(--font-cormorant)] text-lg text-[#F6F1E8]">
+              Спокойный. Глубокий. Объяснимый.
             </p>
-            <p className="text-[rgba(216,220,232,0.50)] text-xs">
-              Мы не предсказываем судьбу. Мы показываем гипотезы, веса и
-              основания.
+            <p className="text-[#D8DCE8] text-sm leading-relaxed">
+              Тонкая звёздная сетка, компасная роза, радиальные оси,
+              приглушённое золото, глубокий тёмный фон.
+              Точность — не мистика.
             </p>
           </div>
         </section>

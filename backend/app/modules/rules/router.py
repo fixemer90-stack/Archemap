@@ -32,7 +32,7 @@ async def interpret_chart(
     service = RulesService(db)
     result = await service.interpret_chart(
         profile_id=UUID(body.profile_id),
-        user_id=current_user.id,
+        user_id=current_user,
         product=body.product,
         ruleset_version=body.ruleset_version,
         locale=body.locale,

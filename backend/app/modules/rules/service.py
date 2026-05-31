@@ -103,18 +103,23 @@ def _dict_to_chart(data: dict[str, Any]) -> ChartData:
     """Convert a chart dict back to ChartData for feature extraction."""
     from datetime import datetime
 
-    from app.chart_engine.types import Aspect, ChartData, HousePosition, PlanetPosition
+    from app.chart_engine.types import Aspect, ChartData, HousePosition, PlanetPosition, ZODIAC_SIGNS
 
-    # Parse planets
+    # Parse planets — handle both stored format (sign_degree) and computed format (longitude)
     planets = []
     for p in data.get("planets", []):
+        longitude = p.get("longitude", 0)
+        # If no longitude, compute from sign + degree
+        if longitude == 0 and "sign" in p and "degree" in p:
+            sign_index = ZODIAC_SIGNS.index(p["sign"]) if p["sign"] in ZODIAC_SIGNS else 0
+            longitude = sign_index * 30 + p.get("degree", 0)
         planets.append(PlanetPosition(
             name=p["name"],
-            longitude=p["longitude"],
+            longitude=longitude,
             latitude=p.get("latitude", 0),
             speed=p.get("speed", 0),
-            sign=p["sign"],
-            sign_degree=p.get("sign_degree", 0),
+            sign=p.get("sign", ""),
+            sign_degree=p.get("degree", p.get("sign_degree", 0)),
             house=p.get("house"),
         ))
 

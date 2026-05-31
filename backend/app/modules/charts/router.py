@@ -34,6 +34,8 @@ async def compute_chart(
         profile_id=str(snapshot.profile_id),
         engine_version=snapshot.engine_version,
         chart_data=snapshot.chart_data,
+        socionics=snapshot.socionics,
+        function_strengths=snapshot.function_strengths,
         created_at=snapshot.created_at,
     )
 
@@ -54,6 +56,8 @@ async def list_snapshots(
                 profile_id=str(s.profile_id),
                 engine_version=s.engine_version,
                 chart_data=s.chart_data,
+                socionics=s.socionics,
+                function_strengths=s.function_strengths,
                 created_at=s.created_at,
             )
             for s in snapshots
@@ -76,5 +80,7 @@ async def get_snapshot(
         profile_id=str(snapshot.profile_id),
         engine_version=snapshot.engine_version,
         chart_data=snapshot.chart_data,
+        socionics=snapshot.socionics,
+        function_strengths=snapshot.function_strengths,
         created_at=snapshot.created_at,
     )

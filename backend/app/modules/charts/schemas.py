@@ -13,6 +13,8 @@ class ChartSnapshotResponse(BaseModel):
     profile_id: str
     engine_version: str
     chart_data: dict[str, Any]
+    socionics: dict[str, Any] = {}
+    function_strengths: dict[str, Any] = {}
     created_at: datetime
 
     model_config = {"from_attributes": True}

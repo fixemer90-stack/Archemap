@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { NatalChart } from "@/components/chart/natal-chart";
 import { SocionicsResult } from "@/components/chart/socionics-result";
 
@@ -132,12 +133,11 @@ function ReportContent({ data }: { data: ReportData }) {
 }
 
 // ── Report Page ────────────────────────────────────────────────────
-export default function ReportPage({
-  params,
-}: {
-  params: { profileId: string };
-}) {
-  // In real implementation, fetch data from API
+export default function ReportPage() {
+  const params = useParams();
+  const profileId = params.profileId as string;
+
+  // In real implementation, fetch data from API using profileId
   // For now, show placeholder
   const placeholderData: ReportData = {
     chart: {

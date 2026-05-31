@@ -82,10 +82,11 @@ class ChartService:
         }
 
         # Function strengths from real engine (top1 breakdown)
-        function_strengths = {
-            fn: round(top1.breakdown.get(fn, 0), 3)
-            for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
-        } if top1 else {}
+        function_strengths = (
+            {fn: round(top1.breakdown.get(fn, 0), 3) for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]}
+            if top1
+            else {}
+        )
 
         # Persist
         snapshot = ChartSnapshot(

@@ -6,6 +6,7 @@ import { NatalChart } from "@/components/chart/natal-chart";
 import { SocionicsResult } from "@/components/chart/socionics-result";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface Planet {
@@ -187,8 +188,17 @@ export default function ReportPage() {
       try {
         setLoading(true);
 
+        // Get auth token
+        const token = useAuthStore.getState().token;
+        const authHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+
         // 1. Fetch profile
-        const profileRes = await fetch(`/api/v1/profiles/${profileId}`);
+        const profileRes = await fetch(`/api/v1/profiles/${profileId}`, {
+          headers: authHeaders,
+        });
         if (!profileRes.ok) throw new Error("Профиль не найден");
         const profileData = await profileRes.json();
         setProfile(profileData);
@@ -196,7 +206,7 @@ export default function ReportPage() {
         // 2. Fetch or compute chart
         const chartRes = await fetch(`/api/v1/profiles/${profileId}/chart`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
         });
         if (!chartRes.ok) throw new Error("Не удалось построить карту");
         const chartData = await chartRes.json();
@@ -216,7 +226,7 @@ export default function ReportPage() {
         // 3. Fetch interpretation
         const interpRes = await fetch("/api/v1/rules/interpret", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify({
             profile_id: profileId,
             product: "self",

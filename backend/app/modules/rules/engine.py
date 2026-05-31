@@ -244,10 +244,10 @@ def _check_condition(condition: Condition, facts: dict[str, Any]) -> bool:
 
     op_func = _OPERATORS.get(condition.op)
     if op_func:
-        return op_func(actual, condition.value)
+        return bool(op_func(actual, condition.value))
 
     if condition.op == ConditionOp.BETWEEN:
-        return condition.value <= actual <= (condition.value_upper or condition.value)
+        return bool(condition.value <= actual <= (condition.value_upper or condition.value))
     return False
 
 

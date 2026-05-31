@@ -40,8 +40,7 @@
 | Frontend | Next.js / React | 15 / 19 |
 | UI | shadcn/ui + Tailwind CSS 4 + Cormorant Garamond / Inter | — |
 | State | Zustand + TanStack Query | latest |
-| Payments (RU) | YooKassa | — |
-| Payments (Intl) | Stripe | — |
+| Payments (RU) | YooKassa + Yandex Pay | — |
 | Auth (OAuth) | Yandex ID | OAuth 2.1 + PKCE |
 | PDF Generation | WeasyPrint / Playwright | — (planned) |
 | CI | GitHub Actions | — |
@@ -356,7 +355,7 @@ ChartSnapshot       — вычисленная карта (profile_id, planets:J
 ### Phase 4: Payments & Billing
 - [ ] Plan model + admin CRUD
 - [ ] YooKassa adapter (cards, SBP)
-- [ ] Stripe adapter (international)
+- [ ] Yandex Pay adapter
 - [ ] Webhook intake + idempotent processing
 - [ ] Subscription lifecycle (create, renew, cancel)
 - [ ] Entitlement engine (vertical access gating)
@@ -387,3 +386,11 @@ ChartSnapshot       — вычисленная карта (profile_id, planets:J
 8. Какой лимит бесплатного контента — полная карта без интерпретации или краткий отчёт?
 9. Мультиязычность: только RU на старте или сразу RU+EN?
 10. Нужен ли admin UI в первой версии или только API?
+
+## Future Features (Backlog)
+
+- VK ID OAuth integration
+- Stripe (international payments)
+- CloudPayments
+- Apple/Google in-app billing (mobile)
+- Multi-language support (EN)

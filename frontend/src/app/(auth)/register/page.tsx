@@ -37,7 +37,7 @@ const STEPS = [
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Загрузка...</div>}>
       <RegisterForm />
     </Suspense>
   );
@@ -79,6 +79,7 @@ function RegisterForm() {
   // Pre-fill from OAuth callback
   useEffect(() => {
     const oauthBirthDate = searchParams.get("birth_date");
+    const oauthEmail = searchParams.get("email");
     const stepParam = searchParams.get("step");
 
     if (stepParam) {
@@ -93,6 +94,10 @@ function RegisterForm() {
       if (!stepParam) {
         setStep(2); // Jump to birth data step if no step specified
       }
+    }
+
+    if (oauthEmail) {
+      setEmail(oauthEmail);
     }
   }, [searchParams]);
 
@@ -239,7 +244,7 @@ function RegisterForm() {
       // Redirect to report page with chart data
       router.push(`/report/${result.profile_id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Что-то пошло не так");
     } finally {
       setLoading(false);
     }

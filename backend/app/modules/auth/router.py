@@ -192,7 +192,7 @@ async def yandex_oauth_callback(
     service = OAuthService(db)
     tokens = await service.handle_yandex_callback(code=code, state=state)
 
-    # Redirect to frontend with tokens and birth data as query params
+    # Redirect to frontend with tokens, birth data, and email as query params
     redirect_url = (
         f"{settings.FRONTEND_URL}/auth/callback"
         f"?access_token={tokens['access_token']}"
@@ -200,6 +200,8 @@ async def yandex_oauth_callback(
     )
     if tokens.get("birth_date"):
         redirect_url += f"&birth_date={tokens['birth_date']}"
+    if tokens.get("email"):
+        redirect_url += f"&email={tokens['email']}"
     if tokens.get("has_profile") is False:
         redirect_url += "&needs_profile=true"
     return RedirectResponse(url=redirect_url)

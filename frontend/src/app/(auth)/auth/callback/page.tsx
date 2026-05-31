@@ -14,6 +14,7 @@ function CallbackContent() {
     const refreshToken = searchParams.get("refresh_token");
     const needsProfile = searchParams.get("needs_profile");
     const birthDate = searchParams.get("birth_date");
+    const email = searchParams.get("email");
 
     if (!accessToken || !refreshToken) {
       router.push("/login?error=missing_tokens");
@@ -27,6 +28,9 @@ function CallbackContent() {
       let registerUrl = "/register?step=2";
       if (birthDate) {
         registerUrl += `&birth_date=${encodeURIComponent(birthDate)}`;
+      }
+      if (email) {
+        registerUrl += `&email=${encodeURIComponent(email)}`;
       }
       router.push(registerUrl);
       return;

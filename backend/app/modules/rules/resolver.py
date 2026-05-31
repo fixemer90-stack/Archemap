@@ -22,7 +22,8 @@ def load_evidence_templates(product: str, version: str = "v1") -> dict[str, Any]
     with open(filepath, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    return data.get("templates", {})
+    result: dict[str, Any] = data.get("templates", {})
+    return result
 
 
 def render_claim_message(claim: Claim, templates: dict[str, Any], features: dict[str, float]) -> str:
@@ -101,6 +102,6 @@ def render_full_report(
 def _find_template(archetype_name: str, templates: dict[str, Any]) -> dict[str, Any] | None:
     """Find template matching archetype name."""
     for _key, tmpl in templates.items():
-        if tmpl.get("title") == archetype_name:
+        if isinstance(tmpl, dict) and tmpl.get("title") == archetype_name:
             return tmpl
     return None

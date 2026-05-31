@@ -22,7 +22,7 @@ router = APIRouter(prefix="/rules", tags=["rules"])
 async def interpret_chart(
     body: InterpretRequest,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user: UUID = Depends(get_current_user),
 ) -> InterpretResponse:
     """Interpret a chart snapshot through the rule engine.
 
@@ -43,7 +43,7 @@ async def interpret_chart(
 
 @router.get("/rulesets", response_model=list[RuleSetInfo])
 async def list_rulesets(
-    current_user=Depends(get_current_user),
+    current_user: UUID = Depends(get_current_user),
 ) -> list[RuleSetInfo]:
     """List all available rulesets."""
     from app.modules.rules.loader import list_available_rulesets

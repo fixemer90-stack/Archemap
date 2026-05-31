@@ -1,0 +1,248 @@
+# Self vertical — archetype rules v1.0.0
+# Archemap Design Code: explainable, deterministic, rule-based
+# Each rule produces archetype scores and claim contributions
+# with full evidence trail and confidence adjustments.
+
+product: self
+version: "1.0.0"
+effective_from: "2026-01-01"
+locale: ru-RU
+
+archetypes:
+  strateg:
+    name: "Стратег"
+    description: "Системный мышлитель с выраженной способностью к структурированию"
+    conditions:
+      all:
+        - fact: feature.earth
+          op: gte
+          value: 0.35
+        - fact: feature.fixed
+          op: gte
+          value: 0.30
+    effects:
+      archetype.strateg: 0.25
+      claim.self.structure_strength: 0.20
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["spontaneous_creator"]
+    evidence:
+      template_key: ev.self.strateg
+      show_basis_features: [feature.earth, feature.fixed]
+
+  creator:
+    name: "Творец"
+    description: "Спонтанный генератор идей с выраженной огненной энергией"
+    conditions:
+      all:
+        - fact: feature.fire
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.25
+    effects:
+      archetype.creator: 0.25
+      claim.self.creative_flow: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["builder"]
+    evidence:
+      template_key: ev.self.creator
+      show_basis_features: [feature.fire, feature.mutable]
+
+  explorer:
+    name: "Исследователь"
+    description: "Интеллектуальный навигатор с потребностью в разнообразии"
+    conditions:
+      all:
+        - fact: feature.air
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.25
+    effects:
+      archetype.explorer: 0.25
+      claim.self.adaptive_intelligence: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["anchor"]
+    evidence:
+      template_key: ev.self.explorer
+      show_basis_features: [feature.air, feature.mutable]
+
+  anchor:
+    name: "Опора"
+    description: "Надёжная основа с выраженной земной стабильностью"
+    conditions:
+      all:
+        - fact: feature.earth
+          op: gte
+          value: 0.40
+        - fact: feature.cardinal
+          op: gte
+          value: 0.25
+    effects:
+      archetype.anchor: 0.25
+      claim.self.reliability: 0.20
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["explorer"]
+    evidence:
+      template_key: ev.self.anchor
+      show_basis_features: [feature.earth, feature.cardinal]
+
+  diplomat:
+    name: "Дипломат"
+    description: "Мастер баланса и гармоничного взаимодействия"
+    conditions:
+      all:
+        - fact: feature.air
+          op: gte
+          value: 0.30
+        - fact: feature.cardinal
+          op: gte
+          value: 0.25
+    effects:
+      archetype.diplomat: 0.25
+      claim.self.harmony_seeking: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["catalyst"]
+    evidence:
+      template_key: ev.self.diplomat
+      show_basis_features: [feature.air, feature.cardinal]
+
+  catalyst:
+    name: "Катализатор"
+    description: "Инициатор изменений с выраженной огненной волей"
+    conditions:
+      all:
+        - fact: feature.fire
+          op: gte
+          value: 0.30
+        - fact: feature.cardinal
+          op: gte
+          value: 0.25
+    effects:
+      archetype.catalyst: 0.25
+      claim.self.initiative: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["diplomat"]
+    evidence:
+      template_key: ev.self.catalyst
+      show_basis_features: [feature.fire, feature.cardinal]
+
+  mentor:
+    name: "Наставник"
+    description: "Проводник глубинных процессов с выраженной водной мудростью"
+    conditions:
+      all:
+        - fact: feature.water
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.25
+    effects:
+      archetype.mentor: 0.25
+      claim.self.depth_wisdom: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["strateg"]
+    evidence:
+      template_key: ev.self.mentor
+      show_basis_features: [feature.water, feature.mutable]
+
+  builder:
+    name: "Строитель"
+    description: "Мастер долгосрочных конструкций с выраженной сатурновой дисциплиной"
+    conditions:
+      all:
+        - fact: feature.earth
+          op: gte
+          value: 0.40
+        - fact: feature.fixed
+          op: gte
+          value: 0.35
+    effects:
+      archetype.builder: 0.25
+      claim.self.discipline: 0.20
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["creator"]
+    evidence:
+      template_key: ev.self.builder
+      show_basis_features: [feature.earth, feature.fixed]
+
+# Scoring parameters (versioned separately from code)
+scoring:
+  # Contribution formula: contrib_r = w_r × match_r × q_input × q_rule
+  default_weight: 1.0
+  default_q_rule: 1.0
+
+  # Aggregation: score_k = clamp((bias + Σ support - λ × Σ counter) / max_possible, 0, 1)
+  default_bias: 0.0
+  counter_penalty_lambda: 0.30
+  max_possible_score: 1.0
+
+  # Claim selection thresholds
+  min_claim_score: 0.15
+  max_claims_per_section: 3
+
+# Confidence model (4-factor)
+confidence:
+  weights:
+    q_input: 0.35
+    q_coverage: 0.30
+    q_margin: 0.20
+    q_consistency: 0.15
+
+  # Reason code thresholds
+  thresholds:
+    good_input: 0.70
+    low_coverage: 0.30
+    high_contradiction: 0.40
+    low_margin: 0.10
+
+  # Labels
+  labels:
+    high: [0.80, 1.0]
+    medium_high: [0.60, 0.80]
+    medium: [0.40, 0.60]
+    medium_low: [0.20, 0.40]
+    low: [0.0, 0.20]

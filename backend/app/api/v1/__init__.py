@@ -15,6 +15,7 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.router import router as payments_router
 from app.modules.profiles.router import router as profiles_router
 from app.modules.reconciliation.router import router as reconciliation_router
+from app.modules.rules.router import router as rules_router
 from app.modules.subscriptions.router import router as subscriptions_router
 from app.modules.users.router import router as users_router
 from app.modules.webhooks.router import router as webhooks_router
@@ -35,3 +36,4 @@ api_router.include_router(notifications_router)
 api_router.include_router(admin_router)
 api_router.include_router(profiles_router)
 api_router.include_router(charts_router)
+api_router.include_router(rules_router)

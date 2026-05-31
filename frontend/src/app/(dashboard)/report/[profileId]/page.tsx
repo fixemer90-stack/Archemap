@@ -195,47 +195,50 @@ export default function ReportPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         };
 
-        // 1. Fetch profile
-        const profileRes = await fetch(`/api/v1/profiles/${profileId}`, {
-          headers: authHeaders,
-        });
-        if (!profileRes.ok) throw new Error("Профиль не найден");
-        const profileData = await profileRes.json();
-        setProfile(profileData);
+        // Fetch profile + chart + interpretation in parallel
+        const [profileRes, chartRes, interpRes] = await Promise.all([
+          fetch(`/api/v1/profiles/${profileId}`, { headers: authHeaders }),
+          fetch(`/api/v1/profiles/${profileId}/chart`, {
+            method: "POST",
+            headers: authHeaders,
+          }),
+          fetch("/api/v1/rules/interpret", {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+              profile_id: profileId,
+              product: "self",
+              mode: "full",
+            }),
+          }),
+        ]);
 
-        // 2. Fetch or compute chart
-        const chartRes = await fetch(`/api/v1/profiles/${profileId}/chart`, {
-          method: "POST",
-          headers: authHeaders,
-        });
-        if (!chartRes.ok) throw new Error("Не удалось построить карту");
-        const chartData = await chartRes.json();
-        setChart(chartData.chart_data);
-
-        // Parse socionics from chart response
-        if (chartData.socionics && chartData.socionics.top3) {
-          setSocionics(chartData.socionics);
-        } else if (chartData.function_strengths) {
-          // Fallback: build socionics from function_strengths
-          setSocionics({
-            top3: [],
-            function_strengths: chartData.function_strengths,
-          });
+        // Profile
+        if (profileRes.ok) {
+          setProfile(await profileRes.json());
         }
 
-        // 3. Fetch interpretation
-        const interpRes = await fetch("/api/v1/rules/interpret", {
-          method: "POST",
-          headers: authHeaders,
-          body: JSON.stringify({
-            profile_id: profileId,
-            product: "self",
-            mode: "full",
-          }),
-        });
+        // Chart + socionics
+        if (chartRes.ok) {
+          const chartData = await chartRes.json();
+          setChart(chartData.chart_data);
+          if (chartData.socionics && chartData.socionics.top3) {
+            setSocionics(chartData.socionics);
+          } else if (chartData.function_strengths) {
+            setSocionics({
+              top3: [],
+              function_strengths: chartData.function_strengths,
+            });
+          }
+        }
+
+        // Interpretation
         if (interpRes.ok) {
-          const interpData = await interpRes.json();
-          setInterpretation(interpData);
+          setInterpretation(await interpRes.json());
+        }
+
+        if (!profileRes.ok && !chartRes.ok) {
+          throw new Error("Не удалось загрузить данные");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ошибка загрузки");

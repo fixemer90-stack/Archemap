@@ -61,3 +61,4 @@ docker-compose.override.yml
 # ── OS ──────────────────────────────────────────────────────────────────────
 .DS_Store
 Desktop.ini
+backend/.venv

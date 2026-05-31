@@ -38,59 +38,81 @@ const FUNCTION_NAMES: Record<string, string> = {
   Ti: "Интровертная логика",
 };
 
-// ── Function colors ────────────────────────────────────────────────
+// ── Function colors (Archemap palette) ─────────────────────────────
 const FUNCTION_COLORS: Record<string, string> = {
-  Se: "bg-orange-500",
-  Si: "bg-yellow-500",
-  Ne: "bg-blue-500",
-  Ni: "bg-purple-500",
-  Fe: "bg-pink-500",
-  Fi: "bg-rose-500",
-  Te: "bg-green-500",
-  Ti: "bg-emerald-500",
+  Se: "bg-[#C28A2E]",
+  Si: "bg-[#D8B45A]",
+  Ne: "bg-[#8DA8FF]",
+  Ni: "bg-[#5B3FD6]",
+  Fe: "bg-[#B84A6B]",
+  Fi: "bg-[#E57A7A]",
+  Te: "bg-[#6BAFBD]",
+  Ti: "bg-[#4A8A9A]",
 };
+
+// ── Confidence label ───────────────────────────────────────────────
+function ConfidenceLabel({ value }: { value: number }) {
+  const label =
+    value >= 0.8
+      ? "высокая"
+      : value >= 0.6
+        ? "средне-высокая"
+        : value >= 0.4
+          ? "средняя"
+          : "низкая";
+
+  return (
+    <span className="text-xs text-[#D8DCE8]">
+      Уверенность: <span className="text-[#8DA8FF]">{label}</span>
+    </span>
+  );
+}
 
 // ── Top Types Component ────────────────────────────────────────────
 export function SocionicsTopTypes({ types }: { types: SocionicsType[] }) {
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Соционический тип</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Соционический тип
+      </h3>
       <div className="space-y-3">
         {types.map((t, i) => (
           <div
             key={t.type}
-            className={`rounded-md border p-3 ${
-              i === 0 ? "border-primary bg-primary/5" : ""
+            className={`rounded-xl border p-4 ${
+              i === 0
+                ? "border-[rgba(91,63,214,0.40)] bg-[rgba(91,63,214,0.08)]"
+                : "border-[rgba(216,220,232,0.10)] bg-[rgba(255,255,255,0.02)]"
             }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   {i === 0 && (
-                    <span className="text-xs font-medium text-primary">
+                    <span className="text-xs font-medium text-[#D8B45A] px-2 py-0.5 rounded-full border border-[rgba(216,180,90,0.30)]">
                       Основной
                     </span>
                   )}
-                  <span className="font-bold text-lg">{t.type}</span>
+                  <span className="font-bold text-lg text-[#F6F1E8]">
+                    {t.type}
+                  </span>
                 </div>
-                <div className="text-sm text-muted-foreground">{t.name}</div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-sm text-[#D8DCE8] mt-1">{t.name}</div>
+                <div className="text-xs text-[rgba(216,220,232,0.50)] mt-1">
                   Функции: {t.functions}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-[#F6F1E8]">
                   {(t.score * 100).toFixed(1)}%
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Model A: {(t.model_a * 100).toFixed(1)}%
-                </div>
+                <ConfidenceLabel value={t.confidence} />
               </div>
             </div>
             {/* Score bar */}
-            <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+            <div className="mt-3 h-2 rounded-full bg-[rgba(216,220,232,0.08)] overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary transition-all"
+                className="h-full rounded-full bg-gradient-to-r from-[#5B3FD6] to-[#D8B45A] transition-all"
                 style={{ width: `${t.score * 100}%` }}
               />
             </div>
@@ -110,21 +132,27 @@ export function FunctionProfile({
   const functions = Object.entries(strengths).sort(([, a], [, b]) => b - a);
 
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Функциональный профиль</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Функциональный профиль
+      </h3>
       <div className="space-y-2">
         {functions.map(([fn, value]) => (
           <div key={fn} className="space-y-1">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <span className="font-mono font-medium">{fn}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="font-mono font-medium text-[#D8B45A]">
+                  {fn}
+                </span>
+                <span className="text-xs text-[rgba(216,220,232,0.50)]">
                   {FUNCTION_NAMES[fn]}
                 </span>
               </div>
-              <span className="font-mono">{(value * 100).toFixed(1)}%</span>
+              <span className="font-mono text-[#F6F1E8]">
+                {(value * 100).toFixed(1)}%
+              </span>
             </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-2 rounded-full bg-[rgba(216,220,232,0.08)] overflow-hidden">
               <div
                 className={`h-full rounded-full ${FUNCTION_COLORS[fn]} transition-all`}
                 style={{ width: `${value * 100}%` }}
@@ -146,7 +174,6 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
   const functions = ["Se", "Ne", "Te", "Fe", "Si", "Ni", "Ti", "Fi"];
   const angleStep = (2 * Math.PI) / functions.length;
 
-  // Calculate points
   const points = functions.map((fn, i) => {
     const angle = i * angleStep - Math.PI / 2;
     const value = strengths[fn as keyof FunctionStrengths];
@@ -159,14 +186,15 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
     };
   });
 
-  // Create path
   const path =
     points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") +
     " Z";
 
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Радар функций</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Радар функций
+      </h3>
       <svg
         width={size}
         height={size}
@@ -181,9 +209,9 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
             cy={center}
             r={radius * scale}
             fill="none"
-            stroke="currentColor"
+            stroke="#D8DCE8"
             strokeWidth={0.5}
-            className="text-border"
+            opacity={0.15}
           />
         ))}
 
@@ -197,9 +225,9 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
               y1={center}
               x2={center + radius * Math.cos(angle)}
               y2={center + radius * Math.sin(angle)}
-              stroke="currentColor"
+              stroke="#D8DCE8"
               strokeWidth={0.5}
-              className="text-border"
+              opacity={0.1}
             />
           );
         })}
@@ -207,9 +235,9 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
         {/* Data polygon */}
         <path
           d={path}
-          fill="hsl(var(--primary))"
+          fill="#5B3FD6"
           fillOpacity={0.2}
-          stroke="hsl(var(--primary))"
+          stroke="#5B3FD6"
           strokeWidth={2}
         />
 
@@ -220,7 +248,7 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
             cx={p.x}
             cy={p.y}
             r={4}
-            fill="hsl(var(--primary))"
+            fill="#D8B45A"
           />
         ))}
 
@@ -237,7 +265,8 @@ export function FunctionRadar({ strengths }: { strengths: FunctionStrengths }) {
               y={y}
               textAnchor="middle"
               dominantBaseline="central"
-              className="text-xs fill-current text-muted-foreground"
+              className="text-xs"
+              fill="#D8DCE8"
             >
               {fn}
             </text>

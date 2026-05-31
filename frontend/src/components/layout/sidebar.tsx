@@ -63,13 +63,21 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r bg-card transition-all duration-300",
+        "flex h-screen flex-col border-r border-[rgba(216,220,232,0.10)] bg-[rgba(255,255,255,0.03)] backdrop-blur-xl transition-all duration-300",
         sidebarOpen ? "w-64" : "w-16",
       )}
     >
-      <div className="flex h-16 items-center border-b px-4">
-        {sidebarOpen && <span className="text-lg font-bold">Archemap</span>}
-        {!sidebarOpen && <span className="mx-auto text-lg font-bold">A</span>}
+      <div className="flex h-16 items-center border-b border-[rgba(216,220,232,0.10)] px-4">
+        {sidebarOpen && (
+          <span className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]">
+            Archemap
+          </span>
+        )}
+        {!sidebarOpen && (
+          <span className="mx-auto font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#D8B45A]">
+            A
+          </span>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 p-2" aria-label="Главная навигация">
@@ -80,10 +88,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  ? "bg-gradient-to-br from-[rgba(91,63,214,0.30)] to-[rgba(216,180,90,0.10)] text-[#F6F1E8] border border-[rgba(91,63,214,0.30)]"
+                  : "text-[#D8DCE8] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
                 !sidebarOpen && "justify-center",
               )}
               aria-label={item.title}
@@ -97,11 +105,11 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t p-2">
+      <div className="border-t border-[rgba(216,220,232,0.10)] p-2">
         <button
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+            "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[#D8DCE8] transition-all hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
             !sidebarOpen && "justify-center",
           )}
           aria-label="Выйти"

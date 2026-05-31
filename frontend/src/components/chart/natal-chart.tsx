@@ -64,19 +64,21 @@ const SIGN_SYMBOLS: Record<string, string> = {
 
 // ── Aspect colors ──────────────────────────────────────────────────
 const ASPECT_COLORS: Record<string, string> = {
-  conjunction: "text-red-500",
-  opposition: "text-red-400",
-  trine: "text-green-500",
-  sextile: "text-blue-500",
-  square: "text-orange-500",
-  quincunx: "text-gray-400",
+  conjunction: "text-[#E54D4D]",
+  opposition: "text-[#E57A7A]",
+  trine: "text-[#6BAFBD]",
+  sextile: "text-[#8DA8FF]",
+  square: "text-[#D8B45A]",
+  quincunx: "text-[rgba(216,220,232,0.40)]",
 };
 
 // ── Chart Planets Component ────────────────────────────────────────
 export function ChartPlanets({ planets }: { planets: Planet[] }) {
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Планеты</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Планеты
+      </h3>
       <div className="space-y-2">
         {planets.map((planet) => (
           <div
@@ -84,22 +86,24 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
             className="flex items-center justify-between text-sm"
           >
             <div className="flex items-center gap-2">
-              <span className="text-lg">
+              <span className="text-lg text-[#D8B45A]">
                 {PLANET_SYMBOLS[planet.name] || "?"}
               </span>
-              <span className="font-medium">{planet.name}</span>
+              <span className="font-medium text-[#F6F1E8]">{planet.name}</span>
               {planet.is_retrograde && (
-                <span className="text-xs text-muted-foreground">℞</span>
+                <span className="text-xs text-[#E57A7A]">℞</span>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span>{SIGN_SYMBOLS[planet.sign] || "?"}</span>
-              <span className="text-muted-foreground">{planet.sign}</span>
-              <span className="font-mono text-xs">
+              <span className="text-[#8DA8FF]">
+                {SIGN_SYMBOLS[planet.sign] || "?"}
+              </span>
+              <span className="text-[#D8DCE8]">{planet.sign}</span>
+              <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
                 {planet.degree.toFixed(2)}°
               </span>
               {planet.house && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-[rgba(216,220,232,0.40)]">
                   Дом {planet.house}
                 </span>
               )}
@@ -114,18 +118,22 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
 // ── Chart Houses Component ─────────────────────────────────────────
 export function ChartHouses({ houses }: { houses: House[] }) {
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Дома</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Дома
+      </h3>
       <div className="grid grid-cols-2 gap-2">
         {houses.map((house) => (
           <div
             key={house.number}
             className="flex items-center justify-between text-sm"
           >
-            <span className="text-muted-foreground">Дом {house.number}</span>
+            <span className="text-[#D8DCE8]">Дом {house.number}</span>
             <div className="flex items-center gap-1">
-              <span>{SIGN_SYMBOLS[house.sign] || "?"}</span>
-              <span className="font-mono text-xs">
+              <span className="text-[#8DA8FF]">
+                {SIGN_SYMBOLS[house.sign] || "?"}
+              </span>
+              <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
                 {house.longitude.toFixed(2)}°
               </span>
             </div>
@@ -139,25 +147,31 @@ export function ChartHouses({ houses }: { houses: House[] }) {
 // ── Chart Aspects Component ────────────────────────────────────────
 export function ChartAspects({ aspects }: { aspects: Aspect[] }) {
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Аспекты</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Аспекты
+      </h3>
       <div className="space-y-1">
         {aspects.map((aspect, i) => (
           <div key={i} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium">{aspect.planet_a}</span>
+              <span className="font-medium text-[#F6F1E8]">
+                {aspect.planet_a}
+              </span>
               <span
-                className={ASPECT_COLORS[aspect.aspect_type] || "text-gray-500"}
+                className={ASPECT_COLORS[aspect.aspect_type] || "text-[#D8DCE8]"}
               >
                 {aspect.aspect_type}
               </span>
-              <span className="font-medium">{aspect.planet_b}</span>
+              <span className="font-medium text-[#F6F1E8]">
+                {aspect.planet_b}
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className="font-mono text-xs text-[rgba(216,220,232,0.50)]">
                 orb: {aspect.orb.toFixed(2)}°
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-[rgba(216,220,232,0.40)]">
                 {aspect.is_applying ? "App" : "Sep"}
               </span>
             </div>
@@ -174,8 +188,7 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
   const center = size / 2;
   const radius = size / 2 - 20;
 
-  // Calculate house cusps positions (simplified - equal houses)
-  const housePositions = chart.houses.map((h, i) => {
+  const housePositions = chart.houses.map((_, i) => {
     const angle = (i * 30 - 90) * (Math.PI / 180);
     return {
       x: center + radius * Math.cos(angle),
@@ -183,14 +196,12 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
     };
   });
 
-  // Calculate planet positions
   const planetPositions = chart.planets.map((p) => {
-    // Simplified: use house number to position
     const houseIndex = (p.house || 1) - 1;
     const baseAngle = houseIndex * 30;
-    const offset = p.degree * (30 / 30); // Simplified
+    const offset = p.degree * (30 / 30);
     const angle = ((baseAngle + offset - 90) * Math.PI) / 180;
-    const r = radius * 0.7; // Inner circle
+    const r = radius * 0.7;
     return {
       x: center + r * Math.cos(angle),
       y: center + r * Math.sin(angle),
@@ -199,8 +210,10 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
   });
 
   return (
-    <div className="rounded-lg border p-4">
-      <h3 className="font-medium mb-3">Колесо карты</h3>
+    <div className="glass p-4">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+        Колесо карты
+      </h3>
       <svg
         width={size}
         height={size}
@@ -213,20 +226,19 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
           cy={center}
           r={radius}
           fill="none"
-          stroke="currentColor"
-          strokeWidth={1}
-          className="text-border"
+          stroke="#D8DCE8"
+          strokeWidth={0.5}
+          opacity={0.3}
         />
-
         {/* Inner circle */}
         <circle
           cx={center}
           cy={center}
           r={radius * 0.4}
           fill="none"
-          stroke="currentColor"
-          strokeWidth={1}
-          className="text-border"
+          stroke="#D8DCE8"
+          strokeWidth={0.5}
+          opacity={0.2}
         />
 
         {/* House lines */}
@@ -237,9 +249,9 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
             y1={center}
             x2={pos.x}
             y2={pos.y}
-            stroke="currentColor"
+            stroke="#D8DCE8"
             strokeWidth={0.5}
-            className="text-border"
+            opacity={0.15}
           />
         ))}
 
@@ -250,8 +262,8 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
               cx={x}
               cy={y}
               r={12}
-              fill="hsl(var(--background))"
-              stroke="hsl(var(--border))"
+              fill="#17142A"
+              stroke="rgba(216,220,232,0.20)"
               strokeWidth={1}
             />
             <text
@@ -259,7 +271,8 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
               y={y}
               textAnchor="middle"
               dominantBaseline="central"
-              className="text-xs fill-current"
+              className="text-xs"
+              fill="#D8B45A"
             >
               {PLANET_SYMBOLS[planet.name] || "?"}
             </text>
@@ -276,14 +289,14 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
           );
           if (!p1 || !p2) return null;
 
-          const colorClass =
+          const color =
             aspect.aspect_type === "trine"
-              ? "text-green-500"
+              ? "#6BAFBD"
               : aspect.aspect_type === "square"
-                ? "text-orange-500"
+                ? "#D8B45A"
                 : aspect.aspect_type === "opposition"
-                  ? "text-red-400"
-                  : "text-gray-300";
+                  ? "#E57A7A"
+                  : "rgba(216,220,232,0.20)";
 
           return (
             <line
@@ -292,10 +305,9 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
               y1={p1.y}
               x2={p2.x}
               y2={p2.y}
-              stroke="currentColor"
+              stroke={color}
               strokeWidth={0.5}
               strokeDasharray={aspect.aspect_type === "dashed" ? "4,4" : "none"}
-              className={colorClass}
               opacity={0.5}
             />
           );

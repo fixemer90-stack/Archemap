@@ -227,17 +227,19 @@ Frontend не содержит бизнес-логики. Вся логика �
 ### 5.2 Layouts
 
 **Root Layout** (`app/layout.tsx`):
-- Inter font
-- ThemeProvider (dark/light/system)
+- Inter + Cormorant Garamond fonts (CSS variables: `--font-inter`, `--font-cormorant`)
+- ThemeProvider (defaultTheme=dark, Archemap always-dark)
 - QueryProvider (TanStack Query)
+- lang="ru"
 
 **Auth Layout** (`app/(auth)/layout.tsx`):
 - Centered card layout
+- Star grid background (subtle radial dot pattern)
 - No sidebar/header
 
 **Dashboard Layout** (`app/(dashboard)/layout.tsx`):
-- Sidebar (навигация)
-- Header (user menu, theme toggle)
+- Sidebar (glass, навигация)
+- Header (glass, user menu, theme toggle)
 - Main content area
 
 ---
@@ -327,6 +329,8 @@ const api = {
 
 ## 8. Дизайн-система
 
+> Реализована в `globals.css` и UI-компонентах. Соответствует `docs/archemap_design_code.md`.
+
 ### 8.1 Цвета
 
 | Токен | HEX | Назначение |
@@ -334,8 +338,8 @@ const api = {
 | `--background` | `#17142A` | Deep Space — основной фон |
 | `--primary` | `#5B3FD6` | Royal Violet — CTA, активные элементы |
 | `--accent` | `#D8B45A` | Soft Gold — премиальные акценты |
-| `--muted` | `#D8DCE8` | Moon Silver — вторичный текст |
-| `--interactive` | `#8DA8FF` | Mist Blue — ссылки, hover |
+| `--muted` | `rgba(216,220,232,0.10)` | Moon Silver — вторичный текст |
+| `--mist-blue` | `#8DA8FF` | Mist Blue — ссылки, hover |
 | `--foreground` | `#F6F1E8` | Warm Ivory — основной текст |
 
 ### 8.2 Вертикальные акценты
@@ -357,14 +361,46 @@ const api = {
 | Body | Inter | 1rem |
 | Small | Inter | 0.875rem |
 
+> Cormorant Garamond подключён через `next/font/google` с CSS-variable `--font-cormorant`.
+> Используется через `font-[family-name:var(--font-cormorant)]` в Tailwind-классах.
+
 ### 8.4 UI-паттерны
 
-- Border radius: 16-24px
-- Cards: semi-transparent, glass-like, backdrop-filter: blur(16px)
-- Background: radial-gradient(circle at top, rgba(91,63,214,0.35), transparent 40%)
-- Primary button: linear-gradient(135deg, #5B3FD6, #D8B45A)
-- Charts: radial, axis-based (не pie charts)
-- Icons: line icons + celestial geometry
+| Паттерн | Реализация |
+|---|---|
+| **Фон** | `radial-gradient(circle at top, rgba(91,63,214,0.35), transparent 40%)` + `linear-gradient(180deg, #17142A, #0F1224)` — на `body` |
+| **Border radius** | `1.25rem` (20px) — через `--radius` |
+| **Glass cards** | `.glass` utility: `rgba(255,255,255,0.06)` bg, `border: 1px solid rgba(216,220,232,0.18)`, `backdrop-filter: blur(16px)`, `border-radius: 20px` |
+| **Primary button** | `bg-gradient-to-br from-[#5B3FD6] to-[#D8B45A]`, `rounded-full` (pill shape) |
+| **Secondary button** | `border: 1px solid rgba(216,220,232,0.30)`, transparent bg, hover → Mist Blue |
+| **Evidence blocks** | `.evidence-block`: `border-left: 3px solid #5B3FD6`, violet-tinted bg |
+| **Charts** | Radial, axis-based (SVG). Planet symbols в Soft Gold, grid lines в Moon Silver |
+| **Star grid** | Auth layout: subtle radial dot pattern (`opacity-[0.03]`) |
+
+### 8.5 Компоненты, реализующие дизайн-систему
+
+| Компонент | Файл | Что изменено |
+|---|---|---|
+| **globals.css** | `src/app/globals.css` | Полная Archemap-палитра, radial-gradient фон, glass utilities, evidence-block, btn-gradient, btn-silver |
+| **Root Layout** | `src/app/layout.tsx` | Cormorant Garamond + Inter, defaultTheme=dark, lang=ru |
+| **Auth Layout** | `src/app/(auth)/layout.tsx` | Star grid фон, центрирование |
+| **Card** | `src/components/ui/card.tsx` | Glass: `rgba(255,255,255,0.06)`, `backdrop-blur-xl`, `border-radius: 20px` |
+| **Button** | `src/components/ui/button.tsx` | Pill shape, violet→gold gradient primary, silver outline secondary |
+| **Input** | `src/components/ui/input.tsx` | Glass bg, rounded-xl, violet focus ring |
+| **Sidebar** | `src/components/layout/sidebar.tsx` | Glass sidebar, gradient active state, Archemap-типографика |
+| **Header** | `src/components/layout/header.tsx` | Glass header, Cormorant logo, gradient avatar |
+| **Register** | `src/app/(auth)/register/page.tsx` | Compass SVG logo, Cormorant заголовки, gradient progress, evidence block, подзаголовки в стиле дизайн-кода |
+| **Report** | `src/app/(dashboard)/report/[profileId]/page.tsx` | Evidence intro, ConfidenceBadge, score/confidence/model-a summary, version labels (ruleset-*) |
+| **NatalChart** | `src/components/chart/natal-chart.tsx` | Glass cards, Soft Gold planet symbols, Moon Silver grid, Mist Blue signs |
+| **SocionicsResult** | `src/components/chart/socionics-result.tsx` | Glass cards, ConfidenceLabel, gradient score bars, Archemap function colors |
+
+### 8.6 Тональность текста
+
+Реализована в соответствии с §10 дизайн-кода:
+- ✅ "Постройте карту своих архетипов" (не "Узнай судьбу")
+- ✅ "Карта архетипов и психологическая структура" (не "Твой точный тип")
+- ✅ "Основания и уровень уверенности системы" (не "ИИ придумал")
+- ✅ Показ score, confidence, evidence, version для каждого вывода
 
 ---
 

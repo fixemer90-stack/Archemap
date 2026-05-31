@@ -16,73 +16,64 @@
 **Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. AI используется только как вспомогательный инструмент для редактуры текстов, но не для генерации отчётов в рантайме.
 
 **Success looks like:**
-- Пользователь регистрируется через VK ID / Yandex ID / email+password
-- Вводит данные рождения → получает натальную карту за < 2 сек
-- Покупает отчёт через YooKassa / CloudPayments / Stripe
-- Получает детальный PDF-отчёт с интерпретацией
-- Совместимость двух людей рассчитывается по двум картам
-- Родитель добавляет профиль ребёнка и получает рекомендации
-- Все 4 вертикали используют единый chart-engine
+- Пользователь регистрируется через Yandex ID / email+password
+- Вводит данные рождения → получает натальную карту + соционический тип за < 2 сек
+- Видит score, confidence, evidence для каждого вывода
+- Покупает отчёт через YooKassa / Stripe (planned)
+- Получает детальный PDF-отчёт с интерпретацией (planned)
+- Совместимость двух людей рассчитывается по двум картам (planned)
+- Родитель добавляет профиль ребёнка и получает рекомендации (planned)
+- Все 4 вертикали используют единый chart-engine + socionics engine
 
 ## Tech Stack
 
 | Layer | Technology | Version |
 |---|---|---|
-| Backend | Python / FastAPI | 3.12+ / 0.115+ |
-| ORM | SQLAlchemy + Alembic | 2.0+ / 1.14+ |
+| Backend | Python / FastAPI | 3.12+ / 0.136+ |
+| ORM | SQLAlchemy + Alembic | 2.0+ / 1.18+ |
 | Database | PostgreSQL | 16 |
 | Cache | Redis | 7 |
-| Queue | Celery + Redis broker | 5.4+ |
+| Queue | Celery + Redis broker | 5.6+ |
 | Chart Engine | Swiss Ephemeris (swisseph) + Flatlib | latest |
+| Socionics | Custom Model A engine (8 functions, 16 types) | v8 |
 | Template Engine | Jinja2 | 3.1+ |
 | Frontend | Next.js / React | 15 / 19 |
-| UI | shadcn/ui + Tailwind CSS | 4 |
+| UI | shadcn/ui + Tailwind CSS 4 + Cormorant Garamond / Inter | — |
 | State | Zustand + TanStack Query | latest |
-| Payments (RU) | YooKassa + CloudPayments | — |
+| Payments (RU) | YooKassa | — |
 | Payments (Intl) | Stripe | — |
-| Auth (OAuth) | VK ID + Yandex ID | OAuth 2.1 + PKCE |
-| PDF Generation | WeasyPrint / Playwright | — |
+| Auth (OAuth) | Yandex ID | OAuth 2.1 + PKCE |
+| PDF Generation | WeasyPrint / Playwright | — (planned) |
 | CI | GitHub Actions | — |
 | Containers | Docker + Docker Compose | — |
 
 ## Commands
 
 ```bash
-# Infrastructure
-make infra-up                    # Start PostgreSQL + Redis
-make infra-down                  # Stop services
+# Infrastructure (Docker)
+docker compose up -d              # Start all services (PG, Redis, backend, frontend)
+docker compose down               # Stop all
+docker compose up -d --build      # Rebuild after changes
+docker compose logs -f backend    # Tail backend logs
 
 # Backend
 cd backend && source .venv/bin/activate
-uvicorn app.main:app --reload   # Dev server on :8000
-alembic upgrade head             # Apply migrations
+uvicorn app.main:app --reload    # Dev server on :8000
+alembic upgrade head              # Apply migrations
 alembic revision --autogenerate -m "description"  # New migration
-pytest tests/unit -v             # Unit tests
-pytest tests/integration -v      # Integration tests
-pytest tests/golden -v           # Golden tests for chart interpretation
-pytest tests/chart -v            # Chart engine tests (ephemeris + flatlib)
-ruff check .                     # Lint
-ruff format .                    # Format
-mypy .                           # Type check
-
-# Chart Engine
-python -m app.chart_engine.compute --date 1990-05-15 --time 14:30 --lat 55.75 --lon 37.62  # CLI test
-
-# Content
-python -m app.content.build_templates  # Compile templates from source
+pytest tests/unit -v              # Unit tests
+pytest tests/integration -v       # Integration tests
+ruff check .                      # Lint
+ruff format .                     # Format
+mypy .                            # Type check
 
 # Frontend
 cd frontend
-npm run dev                      # Dev server on :3000
-npm run build                    # Production build
-npm test                         # Tests
-npx eslint .                     # Lint
-npx tsc --noEmit                 # Type check
-
-# All
-make lint                        # Lint everything
-make test                        # Test everything
-make format                      # Format everything
+npm run dev                       # Dev server on :3000
+npm run build                     # Production build
+npx eslint .                      # Lint
+npx prettier --check .            # Format check
+npx tsc --noEmit                  # Type check
 ```
 
 ## Project Structure
@@ -98,128 +89,81 @@ Archemap/
 │   │   │   ├── models.py           # Base SQLAlchemy models, mixins
 │   │   │   ├── security.py         # JWT, password hashing, token blacklist
 │   │   │   ├── exceptions.py       # Domain exceptions
-│   │   │   └── events.py           # Event bus primitives
-│   │   ├── infrastructure/         # database, redis, queue, email, storage
+│   │   │   └── rate_limit.py       # Redis-backed rate limiter
+│   │   ├── infrastructure/         # database, redis, email, geocoding
 │   │   │   ├── database.py         # Async engine, session factory
 │   │   │   ├── redis.py            # Redis client
 │   │   │   ├── email.py            # SMTP sender
-│   │   │   └── storage.py          # S3-compatible file storage
-│   │   ├── chart_engine/           # Астрологическое вычислительное ядро
-│   │   │   ├── __init__.py
-│   │   │   ├── ephemeris.py        # Swiss Ephemeris wrapper (planets, points)
-│   │   │   ├── houses.py           # House system calculations (Placidus default)
-│   │   │   ├── aspects.py          # Aspect detection (orbs, applying/separating)
-│   │   │   ├── chart.py            # ChartSnapshot builder
-│   │   │   ├── compatibility.py    # Synastry + composite chart logic
-│   │   │   ├── compute.py          # CLI entrypoint for testing
-│   │   │   └── types.py            # Dataclasses: Planet, House, Aspect, ChartData
-│   │   ├── content/                # Интерпретация и шаблоны контента
-│   │   │   ├── __init__.py
-│   │   │   ├── rules/              # YAML/JSON rulesets per vertical
-│   │   │   │   ├── self.yaml       # Self: archetype rules
-│   │   │   │   ├── love.yaml       # Love: compatibility rules
-│   │   │   │   ├── child.yaml      # Child: parenting rules
-│   │   │   │   └── career.yaml     # Career: strengths & roles rules
-│   │   │   ├── templates/          # Jinja2 report templates
-│   │   │   │   ├── self/
-│   │   │   │   ├── love/
-│   │   │   │   ├── child/
-│   │   │   │   └── career/
-│   │   │   ├── interpreter.py      # Rule engine: ChartData → InterpretationResult
-│   │   │   └── renderer.py         # Jinja2 renderer: InterpretationResult → text/HTML
-│   │   ├── domains/                # Domain modules (Bounded Contexts)
+│   │   │   ├── email_templates.py  # Email HTML/text templates
+│   │   │   ├── geocoding.py        # Open-Meteo geocoding
+│   │   │   └── storage.py          # S3-compatible file storage (placeholder)
+│   │   ├── modules/                # Domain modules (Bounded Contexts)
 │   │   │   ├── auth/               # Authentication & OAuth
 │   │   │   │   ├── router.py
 │   │   │   │   ├── schemas.py
 │   │   │   │   ├── service.py
-│   │   │   │   ├── models.py       # IdentityLink, Consent
-│   │   │   │   └── providers/      # vk_id.py, yandex_id.py
-│   │   │   ├── users/              # User management
-│   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   ├── service.py
-│   │   │   │   └── models.py       # User
+│   │   │   │   ├── models.py       # User, EmailVerification, IdentityLink
+│   │   │   │   ├── verification.py # Email verification
+│   │   │   │   ├── password_reset.py
+│   │   │   │   └── oauth/          # Yandex OAuth
+│   │   │   │       ├── yandex.py
+│   │   │   │       └── service.py
 │   │   │   ├── profiles/           # Birth data & person profiles
 │   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
 │   │   │   │   ├── service.py
 │   │   │   │   └── models.py       # PersonProfile, ChartSnapshot
-│   │   │   ├── reports/            # Report generation & delivery
-│   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   ├── service.py
-│   │   │   │   ├── models.py       # Report, RuleSetVersion, TemplateVersion
-│   │   │   │   └── pdf.py          # PDF rendering
-│   │   │   ├── billing/            # Plans, subscriptions, entitlements
-│   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   ├── service.py
-│   │   │   │   ├── models.py       # Plan, Subscription, Entitlement
-│   │   │   │   └── lifecycle.py    # Subscription state machine
-│   │   │   ├── payments/           # PSP integration
-│   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   ├── service.py
-│   │   │   │   ├── models.py       # PaymentAttempt, WebhookEvent
-│   │   │   │   └── adapters/       # yookassa.py, cloudpayments.py, stripe.py
-│   │   │   ├── notifications/      # Email, push, in-app notifications
-│   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   ├── service.py
-│   │   │   │   └── models.py       # Notification
-│   │   │   └── admin/              # Admin dashboard API
+│   │   │   ├── chart_engine/       # Natal chart computation
+│   │   │   │   ├── ephemeris.py    # Swiss Ephemeris wrapper
+│   │   │   │   ├── houses.py       # House system (Placidus)
+│   │   │   │   ├── aspects.py      # Aspect detection
+│   │   │   │   └── socionics.py    # Socionics Model A engine
+│   │   │   └── users/              # User management
 │   │   │       ├── router.py
-│   │   │       └── schemas.py
+│   │   │       └── models.py
 │   │   └── api/v1/                 # Versioned router aggregation
-│   │       └── __init__.py
-│   ├── workers/                    # Celery tasks
-│   │   ├── report_tasks.py         # Async report generation
-│   │   ├── billing_tasks.py        # Subscription renewal, reconciliation
-│   │   └── notification_tasks.py   # Email/push delivery
+│   ├── alembic/                    # DB migrations
 │   ├── tests/
 │   │   ├── unit/                   # Fast, isolated tests
-│   │   ├── integration/            # DB/Redis dependent
-│   │   ├── contract/               # API contract tests
-│   │   ├── golden/                 # Golden tests: chart → expected interpretation
-│   │   │   ├── fixtures/           # Reference charts with known data
-│   │   │   ├── test_self_golden.py
-│   │   │   ├── test_love_golden.py
-│   │   │   ├── test_child_golden.py
-│   │   │   └── test_career_golden.py
-│   │   └── chart/                  # Chart engine unit tests
-│   │       ├── test_ephemeris.py
-│   │       ├── test_houses.py
-│   │       ├── test_aspects.py
-│   │       └── test_compatibility.py
-│   └── alembic/
+│   │   └── integration/            # DB/Redis dependent
+│   ├── pyproject.toml
+│   └── alembic.ini
 ├── frontend/
 │   ├── src/
 │   │   ├── app/                    # Next.js App Router
-│   │   │   ├── (marketing)/        # Landing pages per vertical
-│   │   │   ├── (auth)/             # Login, register, verify
-│   │   │   ├── (dashboard)/        # User dashboard
-│   │   │   │   ├── self/           # Archemap Self flow
-│   │   │   │   ├── love/           # Archemap Love flow
-│   │   │   │   ├── child/          # Archemap Child flow
-│   │   │   │   └── career/         # Archemap Career flow
-│   │   │   └── admin/              # Admin panel
+│   │   │   ├── layout.tsx          # Root layout (Inter + Cormorant Garamond)
+│   │   │   ├── globals.css         # Archemap design tokens + utilities
+│   │   │   ├── (auth)/             # Login, register, verify, OAuth callback
+│   │   │   └── (dashboard)/        # User dashboard
+│   │   │       ├── report/         # Report page (natal chart + socionics)
+│   │   │       ├── settings/
+│   │   │       ├── billing/
+│   │   │       └── subscriptions/
 │   │   ├── components/
-│   │   │   ├── ui/                 # shadcn-style components
+│   │   │   ├── ui/                 # shadcn-style (glass cards, gradient buttons)
 │   │   │   ├── layout/             # Header, sidebar, footer
-│   │   │   ├── chart/              # Natal chart visualization (SVG)
-│   │   │   └── reports/            # Report preview components
+│   │   │   └── chart/              # NatalChart, SocionicsResult (SVG radar)
 │   │   ├── stores/                 # Zustand stores
-│   │   ├── hooks/                  # Custom hooks
-│   │   └── lib/                    # Utilities, API client
-│   └── public/
+│   │   ├── lib/                    # Utilities, API client
+│   │   └── providers/              # Theme, Query providers
+│   ├── Dockerfile
+│   └── package.json
 ├── contracts/
 │   ├── openapi.yaml                # HTTP API spec
 │   └── asyncapi.yaml               # Webhook/event spec
 ├── docs/
 │   ├── SPEC.md                     # This file
-│   ├── adr/                        # Architecture decisions
-│   └── deep-research-report.md     # Architecture research
-└── docker-compose.yml
+│   ├── ROADMAP.md                  # Roadmap
+│   ├── archemap_design_code.md     # Design system & brand
+│   ├── SRS/
+│   │   ├── SRS-FRONTEND.md         # Frontend SRS (design system, components)
+│   │   ├── SRS-E3-chart-engine.md  # Chart engine SRS
+│   │   └── SRS-E4-rules-content.md # Rules & content SRS
+│   └── features/                   # Feature specifications
+├── .github/workflows/
+│   ├── ci.yml                      # Lint, test, validate, build
+│   └── deploy.yml                  # Deploy (placeholder)
+├── docker-compose.yml              # Full-stack local dev
+└── README.md
 ```
 
 ## Code Style
@@ -341,21 +285,11 @@ def test_sun_in_aries_interpretation():
 ## Domain Entities
 
 ```
-User                — учётная запись (email, name, status)
+User                — учётная запись (email, hashed_password, birth_date, is_active, is_verified)
 IdentityLink        — OAuth-связка (user_id, provider, provider_user_id)
-Consent             — согласия пользователя (terms, privacy, marketing)
-PersonProfile       — данные рождения (date, time, lat, lon, timezone, name)
-ChartSnapshot       — вычисленная карта (profile_id, chart_data: JSON, computed_at)
-RuleSetVersion      — версия правил интерпретации (vertical, version, rules: JSON)
-TemplateVersion     — версия шаблона отчёта (vertical, version, template: text)
-Report              — готовый отчёт (user_id, vertical, chart_snapshot_id, content, pdf_url)
-Plan                — тарифный план (vertical, price, interval, features)
-Subscription        — подписка (user_id, plan_id, status, current_period_end)
-PaymentAttempt      — попытка платежа (subscription_id, provider, amount, status)
-WebhookEvent        — входящий вебхук от PSP (provider, payload, processed_at)
-Entitlement         — право доступа (user_id, vertical, valid_until)
-Notification        — уведомление (user_id, channel, template, sent_at)
-AuditEvent          — аудит-лог (actor_id, action, target, metadata)
+EmailVerification   — токен верификации email (user_id, token, expires_at)
+PersonProfile       — данные рождения (user_id, name, birth_date, birth_time, birth_place, lat, lon, timezone)
+ChartSnapshot       — вычисленная карта (profile_id, planets:JSON, houses:JSON, aspects:JSON, socionics:JSON)
 ```
 
 ## Boundaries
@@ -390,25 +324,26 @@ AuditEvent          — аудит-лог (actor_id, action, target, metadata)
 
 ## Success Criteria
 
-### Phase 1: Foundation (current)
+### Phase 1: Foundation ✅
 - [x] Project scaffolding (backend, frontend, infra)
-- [x] CI pipeline with all quality gates
+- [x] CI pipeline with all quality gates (ruff, mypy, eslint, prettier, tsc)
 - [x] Health endpoint with DB + Redis checks
-- [x] Alembic migrations working
-- [x] User model + registration endpoint (email+password)
-- [x] JWT access/refresh tokens
+- [x] Alembic migrations (auto-apply on container start)
+- [x] User model + registration endpoint (email+password + birth data)
+- [x] JWT access/refresh tokens (httpOnly cookies)
 - [x] Email verification
 - [x] Token blacklist (logout)
+- [x] Yandex ID OAuth integration (scope: login:birthday, login:email)
 - [ ] VK ID OAuth integration
-- [ ] Yandex ID OAuth integration
 
-### Phase 2: Chart Engine
-- [ ] Swiss Ephemeris integration (planets, asteroids, points)
-- [ ] House system calculation (Placidus)
-- [ ] Aspect detection with orbs
-- [ ] ChartSnapshot model + computation pipeline
-- [ ] PersonProfile CRUD (birth data input)
-- [ ] Chart engine golden tests (10+ reference charts)
+### Phase 2: Chart Engine ✅
+- [x] Swiss Ephemeris integration (12 planets + Lilith)
+- [x] House system calculation (Placidus)
+- [x] Aspect detection with orbs (applying/separating)
+- [x] ChartSnapshot model + computation pipeline
+- [x] PersonProfile CRUD (birth data input + geocoding)
+- [x] Socionics Model A engine (8 functions, 16 types, top3, confidence)
+- [ ] Chart engine golden tests
 
 ### Phase 3: Content & Reports (Archemap Self)
 - [ ] Rule engine: YAML rulesets → InterpretationResult
@@ -421,7 +356,6 @@ AuditEvent          — аудит-лог (actor_id, action, target, metadata)
 ### Phase 4: Payments & Billing
 - [ ] Plan model + admin CRUD
 - [ ] YooKassa adapter (cards, SBP)
-- [ ] CloudPayments adapter
 - [ ] Stripe adapter (international)
 - [ ] Webhook intake + idempotent processing
 - [ ] Subscription lifecycle (create, renew, cancel)
@@ -434,23 +368,22 @@ AuditEvent          — аудит-лог (actor_id, action, target, metadata)
 - [ ] Golden tests for all verticals
 
 ### Phase 6: Production Readiness
-- [ ] Rate limiting
+- [x] Rate limiting (Redis-backed token bucket)
 - [ ] WAF configuration
 - [ ] Secrets management
 - [ ] Observability (traces, metrics, alerts)
 - [ ] Load testing
-- [ ] Apple/Google in-app billing (mobile)
 - [ ] Admin dashboard
 
 ## Open Questions
 
-1. Какую систему домов использовать по умолчанию — Placidus или Equal? (рекомендация: Placidus)
-2. Нужна ли поддержка астероидов (Chiron, Lilith) в первой версии или только классические планеты?
+1. ~~Какую систему домов использовать по умолчанию — Placidus или Equal?~~ → **Placidus** (реализовано)
+2. ~~Нужна ли поддержка астероидов (Chiron, Lilith) в первой версии?~~ → **Lilith да, Chiron нет** (нет файлов эфемерид)
 3. Как хранить версии правил — Git + deploy или runtime из БД с hot-reload?
 4. PDF-отчёты: WeasyPrint (CSS→PDF) или Playwright (HTML→PDF через Chromium)?
 5. Совместимость: только синастрия или ещё composite chart?
-6. Точность времени рождения — как обрабатывать неизвестное время (полудуга, solar chart)?
-7. Нужна ли интерактивная карта на фронте или только статичный SVG?
+6. ~~Точность времени рождения — как обрабатывать неизвестное время?~~ → **12:00 по умолчанию + birth_time_accuracy поле** (реализовано)
+7. ~~Нужна ли интерактивная карта на фронте или только статичный SVG?~~ → **SVG колесо + табличный вид** (реализовано)
 8. Какой лимит бесплатного контента — полная карта без интерпретации или краткий отчёт?
 9. Мультиязычность: только RU на старте или сразу RU+EN?
 10. Нужен ли admin UI в первой версии или только API?

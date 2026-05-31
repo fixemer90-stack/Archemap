@@ -11,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chart_engine.chart import build_chart
+from app.chart_engine.features import extract_features
+from app.chart_engine.socionics import evaluate_socionics
 from app.chart_engine.types import ChartData
 from app.core.exceptions import NotFoundError
 from app.modules.charts.models import ChartSnapshot
@@ -56,8 +58,39 @@ class ChartService:
             timezone_name=profile.timezone,
         )
 
+        # Extract features and compute socionics
+        features = extract_features(chart_data)
+        socionics_results = evaluate_socionics(features, chart_data)
+
         # Serialize
         chart_dict = _chart_to_dict(chart_data)
+
+        # Prepare socionics data
+        socionics_data = {
+            "top3": [
+                {
+                    "type": r.type_code,
+                    "name": r.type_name,
+                    "score": round(r.score, 3),
+                    "confidence": round(r.confidence, 3),
+                    "functions": r.functions,
+                    "model_a": round(r.score * 0.85, 3),  # approximate model_a
+                }
+                for r in socionics_results[:3]
+            ],
+        }
+
+        # Function strengths
+        function_strengths = {
+            "Se": round(features.fire * 0.5 + features.cardinal * 0.3, 3),
+            "Si": round(features.earth * 0.5 + features.fixed * 0.3, 3),
+            "Ne": round(features.air * 0.5 + features.mutable * 0.3, 3),
+            "Ni": round(features.water * 0.5 + features.mutable * 0.3, 3),
+            "Fe": round(features.water * 0.4 + features.cardinal * 0.3, 3),
+            "Fi": round(features.fire * 0.4 + features.fixed * 0.3, 3),
+            "Te": round(features.air * 0.4 + features.cardinal * 0.3, 3),
+            "Ti": round(features.earth * 0.4 + features.fixed * 0.3, 3),
+        }
 
         # Persist
         snapshot = ChartSnapshot(
@@ -65,6 +98,8 @@ class ChartService:
             user_id=user_id,
             engine_version=ENGINE_VERSION,
             chart_data=chart_dict,
+            socionics=socionics_data,
+            function_strengths=function_strengths,
         )
         self.db.add(snapshot)
         await self.db.flush()

@@ -111,7 +111,7 @@ function RegisterForm() {
 
   const handlePlaceChange = (value: string) => {
     setPlaceQuery(value);
-    setBirthPlace("");
+    setBirthPlace(value); // Allow manual entry without dropdown selection
 
     if (placeDebounceRef.current) {
       clearTimeout(placeDebounceRef.current);

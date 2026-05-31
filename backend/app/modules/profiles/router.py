@@ -27,7 +27,6 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 @router.get("/geocode", response_model=GeocodeSearchResponse)
 async def geocode_search(
     q: str,
-    current_user_id: Annotated[UUID, Depends(get_current_user)],
 ) -> Any:
     """Search for places by name. Returns lat/lon/city/country. Cached 24h."""
     geocoder = NominatimGeocoder(get_redis_client())

@@ -41,6 +41,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       APP_ENV: development
       APP_DEBUG: "true"
+      FRONTEND_URL: http://localhost:3000
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     depends_on:

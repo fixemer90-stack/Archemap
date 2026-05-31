@@ -10,16 +10,14 @@ import pytest
 from app.core.exceptions import AuthorizationError, ConflictError, ValidationError
 from app.modules.auth.service import AuthService
 
-BIRTH_DATA = {
-    "birth_date": date(1990, 5, 15),
-    "birth_place": "Москва",
-    "latitude": 55.7558,
-    "longitude": 37.6173,
-    "timezone": "Europe/Moscow",
-    "birth_time": time(14, 30),
-    "birth_time_accuracy": "exact",
-}
 TEST_PASSWORD = "password123"
+TEST_BIRTH_DATE = date(1990, 5, 15)
+TEST_BIRTH_PLACE = "Москва"
+TEST_LATITUDE = 55.7558
+TEST_LONGITUDE = 37.6173
+TEST_TIMEZONE = "Europe/Moscow"
+TEST_BIRTH_TIME = time(14, 30)
+TEST_TIME_ACCURACY = "exact"
 
 
 @pytest.fixture
@@ -50,7 +48,13 @@ class TestRegister:
             result = await service.register(
                 email="new@example.com",
                 password=TEST_PASSWORD,
-                **BIRTH_DATA,
+                birth_date=TEST_BIRTH_DATE,
+                birth_place=TEST_BIRTH_PLACE,
+                latitude=TEST_LATITUDE,
+                longitude=TEST_LONGITUDE,
+                timezone=TEST_TIMEZONE,
+                birth_time=TEST_BIRTH_TIME,
+                birth_time_accuracy=TEST_TIME_ACCURACY,
             )
 
         assert result["email"] == "new@example.com"
@@ -68,7 +72,13 @@ class TestRegister:
             await service.register(
                 email="existing@example.com",
                 password=TEST_PASSWORD,
-                **BIRTH_DATA,
+                birth_date=TEST_BIRTH_DATE,
+                birth_place=TEST_BIRTH_PLACE,
+                latitude=TEST_LATITUDE,
+                longitude=TEST_LONGITUDE,
+                timezone=TEST_TIMEZONE,
+                birth_time=TEST_BIRTH_TIME,
+                birth_time_accuracy=TEST_TIME_ACCURACY,
             )
 
     async def test_register_short_password(self, service: AuthService, mock_db: AsyncMock) -> None:
@@ -80,7 +90,13 @@ class TestRegister:
             await service.register(
                 email="new@example.com",
                 password="short",  # noqa: S106
-                **BIRTH_DATA,
+                birth_date=TEST_BIRTH_DATE,
+                birth_place=TEST_BIRTH_PLACE,
+                latitude=TEST_LATITUDE,
+                longitude=TEST_LONGITUDE,
+                timezone=TEST_TIMEZONE,
+                birth_time=TEST_BIRTH_TIME,
+                birth_time_accuracy=TEST_TIME_ACCURACY,
             )
 
 
@@ -102,7 +118,7 @@ class TestLogin:
             patch("app.modules.auth.service.create_access_token", return_value=("access", "jti1")),
             patch("app.modules.auth.service.create_refresh_token", return_value=("refresh", "jti2")),
         ):
-            tokens = await service.login("test@example.com", "password123")
+            tokens = await service.login("test@example.com", TEST_PASSWORD)
 
         assert tokens["access_token"] == "access"
         assert tokens["refresh_token"] == "refresh"
@@ -120,7 +136,7 @@ class TestLogin:
             patch("app.modules.auth.service.verify_password", return_value=False),
             pytest.raises(AuthorizationError, match="Invalid"),
         ):
-            await service.login("test@example.com", "wrong")
+            await service.login("test@example.com", "wrong")  # noqa: S106
 
     async def test_login_user_not_found(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_result = MagicMock()
@@ -128,7 +144,7 @@ class TestLogin:
         mock_db.execute.return_value = mock_result
 
         with pytest.raises(AuthorizationError, match="Invalid"):
-            await service.login("nobody@example.com", "password123")
+            await service.login("nobody@example.com", TEST_PASSWORD)
 
     async def test_login_inactive_user(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
@@ -143,7 +159,7 @@ class TestLogin:
             patch("app.modules.auth.service.verify_password", return_value=True),
             pytest.raises(AuthorizationError, match="deactivated"),
         ):
-            await service.login("inactive@example.com", "password123")
+            await service.login("inactive@example.com", TEST_PASSWORD)
 
     async def test_login_unverified_user(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
@@ -159,4 +175,4 @@ class TestLogin:
             patch("app.modules.auth.service.verify_password", return_value=True),
             pytest.raises(AuthorizationError, match="not verified"),
         ):
-            await service.login("unverified@example.com", "password123")
+            await service.login("unverified@example.com", TEST_PASSWORD)

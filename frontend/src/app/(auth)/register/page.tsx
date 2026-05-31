@@ -112,6 +112,7 @@ function RegisterForm() {
   const handlePlaceChange = (value: string) => {
     setPlaceQuery(value);
     setBirthPlace(value); // Allow manual entry without dropdown selection
+    if (!timezone) setTimezone("Europe/Moscow"); // Default timezone if not set
 
     if (placeDebounceRef.current) {
       clearTimeout(placeDebounceRef.current);

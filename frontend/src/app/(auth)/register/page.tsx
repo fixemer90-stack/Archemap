@@ -206,7 +206,12 @@ function RegisterForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.detail || "Registration failed");
+        const errorMsg = Array.isArray(data.detail)
+          ? data.detail.map((e: { msg: string }) => e.msg).join(", ")
+          : typeof data.detail === "string"
+            ? data.detail
+            : "Registration failed";
+        throw new Error(errorMsg);
       }
 
       const result = await res.json();

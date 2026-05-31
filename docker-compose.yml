@@ -2,7 +2,6 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: archemap-postgres
-    restart: unless-stopped
     environment:
       POSTGRES_USER: archemap
       POSTGRES_PASSWORD: archemap
@@ -16,12 +15,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 10s
 
   redis:
     image: redis:7-alpine
     container_name: archemap-redis
-    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -31,7 +28,47 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: archemap-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://archemap:archemap@postgres:5432/archemap
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: development
+      APP_DEBUG: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: archemap-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
 
 volumes:
   postgres_data:

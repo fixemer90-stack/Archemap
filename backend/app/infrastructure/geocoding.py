@@ -1,4 +1,4 @@
-"""Geocoding provider — Nominatim (OpenStreetMap) with Redis cache."""
+"""Geocoding provider — Nominatim with Open-Meteo fallback and Redis cache."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ import structlog
 logger = structlog.get_logger()
 
 NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search"
+OPEN_METEO_SEARCH_URL = "https://geocoding-api.open-meteo.com/v1/search"
 CACHE_TTL_SECONDS = 86400  # 24 hours
 
 
@@ -27,7 +28,7 @@ class GeocodeResult:
 
 
 class NominatimGeocoder:
-    """Geocode place names via Nominatim with Redis caching."""
+    """Geocode place names via Nominatim with Open-Meteo fallback and Redis caching."""
 
     def __init__(self, redis_client: aioredis.Redis) -> None:
         self._redis = redis_client
@@ -51,8 +52,12 @@ class NominatimGeocoder:
         if cached is not None:
             return cached
 
-        # ── cache miss → Nominatim ────────────────────────────────────
+        # ── cache miss → try Nominatim, fallback to Open-Meteo ────────
         results = await self._fetch_from_nominatim(query, limit)
+        if not results:
+            logger.info("nominatim_empty_fallback_open_meteo", query=query)
+            results = await self._fetch_from_open_meteo(query, limit)
+
         await self._set_in_cache(query, results)
         return results
 
@@ -73,7 +78,7 @@ class NominatimGeocoder:
                 response.raise_for_status()
                 data = response.json()
         except (httpx.HTTPError, httpx.TimeoutException):
-            logger.exception("geocoding_request_failed", query=query)
+            logger.warning("nominatim_request_failed", query=query)
             return []
 
         results: list[GeocodeResult] = []
@@ -93,6 +98,41 @@ class NominatimGeocoder:
                     latitude=float(item["lat"]),
                     longitude=float(item["lon"]),
                     city=city,
+                    country=country,
+                )
+            )
+        return results
+
+    # ── Open-Meteo fallback ───────────────────────────────────────────
+    async def _fetch_from_open_meteo(self, query: str, limit: int) -> list[GeocodeResult]:
+        params = {
+            "name": query,
+            "count": str(limit),
+            "language": "ru",
+            "format": "json",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(OPEN_METEO_SEARCH_URL, params=params)
+                response.raise_for_status()
+                data = response.json()
+        except (httpx.HTTPError, httpx.TimeoutException):
+            logger.exception("open_meteo_request_failed", query=query)
+            return []
+
+        results: list[GeocodeResult] = []
+        for item in data.get("results", []):
+            name = item.get("name", "")
+            country = item.get("country", "")
+            admin = item.get("admin1", "")
+            display = f"{name}, {admin}, {country}" if admin else f"{name}, {country}"
+            results.append(
+                GeocodeResult(
+                    display_name=display,
+                    latitude=float(item["latitude"]),
+                    longitude=float(item["longitude"]),
+                    city=name,
                     country=country,
                 )
             )

@@ -190,19 +190,27 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
   const center = size / 2;
   const radius = size / 2 - 20;
 
-  const housePositions = chart.houses.map((_, i) => {
-    const angle = (i * 30 - 90) * (Math.PI / 180);
+  // Use actual house longitudes for positioning
+  const housePositions = chart.houses.map((h) => {
+    const angle = ((h.longitude - 90) * Math.PI) / 180;
     return {
       x: center + radius * Math.cos(angle),
       y: center + radius * Math.sin(angle),
     };
   });
 
+  // Zodiac sign to angle mapping
+  const SIGN_ANGLES: Record<string, number> = {
+    Aries: 0, Taurus: 30, Gemini: 60, Cancer: 90,
+    Leo: 120, Virgo: 150, Libra: 180, Scorpio: 210,
+    Sagittarius: 240, Capricorn: 270, Aquarius: 300, Pisces: 330,
+  };
+
   const planetPositions = chart.planets.map((p) => {
-    const houseIndex = (p.house || 1) - 1;
-    const baseAngle = houseIndex * 30;
-    const offset = p.degree * (30 / 30);
-    const angle = ((baseAngle + offset - 90) * Math.PI) / 180;
+    // Use sign + degree for positioning (not house)
+    const signAngle = SIGN_ANGLES[p.sign] ?? 0;
+    const totalAngle = signAngle + (p.degree ?? 0);
+    const angle = ((totalAngle - 90) * Math.PI) / 180;
     const r = radius * 0.7;
     return {
       x: center + r * Math.cos(angle),

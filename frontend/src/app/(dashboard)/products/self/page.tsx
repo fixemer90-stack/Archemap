@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -41,21 +41,13 @@ export default function SelfProductPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-            Archemap Self
-          </h1>
-          <p className="text-sm text-[#D8DCE8] mt-1">
-            Натальная карта, соционический тип, архетипический профиль.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/register">
-            <Plus className="h-4 w-4 mr-1" />
-            Новый отчёт
-          </Link>
-        </Button>
+      <div>
+        <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+          Archemap Self
+        </h1>
+        <p className="text-sm text-[#D8DCE8] mt-1">
+          Натальная карта, соционический тип, архетипический профиль.
+        </p>
       </div>
 
       {/* What you get */}

@@ -29,7 +29,12 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.detail || "Login failed");
+        const errorMsg = Array.isArray(data.detail)
+          ? data.detail.map((e: { msg: string }) => e.msg).join(", ")
+          : typeof data.detail === "string"
+            ? data.detail
+            : "Ошибка входа";
+        throw new Error(errorMsg);
       }
 
       const tokens = await res.json();
@@ -46,7 +51,7 @@ export default function LoginPage() {
 
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Что-то пошло не так");
     } finally {
       setLoading(false);
     }
@@ -56,9 +61,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Sign in</h1>
+          <h1 className="text-2xl font-bold">Вход</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your credentials to access your account
+            Введите email и пароль для входа
           </p>
         </div>
 
@@ -85,12 +90,12 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
-              Password
+              Пароль
             </label>
             <Input
               id="password"
               type="password"
-              placeholder="Your password"
+              placeholder="Ваш пароль"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -98,7 +103,7 @@ export default function LoginPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? "Вход..." : "Войти"}
           </Button>
         </form>
 
@@ -108,7 +113,7 @@ export default function LoginPage() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-2 text-muted-foreground">
-              Or continue with
+              Или
             </span>
           </div>
         </div>
@@ -127,13 +132,13 @@ export default function LoginPage() {
               fill="white"
             />
           </svg>
-          Sign in with Yandex
+          Войти через Яндекс
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          Нет аккаунта?{" "}
           <Link href="/register" className="text-primary hover:underline">
-            Create one
+            Зарегистрироваться
           </Link>
         </p>
       </div>

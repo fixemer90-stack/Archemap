@@ -32,11 +32,16 @@ function VerifyContent() {
           setMessage(data.message);
         } else {
           setStatus("error");
-          setMessage(data.detail || "Verification failed");
+          const errorMsg = Array.isArray(data.detail)
+            ? data.detail.map((e: { msg: string }) => e.msg).join(", ")
+            : typeof data.detail === "string"
+              ? data.detail
+              : "Ошибка верификации";
+          setMessage(errorMsg);
         }
       } catch {
         setStatus("error");
-        setMessage("Something went wrong");
+        setMessage("Что-то пошло не так");
       }
     }
 
@@ -49,7 +54,7 @@ function VerifyContent() {
         {status === "loading" && (
           <>
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="text-muted-foreground">Verifying your email...</p>
+            <p className="text-muted-foreground">Подтверждение email...</p>
           </>
         )}
 
@@ -58,10 +63,10 @@ function VerifyContent() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
               ✓
             </div>
-            <h1 className="text-2xl font-bold">Email verified</h1>
+            <h1 className="text-2xl font-bold">Email подтверждён</h1>
             <p className="text-muted-foreground">{message}</p>
             <Button asChild>
-              <Link href="/login">Sign in</Link>
+              <Link href="/login">Войти</Link>
             </Button>
           </>
         )}
@@ -71,23 +76,23 @@ function VerifyContent() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
               ✕
             </div>
-            <h1 className="text-2xl font-bold">Verification failed</h1>
+            <h1 className="text-2xl font-bold">Ошибка верификации</h1>
             <p className="text-muted-foreground">{message}</p>
             <Button variant="outline" asChild>
-              <Link href="/login">Back to sign in</Link>
+              <Link href="/login">Вернуться к входу</Link>
             </Button>
           </>
         )}
 
         {status === "no-token" && (
           <>
-            <h1 className="text-2xl font-bold">Check your email</h1>
+            <h1 className="text-2xl font-bold">Проверьте email</h1>
             <p className="text-muted-foreground">
-              We sent a verification link to your email address. Click the link
-              to activate your account.
+              Мы отправили ссылку для подтверждения на ваш email. Перейдите по
+              ней, чтобы активировать аккаунт.
             </p>
             <Button variant="outline" asChild>
-              <Link href="/login">Back to sign in</Link>
+              <Link href="/login">Вернуться к входу</Link>
             </Button>
           </>
         )}
@@ -101,7 +106,7 @@ export default function VerifyPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Загрузка...</p>
         </div>
       }
     >

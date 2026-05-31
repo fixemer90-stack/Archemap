@@ -17,22 +17,22 @@ import { getAccessToken } from "@/lib/cookies";
 
 const navItems = [
   {
-    title: "Dashboard",
+    title: "Главная",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    title: "Subscriptions",
+    title: "Подписки",
     href: "/subscriptions",
     icon: CreditCard,
   },
   {
-    title: "Billing",
+    title: "Оплата",
     href: "/billing",
     icon: Receipt,
   },
   {
-    title: "Settings",
+    title: "Настройки",
     href: "/settings",
     icon: Settings,
   },
@@ -72,7 +72,7 @@ export function Sidebar() {
         {!sidebarOpen && <span className="mx-auto text-lg font-bold">A</span>}
       </div>
 
-      <nav className="flex-1 space-y-1 p-2" aria-label="Main navigation">
+      <nav className="flex-1 space-y-1 p-2" aria-label="Главная навигация">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -104,11 +104,11 @@ export function Sidebar() {
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
             !sidebarOpen && "justify-center",
           )}
-          aria-label="Sign out"
-          title="Sign out"
+          aria-label="Выйти"
+          title="Выйти"
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {sidebarOpen && <span>Sign out</span>}
+          {sidebarOpen && <span>Выйти</span>}
         </button>
       </div>
     </aside>

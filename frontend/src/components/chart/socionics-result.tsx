@@ -104,7 +104,7 @@ export function SocionicsTopTypes({ types }: { types: SocionicsType[] }) {
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold text-[#F6F1E8]">
-                  {(t.score * 100).toFixed(1)}%
+                  {((t.score ?? 0) * 100).toFixed(1)}%
                 </div>
                 <ConfidenceLabel value={t.confidence} />
               </div>
@@ -162,7 +162,7 @@ export function FunctionProfile({
                 </span>
               </div>
               <span className="font-mono text-[#F6F1E8]">
-                {(value * 100).toFixed(1)}%
+                {((value ?? 0) * 100).toFixed(1)}%
               </span>
             </div>
             <div className="h-2 rounded-full bg-[rgba(216,220,232,0.08)] overflow-hidden">

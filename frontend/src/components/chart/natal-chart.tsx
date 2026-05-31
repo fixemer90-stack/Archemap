@@ -100,7 +100,7 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
               </span>
               <span className="text-[#D8DCE8]">{planet.sign}</span>
               <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
-                {planet.degree.toFixed(2)}°
+                {(planet.degree ?? 0).toFixed(2)}°
               </span>
               {planet.house && (
                 <span className="text-xs text-[rgba(216,220,232,0.40)]">
@@ -134,7 +134,7 @@ export function ChartHouses({ houses }: { houses: House[] }) {
                 {SIGN_SYMBOLS[house.sign] || "?"}
               </span>
               <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
-                {house.longitude.toFixed(2)}°
+                {(house.longitude ?? 0).toFixed(2)}°
               </span>
             </div>
           </div>
@@ -171,7 +171,7 @@ export function ChartAspects({ aspects }: { aspects: Aspect[] }) {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-[rgba(216,220,232,0.50)]">
-                orb: {aspect.orb.toFixed(2)}°
+                orb: {(aspect.orb ?? 0).toFixed(2)}°
               </span>
               <span className="text-xs text-[rgba(216,220,232,0.40)]">
                 {aspect.is_applying ? "App" : "Sep"}

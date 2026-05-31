@@ -114,6 +114,15 @@ Archemap/
 │   │   │   │   └── oauth/             # OAuth providers
 │   │   │   │       ├── yandex.py      # Yandex ID provider
 │   │   │   │       └── service.py     # OAuth service (state, linking)
+│   │   │   ├── profiles/              # Birth profiles & geocoding
+│   │   │   │   ├── router.py
+│   │   │   │   ├── service.py
+│   │   │   │   └── models.py
+│   │   │   ├── chart_engine/          # Natal chart computation
+│   │   │   │   ├── ephemeris.py       # Swiss Ephemeris wrapper
+│   │   │   │   ├── houses.py          # House system calculation
+│   │   │   │   ├── aspects.py         # Aspect computation
+│   │   │   │   └── socionics.py       # Socionics type calculation
 │   │   │   └── users/                 # User management
 │   │   │       ├── router.py
 │   │   │       └── models.py
@@ -150,7 +159,12 @@ Archemap/
 │   ├── ROADMAP.md                     # Дорожная карта эпиков
 │   ├── archemap_design_code.md        # Дизайн-система и бренд
 │   ├── C4 архитектура ...md           # C4-архитектура платформы
-│   └── Спецификация бизнес-логики ...md # Доменные правила и скоринг
+│   ├── Спецификация бизнес-логики ...md # Доменные правила и скоринг
+│   ├── SRS/
+│   │   ├── SRS-FRONTEND.md            # SRS frontend (дизайн-система, компоненты)
+│   │   ├── SRS-E3-chart-engine.md     # SRS движок карт
+│   │   └── SRS-E4-rules-content.md    # SRS правила и контент
+│   └── features/                      # Спецификации фич
 ├── .github/workflows/
 │   └── ci.yml                         # Lint, test, validate, build
 ├── Makefile                           # Команды разработки
@@ -163,11 +177,11 @@ Archemap/
 
 ### Предварительные требования
 
-- Python 3.12+
-- Node.js 20+
-- Docker + Docker Compose
+- Docker + Docker Compose (WSL или Linux)
+- Python 3.12+ (для разработки backend без контейнера)
+- Node.js 20+ (для разработки frontend без контейнера)
 
-### Быстрый старт
+### Быстрый старт (Docker)
 
 ```bash
 # 1. Клонировать
@@ -177,17 +191,25 @@ cd Archemap
 # 2. Скопировать переменные окружения
 cp .env.example .env
 
-# 3. Запустить инфраструктуру (PostgreSQL, Redis)
-make infra-up
+# 3. Запустить всё
+docker compose up -d
+# → frontend:  http://localhost:3000
+# → backend:   http://localhost:8000
+# → postgres:  localhost:5432
+# → redis:     localhost:6379
+```
 
-# 4. Backend
+### Без Docker (разработка)
+
+```bash
+# Backend
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 alembic upgrade head
 uvicorn app.main:app --reload   # → :8000
 
-# 5. Frontend (в отдельном терминале)
+# Frontend (в отдельном терминале)
 cd frontend
 npm install && npm run dev      # → :3000
 ```
@@ -195,8 +217,11 @@ npm install && npm run dev      # → :3000
 ### Основные команды
 
 ```bash
-make infra-up          # Запустить Docker-сервисы (PostgreSQL, Redis)
-make infra-down        # Остановить Docker-сервисы
+# Docker
+docker compose up -d            # Запустить все сервисы
+docker compose down             # Остановить
+docker compose up -d --build    # Пересобрать после изменений
+docker compose logs -f backend  # Логи backend
 
 # Backend
 cd backend && source .venv/bin/activate
@@ -211,6 +236,7 @@ cd frontend
 npm run dev            # Dev server
 npm run build          # Production build
 npx eslint .           # Линтинг
+npx prettier --check . # Форматирование
 npx tsc --noEmit       # Type check
 ```
 
@@ -231,13 +257,17 @@ Archemap — не «астро-гадалка», а **премиальная н�
 
 Акценты по вертикалям: Self (фиолетовый + золото), Love (розово-бордовый `#B84A6B`), Child (мягкий голубой `#6BAFBD`), Career (янтарный `#C28A2E`).
 
+**Реализация:** дизайн-код внедрён во все UI-компоненты. Cormorant Garamond для заголовков, Inter для интерфейса. Glass-карточки (`backdrop-blur`, `rgba(255,255,255,0.06)`). Primary button — pill shape с violet→gold градиентом. Radial gradient фон. Evidence blocks для explainability.
+
 Полный дизайн-код: [docs/archemap_design_code.md](docs/archemap_design_code.md)
+Документация реализации: [docs/SRS/SRS-FRONTEND.md](docs/SRS/SRS-FRONTEND.md) (секция 8)
 
 ---
 
 ## Статус
 
-🟡 Epic 2 (Identity) — в процессе. Дорожная карта: [docs/ROADMAP.md](docs/ROADMAP.md)
+🟢 Epic 1 (Foundation) — done. Epic 2 (Identity) — done.
+🟡 Epic 3 (Chart Engine) — в процессе. Дорожная карта: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Лицензия
 

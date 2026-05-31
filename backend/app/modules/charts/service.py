@@ -65,7 +65,8 @@ class ChartService:
         # Serialize
         chart_dict = _chart_to_dict(chart_data)
 
-        # Prepare socionics data
+        # Prepare socionics data (use real engine output)
+        top1 = socionics_results[0] if socionics_results else None
         socionics_data = {
             "top3": [
                 {
@@ -74,23 +75,17 @@ class ChartService:
                     "score": round(r.score, 3),
                     "confidence": round(r.confidence, 3),
                     "functions": r.functions,
-                    "model_a": round(r.score * 0.85, 3),  # approximate model_a
+                    "model_a": round(r.breakdown.get("model_a", 0), 3),
                 }
                 for r in socionics_results[:3]
             ],
         }
 
-        # Function strengths
+        # Function strengths from real engine (top1 breakdown)
         function_strengths = {
-            "Se": round(features.fire * 0.5 + features.cardinal * 0.3, 3),
-            "Si": round(features.earth * 0.5 + features.fixed * 0.3, 3),
-            "Ne": round(features.air * 0.5 + features.mutable * 0.3, 3),
-            "Ni": round(features.water * 0.5 + features.mutable * 0.3, 3),
-            "Fe": round(features.water * 0.4 + features.cardinal * 0.3, 3),
-            "Fi": round(features.fire * 0.4 + features.fixed * 0.3, 3),
-            "Te": round(features.air * 0.4 + features.cardinal * 0.3, 3),
-            "Ti": round(features.earth * 0.4 + features.fixed * 0.3, 3),
-        }
+            fn: round(top1.breakdown.get(fn, 0), 3)
+            for fn in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]
+        } if top1 else {}
 
         # Persist
         snapshot = ChartSnapshot(

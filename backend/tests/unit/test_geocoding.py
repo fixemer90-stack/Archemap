@@ -105,18 +105,30 @@ class TestCacheSerialization:
     async def test_empty_cache_returns_none(self, geocoder: NominatimGeocoder, mock_redis: AsyncMock) -> None:
         mock_redis.get = AsyncMock(return_value=None)
 
+        call_count = 0
+
+        async def mock_get(url: str, **kwargs: object) -> MagicMock:
+            nonlocal call_count
+            call_count += 1
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+            if "nominatim" in url:
+                mock_response.json.return_value = []
+            else:
+                # Open-Meteo
+                mock_response.json.return_value = {"results": []}
+            return mock_response
+
         with patch("app.infrastructure.geocoding.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.json.return_value = []
-            mock_response.raise_for_status = MagicMock()
-            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.get = mock_get
             mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             results = await geocoder.search("NonexistentPlace123")
 
         assert results == []
+        assert call_count == 2  # Both Nominatim and Open-Meteo were called
         mock_redis.set.assert_not_awaited()
 
 

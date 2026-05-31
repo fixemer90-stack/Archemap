@@ -84,7 +84,9 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
             className="flex items-center justify-between text-sm"
           >
             <div className="flex items-center gap-2">
-              <span className="text-lg">{PLANET_SYMBOLS[planet.name] || "?"}</span>
+              <span className="text-lg">
+                {PLANET_SYMBOLS[planet.name] || "?"}
+              </span>
               <span className="font-medium">{planet.name}</span>
               {planet.is_retrograde && (
                 <span className="text-xs text-muted-foreground">℞</span>
@@ -93,7 +95,9 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
             <div className="flex items-center gap-2">
               <span>{SIGN_SYMBOLS[planet.sign] || "?"}</span>
               <span className="text-muted-foreground">{planet.sign}</span>
-              <span className="font-mono text-xs">{planet.degree.toFixed(2)}°</span>
+              <span className="font-mono text-xs">
+                {planet.degree.toFixed(2)}°
+              </span>
               {planet.house && (
                 <span className="text-xs text-muted-foreground">
                   Дом {planet.house}
@@ -139,13 +143,12 @@ export function ChartAspects({ aspects }: { aspects: Aspect[] }) {
       <h3 className="font-medium mb-3">Аспекты</h3>
       <div className="space-y-1">
         {aspects.map((aspect, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between text-sm"
-          >
+          <div key={i} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <span className="font-medium">{aspect.planet_a}</span>
-              <span className={ASPECT_COLORS[aspect.aspect_type] || "text-gray-500"}>
+              <span
+                className={ASPECT_COLORS[aspect.aspect_type] || "text-gray-500"}
+              >
                 {aspect.aspect_type}
               </span>
               <span className="font-medium">{aspect.planet_b}</span>
@@ -266,10 +269,10 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
         {/* Aspect lines */}
         {chart.aspects.map((aspect, i) => {
           const p1 = planetPositions.find(
-            (pp) => pp.planet.name === aspect.planet_a
+            (pp) => pp.planet.name === aspect.planet_a,
           );
           const p2 = planetPositions.find(
-            (pp) => pp.planet.name === aspect.planet_b
+            (pp) => pp.planet.name === aspect.planet_b,
           );
           if (!p1 || !p2) return null;
 

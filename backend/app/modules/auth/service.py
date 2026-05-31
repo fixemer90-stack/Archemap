@@ -287,3 +287,84 @@ class AuthService:
             "refresh_token": new_refresh,
             "token_type": "bearer",
         }
+
+    async def complete_oauth_profile(
+        self,
+        user_id: UUID,
+        birth_date: date,
+        birth_place: str,
+        latitude: float,
+        longitude: float,
+        timezone: str,
+        birth_time: time | None = None,
+        birth_time_accuracy: str = "unknown",
+    ) -> dict[str, Any]:
+        """Complete OAuth user profile with birth data.
+
+        Creates PersonProfile and computes chart.
+        """
+        user = await self.get_user_by_id(user_id)
+
+        if not user.is_active:
+            raise AuthorizationError("Account is deactivated")
+
+        # Check if profile already exists
+        existing = await self.db.execute(
+            select(PersonProfile).where(PersonProfile.user_id == user_id)
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise ValidationError("Profile already exists")
+
+        # If time not provided, default to 12:00
+        if birth_time is None:
+            birth_time = time(12, 0)
+            birth_time_accuracy = "unknown"
+
+        # Update user birth_date
+        user.birth_date = birth_date
+
+        # Create PersonProfile
+        profile = PersonProfile(
+            user_id=user_id,
+            name=user.email.split("@")[0],
+            birth_date=birth_date,
+            birth_time=birth_time,
+            birth_time_accuracy=birth_time_accuracy,
+            birth_place=birth_place,
+            latitude=latitude,
+            longitude=longitude,
+            timezone=timezone,
+        )
+        self.db.add(profile)
+        await self.db.flush()
+
+        # Compute chart
+        chart_data, features_data, strengths_data, socionics_result = await self._compute_chart(profile)
+
+        # Store chart snapshot
+        snapshot = ChartSnapshot(
+            profile_id=profile.id,
+            user_id=user_id,
+            engine_version="0.1.0",
+            birth_data={
+                "date": profile.birth_date.isoformat(),
+                "time": profile.birth_time.isoformat() if profile.birth_time else None,
+                "time_accuracy": profile.birth_time_accuracy,
+                "place": profile.birth_place,
+                "latitude": profile.latitude,
+                "longitude": profile.longitude,
+                "timezone": profile.timezone,
+            },
+            chart_data=chart_data,
+            features=features_data,
+            function_strengths=strengths_data,
+            socionics=socionics_result,
+        )
+        self.db.add(snapshot)
+        await self.db.flush()
+
+        return {
+            "profile_id": str(profile.id),
+            "chart": chart_data,
+            "socionics": socionics_result,
+        }

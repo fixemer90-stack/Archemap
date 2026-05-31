@@ -203,9 +203,9 @@ function RegisterForm() {
     setLoading(true);
 
     try {
-      const body: RegisterData = {
-        email,
-        password,
+      const isOAuth = searchParams.get("step") === "2";
+
+      const body = {
         birth_date: birthDate,
         birth_time: birthTimeAccuracy === "unknown" ? "12:00" : birthTime,
         birth_time_accuracy: birthTimeAccuracy,
@@ -213,11 +213,30 @@ function RegisterForm() {
         latitude,
         longitude,
         timezone,
+        // Only include email/password for regular registration
+        ...(isOAuth ? {} : { email, password }),
       };
 
-      const res = await fetch("/api/v1/auth/register", {
+      // Use different endpoint for OAuth vs regular registration
+      const endpoint = isOAuth
+        ? "/api/v1/auth/complete-profile"
+        : "/api/v1/auth/register";
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // For OAuth, include the access token
+      if (isOAuth) {
+        const token = useAuthStore.getState().token;
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      }
+
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
       });
 
@@ -227,19 +246,21 @@ function RegisterForm() {
           ? data.detail.map((e: { msg: string }) => e.msg).join(", ")
           : typeof data.detail === "string"
             ? data.detail
-            : "Registration failed";
+            : "Ошибка регистрации";
         throw new Error(errorMsg);
       }
 
       const result = await res.json();
 
-      // Store tokens and user
-      setTokens(result.access_token, result.refresh_token);
-      setUser({
-        id: result.user_id,
-        email: result.email,
-        is_active: true,
-      });
+      // For regular registration, store tokens and user
+      if (!isOAuth) {
+        setTokens(result.access_token, result.refresh_token);
+        setUser({
+          id: result.user_id,
+          email: result.email,
+          is_active: true,
+        });
+      }
 
       // Redirect to report page with chart data
       router.push(`/report/${result.profile_id}`);

@@ -53,6 +53,27 @@ async def register(
     return result
 
 
+@router.post("/complete-profile", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def complete_oauth_profile(
+    body: RegisterRequest,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Complete OAuth user profile with birth data. Creates PersonProfile and computes chart."""
+    service = AuthService(db)
+    result = await service.complete_oauth_profile(
+        user_id=current_user_id,
+        birth_date=body.birth_date,
+        birth_time=body.birth_time,
+        birth_time_accuracy=body.birth_time_accuracy,
+        birth_place=body.birth_place,
+        latitude=body.latitude,
+        longitude=body.longitude,
+        timezone=body.timezone,
+    )
+    return result
+
+
 @router.post("/verify", response_model=MessageResponse)
 async def verify_email(
     body: VerifyRequest,

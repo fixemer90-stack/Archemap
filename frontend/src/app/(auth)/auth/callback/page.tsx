@@ -12,6 +12,8 @@ function CallbackContent() {
   useEffect(() => {
     const accessToken = searchParams.get("access_token");
     const refreshToken = searchParams.get("refresh_token");
+    const needsProfile = searchParams.get("needs_profile");
+    const birthDate = searchParams.get("birth_date");
 
     if (!accessToken || !refreshToken) {
       router.push("/login?error=missing_tokens");
@@ -20,6 +22,17 @@ function CallbackContent() {
 
     setTokens(accessToken, refreshToken);
 
+    // If user needs to complete profile, redirect to register step 2
+    if (needsProfile === "true") {
+      let registerUrl = "/register?step=2";
+      if (birthDate) {
+        registerUrl += `&birth_date=${encodeURIComponent(birthDate)}`;
+      }
+      router.push(registerUrl);
+      return;
+    }
+
+    // Otherwise, fetch user and go to dashboard
     fetch("/api/v1/users/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
@@ -37,7 +50,7 @@ function CallbackContent() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center space-y-4">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <p className="text-muted-foreground">Completing sign in...</p>
+        <p className="text-muted-foreground">Завершение входа...</p>
       </div>
     </div>
   );
@@ -48,7 +61,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Загрузка...</p>
         </div>
       }
     >

@@ -79,9 +79,20 @@ function RegisterForm() {
   // Pre-fill from OAuth callback
   useEffect(() => {
     const oauthBirthDate = searchParams.get("birth_date");
+    const stepParam = searchParams.get("step");
+
+    if (stepParam) {
+      const stepNum = parseInt(stepParam, 10);
+      if (stepNum >= 1 && stepNum <= 3) {
+        setStep(stepNum);
+      }
+    }
+
     if (oauthBirthDate) {
       setBirthDate(oauthBirthDate);
-      setStep(2); // Jump to birth data step
+      if (!stepParam) {
+        setStep(2); // Jump to birth data step if no step specified
+      }
     }
   }, [searchParams]);
 

@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +29,8 @@ from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
+
+logger = structlog.get_logger()
 
 
 class AuthService:

@@ -202,7 +202,9 @@ function normalizeFunctionStrengths(
   };
 }
 
-function normalizeSocionics(snapshot: ChartSnapshotApiResponse): ReportSocionicsData {
+function normalizeSocionics(
+  snapshot: ChartSnapshotApiResponse,
+): ReportSocionicsData {
   const source = snapshot.socionics ?? snapshot.chart_data.socionics;
   return {
     top3: source?.top3 ?? [],
@@ -215,7 +217,10 @@ function normalizeSocionics(snapshot: ChartSnapshotApiResponse): ReportSocionics
   };
 }
 
-function findPlanet(chart: ReportChartData, name: string): ReportPlanet | undefined {
+function findPlanet(
+  chart: ReportChartData,
+  name: string,
+): ReportPlanet | undefined {
   return chart.planets.find((planet) => planet.name === name);
 }
 
@@ -230,7 +235,10 @@ function formatPlanetMeaning(
   return `${planet.sign} ${planet.degree.toFixed(2)}°${house}`;
 }
 
-function buildSummary(profile: ProfileApiResponse, chart: ReportChartData): string[] {
+function buildSummary(
+  profile: ProfileApiResponse,
+  chart: ReportChartData,
+): string[] {
   const sun = findPlanet(chart, "Sun");
   const moon = findPlanet(chart, "Moon");
   const aspectCount = chart.aspects.length;
@@ -259,7 +267,9 @@ function buildKeyAspects(chart: ReportChartData): string[] {
     return keyAspects;
   }
 
-  return ["В snapshot нет аспектов: подробное evidence по связям карты пока недоступно."];
+  return [
+    "В snapshot нет аспектов: подробное evidence по связям карты пока недоступно.",
+  ];
 }
 
 function birthTimeWarning(accuracy: string): string {
@@ -317,26 +327,30 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       {
         title: "Мышление и решения",
         text: "Первый слой выводов строится на реальных факторах карты. Если часть данных отсутствует, отчёт явно показывает ограничение вместо подстановки mock-текста.",
-        advice: "Смотреть на summary как на стартовую гипотезу и при необходимости раскрывать technical details.",
+        advice:
+          "Смотреть на summary как на стартовую гипотезу и при необходимости раскрывать technical details.",
       },
       {
         title: "Эмоции и восстановление",
         text: moon
           ? `Луна в ${moon.sign} используется как базовый маркер эмоционального ритма.`
           : "Эмоциональный блок ограничен: в snapshot нет Луны.",
-        advice: "Уточнить данные рождения, если эмоциональные выводы выглядят слишком общими.",
+        advice:
+          "Уточнить данные рождения, если эмоциональные выводы выглядят слишком общими.",
       },
       {
         title: "Коммуникация и отношения",
         text: hasSocionics
           ? "Соционический слой доступен как дополнительная линза и не подменяет астрологическую основу."
           : "Соционический слой пока не пришёл из API; страница остаётся рабочей и показывает fallback без падения.",
-        advice: "Читать типологию после астрологической основы и практических выводов.",
+        advice:
+          "Читать типологию после астрологической основы и практических выводов.",
       },
       {
         title: "Работа и фокус",
         text: "Практические выводы будут расширены отдельной story на рекомендации; текущий слой гарантирует real-data contract.",
-        advice: "Использовать technical details для проверки исходных факторов карты.",
+        advice:
+          "Использовать technical details для проверки исходных факторов карты.",
       },
     ],
     recommendations: [
@@ -345,15 +359,19 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       "Открывайте technical details только когда нужно проверить исходные планеты, дома, аспекты, scores или evidence.",
     ],
     archetype: {
-      name: hasSocionics ? socionics.top3[0].name : "Будет рассчитан после подключения report API",
+      name: hasSocionics
+        ? socionics.top3[0].name
+        : "Будет рассчитан после подключения report API",
       confidence_label: hasSocionics
         ? `уверенность ${(socionics.top3[0].confidence * 100).toFixed(0)}%`
         : "нет данных API",
       text: hasSocionics
         ? `Доступен реальный типологический слой: ${socionics.top3[0].type}. Архетипический текст будет расширен в отдельной story.`
         : "Backend ещё не вернул archetype/socionics output для этого snapshot. Вместо mock-данных показан честный fallback.",
-      light: "Страница больше не подставляет выдуманные данные: пользователь видит только то, что пришло из API, плюс явно помеченные fallback-и.",
-      shadow: "Часть смысловых формулировок останется общей до подключения полноценного report/archetype API.",
+      light:
+        "Страница больше не подставляет выдуманные данные: пользователь видит только то, что пришло из API, плюс явно помеченные fallback-и.",
+      shadow:
+        "Часть смысловых формулировок останется общей до подключения полноценного report/archetype API.",
     },
   };
 }

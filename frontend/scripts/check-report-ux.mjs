@@ -62,11 +62,17 @@ if (page.includes("grid grid-cols-1 lg:grid-cols-2 gap-6")) {
   throw new Error("Old two-column chart-vs-socionics layout must be removed");
 }
 
-if (page.includes("placeholderData") || page.includes("ReportContent data={placeholderData}")) {
+if (
+  page.includes("placeholderData") ||
+  page.includes("ReportContent data={placeholderData}")
+) {
   throw new Error("Report page must not use runtime placeholder data");
 }
 
-if (!page.includes("toReportViewModel") || !page.includes("@/lib/report/view-model")) {
+if (
+  !page.includes("toReportViewModel") ||
+  !page.includes("@/lib/report/view-model")
+) {
   throw new Error("Report page must use the typed report view-model adapter");
 }
 

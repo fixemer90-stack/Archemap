@@ -6,7 +6,10 @@ import { NatalChart } from "@/components/chart/natal-chart";
 import { SocionicsResult } from "@/components/chart/socionics-result";
 import { ApiError } from "@/lib/api-client";
 import { fetchReportApiData } from "@/lib/api/report";
-import { toReportViewModel, type ReportViewModel as ReportData } from "@/lib/report/view-model";
+import {
+  toReportViewModel,
+  type ReportViewModel as ReportData,
+} from "@/lib/report/view-model";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   Card,

@@ -25,9 +25,7 @@ def upgrade() -> None:
     # Create reports table
     op.create_table(
         "reports",
-        sa.Column(
-            "id", postgresql.UUID(as_uuid=True), primary_key=True
-        ),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column(
             "user_id",
             postgresql.UUID(as_uuid=True),
@@ -43,18 +41,14 @@ def upgrade() -> None:
             index=True,
         ),
         sa.Column("product", sa.String(20), nullable=False),
-        sa.Column(
-            "version", sa.Integer, nullable=False, server_default="1"
-        ),
+        sa.Column("version", sa.Integer, nullable=False, server_default="1"),
         sa.Column(
             "status",
             sa.String(20),
             nullable=False,
             server_default="pending",
         ),
-        sa.Column(
-            "mode", sa.String(20), nullable=False, server_default="full"
-        ),
+        sa.Column("mode", sa.String(20), nullable=False, server_default="full"),
         sa.Column(
             "report_data",
             _json_col,
@@ -89,9 +83,7 @@ def upgrade() -> None:
     # Create report_versions table
     op.create_table(
         "report_versions",
-        sa.Column(
-            "id", postgresql.UUID(as_uuid=True), primary_key=True
-        ),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column(
             "report_id",
             postgresql.UUID(as_uuid=True),

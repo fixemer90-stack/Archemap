@@ -102,7 +102,7 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
               </span>
               <span className="text-[#D8DCE8]">{planet.sign}</span>
               <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
-                {((planet.degree ?? planet.sign_degree) ?? 0).toFixed(2)}°
+                {(planet.degree ?? planet.sign_degree ?? 0).toFixed(2)}°
               </span>
               {planet.house && (
                 <span className="text-xs text-[rgba(216,220,232,0.40)]">
@@ -203,16 +203,25 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
 
   // Zodiac sign to angle mapping
   const SIGN_ANGLES: Record<string, number> = {
-    Aries: 0, Taurus: 30, Gemini: 60, Cancer: 90,
-    Leo: 120, Virgo: 150, Libra: 180, Scorpio: 210,
-    Sagittarius: 240, Capricorn: 270, Aquarius: 300, Pisces: 330,
+    Aries: 0,
+    Taurus: 30,
+    Gemini: 60,
+    Cancer: 90,
+    Leo: 120,
+    Virgo: 150,
+    Libra: 180,
+    Scorpio: 210,
+    Sagittarius: 240,
+    Capricorn: 270,
+    Aquarius: 300,
+    Pisces: 330,
   };
 
   const planetPositions = chart.planets.map((p) => {
     // Use longitude if available, otherwise compute from sign + degree
     const deg = p.degree ?? p.sign_degree ?? 0;
     const signAngle = SIGN_ANGLES[p.sign] ?? 0;
-    const totalAngle = p.longitude ?? (signAngle + deg);
+    const totalAngle = p.longitude ?? signAngle + deg;
     const angle = ((totalAngle - 90) * Math.PI) / 180;
     const r = radius * 0.7;
     return {

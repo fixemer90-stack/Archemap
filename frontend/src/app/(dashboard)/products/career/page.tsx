@@ -25,8 +25,8 @@ export default function CareerProductPage() {
             Скоро
           </h2>
           <p className="text-sm text-[#D8DCE8] leading-relaxed">
-            Astrotype Career покажет, какие профессиональные роли вам подходят, в
-            какой среде вы раскрываетесь сильнее, и какие зоны роста стоит
+            Astrotype Career покажет, какие профессиональные роли вам подходят,
+            в какой среде вы раскрываетесь сильнее, и какие зоны роста стоит
             развивать.
           </p>
         </div>

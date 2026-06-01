@@ -46,6 +46,7 @@ async def geocode_search(
     current = await redis.get(rate_key)
     if current and int(current) >= 30:
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             status_code=429,
             content={"detail": "Too many geocode requests. Try again later."},

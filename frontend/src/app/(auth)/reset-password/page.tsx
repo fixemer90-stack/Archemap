@@ -55,7 +55,7 @@ function ResetPasswordForm() {
         throw new Error(
           typeof data.detail === "string"
             ? data.detail
-            : "Ошибка сброса пароля"
+            : "Ошибка сброса пароля",
         );
       }
 
@@ -91,9 +91,7 @@ function ResetPasswordForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <p className="text-sm text-red-500 text-center">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
         <div className="space-y-2">
           <label htmlFor="password" className="text-sm font-medium">

@@ -37,8 +37,8 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm space-y-6 text-center">
         <h1 className="text-2xl font-bold">Проверьте почту</h1>
         <p className="text-sm text-muted-foreground">
-          Если аккаунт с таким email существует, мы отправили ссылку для
-          сброса пароля.
+          Если аккаунт с таким email существует, мы отправили ссылку для сброса
+          пароля.
         </p>
         <Link href="/login">
           <Button variant="outline" className="w-full">
@@ -59,9 +59,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <p className="text-sm text-red-500 text-center">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
         <div className="space-y-2">
           <label htmlFor="email" className="text-sm font-medium">

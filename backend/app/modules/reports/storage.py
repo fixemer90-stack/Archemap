@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import boto3
 import structlog
-from typing import cast
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
@@ -53,9 +54,9 @@ class S3Storage:
             url = cast(
                 str,
                 self.client.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": self.bucket, "Key": key},
-                ExpiresIn=expires_in,
+                    "get_object",
+                    Params={"Bucket": self.bucket, "Key": key},
+                    ExpiresIn=expires_in,
                 ),
             )
             logger.info("s3_signed_url_generated", key=key, expires_in=expires_in)

@@ -86,3 +86,21 @@ class PasswordResetConfirm(BaseModel):
 class RateLimitErrorResponse(BaseModel):
     detail: str
     retry_after: int
+
+
+class LinkedProviderResponse(BaseModel):
+    """Linked OAuth provider info."""
+
+    provider: str
+    provider_email: str | None
+    provider_name: str | None
+    linked_at: str  # ISO datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LinkedProvidersListResponse(BaseModel):
+    """List of linked providers."""
+
+    providers: list[LinkedProviderResponse]
+    has_password: bool

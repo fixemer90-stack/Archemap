@@ -23,6 +23,7 @@ from app.core.security import (
     verify_password,
 )
 from app.core.token_blacklist import blacklist_token, is_token_blacklisted
+from app.modules.auth.models import IdentityLink
 from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
 from app.modules.profiles.models import PersonProfile
@@ -371,3 +372,75 @@ class AuthService:
             "chart": chart_data,
             "socionics": socionics_result,
         }
+
+    async def get_linked_providers(self, user_id: UUID) -> dict:
+        """Get list of linked OAuth providers for a user."""
+        # Get linked providers
+        result = await self.db.execute(
+            select(IdentityLink).where(IdentityLink.user_id == user_id)
+        )
+        links = list(result.scalars().all())
+
+        # Check if user has password
+        user_result = await self.db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        has_password = bool(user and user.hashed_password)
+
+        providers = []
+        for link in links:
+            providers.append({
+                "provider": link.provider,
+                "provider_email": link.provider_email,
+                "provider_name": link.provider_name,
+                "linked_at": link.created_at.isoformat() if link.created_at else None,
+            })
+
+        return {
+            "providers": providers,
+            "has_password": has_password,
+        }
+
+    async def unlink_provider(self, user_id: UUID, provider: str) -> None:
+        """Unlink an OAuth provider from a user.
+
+        Validates that user has another way to log in (password or other providers).
+        """
+        # Get current links
+        result = await self.db.execute(
+            select(IdentityLink).where(
+                IdentityLink.user_id == user_id,
+                IdentityLink.provider == provider,
+            )
+        )
+        link = result.scalar_one_or_none()
+        if link is None:
+            raise NotFoundError(f"No linked {provider} account found")
+
+        # Check if user has password
+        user_result = await self.db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if user is None:
+            raise NotFoundError("User not found")
+
+        has_password = bool(user.hashed_password)
+
+        # Count other links
+        other_links_result = await self.db.execute(
+            select(IdentityLink).where(
+                IdentityLink.user_id == user_id,
+                IdentityLink.provider != provider,
+            )
+        )
+        other_links_count = len(list(other_links_result.scalars().all()))
+
+        # Validate: must have password OR other providers
+        if not has_password and other_links_count == 0:
+            raise ValidationError(
+                "Cannot unlink the only login method. Set a password first or link another provider."
+            )
+
+        # Delete the link
+        await self.db.delete(link)
+        await self.db.flush()
+
+        logger.info("provider_unlinked", user_id=str(user_id), provider=provider)

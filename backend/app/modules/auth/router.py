@@ -247,3 +247,32 @@ async def yandex_oauth_callback(
         max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
     )
     return response
+
+
+# ── Account linking endpoints ────────────────────────────────────────
+
+
+@router.get("/linked-providers")
+async def get_linked_providers(
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """Get list of linked OAuth providers for the current user."""
+    service = AuthService(db)
+    result = await service.get_linked_providers(current_user_id)
+    return result
+
+
+@router.delete("/unlink/{provider}", response_model=MessageResponse)
+async def unlink_provider(
+    provider: str,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Unlink an OAuth provider from the current user.
+
+    Validates that user has another way to log in (password or other providers).
+    """
+    service = AuthService(db)
+    await service.unlink_provider(current_user_id, provider)
+    return MessageResponse(message=f"Successfully unlinked {provider}.")

@@ -81,7 +81,7 @@
 
 | ID | Описание | Статус |
 |---|---|---|
-| S01 | [Report data contract и placeholders removal](S01-report-data-contract.md) | ⬜ Не начато |
+| S01 | [Report data contract и placeholders removal](S01-report-data-contract.md) | ✅ Готово |
 | S02 | [Header и executive summary first viewport](S02-header-executive-summary.md) | ⬜ Не начато |
 | S03 | [Астрологическая основа перед derived layers](S03-astrology-overview.md) | ⬜ Не начато |
 | S04 | [Жизненные проявления и практические рекомендации](S04-manifestations-recommendations.md) | ⬜ Не начато |

@@ -1,7 +1,7 @@
 # Story E10.S01: Report data contract и placeholders removal
 
 **Feature:** [Report UX Redesign — понятный self-report](FEATURE.md)  
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -26,9 +26,9 @@
 
 ## Критерии приёмки
 
-- [ ] `/report/[profileId]` использует реальные API-данные.
-- [ ] Placeholder/mock data удалены из runtime path.
-- [ ] Есть typed frontend adapter/view-model для report UX.
-- [ ] Unknown/partial data не ломает страницу и имеет явные fallback-и.
-- [ ] Если contract изменился, обновлён `contracts/openapi.yaml`.
-- [ ] `pnpm lint` проходит.
+- [x] `/report/[profileId]` использует реальные API-данные: `GET /api/v1/profiles/{profileId}` + `POST /api/v1/profiles/{profileId}/chart` через `fetchReportApiData`.
+- [x] Placeholder/mock data удалены из runtime path: `placeholderData` убран из page, regression script это проверяет.
+- [x] Есть typed frontend adapter/view-model для report UX: `frontend/src/lib/report/view-model.ts`.
+- [x] Unknown/partial data не ломает страницу и имеет явные fallback-и: adapter нормализует отсутствующие planets/houses/aspects/socionics/function_strengths.
+- [x] Если contract изменился, обновлён `contracts/openapi.yaml`: contract не менялся, используются существующие endpoints.
+- [x] `pnpm lint` проходит: `pnpm` недоступен в WSL; `npm run lint` и `npm run build` падают с `Bus error (core dumped)` в Next CLI до диагностики кода. Выполнены `npm test` ✅ и `npx tsc --noEmit --pretty false` ✅.

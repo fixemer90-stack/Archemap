@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -17,8 +19,10 @@ from app.modules.reports.schemas import (
     ReportVersionResponse,
 )
 from app.modules.reports.service import ReportService
+from app.modules.reports.storage import S3Storage, get_signed_ttl
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+logger = structlog.get_logger()
 
 
 @router.post("/generate", response_model=ReportResponse)
@@ -31,6 +35,7 @@ async def generate_report(
 
     Takes a profile_id and product vertical, runs the rule engine,
     and returns a structured report with archetype, claims, and evidence.
+    Also triggers async PDF generation.
     """
     service = ReportService(db)
     report = await service.generate_report(
@@ -39,6 +44,19 @@ async def generate_report(
         product=body.product,
         mode=body.mode,
     )
+
+    # Trigger async PDF generation (S06)
+    try:
+        from workers.tasks.reports import generate_pdf
+
+        generate_pdf.delay(
+            report_id=str(report.id),
+            user_id=str(current_user),
+        )
+    except Exception as exc:
+        # PDF generation is non-critical, don't fail the request
+        logger.warning("pdf_task_enqueue_failed", error=str(exc))
+
     return ReportResponse.model_validate(report)
 
 
@@ -76,6 +94,43 @@ async def get_report(
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
     return ReportResponse.model_validate(report)
+
+
+@router.get("/{report_id}/pdf")
+async def get_report_pdf(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> RedirectResponse:
+    """Get signed URL for report PDF download.
+
+    Returns 307 redirect to signed S3 URL.
+    If PDF not generated yet, returns 404.
+    """
+    service = ReportService(db)
+    report = await service.get_report(report_id, current_user)
+
+    if not report.pdf_generated or not report.pdf_url:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=404,
+            detail="PDF not generated yet. Please wait and try again.",
+        )
+
+    # Refresh signed URL (may have expired)
+    from app.modules.reports.storage import build_report_key
+
+    storage = S3Storage()
+    key = build_report_key(
+        user_id=str(current_user),
+        report_id=str(report_id),
+        version=report.version,
+    )
+    ttl = get_signed_ttl(report.mode)
+    fresh_url = storage.get_signed_url(key, expires_in=ttl)
+
+    return RedirectResponse(url=fresh_url, status_code=307)
 
 
 @router.get("/{report_id}/versions", response_model=ReportVersionListResponse)

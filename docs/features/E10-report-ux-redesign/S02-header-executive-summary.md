@@ -1,7 +1,7 @@
 # Story E10.S02: Header и executive summary first viewport
 
 **Feature:** [Report UX Redesign — понятный self-report](FEATURE.md)  
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -27,9 +27,9 @@
 
 ## Критерии приёмки
 
-- [ ] Первый viewport содержит header и executive summary.
-- [ ] Birth data и quality notice видны до любых графиков.
-- [ ] Summary содержит 3–5 понятных тезисов.
-- [ ] Нет мистического тумана; формулировки конкретные и прикладные.
-- [ ] Chart wheel/radar/Model A/raw scores не рендерятся в первом viewport.
-- [ ] `pnpm lint` проходит.
+- [x] Первый viewport содержит header и executive summary.
+- [x] Birth data и quality notice видны до любых графиков.
+- [x] Summary содержит 3–5 понятных тезисов.
+- [x] Нет мистического тумана; формулировки конкретные и прикладные.
+- [x] Chart wheel/radar/Model A/raw scores не рендерятся в первом viewport.
+- [x] `npx eslint .`, `npx prettier --check .` и `npx tsc --noEmit --pretty false` проходят без ошибок.

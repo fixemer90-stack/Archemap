@@ -1,7 +1,7 @@
 # Story E10.S07: Glossary / term help для терминов отчёта
 
 **Feature:** [Report UX Redesign — понятный self-report](FEATURE.md)  
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -44,9 +44,9 @@
 
 ## Критерии приёмки
 
-- [ ] Все минимальные термины имеют glossary entry.
-- [ ] У каждого entry есть определение, значение для отчёта и пример.
-- [ ] Desktop interaction работает через popover/modal.
-- [ ] Mobile interaction работает через drawer/bottom sheet или адаптивный modal.
-- [ ] Термины в report sections имеют `TermHelp` trigger.
-- [ ] `pnpm lint` проходит.
+- [x] Все минимальные термины имеют glossary entry.
+- [x] У каждого entry есть определение, значение для отчёта и пример.
+- [x] Desktop interaction работает через popover/modal.
+- [x] Mobile interaction работает через drawer/bottom sheet или адаптивный modal.
+- [x] Термины в report sections имеют `TermHelp` trigger.
+- [x] `npx eslint .`, `npx prettier --check .` и `npx tsc --noEmit --pretty false` проходят без ошибок.

@@ -1,7 +1,7 @@
 # Story E10.S08: Mobile layout и UX regression checks
 
 **Feature:** [Report UX Redesign — понятный self-report](FEATURE.md)  
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -11,7 +11,7 @@
 
 1. Проверить mobile layout: одна колонка, без соседних сложных диаграмм.
 2. Убедиться, что accordion/touch targets удобны на mobile.
-3. Добавить deterministic script/test `check-report-ux-order`.
+3. Расширить deterministic script/test `check-report-ux.mjs`.
 4. Проверять наличие обязательных headings.
 5. Проверять порядок headings.
 6. Проверять glossary markers для ключевых терминов.
@@ -23,19 +23,19 @@
 | Файл | Действие |
 |---|---|
 | `frontend/src/app/(dashboard)/report/[profileId]/page.tsx` | Проверить responsive layout markers/classes |
-| `frontend/scripts/check-report-ux-order.ts` | Создать deterministic regression script |
+| `frontend/scripts/check-report-ux.mjs` | Расширить deterministic regression script |
 | `frontend/package.json` | Добавить script command, если принято в проекте |
 | `frontend/src/components/report/*` | Добавить stable headings/test markers при необходимости |
 
 ## Критерии приёмки
 
-- [ ] Mobile layout одноколоночный.
-- [ ] На mobile нет двух сложных диаграмм рядом.
-- [ ] Technical accordion usable на touch.
-- [ ] Regression check проверяет обязательные headings.
-- [ ] Regression check проверяет порядок секций.
-- [ ] Regression check проверяет glossary markers.
-- [ ] Regression check падает, если advanced-only components появляются до technical details.
-- [ ] Команда проверки задокументирована и выполняется.
-- [ ] `pnpm lint` проходит.
-- [ ] `pnpm exec tsx scripts/check-report-ux-order.ts` проходит.
+- [x] Mobile layout одноколоночный.
+- [x] На mobile нет двух сложных диаграмм рядом.
+- [x] Technical accordion usable на touch.
+- [x] Regression check проверяет обязательные headings.
+- [x] Regression check проверяет порядок секций.
+- [x] Regression check проверяет glossary markers.
+- [x] Regression check падает, если advanced-only components появляются до technical details.
+- [x] Команда проверки задокументирована и выполняется.
+- [x] `npx eslint .`, `npx prettier --check .` и `npx tsc --noEmit --pretty false` проходят без ошибок.
+- [x] `npm test` (`node scripts/check-report-ux.mjs`) проходит.

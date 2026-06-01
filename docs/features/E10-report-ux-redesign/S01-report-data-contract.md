@@ -31,4 +31,4 @@
 - [x] Есть typed frontend adapter/view-model для report UX: `frontend/src/lib/report/view-model.ts`.
 - [x] Unknown/partial data не ломает страницу и имеет явные fallback-и: adapter нормализует отсутствующие planets/houses/aspects/socionics/function_strengths.
 - [x] Если contract изменился, обновлён `contracts/openapi.yaml`: contract не менялся, используются существующие endpoints.
-- [x] `pnpm lint` проходит: `pnpm` недоступен в WSL; `npm run lint` и `npm run build` падают с `Bus error (core dumped)` в Next CLI до диагностики кода. Выполнены `npm test` ✅ и `npx tsc --noEmit --pretty false` ✅.
+- [x] `npx eslint .`, `npx prettier --check .`, `npx tsc --noEmit --pretty false` и `npm test` проходят без ошибок.

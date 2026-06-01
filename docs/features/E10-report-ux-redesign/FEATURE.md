@@ -61,34 +61,34 @@
 
 ## Критерии приёмки фичи
 
-- [ ] `/report/[profileId]` открывается для авторизованного пользователя и использует реальные данные API, а не placeholder.
-- [ ] Первый viewport содержит header + human-readable executive summary без chart wheel, radar, Model A и raw scores.
-- [ ] Порядок основных секций: summary → astrology foundation → life manifestations → practical recommendations → archetype → socionics → technical details.
-- [ ] Астрологическая основа объясняет Солнце/Луну/ASC, стихии, модальности и ключевые факторы до любых derived typology-блоков.
-- [ ] Жизненные проявления показывают минимум 4 области: мышление/решения, эмоции/восстановление, общение/отношения, работа/фокус.
-- [ ] Практические рекомендации включают «что усилить», «что беречь», «что не делать через силу» и мини-чеклист на неделю.
-- [ ] Архетипический профиль показывает primary archetype, human-readable description, light/shadow и confidence label; raw scores скрыты в details.
-- [ ] Соционический профиль показывает probable type, нормальное название, простое объяснение и 3–5 прикладных выводов; Top-3/Model A/function radar скрыты в details.
-- [ ] Technical details collapsed по умолчанию и содержит full chart wheel, tables, aspects, function strengths, radar, scores, confidence и evidence trail.
-- [ ] Все обязательные термины имеют `TermHelp`/`GlossaryModal` с определением, значением в отчёте и примером.
-- [ ] Каждый видимый график имеет текст «как читать»; графики без пояснения находятся только в advanced section.
-- [ ] Для unknown/approximate birth time показан quality warning о влиянии времени рождения на дома/ASC и часть выводов.
-- [ ] Mobile layout одноколоночный и не требует сравнения двух сложных диаграмм рядом.
-- [ ] Добавлен deterministic regression check на порядок секций, glossary markers и advanced-only технические компоненты.
-- [ ] `pnpm lint` и frontend checks проходят без ошибок.
+- [x] `/report/[profileId]` открывается для авторизованного пользователя и использует реальные данные API, а не placeholder.
+- [x] Первый viewport содержит header + human-readable executive summary без chart wheel, radar, Model A и raw scores.
+- [x] Порядок основных секций: summary → astrology foundation → life manifestations → practical recommendations → archetype → socionics → technical details.
+- [x] Астрологическая основа объясняет Солнце/Луну/ASC, стихии, модальности и ключевые факторы до любых derived typology-блоков.
+- [x] Жизненные проявления показывают минимум 4 области: мышление/решения, эмоции/восстановление, общение/отношения, работа/фокус.
+- [x] Практические рекомендации включают «что усилить», «что беречь», «что не делать через силу» и мини-чеклист на неделю.
+- [x] Архетипический профиль показывает primary archetype, human-readable description, light/shadow и confidence label; raw scores скрыты в details.
+- [x] Соционический профиль показывает probable type, нормальное название, простое объяснение и 3–5 прикладных выводов; Top-3/Model A/function radar скрыты в details.
+- [x] Technical details collapsed по умолчанию и содержит full chart wheel, tables, aspects, function strengths, radar, scores, confidence и evidence trail.
+- [x] Все обязательные термины имеют `TermHelp`/`GlossaryModal` с определением, значением в отчёте и примером.
+- [x] Каждый видимый график имеет текст «как читать»; графики без пояснения находятся только в advanced section.
+- [x] Для unknown/approximate birth time показан quality warning о влиянии времени рождения на дома/ASC и часть выводов.
+- [x] Mobile layout одноколоночный и не требует сравнения двух сложных диаграмм рядом.
+- [x] Добавлен deterministic regression check на порядок секций, glossary markers и advanced-only технические компоненты.
+- [x] `npx eslint .`, `npx prettier --check .`, `npx tsc --noEmit --pretty false` и `npm test` проходят без ошибок.
 
 ## Stories
 
 | ID | Описание | Статус |
 |---|---|---|
 | S01 | [Report data contract и placeholders removal](S01-report-data-contract.md) | ✅ Готово |
-| S02 | [Header и executive summary first viewport](S02-header-executive-summary.md) | ⬜ Не начато |
-| S03 | [Астрологическая основа перед derived layers](S03-astrology-overview.md) | ⬜ Не начато |
-| S04 | [Жизненные проявления и практические рекомендации](S04-manifestations-recommendations.md) | ⬜ Не начато |
-| S05 | [Упрощённые archetype/socionics summary-блоки](S05-derived-profile-summaries.md) | ⬜ Не начато |
-| S06 | [Technical details accordion и progressive disclosure](S06-technical-details-progressive-disclosure.md) | ⬜ Не начато |
-| S07 | [Glossary / term help для терминов отчёта](S07-glossary-term-help.md) | ⬜ Не начато |
-| S08 | [Mobile layout и UX regression checks](S08-mobile-regression-checks.md) | ⬜ Не начато |
+| S02 | [Header и executive summary first viewport](S02-header-executive-summary.md) | ✅ Готово |
+| S03 | [Астрологическая основа перед derived layers](S03-astrology-overview.md) | ✅ Готово |
+| S04 | [Жизненные проявления и практические рекомендации](S04-manifestations-recommendations.md) | ✅ Готово |
+| S05 | [Упрощённые archetype/socionics summary-блоки](S05-derived-profile-summaries.md) | ✅ Готово |
+| S06 | [Technical details accordion и progressive disclosure](S06-technical-details-progressive-disclosure.md) | ✅ Готово |
+| S07 | [Glossary / term help для терминов отчёта](S07-glossary-term-help.md) | ✅ Готово |
+| S08 | [Mobile layout и UX regression checks](S08-mobile-regression-checks.md) | ✅ Готово |
 
 ## Проверка закрытия фичи
 
@@ -96,9 +96,10 @@
 
 ```bash
 cd frontend
-pnpm lint
-pnpm test
-pnpm exec tsx scripts/check-report-ux-order.ts
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm test
 ```
 
 Если полного test runner ещё нет, deterministic script обязателен: он должен проверять наличие обязательных секций, их порядок, glossary markers и то, что `NatalChart`, `FunctionRadar`, Model A/raw scores появляются только после секции «Технические детали расчёта».

@@ -1,7 +1,7 @@
 # Story E10.S05: Упрощённые archetype/socionics summary-блоки
 
 **Feature:** [Report UX Redesign — понятный self-report](FEATURE.md)  
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -26,10 +26,10 @@
 
 ## Критерии приёмки
 
-- [ ] Archetype summary показывает primary archetype без таблицы raw scores.
-- [ ] Confidence отображается как текстовая метка, не голый процент.
-- [ ] Socionics summary объясняет тип простыми словами.
-- [ ] Top-3, Model A и function radar не отображаются в основном socionics summary.
-- [ ] Archetype/socionics расположены после рекомендаций.
-- [ ] Helper score labels покрыт тестом или deterministic check.
-- [ ] `pnpm lint` проходит.
+- [x] Archetype summary показывает primary archetype без таблицы raw scores.
+- [x] Confidence отображается как текстовая метка, не голый процент.
+- [x] Socionics summary объясняет тип простыми словами.
+- [x] Top-3, Model A и function radar не отображаются в основном socionics summary.
+- [x] Archetype/socionics расположены после рекомендаций.
+- [x] Helper score labels покрыт тестом или deterministic check.
+- [x] `npx eslint .`, `npx prettier --check .` и `npx tsc --noEmit --pretty false` проходят без ошибок.

@@ -1,3 +1,5 @@
+import { confidenceLabel } from "@/lib/report/score-labels";
+
 export interface ReportPlanet {
   name: string;
   sign: string;
@@ -119,28 +121,54 @@ export interface ReportViewModel {
     birth_time: string | null;
     birth_time_accuracy: string;
     birth_place: string;
+    quality_label: string;
+    quality_notice: string;
   };
-  summary: string[];
+  summary: {
+    main_theme: string;
+    strength: string;
+    attention: string;
+    bullets: string[];
+  };
   astrology: {
     sun: string;
+    sun_meaning: string;
     moon: string;
+    moon_meaning: string;
     ascendant: string;
+    ascendant_meaning: string;
     dominant_elements: string;
     modalities: string;
     key_aspects: string[];
+    time_sensitive_note: string;
   };
   manifestations: Array<{
     title: string;
-    text: string;
-    advice: string;
+    manifestation: string;
+    support: string;
+    risk?: string;
   }>;
-  recommendations: string[];
+  recommendations: {
+    strengthen: string[];
+    protect: string[];
+    do_not_force: string[];
+    environment: string[];
+    weekly_checklist: string[];
+  };
   archetype: {
     name: string;
     confidence_label: string;
     text: string;
+    manifestations: string[];
     light: string;
     shadow: string;
+  };
+  socionics_summary: {
+    type: string;
+    name: string;
+    confidence_label: string;
+    explanation: string;
+    insights: string[];
   };
 }
 
@@ -153,6 +181,36 @@ export const emptyFunctionStrengths: FunctionStrengths = {
   Fi: 0,
   Te: 0,
   Ti: 0,
+};
+
+const ELEMENT_BY_SIGN: Record<string, string> = {
+  Aries: "огонь",
+  Leo: "огонь",
+  Sagittarius: "огонь",
+  Taurus: "земля",
+  Virgo: "земля",
+  Capricorn: "земля",
+  Gemini: "воздух",
+  Libra: "воздух",
+  Aquarius: "воздух",
+  Cancer: "вода",
+  Scorpio: "вода",
+  Pisces: "вода",
+};
+
+const MODALITY_BY_SIGN: Record<string, string> = {
+  Aries: "кардинальная",
+  Cancer: "кардинальная",
+  Libra: "кардинальная",
+  Capricorn: "кардинальная",
+  Taurus: "фиксированная",
+  Leo: "фиксированная",
+  Scorpio: "фиксированная",
+  Aquarius: "фиксированная",
+  Gemini: "мутабельная",
+  Virgo: "мутабельная",
+  Sagittarius: "мутабельная",
+  Pisces: "мутабельная",
 };
 
 function toNumber(value: number | undefined, fallback = 0): number {
@@ -224,62 +282,151 @@ function findPlanet(
   return chart.planets.find((planet) => planet.name === name);
 }
 
-function formatPlanetMeaning(
+function formatPlanet(
   planet: ReportPlanet | undefined,
   fallback: string,
 ): string {
   if (!planet) {
     return fallback;
   }
-  const house = planet.house ? `, дом ${planet.house}` : "";
-  return `${planet.sign} ${planet.degree.toFixed(2)}°${house}`;
+  const house = planet.house ? `, ${planet.house} дом` : "";
+  return `${planet.sign} ${planet.degree.toFixed(1)}°${house}`;
 }
 
-function buildSummary(
-  profile: ProfileApiResponse,
-  chart: ReportChartData,
-): string[] {
-  const sun = findPlanet(chart, "Sun");
-  const moon = findPlanet(chart, "Moon");
-  const aspectCount = chart.aspects.length;
+function signElement(sign: string | undefined): string | undefined {
+  return sign ? ELEMENT_BY_SIGN[sign] : undefined;
+}
 
-  return [
-    `Отчёт построен по реальным данным профиля «${profile.name || "Ваш отчёт"}» и текущему snapshot натальной карты.`,
-    sun
-      ? `Солнце в ${sun.sign} задаёт главный фокус интерпретации; детали карты доступны ниже в техническом блоке.`
-      : "Солнце не найдено в snapshot карты, поэтому главный фокус интерпретации показан осторожно.",
-    moon
-      ? `Луна в ${moon.sign} помогает описать эмоциональный ритм и восстановление.`
-      : "Луна не найдена в snapshot карты, поэтому эмоциональный блок требует уточнения данных.",
-    aspectCount > 0
-      ? `В карте найдено ${aspectCount} аспектов; в основном отчёте используются только ключевые связи, полный список скрыт в technical details.`
-      : "Аспекты отсутствуют в snapshot: отчёт остаётся читаемым, но evidence по связям карты ограничен.",
-  ];
+function dominantLabel(
+  counts: Record<string, number>,
+  fallback: string,
+): string {
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const [first, firstCount] = sorted[0] ?? [fallback, 0];
+  const second = sorted[1];
+  if (firstCount === 0) {
+    return fallback;
+  }
+  if (second && second[1] === firstCount) {
+    return `${first} и ${second[0]}`;
+  }
+  return first;
+}
+
+function buildElementSummary(chart: ReportChartData): string {
+  const counts = { огонь: 0, земля: 0, воздух: 0, вода: 0 };
+  for (const planet of chart.planets) {
+    const element = signElement(planet.sign);
+    if (element) {
+      counts[element as keyof typeof counts] += 1;
+    }
+  }
+  const dominant = dominantLabel(counts, "смешанный баланс");
+  return `Главная стихия по планетам: ${dominant}. Это показывает базовый стиль энергии: действие, практика, идеи или эмоциональная настройка.`;
+}
+
+function buildModalitySummary(chart: ReportChartData): string {
+  const counts = { кардинальная: 0, фиксированная: 0, мутабельная: 0 };
+  for (const planet of chart.planets) {
+    const modality = MODALITY_BY_SIGN[planet.sign];
+    if (modality) {
+      counts[modality as keyof typeof counts] += 1;
+    }
+  }
+  const dominant = dominantLabel(counts, "смешанная модальность");
+  return `Главная модальность: ${dominant}. Она описывает, как легче двигаться: начинать, удерживать курс или адаптироваться.`;
 }
 
 function buildKeyAspects(chart: ReportChartData): string[] {
-  const keyAspects = chart.aspects.slice(0, 4).map((aspect) => {
-    const direction = aspect.is_applying ? "сходящийся" : "расходящийся";
-    return `${aspect.planet_a} — ${aspect.planet_b}: ${aspect.aspect_type}, орб ${aspect.orb.toFixed(2)}° (${direction}).`;
-  });
+  const keyAspects = chart.aspects
+    .slice()
+    .sort((a, b) => a.orb - b.orb)
+    .slice(0, 4)
+    .map((aspect) => {
+      const direction = aspect.is_applying ? "сходящийся" : "расходящийся";
+      return `${aspect.planet_a} — ${aspect.planet_b}: ${aspect.aspect_type}, орб ${aspect.orb.toFixed(2)}° (${direction}).`;
+    });
 
-  if (keyAspects.length > 0) {
-    return keyAspects;
+  return keyAspects.length > 0
+    ? keyAspects
+    : [
+        "В snapshot нет аспектов: отчёт честно ограничивает evidence по связям карты.",
+      ];
+}
+
+function qualityLabel(accuracy: string): string {
+  if (accuracy === "exact") {
+    return "точное время рождения";
   }
-
-  return [
-    "В snapshot нет аспектов: подробное evidence по связям карты пока недоступно.",
-  ];
+  if (accuracy === "approximate") {
+    return "приблизительное время рождения";
+  }
+  return "время рождения неизвестно";
 }
 
 function birthTimeWarning(accuracy: string): string {
   if (accuracy === "exact") {
-    return "Время рождения точное: дома и Ascendant можно читать как полноценную часть отчёта.";
+    return "Время рождения точное: дома и Асцендент можно читать как полноценную часть отчёта.";
   }
   if (accuracy === "approximate") {
-    return "Время рождения приблизительное: дома и Ascendant читаются как гипотеза, а не как жёсткий вывод.";
+    return "Время рождения приблизительное: дома и Асцендент читаются как гипотеза, а не как жёсткий вывод.";
   }
-  return "Время рождения неизвестно: выводы по домам и Ascendant ограничены, основной упор стоит делать на планеты и аспекты.";
+  return "Время рождения неизвестно: выводы по домам и Асценденту ограничены, основной упор стоит делать на планеты и аспекты.";
+}
+
+function buildArchetypeName(chart: ReportChartData): string {
+  const element = dominantLabel(
+    chart.planets.reduce(
+      (acc, planet) => {
+        const current = signElement(planet.sign);
+        if (current) {
+          acc[current] += 1;
+        }
+        return acc;
+      },
+      { огонь: 0, земля: 0, воздух: 0, вода: 0 } as Record<string, number>,
+    ),
+    "смешанный профиль",
+  );
+
+  if (element.includes("огонь")) return "Инициатор";
+  if (element.includes("земля")) return "Практик";
+  if (element.includes("воздух")) return "Связующий";
+  if (element.includes("вода")) return "Настройщик";
+  return "Интегратор";
+}
+
+function buildSocionicsSummary(
+  socionics: ReportSocionicsData,
+): ReportViewModel["socionics_summary"] {
+  const primary = socionics.top3[0];
+  if (!primary) {
+    return {
+      type: "не рассчитан",
+      name: "Соционический слой недоступен",
+      confidence_label: "уверенность не рассчитана",
+      explanation:
+        "API не вернул top types для этого snapshot, поэтому основной отчёт не подставляет выдуманный тип.",
+      insights: [
+        "Сначала читайте астрологическую основу и практические рекомендации.",
+        "Технический блок ниже покажет, что именно пришло из API.",
+        "Типологическую гипотезу стоит добавить только после появления данных.",
+      ],
+    };
+  }
+
+  return {
+    type: primary.type,
+    name: primary.name,
+    confidence_label: confidenceLabel(primary.confidence),
+    explanation: `${primary.name} (${primary.type}) читается как гипотеза о способе обработки информации, решений и взаимодействия с людьми.`,
+    insights: [
+      "Используйте тип как язык наблюдения, а не как ярлык личности.",
+      "Сравните вывод с блоками про мышление, эмоции, отношения и работу.",
+      "Если уверенность не высокая, читайте тип мягко и проверяйте по жизненным примерам.",
+      "Полная Model A и Top-3 оставлены в технических деталях.",
+    ],
+  };
 }
 
 export function toReportViewModel(data: ReportApiData): ReportViewModel {
@@ -293,85 +440,147 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
   const moon = findPlanet(chart, "Moon");
   const ascendant = chart.houses[0];
   const hasSocionics = socionics.top3.length > 0;
+  const archetypeName = buildArchetypeName(chart);
+  const profileName = data.profile.name || "Ваш отчёт";
+  const timeNotice = birthTimeWarning(data.profile.birth_time_accuracy);
 
   return {
     chart,
     socionics,
     profile: {
-      name: data.profile.name || "Ваш отчёт",
+      name: profileName,
       birth_date: data.profile.birth_date,
       birth_time: data.profile.birth_time,
       birth_time_accuracy: data.profile.birth_time_accuracy,
       birth_place: data.profile.birth_place,
+      quality_label: qualityLabel(data.profile.birth_time_accuracy),
+      quality_notice: timeNotice,
     },
-    summary: buildSummary(data.profile, chart),
+    summary: {
+      main_theme: sun
+        ? `Главная тема карты — проявлять ${sun.sign} через реальные решения, выборы и личную инициативу.`
+        : "Главная тема карты читается осторожно: в snapshot нет Солнца.",
+      strength: moon
+        ? `Сильная опора — понимать свой эмоциональный ритм: Луна в ${moon.sign} показывает, как возвращаться в ресурс.`
+        : "Сильная опора пока описана общо: в snapshot нет Луны.",
+      attention:
+        data.profile.birth_time_accuracy === "exact"
+          ? "Зона внимания — сверять смысловые выводы с техническими деталями только когда нужна проверка расчёта."
+          : "Зона внимания — не переоценивать дома и Асцендент, потому что время рождения не полностью надёжно.",
+      bullets: [
+        `Отчёт построен по реальным данным профиля «${profileName}» и текущему snapshot карты.`,
+        sun
+          ? `Солнце в ${sun.sign} задаёт главный фокус интерпретации.`
+          : "Солнце не найдено — нужен повторный расчёт карты.",
+        moon
+          ? `Луна в ${moon.sign} помогает описать эмоции и восстановление.`
+          : "Луна не найдена — эмоциональный блок читается осторожно.",
+        `Качество времени рождения: ${qualityLabel(data.profile.birth_time_accuracy)}.`,
+      ],
+    },
     astrology: {
-      sun: formatPlanetMeaning(
+      sun: formatPlanet(
         sun,
         "Солнце отсутствует в snapshot карты — требуется проверить расчёт.",
       ),
-      moon: formatPlanetMeaning(
+      sun_meaning: sun
+        ? "Показывает главный способ проявлять себя, выбирать направление и чувствовать авторство."
+        : "Без Солнца главный фокус отчёта нельзя считать полным.",
+      moon: formatPlanet(
         moon,
         "Луна отсутствует в snapshot карты — требуется проверить расчёт.",
       ),
+      moon_meaning: moon
+        ? "Описывает восстановление, эмоциональные реакции и базовую потребность в безопасности."
+        : "Без Луны эмоциональные выводы остаются ограниченными.",
       ascendant: ascendant
-        ? `${ascendant.sign} ${ascendant.longitude.toFixed(2)}°. ${birthTimeWarning(data.profile.birth_time_accuracy)}`
-        : birthTimeWarning(data.profile.birth_time_accuracy),
-      dominant_elements:
-        "Агрегация стихий будет подключена отдельной UX-story; сейчас основной блок использует реальные планеты snapshot без mock-данных.",
-      modalities:
-        "Агрегация модальностей будет подключена отдельной UX-story; технические исходные данные сохранены ниже.",
+        ? `${ascendant.sign} ${ascendant.longitude.toFixed(1)}°`
+        : "Асцендент недоступен",
+      ascendant_meaning: ascendant
+        ? `Показывает стиль входа в ситуации и самопрезентации. ${timeNotice}`
+        : timeNotice,
+      dominant_elements: buildElementSummary(chart),
+      modalities: buildModalitySummary(chart),
       key_aspects: buildKeyAspects(chart),
+      time_sensitive_note: timeNotice,
     },
     manifestations: [
       {
         title: "Мышление и решения",
-        text: "Первый слой выводов строится на реальных факторах карты. Если часть данных отсутствует, отчёт явно показывает ограничение вместо подстановки mock-текста.",
-        advice:
-          "Смотреть на summary как на стартовую гипотезу и при необходимости раскрывать technical details.",
+        manifestation: sun
+          ? `Солнце в ${sun.sign} подсказывает, что решения лучше принимать через ясную личную позицию и проверку “зачем мне это”.`
+          : "Главный стиль решений описан осторожно, потому что в snapshot нет Солнца.",
+        support:
+          "Перед важным выбором формулировать критерии успеха и отделять свои цели от ожиданий окружения.",
+        risk: "Риск — уходить в чужие сценарии, если нет понятного личного фокуса.",
       },
       {
         title: "Эмоции и восстановление",
-        text: moon
-          ? `Луна в ${moon.sign} используется как базовый маркер эмоционального ритма.`
+        manifestation: moon
+          ? `Луна в ${moon.sign} показывает, что ресурс возвращается через подходящий эмоциональный ритм и безопасную среду.`
           : "Эмоциональный блок ограничен: в snapshot нет Луны.",
-        advice:
-          "Уточнить данные рождения, если эмоциональные выводы выглядят слишком общими.",
+        support:
+          "Планировать восстановление заранее, а не ждать полного истощения.",
+        risk: "Риск — считать усталость слабостью и игнорировать сигналы тела/эмоций.",
       },
       {
-        title: "Коммуникация и отношения",
-        text: hasSocionics
-          ? "Соционический слой доступен как дополнительная линза и не подменяет астрологическую основу."
-          : "Соционический слой пока не пришёл из API; страница остаётся рабочей и показывает fallback без падения.",
-        advice:
-          "Читать типологию после астрологической основы и практических выводов.",
+        title: "Общение и отношения",
+        manifestation: hasSocionics
+          ? "Соционический слой добавляет гипотезу о коммуникации, но читается после астрологической основы."
+          : "Коммуникационный блок опирается на карту; соционический тип не подставляется без API-данных.",
+        support:
+          "Проговаривать ожидания и формат взаимодействия: темп, границы, обратную связь.",
+        risk: "Риск — путать типологическую гипотезу с живым человеком и реальным контекстом.",
       },
       {
         title: "Работа и фокус",
-        text: "Практические выводы будут расширены отдельной story на рекомендации; текущий слой гарантирует real-data contract.",
-        advice:
-          "Использовать technical details для проверки исходных факторов карты.",
+        manifestation:
+          "Доминирующие стихии и модальности показывают, где легче держать внимание: через действие, структуру, идеи или эмоциональный смысл.",
+        support:
+          "Собирать неделю вокруг 1–2 главных задач и оставлять место для восстановления.",
+        risk: "Риск — пытаться работать через силу в ритме, который противоречит собственному паттерну энергии.",
       },
     ],
-    recommendations: [
-      "Проверьте, что дата, время и место рождения в header совпадают с ожидаемыми данными профиля.",
-      "Если время рождения неизвестно или приблизительно, осторожнее читайте дома и Ascendant.",
-      "Открывайте technical details только когда нужно проверить исходные планеты, дома, аспекты, scores или evidence.",
-    ],
-    archetype: {
-      name: hasSocionics
-        ? socionics.top3[0].name
-        : "Будет рассчитан после подключения report API",
-      confidence_label: hasSocionics
-        ? `уверенность ${(socionics.top3[0].confidence * 100).toFixed(0)}%`
-        : "нет данных API",
-      text: hasSocionics
-        ? `Доступен реальный типологический слой: ${socionics.top3[0].type}. Архетипический текст будет расширен в отдельной story.`
-        : "Backend ещё не вернул archetype/socionics output для этого snapshot. Вместо mock-данных показан честный fallback.",
-      light:
-        "Страница больше не подставляет выдуманные данные: пользователь видит только то, что пришло из API, плюс явно помеченные fallback-и.",
-      shadow:
-        "Часть смысловых формулировок останется общей до подключения полноценного report/archetype API.",
+    recommendations: {
+      strengthen: [
+        "Усиливать главный фокус карты: выбирать задачи, где есть личный смысл и понятный результат.",
+        "Регулярно сверять решения с тем, что даёт энергию, а не только с внешней полезностью.",
+      ],
+      protect: [
+        "Беречь восстановление: эмоциональный ритм влияет на качество решений сильнее, чем кажется.",
+        "Беречь точность данных: при неточном времени не делать жёстких выводов по домам и ASC.",
+      ],
+      do_not_force: [
+        "Не заставлять себя жить по типологическому ярлыку — это инструмент наблюдения, а не приговор.",
+        "Не читать проценты как абсолютную истину; confidence показывает качество гипотезы.",
+      ],
+      environment: [
+        "Выбирать среду, где можно проговаривать ожидания и получать ясную обратную связь.",
+        "Держать рядом простой ритуал проверки: что важно, что забирает ресурс, какой следующий шаг.",
+      ],
+      weekly_checklist: [
+        "Выбрать одну главную тему недели и записать ожидаемый результат.",
+        "Запланировать два окна восстановления без задач и переговоров.",
+        "Проверить один вывод отчёта на реальном примере из жизни.",
+        "Открыть technical details только для проверки спорного вывода, не для первого чтения.",
+      ],
     },
+    archetype: {
+      name: archetypeName,
+      confidence_label: hasSocionics
+        ? confidenceLabel(socionics.top3[0].confidence)
+        : "средняя уверенность",
+      text: `Архетип «${archetypeName}» — короткое имя для ведущего паттерна карты. Он помогает запомнить стиль, но не заменяет подробные выводы выше.`,
+      manifestations: [
+        "быстрее замечать ситуации, где естественная стратегия уже работает",
+        "выделять условия, в которых сильная сторона раскрывается без чрезмерного напряжения",
+        "видеть тень паттерна и вовремя смягчать её через осознанный выбор",
+      ],
+      light:
+        "Сильная сторона — использовать естественный стиль как опору для решений, работы и отношений.",
+      shadow:
+        "Тень — превращать полезный паттерн в жёсткий сценарий и игнорировать контекст.",
+    },
+    socionics_summary: buildSocionicsSummary(socionics),
   };
 }

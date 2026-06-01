@@ -1,7 +1,7 @@
 # Story E10.S06: Technical details accordion и progressive disclosure
 
 **Feature:** [Report UX Redesign — понятный self-report](FEATURE.md)  
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -26,9 +26,9 @@
 
 ## Критерии приёмки
 
-- [ ] Technical details collapsed по умолчанию.
-- [ ] Full chart wheel, raw tables, radar, Model A, Top-3, raw scores и evidence находятся только внутри technical details.
-- [ ] Основной report flow читается без открытия technical details.
-- [ ] Графики внутри advanced имеют пояснение «как читать».
-- [ ] `NatalChart` и `SocionicsResult` не используются как первый экран.
-- [ ] `pnpm lint` проходит.
+- [x] Technical details collapsed по умолчанию.
+- [x] Full chart wheel, raw tables, radar, Model A, Top-3, raw scores и evidence находятся только внутри technical details.
+- [x] Основной report flow читается без открытия technical details.
+- [x] Графики внутри advanced имеют пояснение «как читать».
+- [x] `NatalChart` и `SocionicsResult` не используются как первый экран.
+- [x] `npx eslint .`, `npx prettier --check .` и `npx tsc --noEmit --pretty false` проходят без ошибок.

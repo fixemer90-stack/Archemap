@@ -207,11 +207,11 @@ function AstrologyFoundation({
       title="Астрологическая основа"
       description="Сначала разбираем карту: из каких факторов появляются выводы. Архетипы и соционика идут позже."
     >
-      <p className="mb-5 leading-7 text-muted-foreground">
+      <div className="mb-5 leading-7 text-muted-foreground">
         <TermHelp term="Натальная карта" /> — это база расчёта. Ниже не весь
         технический список, а только главные факторы, которые помогают понять
         логику отчёта.
-      </p>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Солнце</div>
@@ -242,10 +242,10 @@ function AstrologyFoundation({
       </div>
       <div className="mt-5">
         <div className="font-medium">Ключевые связи карты</div>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        <div className="mt-2 text-sm leading-6 text-muted-foreground">
           <TermHelp term="Аспект" /> показывает связь между факторами, а{" "}
           <TermHelp term="Орб" /> — насколько эта связь точная.
-        </p>
+        </div>
         <ul className="mt-3 grid gap-2">
           {astrology.key_aspects.map((aspect) => (
             <li

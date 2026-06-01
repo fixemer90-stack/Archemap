@@ -2,12 +2,12 @@
 
 Платформа астрологического анализа личности. Четыре продуктовых вертикали на едином вычислительном ядре.
 
-| Вертикаль | Что получает пользователь |
-|---|---|
-| **Astrotype Self** | Натальная карта, архетипический портрет, персональный отчёт |
-| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов |
-| **Astrotype Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация |
-| **Astrotype Career** | Сильные стороны, подходящие роли, сценарии профессионального развития |
+| Вертикаль | Что получает пользователь | Статус |
+|---|---|---|
+| **Astrotype Self** | Натальная карта, архетипический портрет, персональный отчёт | ✅ |
+| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов | ⬜ |
+| **Astrotype Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация | ⬜ |
+| **Astrotype Career** | Сильные стороны, подходящие роли, сценарии профессионального развития | ✅ |
 
 **Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. Детерминированный расчёт и explainable scoring — первичны, narrative layer — вторичен. AI не используется для генерации отчётов в рантайме.
 
@@ -39,11 +39,13 @@ input envelope → chart snapshot → normalized features → axes → archetype
 | **ORM** | SQLAlchemy 2.0 + Alembic | Зрелый async ORM, миграции схемы, repository pattern |
 | **База данных** | PostgreSQL 16 | ACID для ledger/подписок, JSONB, расширения (pgcrypto, uuid-ossp) |
 | **Кэш / Rate Limiting** | Redis 7 | Сессии, rate limiting, short-lived cache, pub/sub |
-| **Очередь задач** | Celery + Redis (broker) | Фоновые задачи: генерация отчётов, reconciliation, email |
+| **Очередь задач** | Celery + Redis (broker) | Фоновые задачи: генерация PDF, reconciliation, email |
 | **HTTP-клиент** | httpx | Async HTTP для интеграций с PSP/OAuth-провайдерами |
 | **Валидация** | Pydantic v2 | Строгая типизация, автоматическая JSON Schema |
 | **Движок карт** | Swiss Ephemeris (swisseph) + Flatlib | Высокоточные эфемериды, построение астрологических объектов |
-| **Шаблоны** | Jinja2 | Рендеринг отчётов из шаблонов |
+| **Шаблоны** | Jinja2 | Рендеринг PDF-отчётов из шаблонов |
+| **PDF** | WeasyPrint | HTML → PDF конвертация |
+| **S3/MinIO** | boto3 | Хранилище PDF-артефактов, signed links |
 | **Email** | SMTP/SMTPS (smtplib) | Transactional email: верификация, уведомления |
 
 ### Frontend
@@ -62,7 +64,7 @@ input envelope → chart snapshot → normalized features → axes → archetype
 | **Контейнеризация** | Docker + Docker Compose | Локальная разработка, воспроизводимые окружения |
 | **CI/CD** | GitHub Actions | Lint, тесты, contract validation, build, deploy |
 | **Миграции БД** | Alembic | Версионированная миграция схемы, downgrade support |
-| **Reverse Proxy** | Caddy (dev), Nginx/Gateway API (prod) | TLS, routing, rate limiting |
+| **Object Storage** | MinIO (локально), S3 (prod) | Хранилище PDF-артефактов |
 
 ### Качество кода
 
@@ -73,14 +75,6 @@ input envelope → chart snapshot → normalized features → axes → archetype
 | **ESLint + Prettier** | Линтинг и форматирование TypeScript |
 | **pre-commit** | Автоматические проверки перед коммитом |
 
-### Observability
-
-| Компонент | Технология | Обоснование |
-|---|---|---|
-| **Трейсинг** | OpenTelemetry | Vendor-neutral, совместимость с Jaeger/Tempo |
-| **Метрики** | Prometheus + Grafana | Стандарт де-факто для метрик |
-| **Логи** | structlog | Структурированные JSON-логи с correlation ID |
-
 ---
 
 ## Структура проекта
@@ -90,84 +84,44 @@ Astrotype/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                    # FastAPI entrypoint
-│   │   ├── config.py                  # Settings via pydantic-settings
-│   │   ├── dependencies.py            # FastAPI dependencies
+│   │   ├── config.py                  # Settings + production guards
+│   │   ├── dependencies.py            # Auth (JWT + HttpOnly cookie)
 │   │   ├── core/                      # Shared kernel
-│   │   │   ├── models.py              # Base SQLAlchemy models
-│   │   │   ├── security.py            # JWT, hashing, crypto
-│   │   │   ├── exceptions.py          # Domain exceptions
-│   │   │   ├── rate_limit.py          # Redis-backed rate limiter
-│   │   │   └── token_blacklist.py     # JWT blacklist (logout)
-│   │   ├── infrastructure/            # External integrations
-│   │   │   ├── database.py            # Async engine, session factory
-│   │   │   ├── redis.py               # Redis client
-│   │   │   ├── email.py               # SMTP/SMTPS sender
-│   │   │   └── email_templates.py     # Email HTML/text templates
-│   │   ├── modules/                   # Доменные модули
-│   │   │   ├── auth/                  # Authentication & OAuth
-│   │   │   │   ├── router.py
-│   │   │   │   ├── service.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   ├── models.py          # User, EmailVerification, IdentityLink
-│   │   │   │   ├── verification.py    # Email verification service
-│   │   │   │   ├── password_reset.py  # Password reset flow
-│   │   │   │   └── oauth/             # OAuth providers
-│   │   │   │       ├── yandex.py      # Yandex ID provider
-│   │   │   │       └── service.py     # OAuth service (state, linking)
+│   │   ├── infrastructure/            # Database, Redis, email
+│   │   ├── modules/
+│   │   │   ├── auth/                  # Auth, OAuth, password reset, account linking
 │   │   │   ├── profiles/              # Birth profiles & geocoding
-│   │   │   │   ├── router.py
-│   │   │   │   ├── service.py
-│   │   │   │   └── models.py
-│   │   │   ├── chart_engine/          # Natal chart computation
-│   │   │   │   ├── ephemeris.py       # Swiss Ephemeris wrapper
-│   │   │   │   ├── houses.py          # House system calculation
-│   │   │   │   ├── aspects.py         # Aspect computation
-│   │   │   │   └── socionics.py       # Socionics type calculation
+│   │   │   ├── charts/                # Chart snapshots & socionics
+│   │   │   ├── rules/                 # Rule engine, loader, resolver
+│   │   │   ├── reports/               # Report generation, PDF, S3 storage
 │   │   │   └── users/                 # User management
-│   │   │       ├── router.py
-│   │   │       └── models.py
-│   │   └── api/v1/                    # Versioned router aggregation
+│   │   └── chart_engine/              # Swiss Ephemeris, features, socionics
+│   ├── rules/
+│   │   ├── self/                      # Self vertical rules (8 archetypes)
+│   │   └── career/                    # Career vertical rules (8 archetypes)
+│   ├── workers/                       # Celery tasks
 │   ├── alembic/                       # DB migrations
 │   ├── tests/
-│   │   ├── unit/                      # Fast, isolated tests
-│   │   ├── integration/               # DB/Redis dependent
-│   │   ├── golden/                    # Golden tests for chart interpretation
-│   │   └── chart/                     # Chart engine tests
-│   ├── pyproject.toml
-│   └── alembic.ini
+│   └── pyproject.toml
 ├── frontend/
 │   ├── src/
-│   │   ├── app/                       # Next.js App Router
-│   │   │   ├── (marketing)/           # Landing pages per vertical
-│   │   │   ├── (auth)/                # Login, register, verify
-│   │   │   ├── (dashboard)/           # User dashboard
-│   │   │   │   ├── self/              # Astrotype Self flow
-│   │   │   │   ├── love/              # Astrotype Love flow
-│   │   │   │   ├── child/             # Astrotype Child flow
-│   │   │   │   └── career/            # Astrotype Career flow
-│   │   │   └── admin/                 # Admin panel
+│   │   ├── app/
+│   │   │   ├── (auth)/                # Login, register, forgot-password, reset-password
+│   │   │   ├── (dashboard)/           # Dashboard, report, products
+│   │   │   └── page.tsx               # Landing page
 │   │   ├── components/
-│   │   │   ├── ui/                    # shadcn-style components
-│   │   │   ├── chart/                 # Natal chart visualization (SVG)
-│   │   │   └── reports/               # Report preview components
-│   │   ├── stores/                    # Zustand stores
-│   │   ├── hooks/                     # Custom hooks
-│   │   └── lib/                       # Utilities, API client
+│   │   ├── stores/                    # Zustand (auth, UI)
+│   │   └── lib/                       # API client, cookies, utilities
 │   └── public/
-├── docs/                              # Проектная документация
-│   ├── SPEC.md                        # Полная спецификация продукта
-│   ├── ROADMAP.md                     # Дорожная карта эпиков
-│   ├── astrotype_design_code.md        # Дизайн-система и бренд
-│   ├── C4 архитектура ...md           # C4-архитектура платформы
-│   ├── Спецификация бизнес-логики ...md # Доменные правила и скоринг
-│   ├── SRS/
-│   │   ├── SRS-FRONTEND.md            # SRS frontend (дизайн-система, компоненты)
-│   │   ├── SRS-E3-chart-engine.md     # SRS движок карт
-│   │   └── SRS-E4-rules-content.md    # SRS правила и контент
-│   └── features/                      # Спецификации фич
-├── .github/workflows/
-│   └── ci.yml                         # Lint, test, validate, build
-├── Makefile                           # Команды разработки
+├── docs/
+│   ├── SPEC.md
+│   ├── ROADMAP.md
+│   ├── astrotype_design_code.md
+│   ├── SRS/                           # Software Requirements Specs
+│   ├── features/                      # Feature stories (E1-E10)
+│   └── reviews/                       # Code reviews
+├── contracts/                         # OpenAPI, AsyncAPI specs
+├── docker-compose.yml                 # Postgres, Redis, MinIO, Backend, Frontend
 └── README.md
 ```
 
@@ -185,8 +139,8 @@ Astrotype/
 
 ```bash
 # 1. Клонировать
-git clone git@github.com:fixemer90-stack/Astrotype.git
-cd Astrotype
+git clone git@github.com:fixemer90-stack/Archemap.git
+cd Archemap
 
 # 2. Скопировать переменные окружения
 cp .env.example .env
@@ -197,6 +151,7 @@ docker compose up -d
 # → backend:   http://localhost:8000
 # → postgres:  localhost:5432
 # → redis:     localhost:6379
+# → minio:     http://localhost:9000 (console: :9001)
 ```
 
 ### Без Docker (разработка)
@@ -229,7 +184,6 @@ ruff check .           # Линтинг
 ruff format .          # Форматирование
 mypy .                 # Статическая типизация
 pytest tests/unit -v   # Unit-тесты
-pytest tests/golden -v # Golden tests для интерпретаций
 
 # Frontend
 cd frontend
@@ -264,10 +218,75 @@ Astrotype — не «астро-гадалка», а **премиальная н
 
 ---
 
+## API
+
+### Auth
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `POST` | `/api/v1/auth/register` | Регистрация (name, email, password + birth data) |
+| `POST` | `/api/v1/auth/login` | Вход (email + password) |
+| `POST` | `/api/v1/auth/refresh` | Обновление токенов |
+| `POST` | `/api/v1/auth/logout` | Выход (token blacklist) |
+| `POST` | `/api/v1/auth/verify` | Подтверждение email |
+| `POST` | `/api/v1/auth/password-reset/request` | Запрос сброса пароля |
+| `POST` | `/api/v1/auth/password-reset/confirm` | Сброс пароля по токену |
+| `GET` | `/api/v1/auth/linked-providers` | Список привязанных OAuth |
+| `DELETE` | `/api/v1/auth/unlink/{provider}` | Отвязка OAuth-провайдера |
+| `GET` | `/api/v1/auth/oauth/yandex/start` | OAuth Yandex |
+| `GET` | `/api/v1/auth/oauth/yandex/callback` | OAuth callback |
+
+### Profiles & Charts
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `POST` | `/api/v1/profiles` | Создать профиль |
+| `GET` | `/api/v1/profiles` | Список профилей |
+| `GET` | `/api/v1/profiles/geocode?q=` | Геокодинг (public, rate-limited) |
+| `POST` | `/api/v1/profiles/{id}/chart` | Вычислить/получить карту |
+
+### Rules & Reports
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `POST` | `/api/v1/rules/interpret` | Интерпретация карты |
+| `GET` | `/api/v1/rules/rulesets` | Список правил |
+| `POST` | `/api/v1/reports/generate` | Генерация отчёта (self/career) |
+| `GET` | `/api/v1/reports` | Список отчётов (pagination) |
+| `GET` | `/api/v1/reports/{id}` | Детали отчёта |
+| `GET` | `/api/v1/reports/{id}/pdf` | Скачать PDF (signed link) |
+| `GET` | `/api/v1/reports/{id}/versions` | История версий |
+
+---
+
 ## Статус
 
-🟢 Epic 1 (Foundation) — done. Epic 2 (Identity) — done.
-🟡 Epic 3 (Chart Engine) — в процессе. Дорожная карта: [docs/ROADMAP.md](docs/ROADMAP.md)
+| Epic | Название | Статус |
+|---|---|---|
+| E1 | Foundation | ✅ Готово |
+| E2 | Identity (Auth, OAuth, Account Linking) | ✅ Готово |
+| E3 | Chart Engine (Swiss Ephemeris, Socionics) | ✅ Готово |
+| E4 | Rules & Content (Rule Engine, Evidence) | ✅ Готово |
+| E5 | Products & Reports (Self, Career, PDF, S3) | ✅ Готово (S02 Love, S03 Child — backlog) |
+| E6 | Billing & Subscriptions | ⬜ Не начато |
+| E7 | Notifications & Admin | ⬜ Не начато |
+| E8 | Production & Scale | ⬜ Не начато |
+
+Дорожная карта: [docs/ROADMAP.md](docs/ROADMAP.md)
+
+---
+
+## Безопасность
+
+- JWT в HttpOnly Secure cookies (не URL, не localStorage)
+- OAuth callback выставляет cookies, не передаёт токены в URL
+- Refresh token blacklist перед обновлением
+- Production guard: `SECRET_KEY` не может быть `change-me`
+- Rate limiting на login и geocode endpoints
+- OAuth access_token не хранится в БД
+- Account linking: нельзя отвязать единственный способ входа
+
+---
 
 ## Лицензия
 

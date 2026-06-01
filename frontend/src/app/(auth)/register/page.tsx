@@ -264,6 +264,7 @@ function RegisterForm() {
         setUser({
           id: result.user_id,
           email: result.email,
+          name: result.name ?? name.trim(),
           is_active: true,
         });
       }

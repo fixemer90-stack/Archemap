@@ -381,9 +381,7 @@ class AuthService:
     async def get_linked_providers(self, user_id: UUID) -> dict:
         """Get list of linked OAuth providers for a user."""
         # Get linked providers
-        result = await self.db.execute(
-            select(IdentityLink).where(IdentityLink.user_id == user_id)
-        )
+        result = await self.db.execute(select(IdentityLink).where(IdentityLink.user_id == user_id))
         links = list(result.scalars().all())
 
         # Check if user has password
@@ -393,12 +391,14 @@ class AuthService:
 
         providers = []
         for link in links:
-            providers.append({
-                "provider": link.provider,
-                "provider_email": link.provider_email,
-                "provider_name": link.provider_name,
-                "linked_at": link.created_at.isoformat() if link.created_at else None,
-            })
+            providers.append(
+                {
+                    "provider": link.provider,
+                    "provider_email": link.provider_email,
+                    "provider_name": link.provider_name,
+                    "linked_at": link.created_at.isoformat() if link.created_at else None,
+                }
+            )
 
         return {
             "providers": providers,
@@ -440,9 +440,7 @@ class AuthService:
 
         # Validate: must have password OR other providers
         if not has_password and other_links_count == 0:
-            raise ValidationError(
-                "Cannot unlink the only login method. Set a password first or link another provider."
-            )
+            raise ValidationError("Cannot unlink the only login method. Set a password first or link another provider.")
 
         # Delete the link
         await self.db.delete(link)

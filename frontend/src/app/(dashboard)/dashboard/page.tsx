@@ -64,9 +64,29 @@ const products = [
 export default function DashboardPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const token = useAuthStore((s) => s.token);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Fetch user if not loaded (e.g. after OAuth redirect)
+  useEffect(() => {
+    async function fetchUser() {
+      if (!token || user) return;
+      try {
+        const res = await fetch("/api/v1/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+    fetchUser();
+  }, [token, user, setUser]);
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -93,7 +113,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-          {user?.email ? `Добро пожаловать` : "Добро пожаловать"}
+          {user?.name ? `${user.name}, добро пожаловать` : "Добро пожаловать"}
         </h1>
         <p className="text-sm text-[#D8DCE8] mt-1">
           Выберите продукт или откройте существующий отчёт.

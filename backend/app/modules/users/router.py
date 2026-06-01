@@ -26,6 +26,7 @@ async def get_me(
     return UserResponse(
         id=str(user.id),
         email=user.email,
+        name=user.name,
         birth_date=user.birth_date,
         is_active=user.is_active,
         is_verified=user.is_verified,

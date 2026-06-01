@@ -19,6 +19,7 @@ interface GeocodeResult {
 interface RegisterData {
   email: string;
   password: string;
+  name: string;
   birth_date: string;
   birth_time: string;
   birth_time_accuracy: "exact" | "approximate" | "unknown";
@@ -54,6 +55,7 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
 
   // Step 1: Credentials
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -151,6 +153,10 @@ function RegisterForm() {
 
   // ── Validation ────────────────────────────────────────────────────
   const validateStep1 = () => {
+    if (!name.trim()) {
+      setError("Укажите имя");
+      return false;
+    }
     if (!email || !password || !passwordConfirm) {
       setError("Заполните все поля");
       return false;
@@ -213,8 +219,8 @@ function RegisterForm() {
         latitude,
         longitude,
         timezone,
-        // Only include email/password for regular registration
-        ...(isOAuth ? {} : { email, password }),
+        // Only include email/password/name for regular registration
+        ...(isOAuth ? {} : { email, password, name: name.trim() }),
       };
 
       // Use different endpoint for OAuth vs regular registration
@@ -274,6 +280,21 @@ function RegisterForm() {
   // ── Step 1: Credentials ───────────────────────────────────────────
   const renderStep1 = () => (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <label htmlFor="name" className="text-sm font-medium">
+          Имя
+        </label>
+        <Input
+          id="name"
+          type="text"
+          placeholder="Как вас зовут?"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={120}
+        />
+      </div>
+
       <div className="space-y-2">
         <label htmlFor="email" className="text-sm font-medium">
           Email
@@ -442,6 +463,9 @@ function RegisterForm() {
         <h3 className="font-medium">Проверьте данные</h3>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="text-muted-foreground">Имя:</div>
+          <div>{name}</div>
+
           <div className="text-muted-foreground">Email:</div>
           <div>{email}</div>
 

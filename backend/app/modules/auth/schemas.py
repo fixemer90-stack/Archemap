@@ -12,6 +12,7 @@ class RegisterRequest(BaseModel):
 
     email: EmailStr
     password: str  # min 8 chars validated in service
+    name: str = Field(..., min_length=1, max_length=120, description="Display name")
     birth_date: date = Field(..., description="Date of birth (YYYY-MM-DD)")
     birth_time: time | None = Field(None, description="Time of birth (HH:MM). Null if unknown")
     birth_time_accuracy: str = Field(
@@ -55,6 +56,7 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
+    name: str
     birth_date: date | None
     is_active: bool
     is_verified: bool

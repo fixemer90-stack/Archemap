@@ -43,6 +43,7 @@ async def register(
     result = await service.register(
         email=body.email,
         password=body.password,
+        name=body.name,
         birth_date=body.birth_date,
         birth_time=body.birth_time,
         birth_time_accuracy=body.birth_time_accuracy,

@@ -41,6 +41,7 @@ class AuthService:
         self,
         email: str,
         password: str,
+        name: str,
         birth_date: date,
         birth_place: str,
         latitude: float,
@@ -68,6 +69,7 @@ class AuthService:
 
         user = User(
             email=email,
+            name=name.strip(),
             hashed_password=hash_password(password),
             birth_date=birth_date,
         )

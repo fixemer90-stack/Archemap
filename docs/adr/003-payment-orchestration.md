@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Archemap processes subscription payments and must support multiple Payment
+Astrotype processes subscription payments and must support multiple Payment
 Service Providers (PSPs) — initially YooKassa (Yandex.Checkout), with plans to
 add Stripe and others for international users.
 

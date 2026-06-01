@@ -43,7 +43,7 @@ export default function SelfProductPage() {
       {/* Header */}
       <div>
         <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-          Archemap Self
+          Astrotype Self
         </h1>
         <p className="text-sm text-[#D8DCE8] mt-1">
           Натальная карта, соционический тип, архетипический профиль.

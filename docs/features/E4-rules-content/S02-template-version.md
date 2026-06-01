@@ -1,29 +1,41 @@
-# Story E4.S02: TemplateVersion: Jinja2-шаблоны, версионирование, привязка к вертикали
+# Story E4.S02: TemplateVersion
 
-**Feature:** [Rules & Content]({FEATURE.md})
-**Статус:** ⬜ Не начато
+**Feature:** [Rules & Content](FEATURE.md)
+**Статус:** ✅ Готово
 
 ## Контекст
 
-Rule-based движок интерпретации: YAML-правила, версионированные шаблоны, локализация. Детерминированный scoring с explainability.
-
-Этот шаг — часть Feature `E4`.
+Evidence templates — YAML-шаблоны для рендеринга claims в человекочитаемый текст. Привязаны к product + version.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы над Story._
+- YAML-файл с шаблонами: `backend/rules/{product}/evidence_templates_{version}.yaml`
+- `load_evidence_templates()` — загрузка шаблонов
+- `render_claim_message()` — рендеринг claim через шаблон с интерполяцией
+- `render_full_report()` — полный рендер всех claims
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы и модули._
+| Путь | Описание |
+|---|---|
+| `backend/app/modules/rules/resolver.py` | `load_evidence_templates()`, `render_claim_message()`, `render_full_report()` |
+| `backend/rules/self/evidence_templates_v1.yaml` | Шаблоны для 8 архетипов |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить конкретные критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
-- [ ] Документация обновлена (если применимо)
+- [x] Шаблоны загружаются из YAML
+- [x] Интерполяция через `str.format(**context)` с `contextlib.suppress`
+- [x] Fallback на `claim.message` при отсутствии шаблона
+- [x] Тесты написаны и проходят
+- [x] ruff, mypy, eslint — 0 ошибок
 
 ## Примечания
 
-_TODO: решения, trade-offs, ссылки на ADR._
+Формат шаблона:
+```yaml
+templates:
+  warrior:
+    title: "Воин"
+    summary: "Ваша энергия направлена на действие и преодоление."
+    evidence_text: "Огненная стихия ({fire:.0%}) подтверждает вашу активную натуру."
+```

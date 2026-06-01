@@ -108,7 +108,7 @@ export function Sidebar() {
             href="/dashboard"
             className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]"
           >
-            Archemap
+            Astrotype
           </Link>
         )}
         {!sidebarOpen && (

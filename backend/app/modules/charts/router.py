@@ -74,7 +74,11 @@ async def get_snapshot(
 ) -> Any:
     """Get a specific chart snapshot by ID."""
     service = ChartService(db)
-    snapshot = await service.get_by_id(snapshot_id=snapshot_id, user_id=current_user_id)
+    snapshot = await service.get_by_id(
+        snapshot_id=snapshot_id,
+        user_id=current_user_id,
+        profile_id=profile_id,
+    )
     return ChartSnapshotResponse(
         id=str(snapshot.id),
         profile_id=str(snapshot.profile_id),

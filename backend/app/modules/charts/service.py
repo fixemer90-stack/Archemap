@@ -110,7 +110,12 @@ class ChartService:
         )
         return snapshot
 
-    async def get_by_id(self, snapshot_id: UUID, user_id: UUID) -> ChartSnapshot:
+    async def get_by_id(
+        self,
+        snapshot_id: UUID,
+        user_id: UUID,
+        profile_id: UUID | None = None,
+    ) -> ChartSnapshot:
         result = await self.db.execute(
             select(ChartSnapshot).where(
                 ChartSnapshot.id == snapshot_id,
@@ -119,6 +124,9 @@ class ChartService:
         )
         snapshot = result.scalar_one_or_none()
         if snapshot is None:
+            raise NotFoundError("Chart snapshot not found")
+        # Verify profile_id matches if provided (WARN-06)
+        if profile_id is not None and snapshot.profile_id != profile_id:
             raise NotFoundError("Chart snapshot not found")
         return snapshot
 

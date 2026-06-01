@@ -1,24 +1,24 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: archemap-postgres
+    container_name: astrotype-postgres
     environment:
-      POSTGRES_USER: archemap
-      POSTGRES_PASSWORD: archemap
-      POSTGRES_DB: archemap
+      POSTGRES_USER: astrotype
+      POSTGRES_PASSWORD: astrotype
+      POSTGRES_DB: astrotype
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U archemap"]
+      test: ["CMD-SHELL", "pg_isready -U astrotype"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: archemap-redis
+    container_name: astrotype-redis
     ports:
       - "6379:6379"
     volumes:
@@ -33,11 +33,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: archemap-backend
+    container_name: astrotype-backend
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://archemap:archemap@postgres:5432/archemap
+      DATABASE_URL: postgresql+asyncpg://astrotype:astrotype@postgres:5432/astrotype
       REDIS_URL: redis://redis:6379/0
       APP_ENV: development
       APP_DEBUG: "true"
@@ -61,12 +61,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: archemap-frontend
+    container_name: astrotype-frontend
     ports:
       - "3000:3000"
     environment:
       BACKEND_URL: http://backend:8000
-      NEXT_PUBLIC_API_URL: http://backend:8000
     depends_on:
       backend:
         condition: service_healthy

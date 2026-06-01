@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Archemap needs user authentication. The initial target market is Russian-speaking
+Astrotype needs user authentication. The initial target market is Russian-speaking
 users where VK (VKontakte) is a dominant platform. We must support additional
 providers (Google, Telegram, etc.) over time without rewriting auth logic.
 
@@ -27,7 +27,7 @@ We implement an **identity brokerage** layer within the auth module:
 - New providers (Google, Telegram, email/password) are added by implementing the
   same protocol — no changes to the auth flow or API endpoints.
 - User accounts are linked by `(provider, provider_user_id)` pair. A single
-  Archemap user may link multiple providers.
+  Astrotype user may link multiple providers.
 - JWTs are issued by our service (not delegated to VK) so we control token
   lifetime, claims, and revocation.
 

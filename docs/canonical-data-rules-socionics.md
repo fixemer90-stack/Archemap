@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This document defines the canonical data rules for the Socionics domain in Archemap.
+This document defines the canonical data rules for the Socionics domain in Astrotype.
 
 The goal is to make socionics data:
 
@@ -14,15 +14,15 @@ The goal is to make socionics data:
 - safe for probabilistic interpretation;
 - extensible for compatibility, career guidance, and future matching/dating modules.
 
-Archemap does not store “socionics in general”.
+Astrotype does not store “socionics in general”.
 
-Archemap stores a controlled **Socionics Kernel**.
+Astrotype stores a controlled **Socionics Kernel**.
 
 ---
 
 ## 2. Methodological Position
 
-Socionics in Archemap is treated as an interpretive typological model.
+Socionics in Astrotype is treated as an interpretive typological model.
 
 It is not treated as:
 
@@ -34,11 +34,11 @@ It is not treated as:
 
 Correct wording:
 
-> Archemap uses socionics as a structured language for describing information processing, interaction patterns, strengths, vulnerabilities, and compatibility hypotheses.
+> Astrotype uses socionics as a structured language for describing information processing, interaction patterns, strengths, vulnerabilities, and compatibility hypotheses.
 
 Incorrect wording:
 
-> Archemap determines your real type with certainty.
+> Astrotype determines your real type with certainty.
 
 ---
 
@@ -50,7 +50,7 @@ All socionics data MUST belong to one of the following layers.
 |---|---|---|
 | `jungian_core` | canonical | Basic Jungian axes and functions |
 | `socionics_core` | canonical | 16 TIMs, 8 aspects, Model A positions, intertype relation matrix |
-| `archemap_kernel` | canonical | Archemap-specific normalized definitions and interpretation rules |
+| `astrotype_kernel` | canonical | Astrotype-specific normalized definitions and interpretation rules |
 | `supported_extension` | allowed | Reinin traits, quadras, clubs, temperaments, subtypes if explicitly marked |
 | `experimental_extension` | isolated | Astro-socionics, visual typing, author-specific forks, signs of functions, non-standard subtype systems |
 | `deprecated` | forbidden for new logic | Old, conflicting, or rejected concepts |
@@ -84,7 +84,7 @@ version: "1.0.0"
 source_basis:
   - "Jungian function model"
   - "Model A tradition"
-  - "Archemap Socionics Kernel"
+  - "Astrotype Socionics Kernel"
 description: "Aspect of emotional dynamics, emotional influence, motivation, and expressive state change."
 ```
 
@@ -92,7 +92,7 @@ description: "Aspect of emotional dynamics, emotional influence, motivation, and
 
 ## 5. No School-Specific Hardcode
 
-Archemap MUST NOT silently hardcode one school of socionics as universal truth.
+Astrotype MUST NOT silently hardcode one school of socionics as universal truth.
 
 Forbidden:
 
@@ -463,7 +463,7 @@ common_mistakes:
 
 ## 9. Model A Canonical Rule
 
-Model A is canonical in Archemap.
+Model A is canonical in Astrotype.
 
 Every TIM MUST define all 8 function positions:
 
@@ -501,7 +501,7 @@ position:
   strength: "strong"
   value_status: "valued"
   awareness: "mental"
-  archemap_role: "core worldview and primary information lens"
+  astrotype_role: "core worldview and primary information lens"
 ```
 
 ---
@@ -562,7 +562,7 @@ The following are canonical TIM identifiers:
 
 ## 11. Interpretation Rule
 
-Archemap MUST NOT interpret an aspect without its Model A position.
+Astrotype MUST NOT interpret an aspect without its Model A position.
 
 Forbidden:
 
@@ -618,7 +618,7 @@ Forbidden stereotypes:
 
 ## 13. Probabilistic Typing Rule
 
-Archemap MUST NOT produce a single final type without alternatives.
+Astrotype MUST NOT produce a single final type without alternatives.
 
 Forbidden:
 
@@ -899,7 +899,7 @@ Allowed source classes:
 ```yaml
 source_class:
   - canonical_kernel
-  - archemap_interpretation
+  - astrotype_interpretation
   - supported_school_variant
   - experimental_hypothesis
   - user_feedback
@@ -911,7 +911,7 @@ Example:
 ```yaml
 template:
   id: interpretation.fe.position_1.short
-  source_class: archemap_interpretation
+  source_class: astrotype_interpretation
   canonical_dependencies:
     - aspect.fe
     - model_a.position.1
@@ -1035,7 +1035,7 @@ data/
       intertype-relations.yaml
       quadras.yaml
 
-    archemap/
+    astrotype/
       interpretation-rules.yaml
       scoring-rules.yaml
       compatibility-rules.yaml
@@ -1117,7 +1117,7 @@ socionics_profile:
 
 Every socionics result MUST be able to display this disclaimer:
 
-> Archemap uses socionics as an interpretive typological model. The result is a probabilistic hypothesis intended for self-reflection, compatibility analysis, and career orientation. It is not a medical, psychological, or scientific diagnosis.
+> Astrotype uses socionics as an interpretive typological model. The result is a probabilistic hypothesis intended for self-reflection, compatibility analysis, and career orientation. It is not a medical, psychological, or scientific diagnosis.
 
 ---
 
@@ -1133,6 +1133,6 @@ The canonical socionics kernel MUST optimize for:
 6. transparent scoring;
 7. safe user-facing language.
 
-Archemap MUST NOT claim to know the user's type absolutely.
+Astrotype MUST NOT claim to know the user's type absolutely.
 
-Archemap MAY suggest a structured, explainable, revisable hypothesis.
+Astrotype MAY suggest a structured, explainable, revisable hypothesis.

@@ -1,15 +1,15 @@
-# Spec: Archemap
+# Spec: Astrotype
 
 ## Objective
 
-**Archemap** — платформа астрологического анализа личности. Четыре продуктовых вертикали на едином вычислительном ядре:
+**Astrotype** — платформа астрологического анализа личности. Четыре продуктовых вертикали на едином вычислительном ядре:
 
 | Вертикаль | Что получает пользователь |
 |---|---|
-| **Archemap Self** | Натальная карта, архетипический портрет, персональный отчёт |
-| **Archemap Love** | Совместимость, паттерны отношений, триггеры конфликтов |
-| **Archemap Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация |
-| **Archemap Career** | Сильные стороны, подходящие роли, сценарии профессионального развития |
+| **Astrotype Self** | Натальная карта, архетипический портрет, персональный отчёт |
+| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов |
+| **Astrotype Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация |
+| **Astrotype Career** | Сильные стороны, подходящие роли, сценарии профессионального развития |
 
 **Целевая аудитория:** русскоязычные пользователи 20–45 лет, интересующиеся самопознанием через астрологию. Международный рынок — вторая волна.
 
@@ -78,7 +78,7 @@ npx tsc --noEmit                  # Type check
 ## Project Structure
 
 ```
-Archemap/
+Astrotype/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                 # FastAPI entrypoint
@@ -130,7 +130,7 @@ Archemap/
 │   ├── src/
 │   │   ├── app/                    # Next.js App Router
 │   │   │   ├── layout.tsx          # Root layout (Inter + Cormorant Garamond)
-│   │   │   ├── globals.css         # Archemap design tokens + utilities
+│   │   │   ├── globals.css         # Astrotype design tokens + utilities
 │   │   │   ├── (auth)/             # Login, register, verify, OAuth callback
 │   │   │   └── (dashboard)/        # User dashboard
 │   │   │       ├── report/         # Report page (natal chart + socionics)
@@ -152,7 +152,7 @@ Archemap/
 ├── docs/
 │   ├── SPEC.md                     # This file
 │   ├── ROADMAP.md                  # Roadmap
-│   ├── archemap_design_code.md     # Design system & brand
+│   ├── astrotype_design_code.md     # Design system & brand
 │   ├── SRS/
 │   │   ├── SRS-FRONTEND.md         # Frontend SRS (design system, components)
 │   │   ├── SRS-E3-chart-engine.md  # Chart engine SRS
@@ -344,7 +344,7 @@ ChartSnapshot       — вычисленная карта (profile_id, planets:J
 - [x] Socionics Model A engine (8 functions, 16 types, top3, confidence)
 - [ ] Chart engine golden tests
 
-### Phase 3: Content & Reports (Archemap Self)
+### Phase 3: Content & Reports (Astrotype Self)
 - [ ] Rule engine: YAML rulesets → InterpretationResult
 - [ ] Jinja2 template system for reports
 - [ ] Self vertical: archetype portrait rules + templates
@@ -361,9 +361,9 @@ ChartSnapshot       — вычисленная карта (profile_id, planets:J
 - [ ] Entitlement engine (vertical access gating)
 
 ### Phase 5: Remaining Verticals
-- [ ] Archemap Love: compatibility rules, synastry templates
-- [ ] Archemap Child: child profile, parenting rules
-- [ ] Archemap Career: strengths & roles rules
+- [ ] Astrotype Love: compatibility rules, synastry templates
+- [ ] Astrotype Child: child profile, parenting rules
+- [ ] Astrotype Career: strengths & roles rules
 - [ ] Golden tests for all verticals
 
 ### Phase 6: Production Readiness

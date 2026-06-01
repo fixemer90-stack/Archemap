@@ -39,7 +39,7 @@
 ## Примечания
 
 - Nominatim policy: не более 1 запроса в секунд. Для продакшена нужен свой сервер или переход на GeoNames/Google Geocoding API
-- User-Agent: `Archemap/0.1 (astro-platform)` — обязателен по Nominatim policy
+- User-Agent: `Astrotype/0.1 (astro-platform)` — обязателен по Nominatim policy
 - `accept-language: ru,en` — приоритет русских названий
 - Кэш-ключ — lowercase + strip для единообразия
 - GeoNames как альтернативный провайдер — будущее улучшение (S02 расширение или отдельная Story)

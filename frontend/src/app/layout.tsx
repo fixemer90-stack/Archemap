@@ -17,8 +17,8 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: {
-    default: "Archemap",
-    template: "%s | Archemap",
+    default: "Astrotype",
+    template: "%s | Astrotype",
   },
   description:
     "Премиальная карта самопознания: астрологическая символика, психологическая структура, объяснимые выводы.",

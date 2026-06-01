@@ -38,7 +38,7 @@ const FUNCTION_NAMES: Record<string, string> = {
   Ti: "Интровертная логика",
 };
 
-// ── Function colors (Archemap palette) ─────────────────────────────
+// ── Function colors (Astrotype palette) ─────────────────────────────
 const FUNCTION_COLORS: Record<string, string> = {
   Se: "bg-[#C28A2E]",
   Si: "bg-[#D8B45A]",

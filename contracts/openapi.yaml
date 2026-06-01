@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
-  title: Archemap API
+  title: Astrotype API
   version: 1.0.0
   description: |
-    Archemap — subscription and account platform API.
+    Astrotype — subscription and account platform API.
     Contract-first design; all consumers generate clients from this spec.
   contact:
-    name: Archemap Team
+    name: Astrotype Team
   license:
     name: Proprietary
 
 servers:
   - url: http://localhost:8000
     description: Local development
-  - url: https://api.archemap.dev
+  - url: https://api.astrotype.dev
     description: Staging
-  - url: https://api.archemap.io
+  - url: https://api.astrotype.io
     description: Production
 
 security:

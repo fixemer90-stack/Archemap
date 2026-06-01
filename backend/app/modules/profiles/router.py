@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -27,9 +27,35 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 @router.get("/geocode", response_model=GeocodeSearchResponse)
 async def geocode_search(
     q: str,
+    request: Request,
 ) -> Any:
-    """Search for places by name. Returns lat/lon/city/country. Cached 24h."""
-    geocoder = NominatimGeocoder(get_redis_client())
+    """Search for places by name. Returns lat/lon/city/country. Cached 24h.
+
+    WARN-04: Public endpoint (needed for registration), but rate-limited per IP.
+    """
+    # Validate query length
+    if len(q.strip()) < 2:
+        return GeocodeSearchResponse(items=[])
+    if len(q) > 200:
+        q = q[:200]
+
+    # Rate limit per IP: 30 requests per minute
+    redis = get_redis_client()
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"rate:geocode:{client_ip}"
+    current = await redis.get(rate_key)
+    if current and int(current) >= 30:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many geocode requests. Try again later."},
+            headers={"Retry-After": "60"},
+        )
+    await redis.incr(rate_key)
+    if not current:
+        await redis.expire(rate_key, 60)
+
+    geocoder = NominatimGeocoder(redis)
     results = await geocoder.search(q, limit=5)
     return GeocodeSearchResponse(
         items=[

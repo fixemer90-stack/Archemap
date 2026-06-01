@@ -82,13 +82,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: archemap
-          POSTGRES_PASSWORD: archemap_test
-          POSTGRES_DB: archemap_test
+          POSTGRES_USER: astrotype
+          POSTGRES_PASSWORD: astrotype_test
+          POSTGRES_DB: astrotype_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U archemap"
+          --health-cmd "pg_isready -U astrotype"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -102,7 +102,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql+asyncpg://archemap:archemap_test@localhost:5432/archemap_test
+      DATABASE_URL: postgresql+asyncpg://astrotype:astrotype_test@localhost:5432/astrotype_test
       REDIS_URL: redis://localhost:6379/0
       ENVIRONMENT: test
     steps:
@@ -223,7 +223,7 @@ jobs:
         with:
           context: ./backend
           push: false
-          tags: archemap-backend:${{ github.sha }}
+          tags: astrotype-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -232,6 +232,6 @@ jobs:
         with:
           context: ./frontend
           push: false
-          tags: archemap-frontend:${{ github.sha }}
+          tags: astrotype-frontend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -22,7 +22,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.core.token_blacklist import blacklist_token
+from app.core.token_blacklist import blacklist_token, is_token_blacklisted
 from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
 from app.modules.profiles.models import PersonProfile
@@ -269,6 +269,11 @@ class AuthService:
         if payload is None:
             raise AuthorizationError("Invalid or expired refresh token")
 
+        # Check if refresh token is blacklisted (CRIT-02)
+        jti = payload.get("jti")
+        if jti and await is_token_blacklisted(jti):
+            raise AuthorizationError("Refresh token has been revoked")
+
         user_id = UUID(payload["sub"])
         user = await self.get_user_by_id(user_id)
 
@@ -276,8 +281,8 @@ class AuthService:
             raise AuthorizationError("Account is deactivated")
 
         # Blacklist old refresh token
-        if payload.get("jti"):
-            await blacklist_token(payload["jti"])
+        if jti:
+            await blacklist_token(jti)
 
         new_access, _ = create_access_token(subject=str(user.id))
         new_refresh, _ = create_refresh_token(subject=str(user.id))

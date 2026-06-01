@@ -1,4 +1,4 @@
-# Archemap — Дорожная карта
+# Astrotype — Дорожная карта
 
 > **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
 > **Обновлено:** 2026-05-29
@@ -25,7 +25,7 @@
 | E1 | Foundation | ✅ Готово |
 | E2 | Identity | 🟡 В процессе |
 | E3 | Profile & Chart Engine | ✅ Готово |
-| E4 | Rules & Content | 🟡 В процессе |
+| E4 | Rules & Content | ✅ Готово (S06 CMS — backlog) |
 | E5 | Products & Reports | ⬜ Не начато |
 | E6 | Billing & Subscriptions | ⬜ Не начато |
 | E7 | Notifications & Admin | ⬜ Не начато |

@@ -7,7 +7,7 @@ export default function CareerProductPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-          Archemap Career
+          Astrotype Career
         </h1>
         <p className="text-sm text-[#D8DCE8] mt-1">
           Карьерные сценарии: роли, рабочая среда, сильные профессиональные
@@ -25,7 +25,7 @@ export default function CareerProductPage() {
             Скоро
           </h2>
           <p className="text-sm text-[#D8DCE8] leading-relaxed">
-            Archemap Career покажет, какие профессиональные роли вам подходят, в
+            Astrotype Career покажет, какие профессиональные роли вам подходят, в
             какой среде вы раскрываетесь сильнее, и какие зоны роста стоит
             развивать.
           </p>

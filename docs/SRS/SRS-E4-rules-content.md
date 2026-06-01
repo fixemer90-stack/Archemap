@@ -2,8 +2,8 @@
 
 **Версия:** 1.0
 **Дата:** 2026-05-30
-**Статус:** Planned
-**Автор:** Archemap Team
+**Статус:** Implemented (S06 CMS — backlog)
+**Автор:** Astrotype Team
 
 ---
 
@@ -49,7 +49,7 @@ E3 (Chart Engine)  →  E4 (Rules & Content)  →  E5 (Reports)
 | Документ | Путь |
 |---|---|
 | Product Spec | `docs/SPEC.md` |
-| Business Logic Spec | `docs/Спецификация бизнес-логики и доменных правил Archemap.md` |
+| Business Logic Spec | `docs/Спецификация бизнес-логики и доменных правил Astrotype.md` |
 | E3 SRS | `docs/SRS-E3-chart-engine.md` |
 | Feature Stories | `docs/features/E4-rules-content/` |
 | Rule Examples | `docs/Спецификация бизнес-логики...md` §3 |

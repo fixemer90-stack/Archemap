@@ -17,7 +17,7 @@ interface Profile {
 const products = [
   {
     id: "self",
-    title: "Archemap Self",
+    title: "Astrotype Self",
     description:
       "Натальная карта, соционический тип, архетипический профиль с evidence trail.",
     icon: User,
@@ -28,7 +28,7 @@ const products = [
   },
   {
     id: "love",
-    title: "Archemap Love",
+    title: "Astrotype Love",
     description:
       "Совместимость двух людей: синастрия, паттерны отношений, точки притяжения и напряжения.",
     icon: Heart,
@@ -39,7 +39,7 @@ const products = [
   },
   {
     id: "child",
-    title: "Archemap Child",
+    title: "Astrotype Child",
     description:
       "Профиль ребёнка: темперамент, сильные стороны, рекомендации по воспитанию.",
     icon: Baby,
@@ -50,7 +50,7 @@ const products = [
   },
   {
     id: "career",
-    title: "Archemap Career",
+    title: "Astrotype Career",
     description:
       "Карьерные сценарии: роли, рабочая среда, сильные профессиональные стороны.",
     icon: Briefcase,

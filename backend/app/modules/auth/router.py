@@ -210,20 +210,40 @@ async def yandex_oauth_callback(
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Handle Yandex OAuth callback. Redirects to frontend with tokens and birth data."""
+    """Handle Yandex OAuth callback. Sets HttpOnly cookies and redirects to frontend."""
     service = OAuthService(db)
     tokens = await service.handle_yandex_callback(code=code, state=state)
 
-    # Redirect to frontend with tokens, birth data, and email as query params
-    redirect_url = (
-        f"{settings.FRONTEND_URL}/auth/callback"
-        f"?access_token={tokens['access_token']}"
-        f"&refresh_token={tokens['refresh_token']}"
-    )
+    # Build redirect URL without tokens in query string (CRIT-01)
+    redirect_url = f"{settings.FRONTEND_URL}/auth/callback"
+
+    # Add non-sensitive params
+    params = []
     if tokens.get("birth_date"):
-        redirect_url += f"&birth_date={tokens['birth_date']}"
+        params.append(f"birth_date={tokens['birth_date']}")
     if tokens.get("email"):
-        redirect_url += f"&email={tokens['email']}"
+        params.append(f"email={tokens['email']}")
     if tokens.get("has_profile") is False:
-        redirect_url += "&needs_profile=true"
-    return RedirectResponse(url=redirect_url)
+        params.append("needs_profile=true")
+    if params:
+        redirect_url += "?" + "&".join(params)
+
+    # Set HttpOnly cookies for tokens
+    response = RedirectResponse(url=redirect_url)
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=settings.APP_ENV == "production",
+        samesite="lax",
+        max_age=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=settings.APP_ENV == "production",
+        samesite="lax",
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+    )
+    return response

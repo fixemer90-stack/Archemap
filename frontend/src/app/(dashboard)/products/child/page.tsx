@@ -7,7 +7,7 @@ export default function ChildProductPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-          Archemap Child
+          Astrotype Child
         </h1>
         <p className="text-sm text-[#D8DCE8] mt-1">
           Профиль ребёнка: темперамент, сильные стороны, рекомендации по
@@ -25,7 +25,7 @@ export default function ChildProductPage() {
             Скоро
           </h2>
           <p className="text-sm text-[#D8DCE8] leading-relaxed">
-            Archemap Child поможет родителям понять темперамент и сильные
+            Astrotype Child поможет родителям понять темперамент и сильные
             стороны ребёнка через призму натальной карты. Не диагноз — а
             бережные гипотезы и поддерживающие практики.
           </p>

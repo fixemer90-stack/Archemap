@@ -1,7 +1,7 @@
 import Cookies from "js-cookie";
 
-const TOKEN_KEY = "archemap_token";
-const REFRESH_TOKEN_KEY = "archemap_refresh_token";
+const TOKEN_KEY = "astrotype_token";
+const REFRESH_TOKEN_KEY = "astrotype_refresh_token";
 
 export function getAccessToken(): string | undefined {
   return Cookies.get(TOKEN_KEY);

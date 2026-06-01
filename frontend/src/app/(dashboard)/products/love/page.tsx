@@ -7,7 +7,7 @@ export default function LoveProductPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-          Archemap Love
+          Astrotype Love
         </h1>
         <p className="text-sm text-[#D8DCE8] mt-1">
           Совместимость двух людей: синастрия, паттерны отношений, точки
@@ -25,7 +25,7 @@ export default function LoveProductPage() {
             Скоро
           </h2>
           <p className="text-sm text-[#D8DCE8] leading-relaxed">
-            Archemap Love позволит сравнить две натальные карты и получить
+            Astrotype Love позволит сравнить две натальные карты и получить
             детальный отчёт о совместимости: стиль коммуникации, точки
             притяжения и напряжения, рекомендации по взаимодействию.
           </p>

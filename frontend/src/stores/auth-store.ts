@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "archemap-auth",
+      name: "astrotype-auth",
       partialize: (state) => ({ user: state.user }),
     },
   ),

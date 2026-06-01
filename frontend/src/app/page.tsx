@@ -74,7 +74,7 @@ export default function HomePage() {
       <header className="relative z-10 border-b border-[rgba(216,220,232,0.08)]">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <span className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
-            Archemap
+            Astrotype
           </span>
           <nav className="flex items-center gap-3">
             <Button
@@ -99,7 +99,7 @@ export default function HomePage() {
             Карта внутренних архетипов
           </h1>
           <p className="max-w-2xl text-lg text-[#D8DCE8] leading-relaxed">
-            Введите дату, время и место рождения — Archemap построит натальную
+            Введите дату, время и место рождения — Astrotype построит натальную
             карту, вычислит соционический тип и покажет ваш архетипический
             профиль.{" "}
             <span className="text-[#F6F1E8]">
@@ -290,7 +290,7 @@ export default function HomePage() {
       <footer className="relative z-10 border-t border-[rgba(216,220,232,0.08)] py-8">
         <div className="container mx-auto px-4 flex items-center justify-between">
           <span className="font-[family-name:var(--font-cormorant)] text-sm text-[rgba(216,220,232,0.40)]">
-            Archemap
+            Astrotype
           </span>
           <span className="text-xs text-[rgba(216,220,232,0.30)]">
             © {new Date().getFullYear()}

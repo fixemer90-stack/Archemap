@@ -1,17 +1,17 @@
-# Archemap
+# Astrotype
 
 Платформа астрологического анализа личности. Четыре продуктовых вертикали на едином вычислительном ядре.
 
 | Вертикаль | Что получает пользователь |
 |---|---|
-| **Archemap Self** | Натальная карта, архетипический портрет, персональный отчёт |
-| **Archemap Love** | Совместимость, паттерны отношений, триггеры конфликтов |
-| **Archemap Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация |
-| **Archemap Career** | Сильные стороны, подходящие роли, сценарии профессионального развития |
+| **Astrotype Self** | Натальная карта, архетипический портрет, персональный отчёт |
+| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов |
+| **Astrotype Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация |
+| **Astrotype Career** | Сильные стороны, подходящие роли, сценарии профессионального развития |
 
 **Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. Детерминированный расчёт и explainable scoring — первичны, narrative layer — вторичен. AI не используется для генерации отчётов в рантайме.
 
-**Документация:** [SPEC.md](docs/SPEC.md) · [ROADMAP.md](docs/ROADMAP.md) · [Design Code](docs/archemap_design_code.md) · [C4 Architecture](docs/C4%20архитектура%20SaaS-платформы%20Archemap.md) · [Business Logic Spec](docs/Спецификация%20бизнес-логики%20и%20доменных%20правил%20Archemap.md)
+**Документация:** [SPEC.md](docs/SPEC.md) · [ROADMAP.md](docs/ROADMAP.md) · [Design Code](docs/astrotype_design_code.md) · [C4 Architecture](docs/C4%20архитектура%20SaaS-платформы%20Astrotype.md) · [Business Logic Spec](docs/Спецификация%20бизнес-логики%20и%20доменных%20правил%20Astrotype.md)
 
 ---
 
@@ -86,7 +86,7 @@ input envelope → chart snapshot → normalized features → axes → archetype
 ## Структура проекта
 
 ```
-Archemap/
+Astrotype/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                    # FastAPI entrypoint
@@ -141,10 +141,10 @@ Archemap/
 │   │   │   ├── (marketing)/           # Landing pages per vertical
 │   │   │   ├── (auth)/                # Login, register, verify
 │   │   │   ├── (dashboard)/           # User dashboard
-│   │   │   │   ├── self/              # Archemap Self flow
-│   │   │   │   ├── love/              # Archemap Love flow
-│   │   │   │   ├── child/             # Archemap Child flow
-│   │   │   │   └── career/            # Archemap Career flow
+│   │   │   │   ├── self/              # Astrotype Self flow
+│   │   │   │   ├── love/              # Astrotype Love flow
+│   │   │   │   ├── child/             # Astrotype Child flow
+│   │   │   │   └── career/            # Astrotype Career flow
 │   │   │   └── admin/                 # Admin panel
 │   │   ├── components/
 │   │   │   ├── ui/                    # shadcn-style components
@@ -157,7 +157,7 @@ Archemap/
 ├── docs/                              # Проектная документация
 │   ├── SPEC.md                        # Полная спецификация продукта
 │   ├── ROADMAP.md                     # Дорожная карта эпиков
-│   ├── archemap_design_code.md        # Дизайн-система и бренд
+│   ├── astrotype_design_code.md        # Дизайн-система и бренд
 │   ├── C4 архитектура ...md           # C4-архитектура платформы
 │   ├── Спецификация бизнес-логики ...md # Доменные правила и скоринг
 │   ├── SRS/
@@ -185,8 +185,8 @@ Archemap/
 
 ```bash
 # 1. Клонировать
-git clone git@github.com:fixemer90-stack/Archemap.git
-cd Archemap
+git clone git@github.com:fixemer90-stack/Astrotype.git
+cd Astrotype
 
 # 2. Скопировать переменные окружения
 cp .env.example .env
@@ -244,7 +244,7 @@ npx tsc --noEmit       # Type check
 
 ## Дизайн-система
 
-Archemap — не «астро-гадалка», а **премиальная навигационная система для самопознания**.
+Astrotype — не «астро-гадалка», а **премиальная навигационная система для самопознания**.
 
 | Роль | Название | HEX |
 |---|---|---:|
@@ -259,7 +259,7 @@ Archemap — не «астро-гадалка», а **премиальная н�
 
 **Реализация:** дизайн-код внедрён во все UI-компоненты. Cormorant Garamond для заголовков, Inter для интерфейса. Glass-карточки (`backdrop-blur`, `rgba(255,255,255,0.06)`). Primary button — pill shape с violet→gold градиентом. Radial gradient фон. Evidence blocks для explainability.
 
-Полный дизайн-код: [docs/archemap_design_code.md](docs/archemap_design_code.md)
+Полный дизайн-код: [docs/astrotype_design_code.md](docs/astrotype_design_code.md)
 Документация реализации: [docs/SRS/SRS-FRONTEND.md](docs/SRS/SRS-FRONTEND.md) (секция 8)
 
 ---

@@ -1,9 +1,9 @@
-# SRS: Frontend — Archemap Web Application
+# SRS: Frontend — Astrotype Web Application
 
 **Версия:** 1.0
 **Дата:** 2026-05-30
 **Статус:** In Progress
-**Автор:** Archemap Team
+**Автор:** Astrotype Team
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 Назначение
 
-Документ описывает программные требования к frontend-приложению Archemap — веб-интерфейсу для пользователей и администраторов. Приложение обеспечивает ввод натальных данных, просмотр карт, чтение отчётов, управление подписками и аккаунтом.
+Документ описывает программные требования к frontend-приложению Astrotype — веб-интерфейсу для пользователей и администраторов. Приложение обеспечивает ввод натальных данных, просмотр карт, чтение отчётов, управление подписками и аккаунтом.
 
 ### 1.2 Область применения
 
@@ -46,7 +46,7 @@ Frontend — это клиентский слой платформы, взаим
 |---|---|
 | Frontend Architecture | `docs/FRONTEND-ARCHITECTURE.md` |
 | Component Library | `docs/COMPONENT-LIBRARY.md` |
-| Design Code | `docs/archemap_design_code.md` |
+| Design Code | `docs/astrotype_design_code.md` |
 | Backend SRS E3 | `docs/SRS-E3-chart-engine.md` |
 | Backend SRS E4 | `docs/SRS-E4-rules-content.md` |
 | MVP Status | `docs/MVP-STATUS.md` |
@@ -209,16 +209,16 @@ Frontend не содержит бизнес-логики. Вся логика �
 
 | Route Group | URL | Страница | Авторизация | Статус |
 |---|---|---|---|---|
-| — | `/` | Landing page (Archemap design code) | Нет | ✅ |
+| — | `/` | Landing page (Astrotype design code) | Нет | ✅ |
 | `(auth)` | `/login` | Вход (email + Yandex OAuth) | Нет | ✅ |
 | `(auth)` | `/register` | Регистрация (3 шага + birth data) | Нет | ✅ |
 | `(auth)` | `/verify` | Верификация email | Нет | ✅ |
 | `(auth)` | `/auth/callback` | OAuth callback (Yandex) | Нет | ✅ |
 | `(dashboard)` | `/dashboard` | Dashboard: отчёты + продукты | Да | ✅ |
-| `(dashboard)` | `/products/self` | Archemap Self — список отчётов | Да | ✅ |
-| `(dashboard)` | `/products/love` | Archemap Love — скоро | Да | ✅ (placeholder) |
-| `(dashboard)` | `/products/child` | Archemap Child — скоро | Да | ✅ (placeholder) |
-| `(dashboard)` | `/products/career` | Archemap Career — скоро | Да | ✅ (placeholder) |
+| `(dashboard)` | `/products/self` | Astrotype Self — список отчётов | Да | ✅ |
+| `(dashboard)` | `/products/love` | Astrotype Love — скоро | Да | ✅ (placeholder) |
+| `(dashboard)` | `/products/child` | Astrotype Child — скоро | Да | ✅ (placeholder) |
+| `(dashboard)` | `/products/career` | Astrotype Career — скоро | Да | ✅ (placeholder) |
 | `(dashboard)` | `/report/[profileId]` | Отчёт: карта + соционика + архетипы | Да | ✅ |
 | `(dashboard)` | `/settings` | Настройки | Да | ✅ |
 | `(dashboard)` | `/subscriptions` | Подписки | Да | ✅ |
@@ -229,7 +229,7 @@ Frontend не содержит бизнес-логики. Вся логика �
 
 **Root Layout** (`app/layout.tsx`):
 - Inter + Cormorant Garamond fonts (CSS variables: `--font-inter`, `--font-cormorant`)
-- ThemeProvider (defaultTheme=dark, Archemap always-dark)
+- ThemeProvider (defaultTheme=dark, Astrotype always-dark)
 - QueryProvider (TanStack Query)
 - lang="ru"
 
@@ -330,7 +330,7 @@ const api = {
 
 ## 8. Дизайн-система
 
-> Реализована в `globals.css` и UI-компонентах. Соответствует `docs/archemap_design_code.md`.
+> Реализована в `globals.css` и UI-компонентах. Соответствует `docs/astrotype_design_code.md`.
 
 ### 8.1 Цвета
 
@@ -382,18 +382,18 @@ const api = {
 
 | Компонент | Файл | Что изменено |
 |---|---|---|
-| **globals.css** | `src/app/globals.css` | Полная Archemap-палитра, radial-gradient фон, glass utilities, evidence-block, btn-gradient, btn-silver |
+| **globals.css** | `src/app/globals.css` | Полная Astrotype-палитра, radial-gradient фон, glass utilities, evidence-block, btn-gradient, btn-silver |
 | **Root Layout** | `src/app/layout.tsx` | Cormorant Garamond + Inter, defaultTheme=dark, lang=ru |
 | **Auth Layout** | `src/app/(auth)/layout.tsx` | Star grid фон, центрирование |
 | **Card** | `src/components/ui/card.tsx` | Glass: `rgba(255,255,255,0.06)`, `backdrop-blur-xl`, `border-radius: 20px` |
 | **Button** | `src/components/ui/button.tsx` | Pill shape, violet→gold gradient primary, silver outline secondary |
 | **Input** | `src/components/ui/input.tsx` | Glass bg, rounded-xl, violet focus ring |
-| **Sidebar** | `src/components/layout/sidebar.tsx` | Glass sidebar, gradient active state, Archemap-типографика |
+| **Sidebar** | `src/components/layout/sidebar.tsx` | Glass sidebar, gradient active state, Astrotype-типографика |
 | **Header** | `src/components/layout/header.tsx` | Glass header, Cormorant logo, gradient avatar |
 | **Register** | `src/app/(auth)/register/page.tsx` | Compass SVG logo, Cormorant заголовки, gradient progress, evidence block, подзаголовки в стиле дизайн-кода |
 | **Report** | `src/app/(dashboard)/report/[profileId]/page.tsx` | Evidence intro, ConfidenceBadge, score/confidence/model-a summary, version labels (ruleset-*) |
 | **NatalChart** | `src/components/chart/natal-chart.tsx` | Glass cards, Soft Gold planet symbols, Moon Silver grid, Mist Blue signs |
-| **SocionicsResult** | `src/components/chart/socionics-result.tsx` | Glass cards, ConfidenceLabel, gradient score bars, Archemap function colors |
+| **SocionicsResult** | `src/components/chart/socionics-result.tsx` | Glass cards, ConfidenceLabel, gradient score bars, Astrotype function colors |
 
 ### 8.6 Тональность текста
 

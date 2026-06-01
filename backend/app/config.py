@@ -90,3 +90,10 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── Production guards ────────────────────────────────────────────────
+if settings.APP_ENV == "production":
+    if settings.SECRET_KEY == "change-me":
+        raise RuntimeError("SECRET_KEY must be set in production")
+    if settings.APP_DEBUG:
+        raise RuntimeError("APP_DEBUG must be False in production")

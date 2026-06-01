@@ -136,8 +136,8 @@ class OAuthService:
             user_result = await self.db.execute(select(User).where(User.id == link.user_id))
             user = user_result.scalar_one_or_none()
             if user and user.is_active:
-                # Update tokens
-                link.access_token = provider_access_token
+                # WARN-03: Don't store OAuth access token in plaintext
+                # Token is only needed for initial login, not for persistence
                 # Update birth_date if we got it and user doesn't have one
                 if birth_date and not user.birth_date:
                     user.birth_date = birth_date
@@ -157,7 +157,8 @@ class OAuthService:
                     provider_user_id=provider_user_id,
                     provider_email=provider_email,
                     provider_name=provider_name,
-                    access_token=provider_access_token,
+                    # WARN-03: Don't store OAuth access token
+                    access_token=None,
                 )
                 self.db.add(new_link)
                 matched_user.is_verified = True  # OAuth emails are considered verified
@@ -189,7 +190,8 @@ class OAuthService:
             provider_user_id=provider_user_id,
             provider_email=provider_email,
             provider_name=provider_name,
-            access_token=provider_access_token,
+            # WARN-03: Don't store OAuth access token
+            access_token=None,
         )
         self.db.add(new_link)
         await self.db.flush()

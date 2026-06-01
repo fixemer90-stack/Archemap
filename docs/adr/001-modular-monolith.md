@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-We need to choose an architectural style for the Archemap platform. The system
+We need to choose an architectural style for the Astrotype platform. The system
 handles user accounts, subscriptions, billing, and payment orchestration. It is
 initially a small-team project that may need to scale individual components
 independently in the future.

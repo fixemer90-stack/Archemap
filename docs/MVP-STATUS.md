@@ -1,4 +1,4 @@
-# Archemap — MVP Status
+# Astrotype — MVP Status
 
 > Когда я смогу вбить дату рождения и получить результат?
 

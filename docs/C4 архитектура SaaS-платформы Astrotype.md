@@ -1,8 +1,8 @@
-# C4 архитектура SaaS-платформы Archemap
+# C4 архитектура SaaS-платформы Astrotype
 
 ## Резюме для руководства
 
-Для Archemap разумно проектировать не четыре разрозненных продукта, а одну платформу с единым доменным ядром и четырьмя продуктовыми вертикалями: **Archemap Self**, **Archemap Love**, **Archemap Child**, **Archemap Career**. Общая часть должна включать идентификацию пользователя, профиль и согласия, расчёт натальной карты и нормализованных признаков, rule-based интерпретацию, контент/шаблоны, подписки, платежи, уведомления, аналитику и наблюдаемость. Это особенно важно потому, что в исходной концепции уже зафиксирован детерминированный конвейер: вычисление карты, нормализация, rule-based scoring и шаблонная интерпретация, а LLM-слой допускается только как необязательная надстройка и может быть полностью отключён. fileciteturn0file0
+Для Astrotype разумно проектировать не четыре разрозненных продукта, а одну платформу с единым доменным ядром и четырьмя продуктовыми вертикалями: **Astrotype Self**, **Astrotype Love**, **Astrotype Child**, **Astrotype Career**. Общая часть должна включать идентификацию пользователя, профиль и согласия, расчёт натальной карты и нормализованных признаков, rule-based интерпретацию, контент/шаблоны, подписки, платежи, уведомления, аналитику и наблюдаемость. Это особенно важно потому, что в исходной концепции уже зафиксирован детерминированный конвейер: вычисление карты, нормализация, rule-based scoring и шаблонная интерпретация, а LLM-слой допускается только как необязательная надстройка и может быть полностью отключён. fileciteturn0file0
 
 С учётом неуточнённого масштаба и требования «без экспресс-решений» оптимальная стартовая форма — **модульная платформа с жёстко разделёнными bounded contexts и контрактами**, разворачиваемая как несколько контейнеров, но без преждевременного дробления бизнес-логики на десятки микросервисов. На внешнем контуре нужны API Gateway и отдельные **BFF для web и future mobile**, потому что BFF-паттерн снижает конфликт требований между интерфейсами, а API gateway даёт единый вход, маршрутизацию и вынос cross-cutting concerns вроде аутентификации, rate limit и TLS termination. Для последующего выделения «горячих» модулей безопаснее использовать эволюционный путь в духе **Strangler Fig**. citeturn39view0turn40view1turn40view2turn40view3
 
@@ -10,11 +10,11 @@
 
 Подписки и платежи должны быть выделены в отдельный биллинговый контур: **каталог планов → оркестрация checkout → платёжный адаптер → webhook inbox → reconciliation → entitlement projection**. Это снимает жёсткую связность между поставщиком платежей и правами доступа. Официальные материалы YooKassa, CloudPayments и Stripe сходятся в том, что recurring/subscription-платежи и жизненный цикл подписки завязаны на асинхронные события и webhook/event endpoints; значит, нельзя выдавать доступ «по UI-факту оплаты», только по подтверждённому биллинговому состоянию. Для native mobile нужно сразу спроектировать **двойной биллинг-контур**: web billing через PSP и in-app billing через store adapters, потому что digital goods в iOS/Google Play часто подпадают под store billing rules. citeturn18view0turn19view0turn19view3turn20view0turn20view1turn21view2turn23view0turn23view3
 
-Безопасность следует закладывать как архитектурный baseline, а не как «добавку после MVP»: OWASP ASVS как каркас требований, OWASP API Security Top 10 как ориентир для публичных API, TLS 1.3 by default, центральное secrets management, envelope encryption/KMS, password hashing через Argon2id, защита forgot-password от enumeration, строгая авторизация на уровне объекта и свойства данных, отдельный webhook perimeter и централизованная наблюдаемость через traces/metrics/logs. Для **Archemap Child** отдельно важны data minimization и юридическая модель consent/parental consent по рынкам запуска. citeturn4view3turn4view4turn4view1turn4view2turn6view4turn5view0turn7view0turn6view0turn41view0turn42view2turn38view2turn38view3
+Безопасность следует закладывать как архитектурный baseline, а не как «добавку после MVP»: OWASP ASVS как каркас требований, OWASP API Security Top 10 как ориентир для публичных API, TLS 1.3 by default, центральное secrets management, envelope encryption/KMS, password hashing через Argon2id, защита forgot-password от enumeration, строгая авторизация на уровне объекта и свойства данных, отдельный webhook perimeter и централизованная наблюдаемость через traces/metrics/logs. Для **Astrotype Child** отдельно важны data minimization и юридическая модель consent/parental consent по рынкам запуска. citeturn4view3turn4view4turn4view1turn4view2turn6view4turn5view0turn7view0turn6view0turn41view0turn42view2turn38view2turn38view3
 
 ## Функциональный контур и допущения
 
-Функционально платформа должна выглядеть так: **Self** отвечает за первичный «архетипический портрет» пользователя; **Love** — за совместимость, паттерны близости, конфликтные триггеры и сценарии взаимодействия; **Child** — за профиль ребёнка, рекомендации по стилю взаимодействия и семейную интерпретацию; **Career** — за сильные стороны, роли, рабочие сценарии и формат профессионального развития. Все четыре сервиса должны использовать одно и то же вычислительное ядро и один и тот же каталог признаков, а различаться — слоями правил, контентом, планами подписки, UX-оркестрацией и разрешениями на доступ. Такой подход убирает дублирование, повышает explainability и позволяет масштабировать линейку продуктов без хардкода по каждому сервису. Это согласуется с внутренней идеей Archemap как explainable deterministic pipeline, а не как heavy-runtime-AI продукта. fileciteturn0file0
+Функционально платформа должна выглядеть так: **Self** отвечает за первичный «архетипический портрет» пользователя; **Love** — за совместимость, паттерны близости, конфликтные триггеры и сценарии взаимодействия; **Child** — за профиль ребёнка, рекомендации по стилю взаимодействия и семейную интерпретацию; **Career** — за сильные стороны, роли, рабочие сценарии и формат профессионального развития. Все четыре сервиса должны использовать одно и то же вычислительное ядро и один и тот же каталог признаков, а различаться — слоями правил, контентом, планами подписки, UX-оркестрацией и разрешениями на доступ. Такой подход убирает дублирование, повышает explainability и позволяет масштабировать линейку продуктов без хардкода по каждому сервису. Это согласуется с внутренней идеей Astrotype как explainable deterministic pipeline, а не как heavy-runtime-AI продукта. fileciteturn0file0
 
 Чтобы выполнить требование «минимум или ноль AI в runtime», расчётный слой лучше строить на **детерминированных астрономических и символических библиотеках**, а не на генеративной модели. Для этой роли хорошо подходят Swiss Ephemeris как высокоточная эфемеридная база и Flatlib как Python-библиотека для построения астрологических объектов и карт. Для корректной исторической локализации времени рождения нужны актуальные time-zone rules, а значит — нормальная работа с IANA Time Zone Database; для геокодирования/обратного геокодирования места рождения можно использовать внешний сервис класса GeoNames на этапе ввода, после чего сохранять нормализованный гео-снапшот внутри платформы. citeturn33view0turn34view0turn32view0turn32view1
 
@@ -24,10 +24,10 @@
 
 | Продуктовый домен | Основные сценарии | Общие платформенные зависимости |
 |---|---|---|
-| Archemap Self | онбординг, базовый архетипический профиль, персональный отчёт, обновления контента | identity, chart engine, rules, content, subscription, notifications |
-| Archemap Love | пары, совместимость, сценарии общения, отношения | identity, chart engine, relationship rules, content, billing, entitlements |
-| Archemap Child | детский профиль, родительский кабинет, семейные рекомендации | identity, parental consent, chart engine, child-safe content, audit |
-| Archemap Career | роли, способности, профили развития, карьерные пакеты | identity, chart engine, career rules, content, billing, analytics |
+| Astrotype Self | онбординг, базовый архетипический профиль, персональный отчёт, обновления контента | identity, chart engine, rules, content, subscription, notifications |
+| Astrotype Love | пары, совместимость, сценарии общения, отношения | identity, chart engine, relationship rules, content, billing, entitlements |
+| Astrotype Child | детский профиль, родительский кабинет, семейные рекомендации | identity, parental consent, chart engine, child-safe content, audit |
+| Astrotype Career | роли, способности, профили развития, карьерные пакеты | identity, chart engine, career rules, content, billing, analytics |
 
 ## C4 уровень System Context
 
@@ -42,11 +42,11 @@ flowchart TB
         S["Саппорт / finance ops"]
     end
 
-    subgraph Platform["Archemap Platform"]
+    subgraph Platform["Astrotype Platform"]
         Web["Web App"]
         Mobile["Mobile App"]
         Edge["API Gateway + BFF"]
-        Core["Archemap Core Services"]
+        Core["Astrotype Core Services"]
         Admin["Admin / CMS"]
     end
 
@@ -423,9 +423,9 @@ OWASP для forgot-password рекомендует одинаковые отв�
 | SSRF/egress | allowlist для внутренних и внешних вызовов, отдельный egress policy | особенно важно для webhook callbacks, media fetch и geocoding | citeturn8view4 |
 | Child-данные | минимизация данных, parental-consent workflow, отдельные retention rules | детские данные требуют усиленной защиты; в ЕС статья 8 GDPR прямо задаёт рамку child consent | citeturn38view2turn38view3 |
 
-Дополнительно я бы закладывал **ASVS L2** как общий baseline для продукта и относил auth, payments и admin surface к повышенному внутреннему профилю контроля. Не потому, что так «требует стандарт» в данной формулировке, а как архитектурный вывод: эти поверхности в Archemap одновременно и публичные, и финансово, и репутационно критичные. citeturn4view3turn4view4
+Дополнительно я бы закладывал **ASVS L2** как общий baseline для продукта и относил auth, payments и admin surface к повышенному внутреннему профилю контроля. Не потому, что так «требует стандарт» в данной формулировке, а как архитектурный вывод: эти поверхности в Astrotype одновременно и публичные, и финансово, и репутационно критичные. citeturn4view3turn4view4
 
-Для Archemap Child стоит отдельно развести три вида данных: данные взрослого владельца аккаунта, данные ребёнка как доменный профиль и derived interpretations/reports. Хранить нужно только то, что действительно необходимо для расчёта и UX; лишние аналитические трекеры, session replay на формах ввода даты/времени/места рождения и broad data sharing здесь лучше отключать или сильно редактировать. GDPR требует data minimisation и даёт специальную рамку для child consent при информационных сервисах. citeturn38view2turn38view3turn6view2
+Для Astrotype Child стоит отдельно развести три вида данных: данные взрослого владельца аккаунта, данные ребёнка как доменный профиль и derived interpretations/reports. Хранить нужно только то, что действительно необходимо для расчёта и UX; лишние аналитические трекеры, session replay на формах ввода даты/времени/места рождения и broad data sharing здесь лучше отключать или сильно редактировать. GDPR требует data minimisation и даёт специальную рамку для child consent при информационных сервисах. citeturn38view2turn38view3turn6view2
 
 ## Развёртывание, CI/CD, данные, API, масштабирование и тестирование
 
@@ -517,7 +517,7 @@ POST   /v1/mobile/stores/google/notifications
 
 Масштабирование стоит планировать поэтапно. На старте достаточно horizontal scaling для stateless edge/BFF/worker containers, read-replica для аналитически тяжёлых чтений, Redis-caching для frequently accessed payloads и асинхронной генерации отчётов. При росте нагрузки выносятся первыми, как правило, три зоны: биллинг/webhooks, content/report assembly и analytics pipeline. Переход выполнять через Strangler Fig: выделять функциональность за фасадом/gateway, переводить трафик постепенно, держать совместимость контрактов и только после стабилизации удалять старую реализацию. citeturn40view2turn40view3
 
-Тестирование должно быть многоуровневым. Для Archemap особенно важны **golden tests** на доменную интерпретацию: один и тот же профиль, timezone snapshot, library version, ruleset version и template version должны давать предсказуемый результат. Поверх этого нужны contract tests на OAuth callbacks и webhooks, интеграционные тесты для provider adapters, e2e сценарии для signup/login/purchase/cancel/grace/renewal, security tests по ASVS/API Top 10, а также нагрузочные тесты на checkout, вход и генерацию отчётов. ASVS полезен здесь как систематический baseline проверки security controls, а Strangler-стратегия снижает риск миграций именно потому, что позволяет тестировать приращениями. citeturn4view3turn40view2
+Тестирование должно быть многоуровневым. Для Astrotype особенно важны **golden tests** на доменную интерпретацию: один и тот же профиль, timezone snapshot, library version, ruleset version и template version должны давать предсказуемый результат. Поверх этого нужны contract tests на OAuth callbacks и webhooks, интеграционные тесты для provider adapters, e2e сценарии для signup/login/purchase/cancel/grace/renewal, security tests по ASVS/API Top 10, а также нагрузочные тесты на checkout, вход и генерацию отчётов. ASVS полезен здесь как систематический baseline проверки security controls, а Strangler-стратегия снижает риск миграций именно потому, что позволяет тестировать приращениями. citeturn4view3turn40view2
 
 ## Рекомендуемые провайдеры, сервисы, библиотеки и развилки выбора
 

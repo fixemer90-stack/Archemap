@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from uuid import uuid4
+from typing import Any
+from uuid import UUID, uuid4
 
 from app.modules.reports.models import Report, ReportVersion
 from app.modules.reports.service import _build_chart_summary
@@ -10,7 +11,7 @@ from app.modules.reports.service import _build_chart_summary
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 
-def make_chart_data() -> dict:
+def make_chart_data() -> dict[str, Any]:
     """Create sample chart data."""
     return {
         "birth_datetime": "1990-08-24T11:00:00+00:00",
@@ -44,7 +45,7 @@ def make_chart_data() -> dict:
     }
 
 
-def make_features() -> dict:
+def make_features() -> dict[str, Any]:
     """Create sample features dict."""
     return {
         "fire": 0.186,
@@ -59,7 +60,13 @@ def make_features() -> dict:
     }
 
 
-def make_report(user_id=None, profile_id=None, product="self", status="ready", version=1) -> Report:
+def make_report(
+    user_id: UUID | None = None,
+    profile_id: UUID | None = None,
+    product: str = "self",
+    status: str = "ready",
+    version: int = 1,
+) -> Report:
     """Create a sample Report."""
     return Report(
         id=uuid4(),
@@ -122,7 +129,7 @@ class TestBuildChartSummary:
         assert summary["planets"][0]["sign"] == "Virgo"
 
     def test_empty_chart_data(self) -> None:
-        chart_data = {}
+        chart_data: dict[str, Any] = {}
         features = make_features()
         summary = _build_chart_summary(chart_data, features)
 
@@ -132,7 +139,7 @@ class TestBuildChartSummary:
 
     def test_missing_features_defaults_to_zero(self) -> None:
         chart_data = make_chart_data()
-        features = {}
+        features: dict[str, Any] = {}
         summary = _build_chart_summary(chart_data, features)
 
         assert summary["elements"]["fire"] == 0
@@ -182,7 +189,7 @@ class TestReportModel:
         assert report.pdf_generated is False
 
     def test_report_with_data(self) -> None:
-        data = {"product": "self", "archetype": {"primary": "Стратег"}}
+        data: dict[str, Any] = {"product": "self", "archetype": {"primary": "Стратег"}}
         report = Report(
             user_id=uuid4(),
             profile_id=uuid4(),

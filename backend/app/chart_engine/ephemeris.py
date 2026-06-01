@@ -17,12 +17,12 @@ logger = structlog.get_logger()
 
 # ── Try importing swisseph ────────────────────────────────────────────
 try:
-    import swisseph as swe  # type: ignore[import-not-found]
+    import swisseph as swe
 
     _HAS_SWISSEPH = True
 except (ImportError, OSError):
     try:
-        import pyswisseph as swe  # type: ignore[import-not-found]
+        import pyswisseph as swe
 
         _HAS_SWISSEPH = True
     except (ImportError, OSError):

@@ -1,10 +1,73 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Briefcase, ArrowLeft } from "lucide-react";
+import { Briefcase, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/stores/auth-store";
+
+interface Profile {
+  id: string;
+  name: string;
+  birth_date: string;
+  birth_place: string;
+}
 
 export default function CareerProductPage() {
+  const token = useAuthStore((s) => s.token);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchProfiles() {
+      if (!token) return;
+      try {
+        const res = await fetch("/api/v1/profiles", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProfiles(data.items || []);
+        }
+      } catch {
+        // Silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProfiles();
+  }, [token]);
+
+  const generateReport = async (profileId: string) => {
+    setGenerating(profileId);
+    try {
+      const res = await fetch("/api/v1/reports/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          profile_id: profileId,
+          product: "career",
+          mode: "full",
+        }),
+      });
+      if (res.ok) {
+        const report = await res.json();
+        window.location.href = `/report/${profileId}?product=career`;
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setGenerating(null);
+    }
+  };
+
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
         <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
           Astrotype Career
@@ -15,52 +78,88 @@ export default function CareerProductPage() {
         </p>
       </div>
 
-      <div className="glass p-8 text-center space-y-6 max-w-lg mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-[rgba(194,138,46,0.15)] flex items-center justify-center mx-auto">
-          <Briefcase className="h-8 w-8 text-[#C28A2E]" />
+      {/* What you get */}
+      <div className="glass p-6 space-y-4">
+        <h2 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]">
+          Что входит в отчёт
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            "Карьерные архетипы: Лидер, Аналитик, Креатор, Дипломат, Исполнитель",
+            "Профессиональные роли: топ-5 подходящих позиций",
+            "Рабочая среда: где вы раскрываетесь сильнее",
+            "Стиль принятия решений и коммуникации",
+            "Anti-patterns: что мешает развитию",
+            "Карта роста: сильные стороны и зоны развития",
+          ].map((item) => (
+            <div key={item} className="flex items-start gap-2">
+              <span className="text-[#C28A2E] mt-0.5 text-xs">✦</span>
+              <span className="text-sm text-[#D8DCE8]">{item}</span>
+            </div>
+          ))}
         </div>
-
-        <div className="space-y-2">
-          <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
-            Скоро
-          </h2>
-          <p className="text-sm text-[#D8DCE8] leading-relaxed">
-            Astrotype Career покажет, какие профессиональные роли вам подходят,
-            в какой среде вы раскрываетесь сильнее, и какие зоны роста стоит
-            развивать.
-          </p>
-        </div>
-
-        <div className="space-y-3 text-left">
-          <h3 className="text-sm font-medium text-[#F6F1E8]">
-            Что будет в отчёте:
-          </h3>
-          <ul className="space-y-2">
-            {[
-              "Карьерные роли: топ-5 подходящих позиций",
-              "Рабочая среда: где вы раскрываетесь сильнее",
-              "Стиль принятия решений",
-              "Anti-patterns: что мешает развитию",
-              "Карта роста: сильные стороны и зоны развития",
-            ].map((item) => (
-              <li
-                key={item}
-                className="flex items-start gap-2 text-sm text-[#D8DCE8]"
-              >
-                <span className="text-[#C28A2E] mt-0.5">✦</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <Button variant="outline" asChild>
-          <Link href="/dashboard">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Назад
-          </Link>
-        </Button>
       </div>
+
+      {/* My reports */}
+      {profiles.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
+            Мои отчёты Career
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {profiles.map((profile) => (
+              <div
+                key={profile.id}
+                className="glass p-5 space-y-3 hover:border-[rgba(194,138,46,0.40)] transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-[#F6F1E8]">
+                    {profile.name || "Без имени"}
+                  </span>
+                  <Briefcase className="h-4 w-4 text-[#C28A2E]" />
+                </div>
+                <p className="text-xs text-[rgba(216,220,232,0.50)]">
+                  {profile.birth_date} · {profile.birth_place}
+                </p>
+                <Button
+                  size="sm"
+                  className="w-full bg-[#C28A2E] hover:bg-[#A07325]"
+                  onClick={() => generateReport(profile.id)}
+                  disabled={generating === profile.id}
+                >
+                  {generating === profile.id
+                    ? "Генерация..."
+                    : "Построить отчёт"}
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && profiles.length === 0 && (
+        <div className="glass p-8 text-center space-y-4">
+          <p className="text-[#D8DCE8]">
+            У вас пока нет профилей. Введите данные рождения и получите
+            карьерный отчёт.
+          </p>
+          <Button asChild>
+            <Link href="/register">
+              Построить карту
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      <Button variant="outline" asChild>
+        <Link href="/dashboard">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Назад
+        </Link>
+      </Button>
     </div>
   );
 }

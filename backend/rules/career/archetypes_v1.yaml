@@ -1,0 +1,244 @@
+# Career vertical — archetype rules v1.0.0
+# Astrotype Design Code: explainable, deterministic, rule-based
+# Career focuses on MC (Midheaven), 10th house, Saturn, and professional archetypes.
+
+product: career
+version: "1.0.0"
+effective_from: "2026-01-01"
+locale: ru-RU
+
+archetypes:
+  leader:
+    name: "Лидер"
+    description: "Прирождённый руководитель с выраженной огненной волей и кардинальной инициативой"
+    conditions:
+      all:
+        - fact: feature.fire
+          op: gte
+          value: 0.30
+        - fact: feature.cardinal
+          op: gte
+          value: 0.25
+        - fact: feature.house_emphasis.10
+          op: gte
+          value: 0.40
+    effects:
+      archetype.leader: 0.30
+      claim.career.management: 0.22
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.12
+    counter_rules: ["analyst"]
+    evidence:
+      template_key: ev.career.leader
+      show_basis_features: [feature.fire, feature.cardinal, feature.house_emphasis.10]
+
+  analyst:
+    name: "Аналитик"
+    description: "Системный мышлитель с выраженной способностью к структурированию данных"
+    conditions:
+      all:
+        - fact: feature.earth
+          op: gte
+          value: 0.35
+        - fact: feature.fixed
+          op: gte
+          value: 0.30
+    effects:
+      archetype.analyst: 0.28
+      claim.career.structured_thinking: 0.20
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["creator"]
+    evidence:
+      template_key: ev.career.analyst
+      show_basis_features: [feature.earth, feature.fixed]
+
+  creator:
+    name: "Креатор"
+    description: "Генератор идей с выраженной огненной креативностью и мутабельной адаптивностью"
+    conditions:
+      all:
+        - fact: feature.fire
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.25
+    effects:
+      archetype.creator: 0.28
+      claim.career.creative_flow: 0.20
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["analyst"]
+    evidence:
+      template_key: ev.career.creator
+      show_basis_features: [feature.fire, feature.mutable]
+
+  diplomat:
+    name: "Дипломат"
+    description: "Мастер переговоров и гармоничного взаимодействия с выраженной воздушной коммуникацией"
+    conditions:
+      all:
+        - fact: feature.air
+          op: gte
+          value: 0.30
+        - fact: feature.cardinal
+          op: gte
+          value: 0.25
+    effects:
+      archetype.diplomat: 0.28
+      claim.career.negotiation: 0.20
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["executor"]
+    evidence:
+      template_key: ev.career.diplomat
+      show_basis_features: [feature.air, feature.cardinal]
+
+  executor:
+    name: "Исполнитель"
+    description: "Надёжный реализатор с выраженной земной дисциплиной и сатурновой структурой"
+    conditions:
+      all:
+        - fact: feature.earth
+          op: gte
+          value: 0.40
+        - fact: feature.fixed
+          op: gte
+          value: 0.35
+    effects:
+      archetype.executor: 0.28
+      claim.career.reliability: 0.22
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.12
+    counter_rules: ["creator"]
+    evidence:
+      template_key: ev.career.executor
+      show_basis_features: [feature.earth, feature.fixed]
+
+  researcher:
+    name: "Исследователь"
+    description: "Интеллектуальный навигатор с потребностью в глубоком анализе и разнообразии"
+    conditions:
+      all:
+        - fact: feature.air
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.25
+    effects:
+      archetype.researcher: 0.28
+      claim.career.adaptive_intelligence: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["executor"]
+    evidence:
+      template_key: ev.career.researcher
+      show_basis_features: [feature.air, feature.mutable]
+
+  healer:
+    name: "Целитель"
+    description: "Проводник глубинных процессов с выраженной водной интуицией и эмпатией"
+    conditions:
+      all:
+        - fact: feature.water
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.25
+    effects:
+      archetype.healer: 0.28
+      claim.career.empathy: 0.18
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.08
+    counter_rules: ["leader"]
+    evidence:
+      template_key: ev.career.healer
+      show_basis_features: [feature.water, feature.mutable]
+
+  innovator:
+    name: "Инноватор"
+    description: "Провокатор изменений с выраженной огненной интуицией и мутабельной гибкостью"
+    conditions:
+      all:
+        - fact: feature.fire
+          op: gte
+          value: 0.30
+        - fact: feature.mutable
+          op: gte
+          value: 0.30
+        - fact: feature.house_emphasis.11
+          op: gte
+          value: 0.35
+    effects:
+      archetype.innovator: 0.30
+      claim.career.innovation: 0.22
+    confidence_adjustments:
+      - when:
+          fact: quality.birth_time_quality
+          op: lt
+          value: 0.50
+        delta: -0.10
+    counter_rules: ["executor"]
+    evidence:
+      template_key: ev.career.innovator
+      show_basis_features: [feature.fire, feature.mutable, feature.house_emphasis.11]
+
+# Scoring parameters
+scoring:
+  default_weight: 1.0
+  default_q_rule: 1.0
+  default_bias: 0.0
+  counter_penalty_lambda: 0.30
+  max_possible_score: 1.0
+  min_claim_score: 0.15
+  max_claims_per_section: 3
+
+# Confidence model
+confidence:
+  weights:
+    q_input: 0.35
+    q_coverage: 0.30
+    q_margin: 0.20
+    q_consistency: 0.15
+  thresholds:
+    good_input: 0.70
+    low_coverage: 0.30
+    high_contradiction: 0.40
+    low_margin: 0.10
+  labels:
+    high: [0.80, 1.0]
+    medium_high: [0.60, 0.80]
+    medium: [0.40, 0.60]
+    medium_low: [0.20, 0.40]
+    low: [0.0, 0.20]

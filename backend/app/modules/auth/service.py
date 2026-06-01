@@ -378,7 +378,7 @@ class AuthService:
             "socionics": socionics_result,
         }
 
-    async def get_linked_providers(self, user_id: UUID) -> dict:
+    async def get_linked_providers(self, user_id: UUID) -> dict[str, Any]:
         """Get list of linked OAuth providers for a user."""
         # Get linked providers
         result = await self.db.execute(select(IdentityLink).where(IdentityLink.user_id == user_id))

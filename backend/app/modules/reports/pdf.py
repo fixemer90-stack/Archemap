@@ -42,7 +42,7 @@ def generate_pdf(html: str) -> bytes:
     from weasyprint import HTML
 
     logger.info("pdf_generation_start")
-    pdf = HTML(string=html).write_pdf()
+    pdf: bytes = HTML(string=html).write_pdf()
     logger.info("pdf_generation_success", size=len(pdf))
     return pdf
 

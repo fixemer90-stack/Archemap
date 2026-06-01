@@ -48,6 +48,7 @@ class TestRegister:
             result = await service.register(
                 email="new@example.com",
                 password=TEST_PASSWORD,
+                name="Test User",
                 birth_date=TEST_BIRTH_DATE,
                 birth_place=TEST_BIRTH_PLACE,
                 latitude=TEST_LATITUDE,
@@ -72,6 +73,7 @@ class TestRegister:
             await service.register(
                 email="existing@example.com",
                 password=TEST_PASSWORD,
+                name="Test User",
                 birth_date=TEST_BIRTH_DATE,
                 birth_place=TEST_BIRTH_PLACE,
                 latitude=TEST_LATITUDE,
@@ -90,6 +92,7 @@ class TestRegister:
             await service.register(
                 email="new@example.com",
                 password="short",  # noqa: S106
+                name="Test User",
                 birth_date=TEST_BIRTH_DATE,
                 birth_place=TEST_BIRTH_PLACE,
                 latitude=TEST_LATITUDE,

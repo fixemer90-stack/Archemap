@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import boto3
 import structlog
+from typing import cast
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
@@ -49,10 +50,13 @@ class S3Storage:
     def get_signed_url(self, key: str, expires_in: int = 3600) -> str:
         """Generate a signed URL for downloading."""
         try:
-            url = self.client.generate_presigned_url(
+            url = cast(
+                str,
+                self.client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self.bucket, "Key": key},
                 ExpiresIn=expires_in,
+                ),
             )
             logger.info("s3_signed_url_generated", key=key, expires_in=expires_in)
             return url

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Coroutine
+from typing import Any, TypeVar
 from uuid import UUID
 
 import structlog
@@ -15,8 +17,10 @@ from app.modules.reports.storage import S3Storage, build_report_key, get_signed_
 
 logger = structlog.get_logger()
 
+T = TypeVar("T")
 
-def _run_async(coro):  # type: ignore[no-untyped-def]
+
+def _run_async(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
     """Run async code in sync Celery task."""
     loop = asyncio.new_event_loop()
     try:
@@ -25,7 +29,7 @@ def _run_async(coro):  # type: ignore[no-untyped-def]
         loop.close()
 
 
-def generate_pdf_task(report_id: str, user_id: str, profile_name: str = "") -> dict:
+def generate_pdf_task(report_id: str, user_id: str, profile_name: str = "") -> dict[str, Any]:
     """Generate PDF for a report and upload to S3.
 
     Called asynchronously by Celery after report generation.
@@ -51,7 +55,7 @@ async def _generate_pdf_async(
     report_id: UUID,
     user_id: UUID,
     profile_name: str,
-) -> dict:
+) -> dict[str, Any]:
     """Async PDF generation logic."""
     async with async_session_factory() as db:
         # Load report

@@ -4,12 +4,12 @@
 
 | Вертикаль | Что получает пользователь | Статус |
 |---|---|---|
-| **Astrotype Self** | Натальная карта, архетипический портрет, персональный отчёт | ✅ |
+| **Astrotype Self** | Narrative-first self-report: натальная карта, executive summary, архетипический и соционический профиль | ✅ |
 | **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов | ⬜ |
 | **Astrotype Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация | ⬜ |
 | **Astrotype Career** | Сильные стороны, подходящие роли, сценарии профессионального развития | ✅ |
 
-**Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. Детерминированный расчёт и explainable scoring — первичны, narrative layer — вторичен. AI не используется для генерации отчётов в рантайме.
+**Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. Детерминированный расчёт и explainable scoring — первичны, narrative layer — вторичен. AI не используется для генерации отчётов в рантайме. Пользовательский отчёт показывает смысл и практические выводы до raw math/debug-графиков.
 
 **Документация:** [SPEC.md](docs/SPEC.md) · [ROADMAP.md](docs/ROADMAP.md) · [Design Code](docs/astrotype_design_code.md) · [C4 Architecture](docs/C4%20архитектура%20SaaS-платформы%20Astrotype.md) · [Business Logic Spec](docs/Спецификация%20бизнес-логики%20и%20доменных%20правил%20Astrotype.md)
 
@@ -110,8 +110,12 @@ Astrotype/
 │   │   │   ├── (dashboard)/           # Dashboard, report, products
 │   │   │   └── page.tsx               # Landing page
 │   │   ├── components/
+│   │   │   ├── report/                # Narrative-first report UX blocks
+│   │   │   ├── glossary/              # TermHelp + GlossaryModal
+│   │   │   └── chart/                 # NatalChart, SocionicsResult
 │   │   ├── stores/                    # Zustand (auth, UI)
-│   │   └── lib/                       # API client, cookies, utilities
+│   │   └── lib/                       # API client, report view-model, glossary, utilities
+│   ├── scripts/check-report-ux.mjs    # Deterministic report UX regression
 │   └── public/
 ├── docs/
 │   ├── SPEC.md
@@ -192,7 +196,36 @@ npm run build          # Production build
 npx eslint .           # Линтинг
 npx prettier --check . # Форматирование
 npx tsc --noEmit       # Type check
+npm test               # Report UX regression
 ```
+
+---
+
+## Self-report UX
+
+Страница `/report/[profileId]` реализована как понятный self-report, а не debug view. Информационная архитектура фиксирована feature E10: [docs/features/E10-report-ux-redesign/FEATURE.md](docs/features/E10-report-ux-redesign/FEATURE.md).
+
+Порядок чтения:
+
+1. Header с данными рождения и quality warning для unknown/approximate birth time.
+2. Executive summary — главный смысл, сила, зона внимания и 3–5 выводов.
+3. Астрологическая основа: Солнце, Луна, Асцендент, стихии, модальности, ключевые аспекты.
+4. Жизненные проявления: мышление/решения, эмоции/восстановление, общение/отношения, работа/фокус.
+5. Практические рекомендации: что усилить, что беречь, что не делать через силу, weekly checklist.
+6. Архетипический профиль с light/shadow и confidence label.
+7. Соционический профиль с прикладными выводами без раннего Model A/raw scores.
+8. Collapsed technical details: full chart wheel, SocionicsResult, Model A, raw scores, confidence и evidence trail.
+
+Обязательные термины отчёта имеют `TermHelp` + `GlossaryModal`: натальная карта, Солнце, Луна, Асцендент, дом, аспект, орб, стихия, модальность, архетип, соционический тип, Model A, confidence, evidence trail.
+
+Regression check:
+
+```bash
+cd frontend
+npm test
+```
+
+Скрипт проверяет порядок секций, glossary markers, отсутствие runtime placeholders и то, что `NatalChart`/`SocionicsResult` появляются только в advanced technical details.
 
 ---
 
@@ -268,6 +301,7 @@ Astrotype — не «астро-гадалка», а **премиальная н
 | E3 | Chart Engine (Swiss Ephemeris, Socionics) | ✅ Готово |
 | E4 | Rules & Content (Rule Engine, Evidence) | ✅ Готово |
 | E5 | Products & Reports (Self, Career, PDF, S3) | ✅ Готово (S02 Love, S03 Child — backlog) |
+| E10 | Report UX Redesign (Narrative-first Self Report) | ✅ Готово |
 | E6 | Billing & Subscriptions | ⬜ Не начато |
 | E7 | Notifications & Admin | ⬜ Не начато |
 | E8 | Production & Scale | ⬜ Не начато |

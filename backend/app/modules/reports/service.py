@@ -149,6 +149,7 @@ class ReportService:
             report.status = "ready"
             report.error_message = None
             await self.db.flush()
+            await self.db.refresh(report)
 
             logger.info(
                 "report_generated",

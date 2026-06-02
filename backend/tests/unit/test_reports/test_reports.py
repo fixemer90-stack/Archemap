@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from app.modules.reports.models import Report, ReportVersion
+from app.modules.reports.schemas import ReportResponse, ReportVersionResponse
 from app.modules.reports.service import _build_chart_summary
 
 # ── Fixtures ─────────────────────────────────────────────────────────
@@ -80,6 +82,7 @@ def make_report(
         archetype="Стратег",
         score=0.78,
         confidence=0.72,
+        pdf_generated=False,
     )
 
 
@@ -233,3 +236,33 @@ class TestReportVersionModel:
         assert rv.report_data == {"test": True}
         assert rv.pdf_url is None
         assert rv.diff_summary is None
+
+
+# ── Report schema tests ───────────────────────────────────────────────
+
+
+class TestReportSchemas:
+    """Test API response schemas for ORM UUID fields."""
+
+    def test_report_response_accepts_uuid_fields(self) -> None:
+        report = make_report()
+        report.created_at = report.updated_at = datetime.now(UTC)
+
+        response = ReportResponse.model_validate(report)
+
+        assert response.id == report.id
+        assert response.profile_id == report.profile_id
+
+    def test_report_version_response_accepts_uuid_fields(self) -> None:
+        version = ReportVersion(
+            id=uuid4(),
+            report_id=uuid4(),
+            version=1,
+            report_data={"test": True},
+            created_at=datetime.now(UTC),
+        )
+
+        response = ReportVersionResponse.model_validate(version)
+
+        assert response.id == version.id
+        assert response.report_id == version.report_id

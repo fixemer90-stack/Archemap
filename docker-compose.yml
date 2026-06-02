@@ -57,6 +57,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://astrotype:astrotype@postgres:5432/astrotype
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
       APP_ENV: development
       APP_DEBUG: "true"
       FRONTEND_URL: http://localhost:3000

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -80,8 +81,8 @@ class ReportDataResponse(BaseModel):
 class ReportResponse(BaseModel):
     """Single report response."""
 
-    id: str
-    profile_id: str
+    id: UUID
+    profile_id: UUID
     product: str
     version: int
     status: str
@@ -110,8 +111,8 @@ class ReportListResponse(BaseModel):
 class ReportVersionResponse(BaseModel):
     """Report version response."""
 
-    id: str
-    report_id: str
+    id: UUID
+    report_id: UUID
     version: int
     report_data: dict[str, Any]
     pdf_url: str | None

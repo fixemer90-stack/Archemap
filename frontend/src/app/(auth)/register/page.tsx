@@ -337,7 +337,7 @@ function RegisterForm() {
   );
 
   const renderOAuthNameField = () => (
-    <div className="space-y-2 rounded-lg border p-4">
+    <div className="space-y-2">
       <label htmlFor="oauthName" className="text-sm font-medium">
         Имя
       </label>
@@ -350,10 +350,6 @@ function RegisterForm() {
         required
         maxLength={120}
       />
-      <p className="text-xs text-muted-foreground">
-        Используем имя в приветствии и персональном отчёте. Для регистрации
-        через Яндекс оно обязательно так же, как и в обычной регистрации.
-      </p>
     </div>
   );
 

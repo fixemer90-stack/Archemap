@@ -24,7 +24,7 @@
 |---|---|---|
 | S01 | [Каталог планов: CRUD, цена, интервал, trial, привязка к вертикалям, bundle-планы](S01-plan-catalog.md) | ⬜ Не начато |
 | S02 | [Жизненный цикл: state machine (trial→active→past_due→cancelled→expired), webhook-driven transitions](S02-subscription-lifecycle.md) | ⬜ Не начато |
-| S03 | [YooKassa: создание платежа, подтверждение, сохранение способа оплаты, автоплатежи, 54-ФЗ чеки](S03-yookassa-adapter.md) | ⬜ Не начато |
+| S03 | [YooKassa: создание платежа, подтверждение, сохранение способа оплаты, автоплатежи, 54-ФЗ чеки](S03-yookassa-adapter.md) | ✅ Готово |
 | S04 | [CloudPayments: виджет, рекуррентные планы, HMAC-валидация, X-Request-ID, онлайн-чеки](S04-cloudpayments-adapter.md) | ⬜ Не начато |
 | S05 | [Stripe: Checkout session, Billing Portal, Smart Retries, invoice lifecycle](S05-stripe-adapter.md) | ⬜ Не начато |
 | S06 | [Webhook inbox: верификация подписи, raw-event storage, дедупликация, быстрый 2xx, idempotent processing](S06-webhook-handling.md) | ⬜ Не начато |

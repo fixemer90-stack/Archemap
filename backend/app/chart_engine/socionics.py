@@ -32,6 +32,27 @@ class SocionicsResult:
     breakdown: dict[str, float] = field(default_factory=dict)
 
 
+# ── Russian type code abbreviations ──
+TYPE_CODE_RU: dict[str, str] = {
+    "ILE": "ИЛЭ",
+    "SEI": "СЭИ",
+    "ESE": "ЭСЭ",
+    "LII": "ЛИИ",
+    "EIE": "ЭИЭ",
+    "LSI": "ЛСИ",
+    "SLE": "СЛЭ",
+    "IEI": "ИЭИ",
+    "SEE": "СЭЭ",
+    "ILI": "ИЛИ",
+    "LIE": "ЛИЭ",
+    "ESI": "ЭСИ",
+    "LSE": "ЛСЭ",
+    "EII": "ЭИИ",
+    "IEE": "ИЭЭ",
+    "SLI": "СЛИ",
+}
+
+
 # ── 16 types ──
 TYPES = [
     ("ILE", "Искатель", "Ne+Ti", "air", "earth", "mutable"),

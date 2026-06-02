@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chart_engine.chart import build_chart
 from app.chart_engine.features import extract_features
-from app.chart_engine.socionics import evaluate_socionics
+from app.chart_engine.socionics import TYPE_CODE_RU, evaluate_socionics
 from app.chart_engine.types import ChartData
 from app.core.exceptions import NotFoundError
 from app.modules.charts.models import ChartSnapshot
@@ -70,7 +70,7 @@ class ChartService:
         socionics_data = {
             "top3": [
                 {
-                    "type": r.type_code,
+                    "type": TYPE_CODE_RU.get(r.type_code, r.type_code),
                     "name": r.type_name,
                     "score": round(r.score, 3),
                     "confidence": round(r.confidence, 3),

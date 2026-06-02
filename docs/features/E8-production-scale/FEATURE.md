@@ -23,7 +23,7 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 
 | ID | Описание | Статус |
 |---|---|---|
-| S01 | [Rate limiting API](S01-rate-limiting-api.md) | 🟡 Частично |
+| S01 | [Rate limiting API](S01-rate-limiting-api.md) | ✅ Готово |
 | S02 | [WAF](S02-waf.md) | ⬜ Не начато |
 | S03 | [Secrets manager](S03-secrets-manager.md) | ⬜ Не начато |
 | S04 | [Observability](S04-observability.md) | 🟡 Частично |

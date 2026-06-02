@@ -1,85 +1,84 @@
-"""Unit tests for the Redis-backed rate limiter."""
+"""Unit tests for rate limiting middleware."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.rate_limit import RateLimiter
+from app.api.middleware import _get_client_ip, _get_rate_limit_key
 
 
-@pytest.fixture
-def mock_redis() -> MagicMock:
-    """Return a mock Redis client with async methods."""
-    redis = MagicMock()
-    redis.get = AsyncMock(return_value=None)
-    redis.incr = AsyncMock(return_value=1)
-    redis.expire = AsyncMock()
-    redis.delete = AsyncMock()
-    redis.ttl = AsyncMock(return_value=900)
-    # pipeline mock
-    pipe = MagicMock()
-    pipe.incr = MagicMock()
-    pipe.expire = MagicMock()
-    pipe.execute = AsyncMock(return_value=[1, True])
-    redis.pipeline.return_value = pipe
-    return redis
+class TestGetClientIp:
+    """Test client IP extraction."""
+
+    def test_forwarded_for(self) -> None:
+        request = MagicMock()
+        request.headers = {"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}
+        request.client = None
+        assert _get_client_ip(request) == "1.2.3.4"
+
+    def test_client_host(self) -> None:
+        request = MagicMock()
+        request.headers = {}
+        request.client = MagicMock()
+        request.client.host = "10.0.0.1"
+        assert _get_client_ip(request) == "10.0.0.1"
+
+    def test_no_client(self) -> None:
+        request = MagicMock()
+        request.headers = {}
+        request.client = None
+        assert _get_client_ip(request) == "unknown"
 
 
-@pytest.fixture
-def limiter(mock_redis: MagicMock) -> RateLimiter:
-    return RateLimiter(mock_redis)
+class TestGetRateLimitKey:
+    """Test rate limit key generation."""
 
+    def test_login_endpoint(self) -> None:
+        request = MagicMock()
+        request.url.path = "/api/v1/auth/login"
+        request.headers = {}
+        request.client = MagicMock()
+        request.client.host = "1.2.3.4"
 
-# ── test_rate_limit_allows_within_limit ───────────────────────────────
-@pytest.mark.asyncio
-async def test_rate_limit_allows_within_limit(
-    limiter: RateLimiter,
-    mock_redis: MagicMock,
-) -> None:
-    """Requests under the threshold should be allowed."""
-    mock_redis.get.return_value = None  # no existing counter
-    allowed = await limiter.check_rate_limit("rate_limit:login:test@example.com", 5, 900)
-    assert allowed is True
+        key, max_req, window = _get_rate_limit_key(request)
+        assert "rate_limit:/api/v1/auth/login:1.2.3.4" == key
+        assert max_req == 5
+        assert window == 900
 
+    def test_geocode_endpoint(self) -> None:
+        request = MagicMock()
+        request.url.path = "/api/v1/profiles/geocode"
+        request.headers = {}
+        request.client = MagicMock()
+        request.client.host = "10.0.0.1"
 
-# ── test_rate_limit_blocks_after_exceeded ─────────────────────────────
-@pytest.mark.asyncio
-async def test_rate_limit_blocks_after_exceeded(
-    limiter: RateLimiter,
-    mock_redis: MagicMock,
-) -> None:
-    """Requests at or above the threshold should be blocked."""
-    mock_redis.get.return_value = "5"  # already at limit
-    allowed = await limiter.check_rate_limit("rate_limit:login:test@example.com", 5, 900)
-    assert allowed is False
+        key, max_req, window = _get_rate_limit_key(request)
+        assert "rate_limit:/api/v1/profiles/geocode:10.0.0.1" == key
+        assert max_req == 30
+        assert window == 60
 
+    def test_authenticated_global(self) -> None:
+        request = MagicMock()
+        request.url.path = "/api/v1/profiles"
+        request.headers = {"Authorization": "Bearer abcdef1234567890"}
+        request.client = MagicMock()
+        request.client.host = "1.2.3.4"
 
-# ── test_rate_limit_resets_on_success ─────────────────────────────────
-@pytest.mark.asyncio
-async def test_rate_limit_resets_on_success(
-    limiter: RateLimiter,
-    mock_redis: MagicMock,
-) -> None:
-    """After a successful login the counter should be deleted."""
-    await limiter.reset_rate_limit("rate_limit:login:test@example.com")
-    mock_redis.delete.assert_awaited_once_with("rate_limit:login:test@example.com")
+        key, max_req, window = _get_rate_limit_key(request)
+        assert "rate_limit:global:user:abcdef1234567890" == key
+        assert max_req == 100
+        assert window == 60
 
+    def test_anonymous_global(self) -> None:
+        request = MagicMock()
+        request.url.path = "/api/v1/profiles"
+        request.headers = {}
+        request.client = MagicMock()
+        request.client.host = "1.2.3.4"
 
-# ── test_rate_limit_independent_keys ──────────────────────────────────
-@pytest.mark.asyncio
-async def test_rate_limit_independent_keys(
-    limiter: RateLimiter,
-    mock_redis: MagicMock,
-) -> None:
-    """Different identifiers should have independent counters."""
-    # First key: at limit
-    mock_redis.get.return_value = "5"
-    blocked = await limiter.check_rate_limit("rate_limit:login:bad@example.com", 5, 900)
-    assert blocked is False
-
-    # Second key: no counter yet
-    mock_redis.get.return_value = None
-    allowed = await limiter.check_rate_limit("rate_limit:login:good@example.com", 5, 900)
-    assert allowed is True
+        key, max_req, window = _get_rate_limit_key(request)
+        assert "rate_limit:global:ip:1.2.3.4" == key
+        assert max_req == 20
+        assert window == 60

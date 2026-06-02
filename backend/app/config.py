@@ -81,8 +81,11 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
 
     # ── Rate Limiting ────────────────────────────────────────────────
+    RATE_LIMIT_GLOBAL_PER_MINUTE: int = 100
+    RATE_LIMIT_ANONYMOUS_PER_MINUTE: int = 20
     RATE_LIMIT_LOGIN_MAX_ATTEMPTS: int = 5
     RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 900  # 15 minutes
+    RATE_LIMIT_GEOCODE_PER_MINUTE: int = 30
 
     # ── Logging ───────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"

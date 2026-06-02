@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from app.api.middleware import RequestLoggingMiddleware
+from app.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from app.api.v1 import api_router
 from app.config import settings
 from app.core.exceptions import (
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
 
     # ── middleware (order matters: last added = first executed) ──
     application.add_middleware(RequestLoggingMiddleware)
+    application.add_middleware(RateLimitMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.ALLOWED_ORIGINS,

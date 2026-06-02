@@ -10,7 +10,8 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 
 ## Критерии приёмки
 
-- [ ] Rate limiting: 100 req/min/user, 10 req/min auth
+- [x] Rate limiting: login 5 req/15min, geocode 30 req/min (частично)
+- [ ] Rate limiting: глобальный 100 req/min/user
 - [ ] WAF: блокировка SQLi, XSS, path traversal
 - [ ] Secrets: централизованный manager, ротация через CI
 - [ ] Observability: traces (Jaeger), metrics (Grafana), logs (Loki)
@@ -22,10 +23,31 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 
 | ID | Описание | Статус |
 |---|---|---|
-| S01 | [Rate limiting API](S01-rate-limiting-api.md) | ⬜ Не начато |
+| S01 | [Rate limiting API](S01-rate-limiting-api.md) | 🟡 Частично |
 | S02 | [WAF](S02-waf.md) | ⬜ Не начато |
 | S03 | [Secrets manager](S03-secrets-manager.md) | ⬜ Не начато |
-| S04 | [Observability](S04-observability.md) | ⬜ Не начато |
+| S04 | [Observability](S04-observability.md) | 🟡 Частично |
 | S05 | [Load testing](S05-load-testing.md) | ⬜ Не начато |
 | S06 | [K8s deploy](S06-k8s-deploy.md) | ⬜ Не начато |
 | S07 | [GitOps](S07-gitops.md) | ⬜ Не начато |
+
+## Текущее состояние
+
+### Что уже есть
+
+- **Rate limiting**: Redis-backed token bucket для login (5 req/15min) и geocode (30 req/min per IP)
+- **Observability**: OpenTelemetry instrumentation (FastAPI), structlog JSON logs
+- **Production guards**: SECRET_KEY не может быть "change-me" в production
+- **Security**: HttpOnly cookies, token blacklist, OAuth state validation
+- **CI/CD**: GitHub Actions (lint, test, build, deploy)
+
+### Что нужно для production
+
+- Глобальный rate limiting (все endpoints, не только auth)
+- WAF (nginx/Caddy rules или Cloudflare)
+- Secrets management (Vault, AWS SSM, или Yandex Lockbox)
+- Distributed tracing (Jaeger/Tempo)
+- Metrics (Prometheus + Grafana)
+- Load testing (k6, Locust)
+- K8s deployment (Yandex Managed Kubernetes)
+- GitOps (Argo CD)

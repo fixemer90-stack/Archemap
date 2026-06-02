@@ -1,26 +1,49 @@
-# Story E8.S02: WAF
+# Story E8.S02: WAF (Web Application Firewall)
 
-**Feature:** [Production & Scale]({FEATURE.md})
+**Feature:** [Production & Scale](FEATURE.md)
 **Статус:** ⬜ Не начато
 
 ## Контекст
 
-Production-ready: rate limiting, WAF, secrets, observability, K8s, GitOps.
+Защита от SQL injection, XSS, path traversal, и других атак на уровне reverse proxy.
 
 ## Что сделать
 
-_TODO: заполнить при начале работы._
+- Nginx/Caddy WAF rules
+- ModSecurity или Coraza WAF engine
+- OWASP Core Rule Set (CRS)
+- Блокировка подозрительных запросов
+- Логирование заблокированных запросов
 
 ## Затрагиваемые файлы
 
-_TODO: указать конкретные файлы._
+| Путь | Описание |
+|---|---|
+| `infra/nginx/waf.conf` | Nginx WAF configuration |
+| `infra/nginx/modsecurity.conf` | ModSecurity rules |
+| `docker-compose.yml` | Nginx service with WAF |
+
+## Правила
+
+| Тип атаки | Правило |
+|---|---|
+| SQL Injection | CRS 942100-942999 |
+| XSS | CRS 941100-941999 |
+| Path Traversal | CRS 930100-930999 |
+| Remote Code Execution | CRS 932100-932999 |
+| HTTP Protocol Violation | CRS 920100-920999 |
 
 ## Критерии приёмки
 
-- [ ] _TODO: заполнить критерии._
-- [ ] Тесты написаны и проходят
-- [ ] ruff, mypy, eslint — 0 ошибок
+- [ ] Nginx reverse proxy с ModSecurity
+- [ ] OWASP CRS подключены
+- [ ] Блокировка SQLi, XSS, path traversal
+- [ ] Whitelist для healthcheck endpoints
+- [ ] Логирование заблокированных запросов
+- [ ] Тесты (попытки атак → 403)
 
 ## Примечания
 
-_TODO: решения, trade-offs._
+- Для начала: Caddy с fail2ban (простой вариант)
+- Потом: Nginx + ModSecurity + CRS (полный WAF)
+- Cloudflare как альтернатива (managed WAF)

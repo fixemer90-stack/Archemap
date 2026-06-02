@@ -6,6 +6,10 @@ import { Briefcase, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 
+function authHeaders(token: string | null): HeadersInit | undefined {
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
 interface Profile {
   id: string;
   name: string;
@@ -21,10 +25,9 @@ export default function CareerProductPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
-      if (!token) return;
       try {
         const res = await fetch("/api/v1/profiles", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(token),
         });
         if (res.ok) {
           const data = await res.json();
@@ -46,7 +49,7 @@ export default function CareerProductPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...authHeaders(token),
         },
         body: JSON.stringify({
           profile_id: profileId,

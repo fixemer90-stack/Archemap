@@ -7,6 +7,10 @@ import { User, Heart, Baby, Briefcase, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 
+function authHeaders(token: string | null): HeadersInit | undefined {
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
 interface Profile {
   id: string;
   name: string;
@@ -56,7 +60,7 @@ const products = [
     icon: Briefcase,
     color: "#C28A2E",
     accent: "#D8B45A",
-    status: "coming_soon",
+    status: "available",
     href: "/products/career",
   },
 ];
@@ -72,10 +76,10 @@ export default function DashboardPage() {
   // Fetch user if not loaded (e.g. after OAuth redirect)
   useEffect(() => {
     async function fetchUser() {
-      if (!token || user) return;
+      if (user) return;
       try {
         const res = await fetch("/api/v1/users/me", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(token),
         });
         if (res.ok) {
           const data = await res.json();
@@ -90,10 +94,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
-      if (!token) return;
       try {
         const res = await fetch("/api/v1/profiles", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(token),
         });
         if (res.ok) {
           const data = await res.json();

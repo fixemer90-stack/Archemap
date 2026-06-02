@@ -6,6 +6,10 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 
+function authHeaders(token: string | null): HeadersInit | undefined {
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
 interface Profile {
   id: string;
   name: string;
@@ -20,10 +24,9 @@ export default function SelfProductPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
-      if (!token) return;
       try {
         const res = await fetch("/api/v1/profiles", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(token),
         });
         if (res.ok) {
           const data = await res.json();

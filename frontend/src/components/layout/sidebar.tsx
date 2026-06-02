@@ -56,7 +56,6 @@ const productItems = [
     icon: Briefcase,
     color: "#C28A2E",
     description: "Карьерные сценарии",
-    disabled: true,
   },
 ];
 

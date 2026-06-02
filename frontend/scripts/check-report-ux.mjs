@@ -3,6 +3,22 @@ import { resolve } from "node:path";
 
 const pagePath = resolve("src/app/(dashboard)/report/[profileId]/page.tsx");
 const page = readFileSync(pagePath, "utf8");
+const dashboardPage = readFileSync(
+  resolve("src/app/(dashboard)/dashboard/page.tsx"),
+  "utf8",
+);
+const selfProductPage = readFileSync(
+  resolve("src/app/(dashboard)/products/self/page.tsx"),
+  "utf8",
+);
+const careerProductPage = readFileSync(
+  resolve("src/app/(dashboard)/products/career/page.tsx"),
+  "utf8",
+);
+const sidebar = readFileSync(
+  resolve("src/components/layout/sidebar.tsx"),
+  "utf8",
+);
 
 const requiredFiles = [
   "src/components/report/report-header.tsx",
@@ -167,6 +183,32 @@ for (const label of [
   if (!scoreLabels.includes(label)) {
     throw new Error(`Missing score confidence label: ${label}`);
   }
+}
+
+if (allUiSource.includes("placeholder")) {
+  throw new Error("Report page must not render placeholder report data");
+}
+
+for (const [name, source] of [
+  ["dashboard", dashboardPage],
+  ["self product", selfProductPage],
+  ["career product", careerProductPage],
+]) {
+  if (source.includes("if (!token) return")) {
+    throw new Error(
+      `${name} page must fetch through HttpOnly cookie auth when JS token is absent after OAuth`,
+    );
+  }
+}
+
+if (/id: "career"[\s\S]*?status: "coming_soon"/.test(dashboardPage)) {
+  throw new Error(
+    "Career product must be available on dashboard, not coming_soon",
+  );
+}
+
+if (/title: "Career"[\s\S]*?disabled: true/.test(sidebar)) {
+  throw new Error("Career sidebar navigation must be enabled");
 }
 
 console.log("Report UX structure check passed");

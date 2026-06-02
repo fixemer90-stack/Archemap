@@ -96,7 +96,12 @@ settings = Settings()
 
 # ── Production guards ────────────────────────────────────────────────
 if settings.APP_ENV == "production":
-    if settings.SECRET_KEY == "change-me":
-        raise RuntimeError("SECRET_KEY must be set in production")
-    if settings.APP_DEBUG:
-        raise RuntimeError("APP_DEBUG must be False in production")
+    from app.core.secrets import validate_secrets
+
+    errors = validate_secrets("production")
+    if errors:
+        raise RuntimeError(f"Secrets validation failed: {'; '.join(errors)}")
+elif settings.APP_ENV == "staging":
+    from app.core.secrets import validate_secrets
+
+    validate_secrets("staging")

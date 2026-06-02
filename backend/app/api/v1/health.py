@@ -38,3 +38,22 @@ async def health_check(
         checks["status"] = "degraded"
 
     return checks
+
+
+@router.get("/health/secrets")
+async def secrets_status() -> dict[str, Any]:
+    """Check which secrets are configured (without revealing values).
+
+    Only available in development/staging.
+    """
+    from app.config import settings
+    from app.core.secrets import get_secret_status
+
+    if settings.APP_ENV == "production":
+        return {"error": "Not available in production"}
+
+    status = get_secret_status()
+    return {
+        "configured": {k: v for k, v in status.items() if v},
+        "missing": [k for k, v in status.items() if not v],
+    }

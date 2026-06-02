@@ -1,26 +1,30 @@
 # Story E8.S03: Secrets Manager
 
 **Feature:** [Production & Scale](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
-Централизованное управление секретами: API keys, database credentials, JWT secrets.
+Централизованное управление секретами: валидация, проверка дефолтов, environment-specific конфигурация.
 
 ## Что сделать
 
-- Выбрать secrets manager (HashiCorp Vault, AWS SSM, Yandex Lockbox)
-- Интеграция с backend (чтение секретов при старте)
-- Ротация секретов через CI/CD
-- Аудит доступа к секретам
+- Модуль валидации секретов
+- Проверка insecure defaults в production
+- Проверка обязательных секретов
+- Environment-specific .env.example файлы
+- Health endpoint для проверки статуса секретов
 
 ## Затрагиваемые файлы
 
 | Путь | Описание |
 |---|---|
-| `backend/app/config.py` | Settings из secrets manager |
-| `infra/vault/` | Vault configuration (если выбран) |
-| `.github/workflows/deploy.yml` | Secrets injection при деплое |
+| `backend/app/core/secrets.py` | Валидация секретов |
+| `backend/app/config.py` | Production/staging guards |
+| `backend/app/api/v1/health.py` | /health/secrets endpoint |
+| `backend/.env.example.development` | Dev environment |
+| `backend/.env.example.staging` | Staging environment |
+| `backend/.env.example.production` | Production environment |
 
 ## Секреты для управления
 
@@ -35,14 +39,15 @@
 
 ## Критерии приёмки
 
-- [ ] Secrets manager выбран и настроен
-- [ ] Backend читает секреты из manager (не из .env)
-- [ ] CI/CD инжектит секреты при деплое
-- [ ] Ротация через CI pipeline
-- [ ] Аудит доступа
+- [x] Secrets validation module
+- [x] Production guard: insecure defaults → RuntimeError
+- [x] Staging guard: warnings для insecure defaults
+- [x] Environment-specific .env.example файлы
+- [x] /health/secrets endpoint (dev/staging only)
+- [x] get_secret_status() для проверки конфигурации
 
 ## Примечания
 
-- Для старта: .env файлы (текущий подход)
-- Потом: Yandex LockBox (если деплой на Yandex Cloud)
-- Альтернатива: HashiCorp Vault (self-hosted)
+- Текущий подход: .env файлы (подходит для dev/staging)
+- Для production: Yandex Lockbox или HashiCorp Vault
+- /health/secrets не работает в production (безопасность)

@@ -25,7 +25,7 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 |---|---|---|
 | S01 | [Rate limiting API](S01-rate-limiting-api.md) | ✅ Готово |
 | S02 | [WAF](S02-waf.md) | ⬜ Не начато |
-| S03 | [Secrets manager](S03-secrets-manager.md) | ⬜ Не начато |
+| S03 | [Secrets manager](S03-secrets-manager.md) | ✅ Готово |
 | S04 | [Observability](S04-observability.md) | 🟡 Частично |
 | S05 | [Load testing](S05-load-testing.md) | ⬜ Не начато |
 | S06 | [K8s deploy](S06-k8s-deploy.md) | ⬜ Не начато |

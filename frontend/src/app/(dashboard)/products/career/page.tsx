@@ -58,7 +58,7 @@ export default function CareerProductPage() {
         }),
       });
       if (res.ok) {
-        const report = await res.json();
+        await res.json();
         window.location.href = `/report/${profileId}?product=career`;
       }
     } catch {

@@ -16,19 +16,6 @@ interface GeocodeResult {
   country: string;
 }
 
-interface RegisterData {
-  email: string;
-  password: string;
-  name: string;
-  birth_date: string;
-  birth_time: string;
-  birth_time_accuracy: "exact" | "approximate" | "unknown";
-  birth_place: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
-}
-
 // ── Steps ──────────────────────────────────────────────────────────
 const STEPS = [
   { id: 1, label: "Аккаунт" },

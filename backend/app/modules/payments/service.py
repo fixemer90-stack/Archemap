@@ -95,9 +95,7 @@ class PaymentsService:
 
     async def get_payment(self, payment_id: UUID, user_id: UUID) -> Payment:
         """Get payment by ID."""
-        result = await self.db.execute(
-            select(Payment).where(Payment.id == payment_id, Payment.user_id == user_id)
-        )
+        result = await self.db.execute(select(Payment).where(Payment.id == payment_id, Payment.user_id == user_id))
         payment = result.scalar_one_or_none()
         if payment is None:
             raise NotFoundError("Payment not found")

@@ -508,12 +508,15 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
         claims: data.generatedReport.report_data.claims ?? [],
         all_archetype_scores:
           data.generatedReport.report_data.all_archetype_scores ?? {},
-        quality_warning: data.generatedReport.report_data.quality_warning ?? null,
+        quality_warning:
+          data.generatedReport.report_data.quality_warning ?? null,
       }
     : undefined;
 
   return {
-    product: generatedReport ? data.generatedReport?.product ?? "self" : "self",
+    product: generatedReport
+      ? (data.generatedReport?.product ?? "self")
+      : "self",
     generated_report: generatedReport,
     chart,
     socionics,

@@ -6,8 +6,17 @@ import { Briefcase, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 
+const GENERATE_TIMEOUT_MS = 30_000;
+
 function authHeaders(token: string | null): HeadersInit | undefined {
   return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Не удалось построить Career-отчёт";
 }
 
 interface Profile {
@@ -22,6 +31,7 @@ export default function CareerProductPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -43,7 +53,20 @@ export default function CareerProductPage() {
   }, [token]);
 
   const generateReport = async (profileId: string) => {
+    if (!token) {
+      setError("Нужно войти в аккаунт, чтобы построить Career-отчёт.");
+      return;
+    }
+
     setGenerating(profileId);
+    setError(null);
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(
+      () => controller.abort(),
+      GENERATE_TIMEOUT_MS,
+    );
+
     try {
       const res = await fetch("/api/v1/reports/generate", {
         method: "POST",
@@ -56,14 +79,34 @@ export default function CareerProductPage() {
           product: "career",
           mode: "full",
         }),
+        signal: controller.signal,
       });
-      if (res.ok) {
-        await res.json();
-        window.location.href = `/report/${profileId}?product=career`;
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          detail?: string;
+        } | null;
+        throw new Error(data?.detail || `Backend вернул HTTP ${res.status}`);
       }
-    } catch {
-      // Silently fail
+
+      const report = (await res.json()) as {
+        product?: string;
+        status?: string;
+      };
+      if (report.product !== "career" || report.status !== "ready") {
+        throw new Error("Backend не вернул готовый Career-отчёт.");
+      }
+
+      window.location.assign(`/report/${profileId}?product=career`);
+    } catch (generateError) {
+      const message =
+        generateError instanceof DOMException &&
+        generateError.name === "AbortError"
+          ? "Генерация Career-отчёта не ответила за 30 секунд. Попробуйте ещё раз."
+          : getErrorMessage(generateError);
+      setError(message);
     } finally {
+      window.clearTimeout(timeoutId);
       setGenerating(null);
     }
   };
@@ -104,6 +147,12 @@ export default function CareerProductPage() {
       </div>
 
       {/* My reports */}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
       {profiles.length > 0 && (
         <div className="space-y-4">
           <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">

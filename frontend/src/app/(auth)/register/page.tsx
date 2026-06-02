@@ -49,6 +49,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setUser = useAuthStore((s) => s.setUser);
+  const isOAuthCompleteProfile = searchParams.get("step") === "2";
 
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
@@ -173,6 +174,10 @@ function RegisterForm() {
   };
 
   const validateStep2 = () => {
+    if (isOAuthCompleteProfile && !name.trim()) {
+      setError("Укажите имя");
+      return false;
+    }
     if (!birthDate) {
       setError("Укажите дату рождения");
       return false;
@@ -209,9 +214,8 @@ function RegisterForm() {
     setLoading(true);
 
     try {
-      const isOAuth = searchParams.get("step") === "2";
-
       const body = {
+        name: name.trim(),
         birth_date: birthDate,
         birth_time: birthTimeAccuracy === "unknown" ? "12:00" : birthTime,
         birth_time_accuracy: birthTimeAccuracy,
@@ -219,12 +223,12 @@ function RegisterForm() {
         latitude,
         longitude,
         timezone,
-        // Only include email/password/name for regular registration
-        ...(isOAuth ? {} : { email, password, name: name.trim() }),
+        // Only include email/password for regular registration
+        ...(isOAuthCompleteProfile ? {} : { email, password }),
       };
 
       // Use different endpoint for OAuth vs regular registration
-      const endpoint = isOAuth
+      const endpoint = isOAuthCompleteProfile
         ? "/api/v1/auth/complete-profile"
         : "/api/v1/auth/register";
 
@@ -233,7 +237,7 @@ function RegisterForm() {
       };
 
       // For OAuth, include the access token
-      if (isOAuth) {
+      if (isOAuthCompleteProfile) {
         const token = useAuthStore.getState().token;
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
@@ -259,7 +263,7 @@ function RegisterForm() {
       const result = await res.json();
 
       // For regular registration, store tokens and user
-      if (!isOAuth) {
+      if (!isOAuthCompleteProfile) {
         setTokens(result.access_token, result.refresh_token);
         setUser({
           id: result.user_id,
@@ -345,9 +349,32 @@ function RegisterForm() {
     </div>
   );
 
+  const renderOAuthNameField = () => (
+    <div className="space-y-2 rounded-lg border p-4">
+      <label htmlFor="oauthName" className="text-sm font-medium">
+        Имя
+      </label>
+      <Input
+        id="oauthName"
+        type="text"
+        placeholder="Как вас зовут?"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+        maxLength={120}
+      />
+      <p className="text-xs text-muted-foreground">
+        Используем имя в приветствии и персональном отчёте. Для регистрации
+        через Яндекс оно обязательно так же, как и в обычной регистрации.
+      </p>
+    </div>
+  );
+
   // ── Step 2: Birth Data ────────────────────────────────────────────
   const renderStep2 = () => (
     <div className="space-y-4">
+      {isOAuthCompleteProfile && renderOAuthNameField()}
+
       <div className="space-y-2">
         <label htmlFor="birthDate" className="text-sm font-medium">
           Дата рождения

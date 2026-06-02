@@ -15,6 +15,10 @@ const careerProductPage = readFileSync(
   resolve("src/app/(dashboard)/products/career/page.tsx"),
   "utf8",
 );
+const registerPage = readFileSync(
+  resolve("src/app/(auth)/register/page.tsx"),
+  "utf8",
+);
 const sidebar = readFileSync(
   resolve("src/components/layout/sidebar.tsx"),
   "utf8",
@@ -97,8 +101,8 @@ for (const term of [
   "Архетип",
   "Соционический тип",
   "Model A",
-  "Confidence",
-  "Evidence trail",
+  "Уверенность",
+  "Цепочка доказательств",
 ]) {
   if (!allUiSource.includes(`term="${term}"`)) {
     throw new Error(`Missing glossary help for term: ${term}`);
@@ -126,8 +130,8 @@ for (const marker of [
   "<NatalChart",
   "<SocionicsResult",
   "Model A",
-  "raw scores",
-  "Evidence trail",
+  "числовые показатели",
+  "Цепочка доказательств",
 ]) {
   const index = allUiSource.indexOf(marker);
   if (index === -1) {
@@ -209,6 +213,18 @@ if (/id: "career"[\s\S]*?status: "coming_soon"/.test(dashboardPage)) {
 
 if (/title: "Career"[\s\S]*?disabled: true/.test(sidebar)) {
   throw new Error("Career sidebar navigation must be enabled");
+}
+
+if (!registerPage.includes("name: name.trim()")) {
+  throw new Error(
+    "OAuth complete-profile registration must submit the required display name",
+  );
+}
+
+if (!registerPage.includes("renderOAuthNameField")) {
+  throw new Error(
+    "OAuth step 2 must render a required display-name field before birth data",
+  );
 }
 
 console.log("Report UX structure check passed");

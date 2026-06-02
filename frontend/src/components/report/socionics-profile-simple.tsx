@@ -39,8 +39,9 @@ export function SocionicsProfileSimple({
         </ul>
 
         <div className="mt-4 rounded-lg bg-muted p-4 text-sm leading-6">
-          <TermHelp term="Confidence" /> показан словами, без raw scores. Полная
-          типологическая механика скрыта в технических деталях ниже.
+          <TermHelp term="Уверенность" /> показан словами, без числовых
+          значений. Полная типологическая механика скрыта в технических деталях
+          ниже.
         </div>
       </div>
     </SectionCard>

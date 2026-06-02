@@ -23,7 +23,7 @@ const products = [
     id: "self",
     title: "Astrotype Self",
     description:
-      "Натальная карта, соционический тип, архетипический профиль с evidence trail.",
+      "Натальная карта, соционический тип, архетипический профиль с цепочкой доказательств.",
     icon: User,
     color: "#5B3FD6",
     accent: "#D8B45A",

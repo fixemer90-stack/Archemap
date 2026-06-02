@@ -27,8 +27,9 @@ class RegisterRequest(BaseModel):
 
 
 class CompleteProfileRequest(BaseModel):
-    """Complete OAuth profile with birth data (no email/password needed)."""
+    """Complete OAuth profile with name and birth data (no email/password needed)."""
 
+    name: str = Field(..., min_length=1, max_length=120, description="Display name")
     birth_date: date = Field(..., description="Date of birth (YYYY-MM-DD)")
     birth_time: time | None = Field(None, description="Time of birth (HH:MM). Null if unknown")
     birth_time_accuracy: str = Field(

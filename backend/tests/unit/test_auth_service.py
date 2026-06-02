@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.exceptions import AuthorizationError, ConflictError, ValidationError
+from app.modules.auth.schemas import CompleteProfileRequest
 from app.modules.auth.service import AuthService
 
 TEST_PASSWORD = "password123"
@@ -179,3 +180,37 @@ class TestLogin:
             pytest.raises(AuthorizationError, match="not verified"),
         ):
             await service.login("unverified@example.com", TEST_PASSWORD)
+
+
+class TestCompleteOAuthProfile:
+    async def test_complete_oauth_profile_requires_name(self, service: AuthService) -> None:
+        user = MagicMock()
+        user.is_active = True
+        service.get_user_by_id = AsyncMock(return_value=user)  # type: ignore[method-assign]
+
+        with pytest.raises(ValidationError, match="Name is required"):
+            await service.complete_oauth_profile(
+                user_id=MagicMock(),
+                name="   ",
+                birth_date=TEST_BIRTH_DATE,
+                birth_place=TEST_BIRTH_PLACE,
+                latitude=TEST_LATITUDE,
+                longitude=TEST_LONGITUDE,
+                timezone=TEST_TIMEZONE,
+                birth_time=TEST_BIRTH_TIME,
+                birth_time_accuracy=TEST_TIME_ACCURACY,
+            )
+
+    def test_complete_profile_schema_requires_name(self) -> None:
+        with pytest.raises(ValueError):
+            CompleteProfileRequest.model_validate(
+                {
+                    "birth_date": TEST_BIRTH_DATE.isoformat(),
+                    "birth_time": TEST_BIRTH_TIME.isoformat(),
+                    "birth_time_accuracy": TEST_TIME_ACCURACY,
+                    "birth_place": TEST_BIRTH_PLACE,
+                    "latitude": TEST_LATITUDE,
+                    "longitude": TEST_LONGITUDE,
+                    "timezone": TEST_TIMEZONE,
+                }
+            )

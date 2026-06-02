@@ -65,6 +65,7 @@ async def complete_oauth_profile(
     service = AuthService(db)
     result = await service.complete_oauth_profile(
         user_id=current_user_id,
+        name=body.name,
         birth_date=body.birth_date,
         birth_time=body.birth_time,
         birth_time_accuracy=body.birth_time_accuracy,

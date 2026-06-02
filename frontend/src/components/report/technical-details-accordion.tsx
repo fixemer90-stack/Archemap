@@ -12,9 +12,10 @@ export function TechnicalDetailsAccordion({ data }: { data: ReportViewModel }) {
       <div className="space-y-6 border-t p-6">
         <div className="rounded-lg bg-muted p-4 text-sm leading-6 text-muted-foreground">
           Здесь оставлены full chart wheel, таблицы, function radar,{" "}
-          <TermHelp term="Model A" />, raw scores, confidence и{" "}
-          <TermHelp term="Evidence trail" />. Это нужно для проверки расчёта, но
-          не должно мешать первому чтению.
+          <TermHelp term="Model A" />, числовые показатели,{" "}
+          <TermHelp term="Уверенность" /> и{" "}
+          <TermHelp term="Цепочка доказательств" />. Это нужно для проверки
+          расчёта, но не должно мешать первому чтению.
         </div>
 
         <section>
@@ -23,7 +24,7 @@ export function TechnicalDetailsAccordion({ data }: { data: ReportViewModel }) {
             Графики ниже — не отдельный диагноз, а визуальная проверка исходных
             факторов. Сначала читайте смысловые блоки выше, а сюда
             возвращайтесь, если хотите сверить планеты, дома, аспекты, function
-            strengths и raw scores.
+            strengths и числовые показатели.
           </p>
         </section>
 

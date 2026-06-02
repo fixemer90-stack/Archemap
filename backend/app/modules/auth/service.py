@@ -302,6 +302,7 @@ class AuthService:
     async def complete_oauth_profile(
         self,
         user_id: UUID,
+        name: str,
         birth_date: date,
         birth_place: str,
         latitude: float,
@@ -319,6 +320,10 @@ class AuthService:
         if not user.is_active:
             raise AuthorizationError("Account is deactivated")
 
+        display_name = name.strip()
+        if not display_name:
+            raise ValidationError("Name is required")
+
         # Check if profile already exists
         existing = await self.db.execute(select(PersonProfile).where(PersonProfile.user_id == user_id))
         if existing.scalar_one_or_none() is not None:
@@ -329,13 +334,14 @@ class AuthService:
             birth_time = time(12, 0)
             birth_time_accuracy = "unknown"
 
-        # Update user birth_date
+        # Update user name and birth_date
+        user.name = display_name
         user.birth_date = birth_date
 
         # Create PersonProfile
         profile = PersonProfile(
             user_id=user_id,
-            name=user.email.split("@")[0],
+            name=display_name,
             birth_date=birth_date,
             birth_time=birth_time,
             birth_time_accuracy=birth_time_accuracy,

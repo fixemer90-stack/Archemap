@@ -107,12 +107,62 @@ export interface ChartSnapshotApiResponse {
   created_at?: string;
 }
 
+export interface GeneratedReportConfidenceApiResponse {
+  value: number;
+  label: string;
+  reason_codes: string[];
+}
+
+export interface GeneratedReportClaimApiResponse {
+  claim_id: string;
+  section: string;
+  archetype: string;
+  score: number;
+  confidence: GeneratedReportConfidenceApiResponse;
+  message: string;
+}
+
+export interface GeneratedReportApiResponse {
+  id: string;
+  profile_id: string;
+  product: string;
+  version: number;
+  status: string;
+  mode: string;
+  archetype: string | null;
+  score: number | null;
+  confidence: number | null;
+  report_data: {
+    product?: string;
+    archetype?: {
+      primary?: string;
+      score?: number;
+      confidence?: GeneratedReportConfidenceApiResponse;
+    };
+    claims?: GeneratedReportClaimApiResponse[];
+    all_archetype_scores?: Record<string, number>;
+    quality_warning?: string | null;
+  };
+}
+
 export interface ReportApiData {
   profile: ProfileApiResponse;
   chartSnapshot: ChartSnapshotApiResponse;
+  requestedProduct?: string;
+  generatedReport?: GeneratedReportApiResponse;
 }
 
 export interface ReportViewModel {
+  product: string;
+  generated_report?: {
+    id: string;
+    archetype: string;
+    score: number;
+    confidence_label: string;
+    claims: GeneratedReportClaimApiResponse[];
+    all_archetype_scores: Record<string, number>;
+    quality_warning: string | null;
+  };
   chart: ReportChartData;
   socionics: ReportSocionicsData;
   profile: {
@@ -443,8 +493,28 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
   const archetypeName = buildArchetypeName(chart);
   const profileName = data.profile.name || "Ваш отчёт";
   const timeNotice = birthTimeWarning(data.profile.birth_time_accuracy);
+  const generatedArchetype = data.generatedReport?.report_data.archetype;
+  const generatedReport = data.generatedReport
+    ? {
+        id: data.generatedReport.id,
+        archetype:
+          generatedArchetype?.primary ??
+          data.generatedReport.archetype ??
+          "Карьерный профиль",
+        score: generatedArchetype?.score ?? data.generatedReport.score ?? 0,
+        confidence_label:
+          generatedArchetype?.confidence?.label ??
+          confidenceLabel(data.generatedReport.confidence ?? 0),
+        claims: data.generatedReport.report_data.claims ?? [],
+        all_archetype_scores:
+          data.generatedReport.report_data.all_archetype_scores ?? {},
+        quality_warning: data.generatedReport.report_data.quality_warning ?? null,
+      }
+    : undefined;
 
   return {
+    product: generatedReport ? data.generatedReport?.product ?? "self" : "self",
+    generated_report: generatedReport,
     chart,
     socionics,
     profile: {

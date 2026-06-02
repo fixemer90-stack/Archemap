@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: astrotype-prod
+
+patches:
+  - target:
+      kind: Ingress
+      name: astrotype-ingress
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: astrotype.ru
+      - op: replace
+        path: /spec/rules/1/host
+        value: www.astrotype.ru
+
+commonLabels:
+  app.kubernetes.io/environment: production

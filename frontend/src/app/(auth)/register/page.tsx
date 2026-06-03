@@ -34,8 +34,6 @@ export default function RegisterPage() {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setTokens = useAuthStore((s) => s.setTokens);
-  const setUser = useAuthStore((s) => s.setUser);
   const isOAuthCompleteProfile = searchParams.get("step") === "2";
 
   const [step, setStep] = useState(1);
@@ -249,18 +247,12 @@ function RegisterForm() {
 
       const result = await res.json();
 
-      // For regular registration, store tokens and user
       if (!isOAuthCompleteProfile) {
-        setTokens(result.access_token, result.refresh_token);
-        setUser({
-          id: result.user_id,
-          email: result.email,
-          name: result.name ?? name.trim(),
-          is_active: true,
-        });
+        router.push("/verify");
+        return;
       }
 
-      // Redirect to report page with chart data
+      // Redirect OAuth users with completed profiles to the report page.
       router.push(`/report/${result.profile_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Что-то пошло не так");

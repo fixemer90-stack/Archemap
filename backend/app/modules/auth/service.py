@@ -79,7 +79,7 @@ class AuthService:
         # Create PersonProfile with birth data for chart computation
         profile = PersonProfile(
             user_id=user.id,
-            name=email.split("@")[0],  # default name from email
+            name=name.strip() if name else email.split("@")[0],
             birth_date=birth_date,
             birth_time=birth_time,
             birth_time_accuracy=birth_time_accuracy,
@@ -122,20 +122,13 @@ class AuthService:
         token = await verification_service.create_verification(user.id)
         await verification_service.send_verification_email(email, token)
 
-        # Issue tokens
-        jwt_access, _ = create_access_token(subject=str(user.id))
-        jwt_refresh, _ = create_refresh_token(subject=str(user.id))
-
         return {
             "user_id": str(user.id),
             "email": email,
             "birth_date": birth_date.isoformat(),
             "profile_id": str(profile.id),
-            "access_token": jwt_access,
-            "refresh_token": jwt_refresh,
-            "token_type": "bearer",
-            "chart": chart_data,
-            "socionics": socionics_result,
+            "requires_verification": True,
+            "message": "Проверьте email и подтвердите аккаунт, чтобы войти и открыть отчёт.",
         }
 
     async def _compute_chart(
@@ -285,6 +278,9 @@ class AuthService:
 
         if not user.is_active:
             raise AuthorizationError("Account is deactivated")
+
+        if not user.is_verified:
+            raise AuthorizationError("Email not verified. Please check your inbox.")
 
         # Blacklist old refresh token
         if jti:

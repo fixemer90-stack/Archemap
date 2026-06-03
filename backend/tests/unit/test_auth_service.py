@@ -40,8 +40,6 @@ class TestRegister:
         with (
             patch("app.modules.auth.service.hash_password", return_value="hashed"),
             patch("app.modules.auth.service.VerificationService") as mock_verification_cls,
-            patch("app.modules.auth.service.create_access_token", return_value=("access", "jti1")),
-            patch("app.modules.auth.service.create_refresh_token", return_value=("refresh", "jti2")),
         ):
             mock_vs = mock_verification_cls.return_value
             mock_vs.create_verification = AsyncMock(return_value="token123")
@@ -60,9 +58,11 @@ class TestRegister:
             )
 
         assert result["email"] == "new@example.com"
-        assert result["access_token"] == "access"
-        assert "chart" in result
-        assert "socionics" in result
+        assert result["requires_verification"] is True
+        assert "access_token" not in result
+        assert "refresh_token" not in result
+        assert "chart" not in result
+        assert "socionics" not in result
 
     async def test_register_duplicate_email(self, service: AuthService, mock_db: AsyncMock) -> None:
         existing_user = MagicMock()
@@ -180,6 +180,25 @@ class TestLogin:
             pytest.raises(AuthorizationError, match="not verified"),
         ):
             await service.login("unverified@example.com", TEST_PASSWORD)
+
+    async def test_refresh_unverified_user_rejected(self, service: AuthService, mock_db: AsyncMock) -> None:
+        user = MagicMock()
+        user.id = "user-id"
+        user.is_active = True
+        user.is_verified = False
+        service.get_user_by_id = AsyncMock(return_value=user)  # type: ignore[method-assign]
+
+        refresh_payload = {
+            "sub": "00000000-0000-0000-0000-000000000001",
+            "jti": "jti",
+        }
+
+        with (
+            patch("app.modules.auth.service.decode_refresh_token", return_value=refresh_payload),
+            patch("app.modules.auth.service.is_token_blacklisted", new=AsyncMock(return_value=False)),
+            pytest.raises(AuthorizationError, match="not verified"),
+        ):
+            await service.refresh_tokens("refresh")
 
 
 class TestCompleteOAuthProfile:

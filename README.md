@@ -1,327 +1,321 @@
-# Astrotype
+<div align="center">
+  <h1>Astrotype</h1>
+  <p><strong>Премиальная платформа астрологических self‑reports, соционики и продуктовых вертикалей.</strong></p>
 
-Платформа астрологического анализа личности. Четыре продуктовых вертикали на едином вычислительном ядре.
+  <p>
+    <a href="https://github.com/fixemer90-stack/Archemap/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/fixemer90-stack/Archemap/ci.yml?branch=main&label=CI&style=for-the-badge"></a>
+    <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white">
+    <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white">
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white">
+    <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111111">
+    <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">
+  </p>
 
-| Вертикаль | Что получает пользователь | Статус |
-|---|---|---|
-| **Astrotype Self** | Narrative-first self-report: натальная карта, executive summary, архетипический и соционический профиль | ✅ |
-| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов | ⬜ |
-| **Astrotype Child** | Профиль ребёнка, рекомендации по воспитанию, семейная интерпретация | ⬜ |
-| **Astrotype Career** | Сильные стороны, подходящие роли, сценарии профессионального развития | ✅ |
-
-**Принцип:** вся интерпретация — rule-based на движке правил + шаблоны контента. Детерминированный расчёт и explainable scoring — первичны, narrative layer — вторичен. AI не используется для генерации отчётов в рантайме. Пользовательский отчёт показывает смысл и практические выводы до raw math/debug-графиков.
-
-**Документация:** [SPEC.md](docs/SPEC.md) · [ROADMAP.md](docs/ROADMAP.md) · [Design Code](docs/astrotype_design_code.md) · [C4 Architecture](docs/C4%20архитектура%20SaaS-платформы%20Astrotype.md) · [Business Logic Spec](docs/Спецификация%20бизнес-логики%20и%20доменных%20правил%20Astrotype.md)
-
----
-
-## Архитектура
-
-Модульный монолит с чёткими доменными границами. Contract-first подход через OpenAPI/AsyncAPI.
-
-Вычислительный конвейер:
-
-```
-input envelope → chart snapshot → normalized features → axes → archetypes/claims → confidence → report assembly → entitlement-aware rendering
-```
-
-Домены разделены на bounded contexts: Auth, Profiles, Chart Engine, Content/Rules, Reports, Billing, Payments, Notifications, Admin.
+  <p>
+    <a href="#-быстрый-старт">Быстрый старт</a> ·
+    <a href="#-продукт">Продукт</a> ·
+    <a href="#-архитектура">Архитектура</a> ·
+    <a href="#-документация">Документация</a>
+  </p>
+</div>
 
 ---
 
-## Стек технологий
+## ✨ Что такое Astrotype
+
+Astrotype — это full‑stack SaaS для персональных астрологических отчётов. Платформа соединяет натальную карту, rule‑based интерпретации, соционический движок и narrative‑first UX, чтобы пользователь получал не набор графиков, а понятную историю о себе.
+
+Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым, а пользовательский интерфейс показывает смысл до raw math, confidence и technical evidence.
+
+```text
+birth data → chart snapshot → normalized features → rules → claims + evidence → narrative report → PDF / UI
+```
+
+---
+
+## 🧭 Продукт
+
+| Вертикаль            | Что получает пользователь                                               | Статус                        |
+| -------------------- | ----------------------------------------------------------------------- | ----------------------------- |
+| **Astrotype Self**   | Натальная карта, личностный портрет, соционика, narrative‑first отчёт   | ✅ Реализовано                |
+| **Astrotype Career** | Сильные стороны, профессиональные роли, сценарии развития               | ✅ Реализовано                |
+| **Astrotype Love**   | Совместимость, паттерны отношений, триггеры конфликтов                  | 🧭 Запланировано              |
+| **Astrotype Child**  | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию     | 🧭 Запланировано              |
+| **LLM Narrative**    | Управляемый LLM‑слой для мягкого сторителлинга поверх rule‑based фактов | 🧪 Спроектировано, не runtime |
+
+### Почему это не «астро‑гадалка»
+
+- Расчёт строится от исходных данных рождения и астрологических объектов.
+- Каждый вывод имеет `evidence trail`: факты → правила → claim.
+- Соционический профиль считается отдельным engine‑слоем, а не придумывается текстом.
+- Технические детали доступны, но спрятаны в progressive disclosure.
+- Для будущего LLM‑слоя зафиксирован принцип: LLM пишет narrative JSON, но не рассчитывает карту и не добавляет факты.
+
+---
+
+## 🖼️ UX отчёта
+
+Self‑report проектируется как связное чтение, а не debug view.
+
+Порядок пользовательского восприятия:
+
+1. **Главное о вас** — 3–5 понятных выводов.
+2. **Астрологическая основа** — Солнце, Луна, Асцендент, стихии, модальности, аспекты.
+3. **Жизненные проявления** — мышление, эмоции, общение, отношения, фокус.
+4. **Сильные стороны и уязвимости** — мягко, без диагнозов и фатализма.
+5. **Близость и сексуальность** — как часть Self‑портрета.
+6. **Развитие** — практические рекомендации.
+7. **Career CTA** — работа затрагивается кратко, глубокий разбор вынесен в Career.
+8. **Технические детали** — chart wheel, Model A, raw scores, confidence, evidence.
+
+Подробнее:
+
+- [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)
+- [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)
+- [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)
+
+---
+
+## 🏗️ Архитектура
+
+Astrotype — модульный монолит с domain boundaries и contract‑first подходом.
+
+```mermaid
+graph LR
+    U[User] --> FE[Next.js Frontend]
+    FE --> API[FastAPI API]
+    API --> AUTH[Auth & Users]
+    API --> PROF[Profiles]
+    PROF --> CHART[Chart Engine]
+    CHART --> RULES[Rules Engine]
+    RULES --> REPORTS[Reports]
+    REPORTS --> PDF[PDF Worker]
+    REPORTS --> S3[MinIO / S3]
+    API --> PG[(PostgreSQL)]
+    API --> REDIS[(Redis)]
+    PDF --> REDIS
+```
 
 ### Backend
 
-| Компонент | Технология | Обоснование |
-|---|---|---|
-| **Фреймворк** | FastAPI (Python 3.12+) | Async-native, автоматическая OpenAPI-генерация, Pydantic-валидация |
-| **ORM** | SQLAlchemy 2.0 + Alembic | Зрелый async ORM, миграции схемы, repository pattern |
-| **База данных** | PostgreSQL 16 | ACID для ledger/подписок, JSONB, расширения (pgcrypto, uuid-ossp) |
-| **Кэш / Rate Limiting** | Redis 7 | Сессии, rate limiting, short-lived cache, pub/sub |
-| **Очередь задач** | Celery + Redis (broker) | Фоновые задачи: генерация PDF, reconciliation, email |
-| **HTTP-клиент** | httpx | Async HTTP для интеграций с PSP/OAuth-провайдерами |
-| **Валидация** | Pydantic v2 | Строгая типизация, автоматическая JSON Schema |
-| **Движок карт** | Swiss Ephemeris (swisseph) + Flatlib | Высокоточные эфемериды, построение астрологических объектов |
-| **Шаблоны** | Jinja2 | Рендеринг PDF-отчётов из шаблонов |
-| **PDF** | WeasyPrint | HTML → PDF конвертация |
-| **S3/MinIO** | boto3 | Хранилище PDF-артефактов, signed links |
-| **Email** | SMTP/SMTPS (smtplib) | Transactional email: верификация, уведомления |
+- **FastAPI** + Pydantic v2
+- **SQLAlchemy 2.0 async** + Alembic
+- **PostgreSQL 16** for users, profiles, reports, payments
+- **Redis 7** for cache, rate limiting, Celery broker
+- **Swiss Ephemeris / Flatlib** for chart calculations
+- **Rule engine** for explainable interpretations
+- **Celery** for PDF and long‑running tasks
+- **WeasyPrint + Jinja2** for PDF rendering
+- **MinIO / S3** for report artifacts
 
 ### Frontend
 
-| Компонент | Технология | Обоснование |
-|---|---|---|
-| **Фреймворк** | Next.js 15 (React 19) | SSR/SSG, App Router, Server Components, middleware для auth |
-| **UI-библиотека** | shadcn/ui + Tailwind CSS 4 | Кастомизируемые компоненты, дизайн-система, tree-shaking |
-| **State management** | Zustand + TanStack Query | Лёгкий, типизированный, без boilerplate |
-| **Формы** | React Hook Form + Zod | Валидация на клиенте, типобезопасность |
+- **Next.js 15** + React 19
+- **Tailwind CSS 4** + shadcn/ui‑style components
+- **TanStack Query** for server state
+- **Zustand** for client state
+- **React Hook Form + Zod** for forms
+- Narrative report components, glossary popovers and technical disclosure blocks
 
-### Инфраструктура
+### Integrations
 
-| Компонент | Технология | Обоснование |
-|---|---|---|
-| **Контейнеризация** | Docker + Docker Compose | Локальная разработка, воспроизводимые окружения |
-| **CI/CD** | GitHub Actions | Lint, тесты, contract validation, build, deploy |
-| **Миграции БД** | Alembic | Версионированная миграция схемы, downgrade support |
-| **Object Storage** | MinIO (локально), S3 (prod) | Хранилище PDF-артефактов |
-
-### Качество кода
-
-| Инструмент | Назначение |
-|---|---|
-| **ruff** | Линтинг и форматирование Python |
-| **mypy** | Статическая типизация Python |
-| **ESLint + Prettier** | Линтинг и форматирование TypeScript |
-| **pre-commit** | Автоматические проверки перед коммитом |
+- Email/password auth with verification
+- Yandex OAuth with HttpOnly cookies
+- Password reset and account linking
+- YooKassa / Yandex Pay payment architecture
+- GitHub Actions CI/CD
+- Docker Compose local environment
 
 ---
 
-## Структура проекта
+## ⚡ Быстрый старт
 
-```
-Astrotype/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                    # FastAPI entrypoint
-│   │   ├── config.py                  # Settings + production guards
-│   │   ├── dependencies.py            # Auth (JWT + HttpOnly cookie)
-│   │   ├── core/                      # Shared kernel
-│   │   ├── infrastructure/            # Database, Redis, email
-│   │   ├── modules/
-│   │   │   ├── auth/                  # Auth, OAuth, password reset, account linking
-│   │   │   ├── profiles/              # Birth profiles & geocoding
-│   │   │   ├── charts/                # Chart snapshots & socionics
-│   │   │   ├── rules/                 # Rule engine, loader, resolver
-│   │   │   ├── reports/               # Report generation, PDF, S3 storage
-│   │   │   └── users/                 # User management
-│   │   └── chart_engine/              # Swiss Ephemeris, features, socionics
-│   ├── rules/
-│   │   ├── self/                      # Self vertical rules (8 archetypes)
-│   │   └── career/                    # Career vertical rules (8 archetypes)
-│   ├── workers/                       # Celery tasks
-│   ├── alembic/                       # DB migrations
-│   ├── tests/
-│   └── pyproject.toml
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (auth)/                # Login, register, forgot-password, reset-password
-│   │   │   ├── (dashboard)/           # Dashboard, report, products
-│   │   │   └── page.tsx               # Landing page
-│   │   ├── components/
-│   │   │   ├── report/                # Narrative-first report UX blocks
-│   │   │   ├── glossary/              # TermHelp + GlossaryModal
-│   │   │   └── chart/                 # NatalChart, SocionicsResult
-│   │   ├── stores/                    # Zustand (auth, UI)
-│   │   └── lib/                       # API client, report view-model, glossary, utilities
-│   ├── scripts/check-report-ux.mjs    # Deterministic report UX regression
-│   └── public/
-├── docs/
-│   ├── SPEC.md
-│   ├── ROADMAP.md
-│   ├── astrotype_design_code.md
-│   ├── SRS/                           # Software Requirements Specs
-│   ├── features/                      # Feature stories (E1-E10)
-│   └── reviews/                       # Code reviews
-├── contracts/                         # OpenAPI, AsyncAPI specs
-├── docker-compose.yml                 # Postgres, Redis, MinIO, Backend, Frontend
-└── README.md
-```
+### Требования
 
----
+- Docker + Docker Compose
+- Node.js 20+ для локальной frontend‑разработки без контейнера
+- Python 3.12+ для локальной backend‑разработки без контейнера
 
-## Запуск локально
-
-### Предварительные требования
-
-- Docker + Docker Compose (WSL или Linux)
-- Python 3.12+ (для разработки backend без контейнера)
-- Node.js 20+ (для разработки frontend без контейнера)
-
-### Быстрый старт (Docker)
+### Запуск через Docker
 
 ```bash
-# 1. Клонировать
 git clone git@github.com:fixemer90-stack/Archemap.git
 cd Archemap
 
-# 2. Скопировать переменные окружения
-cp .env.example .env
-
-# 3. Запустить всё
-docker compose up -d
-# → frontend:  http://localhost:3000
-# → backend:   http://localhost:8000
-# → postgres:  localhost:5432
-# → redis:     localhost:6379
-# → minio:     http://localhost:9000 (console: :9001)
+docker compose up -d --build
 ```
 
-### Без Docker (разработка)
+Сервисы:
+
+| Сервис        | URL                                 |
+| ------------- | ----------------------------------- |
+| Frontend      | http://localhost:3000               |
+| Backend API   | http://localhost:8000               |
+| API health    | http://localhost:8000/api/v1/health |
+| MinIO Console | http://localhost:9001               |
+| PostgreSQL    | `localhost:5432`                    |
+| Redis         | `localhost:6379`                    |
+| OpenAPI       | http://localhost:8000/docs          |
+
+### Полезные Docker-команды
 
 ```bash
-# Backend
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-alembic upgrade head
-uvicorn app.main:app --reload   # → :8000
-
-# Frontend (в отдельном терминале)
-cd frontend
-npm install && npm run dev      # → :3000
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose up -d --build
+docker compose down
 ```
 
-### Основные команды
+Если локальная база сломалась из‑за старых volume/auth данных:
 
 ```bash
-# Docker
-docker compose up -d            # Запустить все сервисы
-docker compose down             # Остановить
-docker compose up -d --build    # Пересобрать после изменений
-docker compose logs -f backend  # Логи backend
-
-# Backend
-cd backend && source .venv/bin/activate
-ruff check .           # Линтинг
-ruff format .          # Форматирование
-mypy .                 # Статическая типизация
-pytest tests/unit -v   # Unit-тесты
-
-# Frontend
-cd frontend
-npm run dev            # Dev server
-npm run build          # Production build
-npx eslint .           # Линтинг
-npx prettier --check . # Форматирование
-npx tsc --noEmit       # Type check
-npm test               # Report UX regression
+docker compose down -v
+docker compose up -d --build
 ```
 
 ---
 
-## Self-report UX
+## 🧑‍💻 Разработка без Docker
 
-Страница `/report/[profileId]` реализована как понятный self-report, а не debug view. Информационная архитектура фиксирована feature E10: [docs/features/E10-report-ux-redesign/FEATURE.md](docs/features/E10-report-ux-redesign/FEATURE.md).
+### Backend
 
-Порядок чтения:
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 
-1. Header с данными рождения и quality warning для unknown/approximate birth time.
-2. Executive summary — главный смысл, сила, зона внимания и 3–5 выводов.
-3. Астрологическая основа: Солнце, Луна, Асцендент, стихии, модальности, ключевые аспекты.
-4. Жизненные проявления: мышление/решения, эмоции/восстановление, общение/отношения, работа/фокус.
-5. Практические рекомендации: что усилить, что беречь, что не делать через силу, weekly checklist.
-6. Архетипический профиль с light/shadow и confidence label.
-7. Соционический профиль с прикладными выводами без раннего Model A/raw scores.
-8. Collapsed technical details: full chart wheel, SocionicsResult, Model A, raw scores, confidence и evidence trail.
+alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-Обязательные термины отчёта имеют `TermHelp` + `GlossaryModal`: натальная карта, Солнце, Луна, Асцендент, дом, аспект, орб, стихия, модальность, архетип, соционический тип, Model A, confidence, evidence trail.
+### Frontend
 
-Regression check:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## ✅ Проверки качества
+
+### Backend
+
+```bash
+cd backend
+ruff check .
+ruff format --check .
+mypy .
+pytest tests/unit -v
+pytest tests/integration -v
+```
+
+### Frontend
+
+```bash
+cd frontend
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit
+npm test
+npm run build
+```
+
+### Report UX regression
 
 ```bash
 cd frontend
 npm test
 ```
 
-Скрипт проверяет порядок секций, glossary markers, отсутствие runtime placeholders и то, что `NatalChart`/`SocionicsResult` появляются только в advanced technical details.
+Скрипт проверяет narrative‑first порядок секций, glossary markers и то, что technical/debug components не появляются до advanced details.
 
 ---
 
-## Дизайн-система
+## 📁 Структура проекта
 
-Astrotype — не «астро-гадалка», а **премиальная навигационная система для самопознания**.
-
-| Роль | Название | HEX |
-|---|---|---:|
-| Основной фон | Deep Space | `#17142A` |
-| Главный акцент | Royal Violet | `#5B3FD6` |
-| Премиальный акцент | Soft Gold | `#D8B45A` |
-| Вторичный текст | Moon Silver | `#D8DCE8` |
-| Интерактивный | Mist Blue | `#8DA8FF` |
-| Основной текст | Warm Ivory | `#F6F1E8` |
-
-Акценты по вертикалям: Self (фиолетовый + золото), Love (розово-бордовый `#B84A6B`), Child (мягкий голубой `#6BAFBD`), Career (янтарный `#C28A2E`).
-
-**Реализация:** дизайн-код внедрён во все UI-компоненты. Cormorant Garamond для заголовков, Inter для интерфейса. Glass-карточки (`backdrop-blur`, `rgba(255,255,255,0.06)`). Primary button — pill shape с violet→gold градиентом. Radial gradient фон. Evidence blocks для explainability.
-
-Полный дизайн-код: [docs/astrotype_design_code.md](docs/astrotype_design_code.md)
-Документация реализации: [docs/SRS/SRS-FRONTEND.md](docs/SRS/SRS-FRONTEND.md) (секция 8)
-
----
-
-## API
-
-### Auth
-
-| Метод | Путь | Описание |
-|---|---|---|
-| `POST` | `/api/v1/auth/register` | Регистрация (name, email, password + birth data) |
-| `POST` | `/api/v1/auth/login` | Вход (email + password) |
-| `POST` | `/api/v1/auth/refresh` | Обновление токенов |
-| `POST` | `/api/v1/auth/logout` | Выход (token blacklist) |
-| `POST` | `/api/v1/auth/verify` | Подтверждение email |
-| `POST` | `/api/v1/auth/password-reset/request` | Запрос сброса пароля |
-| `POST` | `/api/v1/auth/password-reset/confirm` | Сброс пароля по токену |
-| `GET` | `/api/v1/auth/linked-providers` | Список привязанных OAuth |
-| `DELETE` | `/api/v1/auth/unlink/{provider}` | Отвязка OAuth-провайдера |
-| `GET` | `/api/v1/auth/oauth/yandex/start` | OAuth Yandex |
-| `GET` | `/api/v1/auth/oauth/yandex/callback` | OAuth callback |
-
-### Profiles & Charts
-
-| Метод | Путь | Описание |
-|---|---|---|
-| `POST` | `/api/v1/profiles` | Создать профиль |
-| `GET` | `/api/v1/profiles` | Список профилей |
-| `GET` | `/api/v1/profiles/geocode?q=` | Геокодинг (public, rate-limited) |
-| `POST` | `/api/v1/profiles/{id}/chart` | Вычислить/получить карту |
-
-### Rules & Reports
-
-| Метод | Путь | Описание |
-|---|---|---|
-| `POST` | `/api/v1/rules/interpret` | Интерпретация карты |
-| `GET` | `/api/v1/rules/rulesets` | Список правил |
-| `POST` | `/api/v1/reports/generate` | Генерация отчёта (self/career) |
-| `GET` | `/api/v1/reports` | Список отчётов (pagination) |
-| `GET` | `/api/v1/reports/{id}` | Детали отчёта |
-| `GET` | `/api/v1/reports/{id}/pdf` | Скачать PDF (signed link) |
-| `GET` | `/api/v1/reports/{id}/versions` | История версий |
+```text
+Astrotype/
+├── backend/
+│   ├── app/
+│   │   ├── api/                 # Versioned API routers
+│   │   ├── chart_engine/        # Ephemeris, houses, aspects, socionics
+│   │   ├── core/                # Shared kernel: settings, security, base models
+│   │   ├── infrastructure/      # DB, Redis, email, storage, geocoding
+│   │   └── modules/             # Auth, profiles, charts, reports, users, payments
+│   ├── alembic/                 # Database migrations
+│   ├── rules/                   # Rule sets for product verticals
+│   │   ├── self/
+│   │   └── career/
+│   ├── tests/                   # Unit and integration tests
+│   └── workers/                 # Celery tasks
+├── frontend/
+│   ├── src/
+│   │   ├── app/                 # Next.js App Router
+│   │   ├── components/          # UI, report, glossary, chart components
+│   │   ├── hooks/               # React Query hooks
+│   │   ├── lib/                 # API client, report view models, labels
+│   │   └── stores/              # Zustand stores
+│   └── scripts/                 # UX regression checks
+├── contracts/                   # OpenAPI and AsyncAPI contracts
+├── docs/
+│   ├── design/                  # UX and narrative architecture
+│   ├── features/                # Epic/story documentation
+│   ├── SRS/                     # Software Requirements Specs
+│   └── reviews/                 # Review findings and remediation docs
+├── docker-compose.yml
+└── README.md
+```
 
 ---
 
-## Статус
+## 🔐 Безопасность
 
-| Epic | Название | Статус |
-|---|---|---|
-| E1 | Foundation | ✅ Готово |
-| E2 | Identity (Auth, OAuth, Account Linking) | ✅ Готово |
-| E3 | Chart Engine (Swiss Ephemeris, Socionics) | ✅ Готово |
-| E4 | Rules & Content (Rule Engine, Evidence) | ✅ Готово |
-| E5 | Products & Reports (Self, Career, PDF, S3) | ✅ Готово (S02 Love, S03 Child — backlog) |
-| E10 | Report UX Redesign (Narrative-first Self Report) | ✅ Готово |
-| E6 | Billing & Subscriptions | ⬜ Не начато |
-| E7 | Notifications & Admin | ⬜ Не начато |
-| E8 | Production & Scale | ⬜ Не начато |
-
-Дорожная карта: [docs/ROADMAP.md](docs/ROADMAP.md)
+- JWT хранится в HttpOnly cookies.
+- OAuth callback не передаёт токены через URL.
+- Refresh tokens поддерживают blacklist.
+- Login и geocode endpoints защищены rate limiting.
+- Production guard запрещает небезопасные default secrets.
+- OAuth access tokens не хранятся в базе.
+- Account linking не позволяет отвязать единственный способ входа.
 
 ---
 
-## Безопасность
+## 📚 Документация
 
-- JWT в HttpOnly Secure cookies (не URL, не localStorage)
-- OAuth callback выставляет cookies, не передаёт токены в URL
-- Refresh token blacklist перед обновлением
-- Production guard: `SECRET_KEY` не может быть `change-me`
-- Rate limiting на login и geocode endpoints
-- OAuth access_token не хранится в БД
-- Account linking: нельзя отвязать единственный способ входа
+| Документ                                                                                               | Назначение                      |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| [`docs/SPEC.md`](docs/SPEC.md)                                                                         | Полная спецификация продукта    |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                   | Дорожная карта                  |
+| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                       | Дизайн‑код и визуальная система |
+| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                               | Narrative‑first UX отчёта       |
+| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                   | Сторителлинг Self‑отчёта        |
+| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md) | Архитектура LLM narrative layer |
+| [`docs/features/`](docs/features/)                                                                     | Feature/story документация      |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                     | REST API contract               |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                   | Async/event contract            |
 
 ---
 
-## Лицензия
+## 🚢 CI/CD
+
+GitHub Actions запускает:
+
+- backend lint, format check, mypy;
+- frontend ESLint, Prettier, TypeScript;
+- backend unit/integration tests;
+- frontend report UX regression and build;
+- OpenAPI / AsyncAPI validation;
+- Python and npm security audit;
+- Docker image build.
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+---
+
+## 📄 Лицензия
 
 Proprietary — все права защищены.

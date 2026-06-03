@@ -180,6 +180,11 @@ EXTRO_TO_INTRO: dict[str, str] = {
     "Ne": "Ni",
 }
 
+FIRE_SIGNS = {"Aries", "Leo", "Sagittarius"}
+ETHIC_STELLIUM_PLANETS = {"Mercury", "Venus", "Jupiter"}
+ETHIC_STELLIUM_HOUSES = {5, 8, 9}
+ETHIC_MOON_TRINE_PLANETS = {"Mercury", "Venus", "Jupiter"}
+
 # ── Global layer weights ──
 # House and planet dominate; element is secondary.
 W_PLANET = 0.20
@@ -430,6 +435,63 @@ def _model_a_fit(type_code: str, strengths: dict[str, float]) -> float:
     return max(0.0, min(raw, 1.0))
 
 
+def _angular_distance(a: float, b: float) -> float:
+    """Smallest zodiac distance in degrees."""
+    diff = abs((a - b) % 360.0)
+    return min(diff, 360.0 - diff)
+
+
+def _apply_ethic_intuitive_cluster_boosts(strengths: dict[str, float], chart: object) -> None:
+    """Boost Fe/Ni for tight fire ethical-intellectual clusters.
+
+    A Mercury-Venus-Jupiter fire stellium in expressive/deep houses, reinforced
+    by Moon trines, behaves as ethical-intuitive evidence rather than as plain
+    earth/house Si. This is deliberately pattern-based and chart-derived, not a
+    type prior: it only fires when the actual planets/aspects form the cluster.
+    """
+    if not hasattr(chart, "planets"):
+        return
+
+    planet_map = {planet.name: planet for planet in chart.planets}
+    stellium_planets = [
+        planet_map[name]
+        for name in ETHIC_STELLIUM_PLANETS
+        if name in planet_map and planet_map[name].sign in FIRE_SIGNS
+    ]
+
+    if len(stellium_planets) == len(ETHIC_STELLIUM_PLANETS):
+        same_sign = len({planet.sign for planet in stellium_planets}) == 1
+        in_key_houses = sum(1 for planet in stellium_planets if planet.house in ETHIC_STELLIUM_HOUSES)
+        max_span = max(
+            _angular_distance(a.longitude, b.longitude)
+            for index, a in enumerate(stellium_planets)
+            for b in stellium_planets[index + 1 :]
+        )
+        if same_sign and in_key_houses >= 2 and max_span <= 8.0:
+            tightness = 1.0 - max_span / 8.0
+            house_factor = in_key_houses / len(ETHIC_STELLIUM_PLANETS)
+            factor = 0.65 + tightness * 0.25 + house_factor * 0.10
+            strengths["Fe"] += 0.54 * factor
+            strengths["Ni"] += 0.06 * factor
+            strengths["Fi"] += 0.08 * factor
+
+    if not hasattr(chart, "aspects"):
+        return
+
+    for aspect in chart.aspects:
+        pair = {aspect.planet_a, aspect.planet_b}
+        if (
+            aspect.aspect_type == "trine"
+            and "Moon" in pair
+            and pair.intersection(ETHIC_MOON_TRINE_PLANETS)
+            and aspect.orb <= 4.0
+        ):
+            factor = 1.0 - aspect.orb / 4.0
+            strengths["Fe"] += 0.18 * factor
+            strengths["Ni"] += 0.02 * factor
+            strengths["Fi"] += 0.04 * factor
+
+
 def _compute_function_strengths(chart: object) -> dict[str, float]:
     """Compute function strengths from chart data."""
     strengths: dict[str, float] = {f: 0.0 for f in ["Se", "Si", "Ne", "Ni", "Fe", "Fi", "Te", "Ti"]}
@@ -497,6 +559,10 @@ def _compute_function_strengths(chart: object) -> dict[str, float]:
 
             for func, weight in relation.items():
                 strengths[func] += W_RELATION * weight * orb_factor
+
+    # Ethical-intuitive clusters are evaluated before normalization so their
+    # evidence competes with ordinary planet/house/aspect evidence.
+    _apply_ethic_intuitive_cluster_boosts(strengths, chart)
 
     # Normalize to 0-1
     max_val = max(strengths.values()) if strengths else 1.0

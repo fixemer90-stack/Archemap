@@ -20,7 +20,7 @@ from app.modules.profiles.models import PersonProfile
 
 logger = structlog.get_logger()
 
-ENGINE_VERSION = "0.1.2"
+ENGINE_VERSION = "0.1.3"
 
 
 class ChartService:

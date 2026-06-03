@@ -68,3 +68,26 @@ def test_reference_profile_is_not_overclassified_as_lie_from_retrograde_saturn_t
     assert strengths["Ni"] < 0.85
     assert results[0].type_code == "LSI"
     assert lsi_score > lie_score
+
+
+def test_leo_eighth_house_ethic_intuitive_profile_classifies_as_eie() -> None:
+    chart = build_chart(
+        birth_datetime=datetime(1991, 8, 29, 11, 30, tzinfo=UTC),
+        latitude=55.7505412,
+        longitude=37.6174782,
+        timezone_name="Europe/Moscow",
+    )
+
+    strengths = _compute_function_strengths(chart)
+    results = evaluate_socionics(extract_features(chart), chart)
+    top_codes = [result.type_code for result in results[:4]]
+    eie_score = next(r.score for r in results if r.type_code == "EIE")
+    sli_score = next(r.score for r in results if r.type_code == "SLI")
+    lsi_score = next(r.score for r in results if r.type_code == "LSI")
+
+    assert strengths["Fe"] > strengths["Si"]
+    assert strengths["Ni"] > strengths["Te"]
+    assert results[0].type_code == "EIE"
+    assert eie_score > sli_score
+    assert eie_score > lsi_score
+    assert "SLI" not in top_codes

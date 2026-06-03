@@ -120,9 +120,7 @@ function VerifyContent() {
                     disabled={resendLoading || !email}
                     className="w-full"
                   >
-                    {resendLoading
-                      ? "Отправка..."
-                      : "Отправить новую ссылку"}
+                    {resendLoading ? "Отправка..." : "Отправить новую ссылку"}
                   </Button>
                 </div>
                 {resendSuccess && (
@@ -160,9 +158,7 @@ function VerifyContent() {
                   variant="outline"
                   className="w-full"
                 >
-                  {resendLoading
-                    ? "Отправка..."
-                    : "Отправить письмо повторно"}
+                  {resendLoading ? "Отправка..." : "Отправить письмо повторно"}
                 </Button>
               </div>
               {resendSuccess && (

@@ -49,7 +49,7 @@ export default function SettingsPage() {
         throw new Error(
           typeof data.detail === "string"
             ? data.detail
-            : "Ошибка обновления профиля"
+            : "Ошибка обновления профиля",
         );
       }
 
@@ -58,7 +58,7 @@ export default function SettingsPage() {
       setProfileSuccess(true);
     } catch (err) {
       setProfileError(
-        err instanceof Error ? err.message : "Что-то пошло не так"
+        err instanceof Error ? err.message : "Что-то пошло не так",
       );
     } finally {
       setProfileLoading(false);
@@ -99,9 +99,7 @@ export default function SettingsPage() {
       if (!res.ok) {
         const data = await res.json();
         throw new Error(
-          typeof data.detail === "string"
-            ? data.detail
-            : "Ошибка смены пароля"
+          typeof data.detail === "string" ? data.detail : "Ошибка смены пароля",
         );
       }
 
@@ -111,7 +109,7 @@ export default function SettingsPage() {
       setConfirmPassword("");
     } catch (err) {
       setPasswordError(
-        err instanceof Error ? err.message : "Что-то пошло не так"
+        err instanceof Error ? err.message : "Что-то пошло не так",
       );
     } finally {
       setPasswordLoading(false);
@@ -157,11 +155,7 @@ export default function SettingsPage() {
             <label className="text-sm font-medium text-muted-foreground">
               Email
             </label>
-            <Input
-              value={user?.email || ""}
-              disabled
-              className="opacity-50"
-            />
+            <Input value={user?.email || ""} disabled className="opacity-50" />
             <p className="text-xs text-muted-foreground">
               Email нельзя изменить
             </p>

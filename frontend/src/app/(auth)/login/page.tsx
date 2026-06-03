@@ -41,7 +41,10 @@ export default function LoginPage() {
             : "Ошибка входа";
 
         // Show resend button if email not verified
-        if (errorMsg.includes("not verified") || errorMsg.includes("не подтверждён")) {
+        if (
+          errorMsg.includes("not verified") ||
+          errorMsg.includes("не подтверждён")
+        ) {
           setShowResend(true);
         }
 
@@ -73,7 +76,7 @@ export default function LoginPage() {
     setResendSuccess(false);
 
     try {
-      const res = await fetch("/api/v1/auth/resend-verification", {
+      await fetch("/api/v1/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -93,9 +96,7 @@ export default function LoginPage() {
     <div className="w-full max-w-sm space-y-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold">Вход</h1>
-        <p className="text-sm text-muted-foreground">
-          Войдите в свой аккаунт
-        </p>
+        <p className="text-sm text-muted-foreground">Войдите в свой аккаунт</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,9 +112,7 @@ export default function LoginPage() {
                   onClick={handleResendVerification}
                   disabled={resendLoading}
                 >
-                  {resendLoading
-                    ? "Отправка..."
-                    : "Отправить письмо повторно"}
+                  {resendLoading ? "Отправка..." : "Отправить письмо повторно"}
                 </Button>
               </div>
             )}
@@ -173,9 +172,7 @@ export default function LoginPage() {
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Или
-          </span>
+          <span className="bg-background px-2 text-muted-foreground">Или</span>
         </div>
       </div>
 

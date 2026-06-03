@@ -7,6 +7,8 @@
 
 - `docs/design/self-report-storytelling.md`
 - `docs/design/report-ux-redesign.md`
+- `docs/features/E11-llm-report-narrative/FEATURE.md`
+- `docs/SRS/SRS-E11-llm-report-narrative.md`
 
 ## 1. Главная идея
 
@@ -755,6 +757,8 @@ Retry для:
 ## 21. MVP-план внедрения
 
 ### Этап 1. Документация и контракт
+
+Development docs для реализации разбиты на атомарные stories в `docs/features/E11-llm-report-narrative/`; SRS-контракт находится в `docs/SRS/SRS-E11-llm-report-narrative.md`.
 
 - Зафиксировать `SelfNarrative` schema.
 - Зафиксировать `NarrativeInput`.

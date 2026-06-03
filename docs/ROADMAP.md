@@ -30,6 +30,9 @@
 | E6 | Billing & Subscriptions | ⬜ Не начато |
 | E7 | Notifications & Admin | ⬜ Не начато |
 | E8 | Production & Scale | ⬜ Не начато |
+| E9 | Frontend Self Report | ✅ Готово |
+| E10 | Report UX Redesign | ✅ Готово |
+| E11 | LLM Report Narrative | ⬜ Не начато |
 
 ---
 
@@ -167,6 +170,24 @@
 
 ---
 
+## Epic 11: LLM Report Narrative
+
+**Статус:** ⬜ Не начато
+**Оценка:** 2–3 недели
+**Зависимости:** E3, E4, E5, E10
+
+| # | Фича | Описание | Документы | Критерии приёмки |
+|---|------|----------|-----------|------------------|
+| 11.1 | Narrative contracts | `NarrativeInput` и `SelfNarrative` schemas | `docs/features/E11-llm-report-narrative/S01-narrative-contracts.md` | JSON schema валидируется, Markdown output запрещён |
+| 11.2 | Storage/versioning | `report_narratives` отдельно от deterministic report | `docs/features/E11-llm-report-narrative/S02-report-narratives-storage.md` | Хранятся prompt_version, model, input_hash, status |
+| 11.3 | LLM infrastructure | Provider abstraction, mock provider, settings | `docs/features/E11-llm-report-narrative/S03-llm-provider-abstraction.md` | Tests не ходят в сеть, mock работает без API key |
+| 11.4 | Prompt + validation | `self_story_v1`, evidence discipline, validators | `docs/features/E11-llm-report-narrative/S04-prompt-contract-self-story-v1.md` | Нет hallucinated facts, career deep dive и unsafe language |
+| 11.5 | Async/API/UI/PDF | Celery task, statuses, regenerate, frontend fallback, PDF from JSON | `docs/features/E11-llm-report-narrative/FEATURE.md` | Нет endless spinner, deterministic fallback доступен |
+
+Полный контракт: `docs/SRS/SRS-E11-llm-report-narrative.md`.
+
+---
+
 ## Зависимости между эпиками
 
 ```
@@ -177,7 +198,8 @@ E1 (Foundation) ✅
                     └─► E5 (Products & Reports)
                           ├─► E6 (Billing & Subscriptions)
                           │     └─► E7 (Notifications & Admin) ──► E8 (Production & Scale)
-                          └─► E7 (Notifications & Admin)
+                          ├─► E7 (Notifications & Admin)
+                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative)
 ```
 
 **Критический путь:** E2 → E3 → E4 → E5 → E6 → E7 → E8

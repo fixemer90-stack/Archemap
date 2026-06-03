@@ -410,6 +410,7 @@ Feature directories live under `docs/features/`:
 - `E8-production-scale`
 - `E9-frontend-self-report`
 - `E10-report-ux-redesign`
+- `E11-llm-report-narrative`
 
 Each feature directory uses `FEATURE.md` plus story docs `Sxx-*.md`.
 

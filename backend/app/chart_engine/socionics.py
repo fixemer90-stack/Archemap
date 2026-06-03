@@ -169,15 +169,15 @@ PLANET_RELATION_FUNCTION: dict[tuple[str, str], dict[str, float]] = {
 }
 
 # ── Retrograde shift ──
+# Retrograde motion internalizes extroverted function signals.
+# It must not invert introverted functions into extroverted ones: a retrograde
+# Saturn in Capricorn should strengthen Ti/Si-style internal structure, not
+# spill that evidence into Te/Se and overclassify the chart as Te-base.
 EXTRO_TO_INTRO: dict[str, str] = {
     "Te": "Ti",
-    "Ti": "Te",
     "Se": "Si",
-    "Si": "Se",
     "Fe": "Fi",
-    "Fi": "Fe",
     "Ne": "Ni",
-    "Ni": "Ne",
 }
 
 # ── Global layer weights ──

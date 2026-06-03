@@ -1,3 +1,8 @@
+import {
+  formatAspectRu,
+  formatPlanetPlacementRu,
+  signNameRu,
+} from "@/lib/astrology/labels";
 import { confidenceLabel } from "@/lib/report/score-labels";
 
 export interface ReportPlanet {
@@ -339,8 +344,11 @@ function formatPlanet(
   if (!planet) {
     return fallback;
   }
-  const house = planet.house ? `, ${planet.house} дом` : "";
-  return `${planet.sign} ${planet.degree.toFixed(1)}°${house}`;
+  return formatPlanetPlacementRu({
+    sign: planet.sign,
+    degree: planet.degree,
+    house: planet.house,
+  });
 }
 
 function signElement(sign: string | undefined): string | undefined {
@@ -393,8 +401,13 @@ function buildKeyAspects(chart: ReportChartData): string[] {
     .sort((a, b) => a.orb - b.orb)
     .slice(0, 4)
     .map((aspect) => {
-      const direction = aspect.is_applying ? "сходящийся" : "расходящийся";
-      return `${aspect.planet_a} — ${aspect.planet_b}: ${aspect.aspect_type}, орб ${aspect.orb.toFixed(2)}° (${direction}).`;
+      return formatAspectRu({
+        planetA: aspect.planet_a,
+        planetB: aspect.planet_b,
+        aspectType: aspect.aspect_type,
+        orb: aspect.orb,
+        isApplying: aspect.is_applying,
+      });
     });
 
   return keyAspects.length > 0
@@ -512,6 +525,9 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
           data.generatedReport.report_data.quality_warning ?? null,
       }
     : undefined;
+  const sunSign = signNameRu(sun?.sign);
+  const moonSign = signNameRu(moon?.sign);
+  const ascendantSign = signNameRu(ascendant?.sign);
 
   return {
     product: generatedReport
@@ -531,10 +547,10 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
     },
     summary: {
       main_theme: sun
-        ? `Главная тема карты — проявлять ${sun.sign} через реальные решения, выборы и личную инициативу.`
+        ? `Главная тема карты — проявлять ${sunSign} через реальные решения, выборы и личную инициативу.`
         : "Главная тема карты читается осторожно: в snapshot нет Солнца.",
       strength: moon
-        ? `Сильная опора — понимать свой эмоциональный ритм: Луна в ${moon.sign} показывает, как возвращаться в ресурс.`
+        ? `Сильная опора — понимать свой эмоциональный ритм: Луна в ${moonSign} показывает, как возвращаться в ресурс.`
         : "Сильная опора пока описана общо: в snapshot нет Луны.",
       attention:
         data.profile.birth_time_accuracy === "exact"
@@ -543,10 +559,10 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       bullets: [
         `Отчёт построен по реальным данным профиля «${profileName}» и текущему snapshot карты.`,
         sun
-          ? `Солнце в ${sun.sign} задаёт главный фокус интерпретации.`
+          ? `Солнце в ${sunSign} задаёт главный фокус интерпретации.`
           : "Солнце не найдено — нужен повторный расчёт карты.",
         moon
-          ? `Луна в ${moon.sign} помогает описать эмоции и восстановление.`
+          ? `Луна в ${moonSign} помогает описать эмоции и восстановление.`
           : "Луна не найдена — эмоциональный блок читается осторожно.",
         `Качество времени рождения: ${qualityLabel(data.profile.birth_time_accuracy)}.`,
       ],
@@ -567,7 +583,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
         ? "Описывает восстановление, эмоциональные реакции и базовую потребность в безопасности."
         : "Без Луны эмоциональные выводы остаются ограниченными.",
       ascendant: ascendant
-        ? `${ascendant.sign} ${ascendant.longitude.toFixed(1)}°`
+        ? `${ascendantSign} ${ascendant.longitude.toFixed(1)}°`
         : "Асцендент недоступен",
       ascendant_meaning: ascendant
         ? `Показывает стиль входа в ситуации и самопрезентации. ${timeNotice}`
@@ -581,7 +597,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       {
         title: "Мышление и решения",
         manifestation: sun
-          ? `Солнце в ${sun.sign} подсказывает, что решения лучше принимать через ясную личную позицию и проверку “зачем мне это”.`
+          ? `Солнце в ${sunSign} подсказывает, что решения лучше принимать через ясную личную позицию и проверку “зачем мне это”.`
           : "Главный стиль решений описан осторожно, потому что в snapshot нет Солнца.",
         support:
           "Перед важным выбором формулировать критерии успеха и отделять свои цели от ожиданий окружения.",
@@ -590,7 +606,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       {
         title: "Эмоции и восстановление",
         manifestation: moon
-          ? `Луна в ${moon.sign} показывает, что ресурс возвращается через подходящий эмоциональный ритм и безопасную среду.`
+          ? `Луна в ${moonSign} показывает, что ресурс возвращается через подходящий эмоциональный ритм и безопасную среду.`
           : "Эмоциональный блок ограничен: в snapshot нет Луны.",
         support:
           "Планировать восстановление заранее, а не ждать полного истощения.",

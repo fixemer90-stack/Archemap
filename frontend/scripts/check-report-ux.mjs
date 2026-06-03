@@ -38,6 +38,7 @@ const requiredFiles = [
   "src/lib/glossary/report-glossary.ts",
   "src/lib/report/score-labels.ts",
   "src/lib/report/view-model.ts",
+  "src/lib/astrology/labels.ts",
 ];
 
 for (const file of requiredFiles) {
@@ -186,6 +187,61 @@ for (const label of [
 ]) {
   if (!scoreLabels.includes(label)) {
     throw new Error(`Missing score confidence label: ${label}`);
+  }
+}
+
+const astrologyLabels = readFileSync(
+  resolve("src/lib/astrology/labels.ts"),
+  "utf8",
+);
+for (const requiredExport of [
+  "export function planetNameRu",
+  "export function signNameRu",
+  "export function aspectTypeRu",
+  "export function formatPlanetPlacementRu",
+  "export function formatAspectRu",
+]) {
+  if (!astrologyLabels.includes(requiredExport)) {
+    throw new Error(`Missing astrology i18n helper export: ${requiredExport}`);
+  }
+}
+for (const russianLabel of [
+  "Солнце",
+  "Луна",
+  "Меркурий",
+  "Венера",
+  "Марс",
+  "Юпитер",
+  "Сатурн",
+  "Уран",
+  "Нептун",
+  "Плутон",
+  "Дева",
+  "соединение",
+  "квадрат",
+]) {
+  if (!astrologyLabels.includes(russianLabel)) {
+    throw new Error(`Missing Russian astrology label: ${russianLabel}`);
+  }
+}
+
+if (/\$\{(?:sun|moon)\.sign\}/.test(adapter)) {
+  throw new Error("Report prose must not interpolate raw English zodiac signs");
+}
+if (/\$\{aspect\.(?:planet_a|planet_b|aspect_type)\}/.test(adapter)) {
+  throw new Error("Report aspects must not interpolate raw English planet/aspect names");
+}
+for (const forbiddenRawRender of [
+  "{planet.name}",
+  "{aspect.planet_a}",
+  "{aspect.aspect_type}",
+  "{aspect.planet_b}",
+  "orb:",
+  '"App"',
+  '"Sep"',
+]) {
+  if (readFileSync(resolve("src/components/chart/natal-chart.tsx"), "utf8").includes(forbiddenRawRender)) {
+    throw new Error(`Natal chart renders raw English marker: ${forbiddenRawRender}`);
   }
 }
 

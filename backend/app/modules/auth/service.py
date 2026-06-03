@@ -241,6 +241,29 @@ class AuthService:
             "token_type": "bearer",
         }
 
+    async def change_password(
+        self,
+        user_id: UUID,
+        current_password: str,
+        new_password: str,
+    ) -> None:
+        """Change user password.
+
+        Validates current password and updates to new password.
+        """
+        user = await self.get_user_by_id(user_id)
+
+        if not verify_password(current_password, user.hashed_password):
+            raise AuthorizationError("Current password is incorrect")
+
+        if len(new_password) < 8:
+            raise ValidationError("Password must be at least 8 characters")
+
+        user.hashed_password = hash_password(new_password)
+        await self.db.flush()
+
+        logger.info("password_changed", user_id=str(user_id))
+
     async def logout(self, access_token: str, refresh_token: str | None = None) -> None:
         """Blacklist tokens to log out the user."""
         # Blacklist access token

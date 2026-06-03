@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  aspectDirectionRu,
+  aspectTypeRu,
+  PLANET_SYMBOLS,
+  planetNameRu,
+  SIGN_SYMBOLS,
+  signNameRu,
+} from "@/lib/astrology/labels";
+
 // ── Types ──────────────────────────────────────────────────────────
 interface Planet {
   name: string;
@@ -31,54 +40,6 @@ interface ChartData {
   aspects: Aspect[];
 }
 
-// ── Planet symbols ─────────────────────────────────────────────────
-const PLANET_SYMBOLS: Record<string, string> = {
-  Sun: "☉",
-  Moon: "☽",
-  Mercury: "☿",
-  Venus: "♀",
-  Mars: "♂",
-  Jupiter: "♃",
-  Saturn: "♄",
-  Uranus: "♅",
-  Neptune: "♆",
-  Pluto: "♇",
-  "North Node": "☊",
-  Lilith: "⚸",
-  Chiron: "⚷",
-};
-
-// ── Sign symbols ───────────────────────────────────────────────────
-const SIGN_SYMBOLS: Record<string, string> = {
-  Aries: "♈",
-  Taurus: "♉",
-  Gemini: "♊",
-  Cancer: "♋",
-  Leo: "♌",
-  Virgo: "♍",
-  Libra: "♎",
-  Scorpio: "♏",
-  Sagittarius: "♐",
-  Capricorn: "♑",
-  Aquarius: "♒",
-  Pisces: "♓",
-};
-
-// ── Sign names in Russian ─────────────────────────────────────────
-const SIGN_NAMES_RU: Record<string, string> = {
-  Aries: "Овен",
-  Taurus: "Телец",
-  Gemini: "Близнецы",
-  Cancer: "Рак",
-  Leo: "Лев",
-  Virgo: "Дева",
-  Libra: "Весы",
-  Scorpio: "Скорпион",
-  Sagittarius: "Стрелец",
-  Capricorn: "Козерог",
-  Aquarius: "Водолей",
-  Pisces: "Рыбы",
-};
 
 // ── Aspect colors ──────────────────────────────────────────────────
 const ASPECT_COLORS: Record<string, string> = {
@@ -107,7 +68,9 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
               <span className="text-lg text-[#D8B45A]">
                 {PLANET_SYMBOLS[planet.name] || "?"}
               </span>
-              <span className="font-medium text-[#F6F1E8]">{planet.name}</span>
+              <span className="font-medium text-[#F6F1E8]">
+                {planetNameRu(planet.name)}
+              </span>
               {planet.is_retrograde && (
                 <span className="text-xs text-[#E57A7A]">℞</span>
               )}
@@ -117,7 +80,7 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
                 {SIGN_SYMBOLS[planet.sign] || "?"}
               </span>
               <span className="text-[#D8DCE8]">
-                {SIGN_NAMES_RU[planet.sign] || planet.sign}
+                {signNameRu(planet.sign)}
               </span>
               <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
                 {(planet.degree ?? planet.sign_degree ?? 0).toFixed(2)}°
@@ -176,25 +139,25 @@ export function ChartAspects({ aspects }: { aspects: Aspect[] }) {
           <div key={i} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <span className="font-medium text-[#F6F1E8]">
-                {aspect.planet_a}
+                {planetNameRu(aspect.planet_a)}
               </span>
               <span
                 className={
                   ASPECT_COLORS[aspect.aspect_type] || "text-[#D8DCE8]"
                 }
               >
-                {aspect.aspect_type}
+                {aspectTypeRu(aspect.aspect_type)}
               </span>
               <span className="font-medium text-[#F6F1E8]">
-                {aspect.planet_b}
+                {planetNameRu(aspect.planet_b)}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-[rgba(216,220,232,0.50)]">
-                orb: {(aspect.orb ?? 0).toFixed(2)}°
+                орб: {(aspect.orb ?? 0).toFixed(2)}°
               </span>
               <span className="text-xs text-[rgba(216,220,232,0.40)]">
-                {aspect.is_applying ? "App" : "Sep"}
+                {aspectDirectionRu(aspect.is_applying)}
               </span>
             </div>
           </div>

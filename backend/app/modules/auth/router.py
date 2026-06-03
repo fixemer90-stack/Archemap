@@ -16,6 +16,7 @@ from app.infrastructure.redis import get_redis_client
 from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.password_reset import PasswordResetService
 from app.modules.auth.schemas import (
+    ChangePasswordRequest,
     CompleteProfileRequest,
     LoginRequest,
     MessageResponse,
@@ -191,6 +192,22 @@ async def confirm_password_reset(
     service = PasswordResetService(db)
     await service.confirm_reset(token=body.token, new_password=body.new_password)
     return MessageResponse(message="Password reset successfully. You can now sign in with your new password.")
+
+
+@router.post("/change-password", response_model=MessageResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Change password for authenticated user."""
+    service = AuthService(db)
+    await service.change_password(
+        user_id=current_user_id,
+        current_password=body.current_password,
+        new_password=body.new_password,
+    )
+    return MessageResponse(message="Password changed successfully.")
 
 
 # ── OAuth endpoints ─────────────────────────────────────────────────

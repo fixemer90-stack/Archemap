@@ -86,6 +86,11 @@ class PasswordResetConfirm(BaseModel):
     new_password: str  # min 8 chars validated in service
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str  # min 8 chars validated in service
+
+
 class RateLimitErrorResponse(BaseModel):
     detail: str
     retry_after: int

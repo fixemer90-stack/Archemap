@@ -40,7 +40,6 @@ interface ChartData {
   aspects: Aspect[];
 }
 
-
 // ── Aspect colors ──────────────────────────────────────────────────
 const ASPECT_COLORS: Record<string, string> = {
   conjunction: "text-[#E54D4D]",
@@ -79,9 +78,7 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
               <span className="text-[#8DA8FF]">
                 {SIGN_SYMBOLS[planet.sign] || "?"}
               </span>
-              <span className="text-[#D8DCE8]">
-                {signNameRu(planet.sign)}
-              </span>
+              <span className="text-[#D8DCE8]">{signNameRu(planet.sign)}</span>
               <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
                 {(planet.degree ?? planet.sign_degree ?? 0).toFixed(2)}°
               </span>

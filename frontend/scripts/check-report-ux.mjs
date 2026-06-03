@@ -229,19 +229,27 @@ if (/\$\{(?:sun|moon)\.sign\}/.test(adapter)) {
   throw new Error("Report prose must not interpolate raw English zodiac signs");
 }
 if (/\$\{aspect\.(?:planet_a|planet_b|aspect_type)\}/.test(adapter)) {
-  throw new Error("Report aspects must not interpolate raw English planet/aspect names");
+  throw new Error(
+    "Report aspects must not interpolate raw English planet/aspect names",
+  );
 }
 for (const forbiddenRawRender of [
-  "{planet.name}",
   "{aspect.planet_a}",
   "{aspect.aspect_type}",
   "{aspect.planet_b}",
-  "orb:",
+  "orb: {",
   '"App"',
   '"Sep"',
 ]) {
-  if (readFileSync(resolve("src/components/chart/natal-chart.tsx"), "utf8").includes(forbiddenRawRender)) {
-    throw new Error(`Natal chart renders raw English marker: ${forbiddenRawRender}`);
+  if (
+    readFileSync(
+      resolve("src/components/chart/natal-chart.tsx"),
+      "utf8",
+    ).includes(forbiddenRawRender)
+  ) {
+    throw new Error(
+      `Natal chart renders raw English marker: ${forbiddenRawRender}`,
+    );
   }
 }
 

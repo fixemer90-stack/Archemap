@@ -64,5 +64,7 @@ def test_reference_profile_is_not_overclassified_as_lie_from_retrograde_saturn_t
     lie_score = next(r.score for r in results if r.type_code == "LIE")
 
     assert strengths["Ti"] > strengths["Te"]
-    assert results[0].type_code != "LIE"
+    assert strengths["Ti"] > strengths["Ni"]
+    assert strengths["Ni"] < 0.85
+    assert results[0].type_code == "LSI"
     assert lsi_score > lie_score

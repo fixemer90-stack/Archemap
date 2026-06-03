@@ -288,6 +288,7 @@ Astrotype/
 
 | Документ                                                                                               | Назначение                      |
 | ------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                 | Индекс проекта: код, API, docs  |
 | [`docs/SPEC.md`](docs/SPEC.md)                                                                         | Полная спецификация продукта    |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                   | Дорожная карта                  |
 | [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                       | Дизайн‑код и визуальная система |

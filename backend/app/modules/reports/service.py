@@ -42,7 +42,8 @@ class ReportService:
         """
         # Check if report already exists for this profile + product
         existing = await self._find_existing(profile_id, user_id, product)
-        if existing and existing.status == "ready":
+        supports_narrative = product == "self"
+        if existing and existing.status in {"ready", "narrative_failed", "deterministic_ready"}:
             # Create new version
             await self._archive_version(existing)
             existing.version += 1
@@ -146,7 +147,7 @@ class ReportService:
             report.archetype = interpretation.primary_archetype
             report.score = interpretation.primary_score
             report.confidence = interpretation.primary_confidence.value
-            report.status = "ready"
+            report.status = "deterministic_ready" if supports_narrative else "ready"
             report.error_message = None
             await self.db.flush()
             await self.db.refresh(report)

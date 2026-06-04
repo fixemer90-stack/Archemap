@@ -57,6 +57,20 @@ async def generate_report(
         # PDF generation is non-critical, don't fail the request
         logger.warning("pdf_task_enqueue_failed", error=str(exc))
 
+    if report.product == "self":
+        try:
+            from workers.tasks.reports import generate_report_narrative
+
+            generate_report_narrative.delay(report_id=str(report.id))
+            report.status = "generating_narrative"
+            report.error_message = None
+        except Exception as exc:
+            report.status = "deterministic_ready"
+            report.error_message = f"Narrative task enqueue failed: {exc}"
+            logger.warning("narrative_task_enqueue_failed", report_id=str(report.id), error=str(exc))
+        await db.flush()
+        await db.refresh(report)
+
     return ReportResponse.model_validate(report)
 
 

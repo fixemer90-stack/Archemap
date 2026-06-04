@@ -15,7 +15,6 @@ from app.modules.report_narratives.prompts import (
     load_prompt_template,
 )
 from app.modules.report_narratives.schemas import NarrativeInput, SelfNarrative
-from app.modules.report_narratives.service import find_cached_narrative
 from app.modules.report_narratives.validators import (
     choose_narrative_recovery_action,
     validate_self_narrative,
@@ -34,7 +33,6 @@ __all__ = [
     "build_self_story_prompt",
     "choose_narrative_recovery_action",
     "compute_input_hash",
-    "find_cached_narrative",
     "load_prompt_template",
     "validate_self_narrative",
 ]

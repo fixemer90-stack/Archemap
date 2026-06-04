@@ -93,7 +93,7 @@ POST /api/v1/reports/generate
 | S04 | [Prompt contract self_story_v1](S04-prompt-contract-self-story-v1.md) | ✅ Готово |
 | S05 | [NarrativeInput builder, hashing and cache lookup](S05-narrative-input-builder-cache.md) | ✅ Готово |
 | S06 | [Narrative validation, repair and fallback policy](S06-narrative-validation-fallback.md) | ✅ Готово |
-| S07 | [Celery generation task, statuses and retry](S07-celery-generation-statuses.md) | ⬜ Не начато |
+| S07 | [Celery generation task, statuses and retry](S07-celery-generation-statuses.md) | ✅ Готово |
 | S08 | [Report API integration and regenerate endpoint](S08-report-api-narrative-endpoints.md) | ⬜ Не начато |
 | S09 | [Frontend status polling, timeout, retry and fallback](S09-frontend-status-polling-fallback.md) | ⬜ Не начато |
 | S10 | [Frontend narrative rendering components](S10-frontend-narrative-rendering.md) | ⬜ Не начато |

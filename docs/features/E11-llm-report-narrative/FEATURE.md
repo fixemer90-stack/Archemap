@@ -91,7 +91,7 @@ POST /api/v1/reports/generate
 | S02 | [Storage: report_narratives model and migration](S02-report-narratives-storage.md) | ✅ Готово |
 | S03 | [LLM provider abstraction and settings](S03-llm-provider-abstraction.md) | ✅ Готово |
 | S04 | [Prompt contract self_story_v1](S04-prompt-contract-self-story-v1.md) | ✅ Готово |
-| S05 | [NarrativeInput builder, hashing and cache lookup](S05-narrative-input-builder-cache.md) | ⬜ Не начато |
+| S05 | [NarrativeInput builder, hashing and cache lookup](S05-narrative-input-builder-cache.md) | ✅ Готово |
 | S06 | [Narrative validation, repair and fallback policy](S06-narrative-validation-fallback.md) | ⬜ Не начато |
 | S07 | [Celery generation task, statuses and retry](S07-celery-generation-statuses.md) | ⬜ Не начато |
 | S08 | [Report API integration and regenerate endpoint](S08-report-api-narrative-endpoints.md) | ⬜ Не начато |

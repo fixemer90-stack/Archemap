@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
+    # ── LLM narrative layer ───────────────────────────────────────────
+    LLM_ENABLED: bool = False
+    LLM_PROVIDER: str = "mock"
+    LLM_MODEL: str = "mock-self-v1"
+    LLM_API_KEY: str = ""
+    LLM_TIMEOUT_SECONDS: int = 30
+    LLM_MAX_RETRIES: int = 2
+
     # ── Sentry ────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1

@@ -1,7 +1,7 @@
 # Story E11.S02: Storage — report_narratives model and migration
 
 **Feature:** [LLM Report Narrative](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
@@ -28,10 +28,54 @@ Narrative text нужно хранить отдельно от deterministic rep
 
 ## Критерии приёмки
 
-- [ ] Таблица `report_narratives` создаётся миграцией и откатывается downgrade-ом.
-- [ ] `content` хранит validated narrative JSON, а не Markdown string.
-- [ ] `input_hash` обязателен для completed narrative records.
-- [ ] Можно хранить несколько prompt versions для одного report.
-- [ ] При удалении report narrative записи удаляются cascade-ом.
-- [ ] `python3 -m ruff format alembic/versions/` применён к миграции.
-- [ ] Backend unit/migration smoke tests проходят.
+- [x] Таблица `report_narratives` создаётся миграцией и откатывается downgrade-ом.
+- [x] `content` хранит validated narrative JSON, а не Markdown string.
+- [x] `input_hash` обязателен для completed narrative records.
+- [x] Можно хранить несколько prompt versions для одного report.
+- [x] При удалении report narrative записи удаляются cascade-ом.
+- [x] `python -m ruff format --check alembic/versions/b8c9d0e1f2a3_add_report_narratives_table.py` проходит.
+- [x] Backend unit/migration smoke tests проходят.
+
+## Реализация
+
+Добавлены:
+
+- `backend/app/modules/report_narratives/models.py` — SQLAlchemy model `ReportNarrative`
+- `backend/alembic/versions/b8c9d0e1f2a3_add_report_narratives_table.py` — Alembic migration
+- `backend/tests/unit/test_report_narratives/test_models.py` — storage/model tests
+
+В storage-контракте зафиксированы поля:
+
+- `report_id`
+- `product`
+- `prompt_version`
+- `model_provider`
+- `model_name`
+- `status`
+- `content`
+- `input_hash`
+- `error_message`
+- `generation_started_at`
+- `generation_finished_at`
+- `generation_attempts`
+
+Миграция добавляет:
+
+- FK `report_id -> reports.id` с `ON DELETE CASCADE`
+- индексы по `report_id`, `product`, `prompt_version`, `status`, `input_hash`
+- unique cache key constraint `uq_report_narratives_cache_key`
+
+## Верификация
+
+Проверено в backend container:
+
+```bash
+cd /app
+python -m pytest tests/unit/test_report_narratives/test_models.py -q
+python -m ruff check app/modules/report_narratives tests/unit/test_report_narratives alembic/versions/b8c9d0e1f2a3_add_report_narratives_table.py
+python -m ruff format --check app/modules/report_narratives tests/unit/test_report_narratives alembic/versions/b8c9d0e1f2a3_add_report_narratives_table.py
+python -m mypy app/modules/report_narratives tests/unit/test_report_narratives
+alembic upgrade head
+alembic downgrade a7b8c9d0e1f2
+alembic upgrade head
+```

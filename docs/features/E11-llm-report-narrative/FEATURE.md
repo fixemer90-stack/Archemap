@@ -87,7 +87,7 @@ POST /api/v1/reports/generate
 
 | ID | Описание | Статус |
 |---|---|---|
-| S01 | [Narrative contracts: input/output schemas](S01-narrative-contracts.md) | ⬜ Не начато |
+| S01 | [Narrative contracts: input/output schemas](S01-narrative-contracts.md) | ✅ Готово |
 | S02 | [Storage: report_narratives model and migration](S02-report-narratives-storage.md) | ⬜ Не начато |
 | S03 | [LLM provider abstraction and settings](S03-llm-provider-abstraction.md) | ⬜ Не начато |
 | S04 | [Prompt contract self_story_v1](S04-prompt-contract-self-story-v1.md) | ⬜ Не начато |

@@ -29,9 +29,9 @@ def _run_async(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
         loop.close()
 
 
-def generate_report_narrative_task(report_id: str) -> dict[str, str]:
+def generate_report_narrative_task(report_id: str, *, force: bool = False) -> dict[str, str]:
     """Synchronously invoke the async narrative generation flow."""
-    narrative = _run_async(_generate_report_narrative_async(UUID(report_id)))
+    narrative = _run_async(_generate_report_narrative_async(UUID(report_id), force=force))
     return {
         "report_id": report_id,
         "narrative_id": str(narrative.id),
@@ -49,11 +49,11 @@ def should_retry_narrative_task_error(exc: Exception) -> bool:
     return isinstance(exc, (LLMTimeoutError, LLMProviderUnavailableError))
 
 
-async def _generate_report_narrative_async(report_id: UUID) -> ReportNarrative:
+async def _generate_report_narrative_async(report_id: UUID, *, force: bool = False) -> ReportNarrative:
     async with async_session_factory() as db:
         service = ReportNarrativeService(db)
         try:
-            narrative = await service.generate_for_report(report_id)
+            narrative = await service.generate_for_report(report_id, force=force)
             await db.commit()
             return narrative
         except Exception:

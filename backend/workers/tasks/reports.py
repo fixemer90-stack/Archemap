@@ -34,7 +34,7 @@ def generate_pdf(self: Any, report_id: str, user_id: str, profile_name: str = ""
     soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS + 30, 60),
     time_limit=max(settings.LLM_TIMEOUT_SECONDS + 60, 90),
 )
-def generate_report_narrative(self: Any, report_id: str) -> dict[str, Any]:
+def generate_report_narrative(self: Any, report_id: str, force: bool = False) -> dict[str, Any]:
     """Generate structured narrative for a deterministic report."""
     from app.modules.report_narratives.tasks import (
         finalize_narrative_task_failure,
@@ -43,7 +43,7 @@ def generate_report_narrative(self: Any, report_id: str) -> dict[str, Any]:
     )
 
     try:
-        return generate_report_narrative_task(report_id)
+        return generate_report_narrative_task(report_id, force=force)
     except Exception as exc:
         retries = int(getattr(self.request, "retries", 0))
         if should_retry_narrative_task_error(exc) and retries < settings.LLM_MAX_RETRIES:

@@ -8,6 +8,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.modules.report_narratives.models import ReportNarrative
+from app.modules.reports.models import Report
+
 
 class GenerateReportRequest(BaseModel):
     """Request to generate a report."""
@@ -78,6 +81,31 @@ class ReportDataResponse(BaseModel):
     provenance: dict[str, str]
 
 
+class NarrativeResponse(BaseModel):
+    """Persisted narrative payload and generation metadata."""
+
+    id: UUID
+    report_id: UUID
+    product: str
+    prompt_version: str
+    model_provider: str
+    model_name: str
+    status: str
+    title: str | None = None
+    hero: dict[str, Any] | None = None
+    sections: list[dict[str, Any]] = Field(default_factory=list)
+    career_cta: dict[str, Any] | None = None
+    content: dict[str, Any] | None = None
+    error_message: str | None = None
+    generation_started_at: datetime | None = None
+    generation_finished_at: datetime | None = None
+    generation_attempts: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ReportResponse(BaseModel):
     """Single report response."""
 
@@ -93,6 +121,8 @@ class ReportResponse(BaseModel):
     pdf_url: str | None
     pdf_generated: bool
     report_data: dict[str, Any]
+    narrative: NarrativeResponse | None = None
+    error_message: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -126,3 +156,50 @@ class ReportVersionListResponse(BaseModel):
     """List of report versions."""
 
     items: list[ReportVersionResponse]
+
+
+def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
+    """Serialize a persisted narrative row into API response shape."""
+    content = narrative.content or {}
+    return NarrativeResponse(
+        id=narrative.id,
+        report_id=narrative.report_id,
+        product=narrative.product,
+        prompt_version=narrative.prompt_version,
+        model_provider=narrative.model_provider,
+        model_name=narrative.model_name,
+        status=narrative.status,
+        title=content.get("title"),
+        hero=content.get("hero"),
+        sections=content.get("sections", []),
+        career_cta=content.get("career_cta"),
+        content=content or None,
+        error_message=narrative.error_message,
+        generation_started_at=narrative.generation_started_at,
+        generation_finished_at=narrative.generation_finished_at,
+        generation_attempts=narrative.generation_attempts,
+        created_at=narrative.created_at,
+        updated_at=narrative.updated_at,
+    )
+
+
+def build_report_response(report: Report, narrative: ReportNarrative | None = None) -> ReportResponse:
+    """Serialize a report together with its latest narrative state."""
+    return ReportResponse(
+        id=report.id,
+        profile_id=report.profile_id,
+        product=report.product,
+        version=report.version,
+        status=report.status,
+        mode=report.mode,
+        archetype=report.archetype,
+        score=report.score,
+        confidence=report.confidence,
+        pdf_url=report.pdf_url,
+        pdf_generated=report.pdf_generated,
+        report_data=report.report_data,
+        narrative=build_narrative_response(narrative) if narrative is not None else None,
+        error_message=report.error_message,
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+    )

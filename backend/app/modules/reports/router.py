@@ -6,17 +6,19 @@ from typing import Annotated
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
+from app.modules.report_narratives.service import get_latest_narrative_for_report
 from app.modules.reports.schemas import (
     GenerateReportRequest,
     ReportListResponse,
     ReportResponse,
     ReportVersionListResponse,
     ReportVersionResponse,
+    build_report_response,
 )
 from app.modules.reports.service import ReportService
 from app.modules.reports.storage import S3Storage, get_signed_ttl
@@ -69,9 +71,9 @@ async def generate_report(
             report.error_message = f"Narrative task enqueue failed: {exc}"
             logger.warning("narrative_task_enqueue_failed", report_id=str(report.id), error=str(exc))
         await db.flush()
-        await db.refresh(report)
 
-    return ReportResponse.model_validate(report)
+    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    return build_report_response(report, narrative)
 
 
 @router.get("", response_model=ReportListResponse)
@@ -90,12 +92,11 @@ async def list_reports(
         limit=limit,
         offset=offset,
     )
-    return ReportListResponse(
-        items=[ReportResponse.model_validate(r) for r in reports],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+    items: list[ReportResponse] = []
+    for report in reports:
+        narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+        items.append(build_report_response(report, narrative))
+    return ReportListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
@@ -107,7 +108,42 @@ async def get_report(
     """Get a report by ID."""
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
-    return ReportResponse.model_validate(report)
+    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    return build_report_response(report, narrative)
+
+
+@router.post("/{report_id}/narrative/regenerate", response_model=ReportResponse)
+async def regenerate_report_narrative(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> ReportResponse:
+    """Enqueue a fresh LLM narrative attempt without recomputing deterministic report data."""
+    service = ReportService(db)
+    report = await service.get_report(report_id, current_user)
+    if report.product != "self":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Narrative regeneration is supported only for self reports",
+        )
+
+    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    if report.status != "generating_narrative":
+        try:
+            from workers.tasks.reports import generate_report_narrative
+
+            generate_report_narrative.delay(report_id=str(report.id), force=True)
+        except Exception as exc:
+            logger.warning("narrative_regenerate_enqueue_failed", report_id=str(report.id), error=str(exc))
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Narrative regenerate task enqueue failed",
+            ) from exc
+        report.status = "generating_narrative"
+        report.error_message = None
+        await db.flush()
+
+    return build_report_response(report, narrative)
 
 
 @router.get("/{report_id}/pdf")
@@ -125,8 +161,6 @@ async def get_report_pdf(
     report = await service.get_report(report_id, current_user)
 
     if not report.pdf_generated or not report.pdf_url:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=404,
             detail="PDF not generated yet. Please wait and try again.",

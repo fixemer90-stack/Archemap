@@ -240,10 +240,17 @@ class TestReportNarrativeService:
         async def fake_find_cached(**kwargs: object) -> None:
             return None
 
-        async def fake_get_or_create(*, report: Report, input_hash: str, model_name: str) -> ReportNarrative:
+        async def fake_get_or_create(
+            *,
+            report: Report,
+            input_hash: str,
+            model_name: str,
+            force_new: bool = False,
+        ) -> ReportNarrative:
             assert report is report_fixture
             assert input_hash
             assert model_name == "mock-self-v1"
+            assert force_new is False
             return record
 
         monkeypatch.setattr(service, "_get_report", fake_get_report)
@@ -321,8 +328,9 @@ class TestNarrativeTasks:
         report_id = uuid4()
         narrative_id = uuid4()
 
-        async def fake_async_task(input_report_id: object) -> SimpleNamespace:
+        async def fake_async_task(input_report_id: object, *, force: bool = False) -> SimpleNamespace:
             assert input_report_id == report_id
+            assert force is False
             return SimpleNamespace(id=narrative_id, status="ready")
 
         monkeypatch.setattr("app.modules.report_narratives.tasks._generate_report_narrative_async", fake_async_task)

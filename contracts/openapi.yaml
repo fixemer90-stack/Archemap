@@ -34,6 +34,8 @@ tags:
     description: Invoices & billing
   - name: Payments
     description: Payment processing
+  - name: Reports
+    description: Deterministic reports and narrative generation lifecycle
 
 paths:
   /v1/health:
@@ -316,6 +318,81 @@ paths:
                       $ref: "#/components/schemas/PaymentMethod"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /v1/reports/generate:
+    post:
+      operationId: generateReport
+      tags: [Reports]
+      summary: Generate deterministic report and enqueue narrative generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateReportRequest"
+      responses:
+        "200":
+          description: Report created or refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /v1/reports/{report_id}:
+    get:
+      operationId: getReport
+      tags: [Reports]
+      summary: Get report with deterministic payload and latest narrative state
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Report details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/reports/{report_id}/narrative/regenerate:
+    post:
+      operationId: regenerateReportNarrative
+      tags: [Reports]
+      summary: Enqueue a fresh LLM narrative attempt without recomputing deterministic report data
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Narrative regeneration accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/BadRequest"
 
 components:
   securitySchemes:
@@ -634,6 +711,129 @@ components:
           format: uri
         session_id:
           type: string
+
+    GenerateReportRequest:
+      type: object
+      required: [profile_id, product, mode]
+      properties:
+        profile_id:
+          type: string
+          format: uuid
+        product:
+          type: string
+        mode:
+          type: string
+          enum: [preview, full]
+
+    NarrativeResponse:
+      type: object
+      required:
+        [id, report_id, product, prompt_version, model_provider, model_name, status, sections, generation_attempts, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        report_id:
+          type: string
+          format: uuid
+        product:
+          type: string
+        prompt_version:
+          type: string
+        model_provider:
+          type: string
+        model_name:
+          type: string
+        status:
+          type: string
+        title:
+          type: string
+          nullable: true
+        hero:
+          type: object
+          nullable: true
+          additionalProperties: true
+        sections:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        career_cta:
+          type: object
+          nullable: true
+          additionalProperties: true
+        content:
+          type: object
+          nullable: true
+          additionalProperties: true
+        error_message:
+          type: string
+          nullable: true
+        generation_started_at:
+          type: string
+          format: date-time
+          nullable: true
+        generation_finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        generation_attempts:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReportResponse:
+      type: object
+      required: [id, profile_id, product, version, status, mode, pdf_generated, report_data, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          format: uuid
+        product:
+          type: string
+        version:
+          type: integer
+        status:
+          type: string
+        mode:
+          type: string
+        archetype:
+          type: string
+          nullable: true
+        score:
+          type: number
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+        pdf_url:
+          type: string
+          nullable: true
+        pdf_generated:
+          type: boolean
+        report_data:
+          type: object
+          additionalProperties: true
+        narrative:
+          allOf:
+            - $ref: "#/components/schemas/NarrativeResponse"
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     PaymentMethod:
       type: object

@@ -40,31 +40,33 @@ class ReportNarrativeService:
         self.app_settings = app_settings or settings
         self.llm_provider = llm_provider or get_llm_provider(self.app_settings)
 
-    async def generate_for_report(self, report_id: UUID) -> ReportNarrative:
+    async def generate_for_report(self, report_id: UUID, *, force: bool = False) -> ReportNarrative:
         """Generate a narrative layer for a deterministic report."""
         report = await self._get_report(report_id)
         narrative_input = build_narrative_input(report)
         input_hash = compute_input_hash(narrative_input)
         model_name = getattr(self.llm_provider, "model_name", self.app_settings.LLM_MODEL)
 
-        cached = await find_cached_narrative(
-            db=self.db,
-            report_id=report.id,
-            product=report.product,
-            prompt_version=SELF_STORY_PROMPT_VERSION,
-            input_hash=input_hash,
-            model_name=model_name,
-        )
-        if cached is not None:
-            report.status = "ready"
-            report.error_message = None
-            await self.db.flush()
-            return cached
+        if not force:
+            cached = await find_cached_narrative(
+                db=self.db,
+                report_id=report.id,
+                product=report.product,
+                prompt_version=SELF_STORY_PROMPT_VERSION,
+                input_hash=input_hash,
+                model_name=model_name,
+            )
+            if cached is not None:
+                report.status = "ready"
+                report.error_message = None
+                await self.db.flush()
+                return cached
 
         narrative = await self._get_or_create_narrative_record(
             report=report,
             input_hash=input_hash,
             model_name=model_name,
+            force_new=force,
         )
         return await self._generate_and_persist(
             report=report,
@@ -190,6 +192,7 @@ class ReportNarrativeService:
         report: Report,
         input_hash: str,
         model_name: str,
+        force_new: bool = False,
     ) -> ReportNarrative:
         result = await self.db.execute(
             select(ReportNarrative)
@@ -203,7 +206,7 @@ class ReportNarrativeService:
             .order_by(ReportNarrative.created_at.desc())
         )
         existing = result.scalars().first()
-        if existing is not None:
+        if existing is not None and not force_new:
             return existing
 
         narrative = ReportNarrative(
@@ -219,6 +222,16 @@ class ReportNarrativeService:
         self.db.add(narrative)
         await self.db.flush()
         return narrative
+
+
+async def get_latest_narrative_for_report(*, db: AsyncSession, report_id: UUID) -> ReportNarrative | None:
+    """Return the latest persisted narrative row for a report."""
+    result = await db.execute(
+        select(ReportNarrative)
+        .where(ReportNarrative.report_id == report_id)
+        .order_by(ReportNarrative.created_at.desc())
+    )
+    return result.scalars().first()
 
 
 async def find_cached_narrative(

@@ -12,6 +12,26 @@ const fallbackComponent = readFileSync(
   resolve("src/components/report/deterministic-report-fallback.tsx"),
   "utf8",
 );
+const narrativePagePath = resolve(
+  "src/components/report/report-narrative-page.tsx",
+);
+const narrativeSectionPath = resolve(
+  "src/components/report/narrative-section.tsx",
+);
+const careerCtaPath = resolve("src/components/report/career-cta.tsx");
+const evidenceNotesPath = resolve("src/components/report/evidence-notes.tsx");
+const narrativePage = existsSync(narrativePagePath)
+  ? readFileSync(narrativePagePath, "utf8")
+  : "";
+const narrativeSection = existsSync(narrativeSectionPath)
+  ? readFileSync(narrativeSectionPath, "utf8")
+  : "";
+const careerCta = existsSync(careerCtaPath)
+  ? readFileSync(careerCtaPath, "utf8")
+  : "";
+const evidenceNotes = existsSync(evidenceNotesPath)
+  ? readFileSync(evidenceNotesPath, "utf8")
+  : "";
 const dashboardPage = readFileSync(
   resolve("src/app/(dashboard)/dashboard/page.tsx"),
   "utf8",
@@ -46,6 +66,10 @@ const requiredFiles = [
   "src/components/glossary/glossary-modal.tsx",
   "src/components/report/report-generation-progress.tsx",
   "src/components/report/deterministic-report-fallback.tsx",
+  "src/components/report/report-narrative-page.tsx",
+  "src/components/report/narrative-section.tsx",
+  "src/components/report/career-cta.tsx",
+  "src/components/report/evidence-notes.tsx",
   "src/lib/glossary/report-glossary.ts",
   "src/lib/report/score-labels.ts",
   "src/lib/report/view-model.ts",
@@ -84,7 +108,106 @@ const componentSources = requiredFiles
   .filter((file) => file.endsWith(".tsx"))
   .map((file) => readFileSync(resolve(file), "utf8"))
   .join("\n");
+const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${careerCta}\n${evidenceNotes}`;
 const allUiSource = `${page}\n${componentSources}`;
+const adapter = readFileSync(resolve("src/lib/report/view-model.ts"), "utf8");
+
+if (!page.includes("<ReportNarrativePage")) {
+  throw new Error("Ready Self report must render through ReportNarrativePage");
+}
+
+const narrativeOrder = [
+  "<NarrativeHero",
+  "main_formula",
+  "world_perception",
+  "emotions_and_communication",
+  "strengths",
+  "vulnerabilities",
+  "relationships",
+  "sexuality",
+  "development",
+  "<CareerCTA",
+  "<FinalSummary",
+  "<TechnicalDetailsAccordion",
+];
+let previousNarrativeIndex = -1;
+for (const marker of narrativeOrder) {
+  const index = reportNarrativeSource.indexOf(marker);
+  if (index === -1) {
+    throw new Error(`Missing narrative-first marker: ${marker}`);
+  }
+  if (index <= previousNarrativeIndex) {
+    throw new Error(`Narrative marker is out of order: ${marker}`);
+  }
+  previousNarrativeIndex = index;
+}
+
+for (const marker of [
+  "allowedSelfSectionIds",
+  "unknownSectionIds",
+  "console.warn",
+  "narrative.hero",
+  "narrative.sections",
+  "narrative.final_summary",
+]) {
+  if (!adapter.includes(marker) && !reportNarrativeSource.includes(marker)) {
+    throw new Error(`Missing narrative normalizer/rendering marker: ${marker}`);
+  }
+}
+
+if (
+  !evidenceNotes.includes("<details") ||
+  !evidenceNotes.includes("<summary")
+) {
+  throw new Error("Evidence notes must render as a collapsed disclosure");
+}
+
+if (!reportNarrativeSource.includes("grid-cols-1")) {
+  throw new Error(
+    "Narrative report must keep a mobile-first single-column layout",
+  );
+}
+
+for (const forbiddenEvidenceMarker of ["debug", "Raw", "JSON.stringify"]) {
+  if (evidenceNotes.includes(forbiddenEvidenceMarker)) {
+    throw new Error(
+      `Evidence notes must not look like debug output: ${forbiddenEvidenceMarker}`,
+    );
+  }
+}
+
+for (const forbiddenSectionId of [
+  "career",
+  "technical",
+  "model_a",
+  "raw_scores",
+]) {
+  if (reportNarrativeSource.includes(`id === "${forbiddenSectionId}"`)) {
+    throw new Error(
+      `Self narrative must not explicitly render ${forbiddenSectionId}`,
+    );
+  }
+}
+
+for (const requiredExport of [
+  "export interface ReportNarrativeViewModel",
+  "export interface NarrativeEvidenceNote",
+  "export const allowedSelfSectionIds",
+]) {
+  if (!adapter.includes(requiredExport)) {
+    throw new Error(`Missing narrative adapter export: ${requiredExport}`);
+  }
+}
+
+for (const requiredNarrativeText of [
+  "Карьерный отчёт",
+  "Почему так видно",
+  "Финальное резюме",
+]) {
+  if (!reportNarrativeSource.includes(requiredNarrativeText)) {
+    throw new Error(`Missing narrative UI text: ${requiredNarrativeText}`);
+  }
+}
 
 for (const heading of [
   "Главное о вас",
@@ -175,7 +298,6 @@ if (
   throw new Error("Report page must use the typed report view-model adapter");
 }
 
-const adapter = readFileSync(resolve("src/lib/report/view-model.ts"), "utf8");
 for (const requiredExport of [
   "export interface ReportViewModel",
   "export interface ReportApiData",

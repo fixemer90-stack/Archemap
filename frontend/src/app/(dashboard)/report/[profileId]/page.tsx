@@ -10,6 +10,7 @@ import { PracticalRecommendations } from "@/components/report/practical-recommen
 import { ReportExecutiveSummary } from "@/components/report/report-executive-summary";
 import { ReportGenerationProgress } from "@/components/report/report-generation-progress";
 import { ReportHeader } from "@/components/report/report-header";
+import { ReportNarrativePage } from "@/components/report/report-narrative-page";
 import { SocionicsProfileSimple } from "@/components/report/socionics-profile-simple";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
 import {
@@ -46,7 +47,17 @@ function ReportSkeleton() {
   );
 }
 
-function ReportContent({ data }: { data: ReportData }) {
+function ReportContent({
+  data,
+  profileId,
+}: {
+  data: ReportData;
+  profileId: string;
+}) {
+  if (data.product === "self" && data.narrative) {
+    return <ReportNarrativePage data={data} profileId={profileId} />;
+  }
+
   if (data.product === "career" && data.generated_report) {
     return <CareerReportContent data={data} />;
   }
@@ -398,14 +409,16 @@ export default function ReportPage() {
                 : "timeout"
           }
         >
-          <ReportContent data={data} />
+          <ReportContent data={data} profileId={profileId} />
         </DeterministicReportFallback>
       )}
       {!isLoading &&
         !error &&
         data &&
         !shouldShowProgress &&
-        !shouldShowFallback && <ReportContent data={data} />}
+        !shouldShowFallback && (
+          <ReportContent data={data} profileId={profileId} />
+        )}
     </div>
   );
 }

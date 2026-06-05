@@ -120,8 +120,59 @@ export interface ReportApiData {
   generatedReport?: GeneratedReportApiResponse;
 }
 
+export const allowedSelfSectionIds = [
+  "main_formula",
+  "world_perception",
+  "emotions_and_communication",
+  "strengths",
+  "vulnerabilities",
+  "relationships",
+  "sexuality",
+  "development",
+] as const;
+
+export type SelfNarrativeSectionId = (typeof allowedSelfSectionIds)[number];
+
+export interface NarrativeEvidenceNote {
+  claim: string;
+  fact_ids: string[];
+}
+
+export interface NarrativeHeroViewModel {
+  id: "hero";
+  title: string;
+  body: string;
+  bullets: string[];
+  evidence_notes: NarrativeEvidenceNote[];
+}
+
+export interface NarrativeSectionViewModel {
+  id: SelfNarrativeSectionId;
+  title: string;
+  body: string;
+  bullets: string[];
+  evidence_notes: NarrativeEvidenceNote[];
+}
+
+export interface CareerCTAViewModel {
+  title: string;
+  body: string;
+  bullets: string[];
+  button_label: string;
+}
+
+export interface ReportNarrativeViewModel {
+  title: string;
+  hero: NarrativeHeroViewModel;
+  sections: NarrativeSectionViewModel[];
+  career_cta: CareerCTAViewModel | null;
+  final_summary: string;
+  unknownSectionIds: string[];
+}
+
 export interface ReportViewModel {
   product: string;
+  narrative?: ReportNarrativeViewModel;
   generated_report?: {
     id: string;
     archetype: string;
@@ -455,6 +506,147 @@ function buildSocionicsSummary(
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toStringValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function normalizeEvidenceNotes(value: unknown): NarrativeEvidenceNote[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const claim = toStringValue(item.claim).trim();
+    const factIds = toStringArray(item.fact_ids).filter(Boolean);
+    if (!claim || factIds.length === 0) {
+      return [];
+    }
+    return [{ claim, fact_ids: factIds }];
+  });
+}
+
+function normalizeHero(value: unknown): NarrativeHeroViewModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const title = toStringValue(value.title).trim();
+  const body = toStringValue(value.body).trim();
+  if (!title || !body) {
+    return null;
+  }
+  return {
+    id: "hero",
+    title,
+    body,
+    bullets: toStringArray(value.bullets),
+    evidence_notes: normalizeEvidenceNotes(value.evidence_notes),
+  };
+}
+
+function isAllowedSelfSectionId(
+  value: string,
+): value is SelfNarrativeSectionId {
+  return allowedSelfSectionIds.includes(value as SelfNarrativeSectionId);
+}
+
+function normalizeNarrativeSection(
+  value: unknown,
+): NarrativeSectionViewModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const id = toStringValue(value.id);
+  const title = toStringValue(value.title).trim();
+  const body = toStringValue(value.body).trim();
+  if (!isAllowedSelfSectionId(id) || !title || !body) {
+    return null;
+  }
+  return {
+    id,
+    title,
+    body,
+    bullets: toStringArray(value.bullets),
+    evidence_notes: normalizeEvidenceNotes(value.evidence_notes),
+  };
+}
+
+function normalizeCareerCTA(value: unknown): CareerCTAViewModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const title = toStringValue(value.title).trim();
+  const body = toStringValue(value.body).trim();
+  const buttonLabel = toStringValue(value.button_label).trim();
+  if (!title || !body || !buttonLabel) {
+    return null;
+  }
+  return {
+    title,
+    body,
+    bullets: toStringArray(value.bullets),
+    button_label: buttonLabel,
+  };
+}
+
+function normalizeNarrative(
+  generatedReport: GeneratedReportApiResponse | undefined,
+): ReportNarrativeViewModel | undefined {
+  const narrative = generatedReport?.narrative;
+  if (!narrative || generatedReport.status !== "ready") {
+    return undefined;
+  }
+
+  const hero = normalizeHero(narrative.hero);
+  if (!hero) {
+    return undefined;
+  }
+
+  const unknownSectionIds: string[] = [];
+  const sections = narrative.sections.flatMap((section) => {
+    const normalized = normalizeNarrativeSection(section);
+    if (!normalized && isRecord(section)) {
+      const unknownId = toStringValue(section.id).trim();
+      if (unknownId) {
+        unknownSectionIds.push(unknownId);
+      }
+    }
+    return normalized ? [normalized] : [];
+  });
+
+  if (unknownSectionIds.length > 0) {
+    console.warn("Ignored unknown narrative section ids", unknownSectionIds);
+  }
+
+  if (sections.length === 0) {
+    return undefined;
+  }
+
+  const content = isRecord(narrative.content) ? narrative.content : {};
+  const finalSummary = toStringValue(content.final_summary).trim();
+
+  return {
+    title: narrative.title ?? toStringValue(content.title, "Ваш личный отчёт"),
+    hero,
+    sections,
+    career_cta: normalizeCareerCTA(narrative.career_cta),
+    final_summary: finalSummary,
+    unknownSectionIds,
+  };
+}
+
 export function toReportViewModel(data: ReportApiData): ReportViewModel {
   const chart: ReportChartData = {
     planets: normalizePlanets(data.chartSnapshot.chart_data.planets),
@@ -497,6 +689,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       ? (data.generatedReport?.product ?? "self")
       : "self",
     generated_report: generatedReport,
+    narrative: normalizeNarrative(data.generatedReport),
     chart,
     socionics,
     profile: {

@@ -1,7 +1,7 @@
 # Story E11.S10: Frontend narrative rendering components
 
 **Feature:** [LLM Report Narrative](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -31,10 +31,10 @@
 
 ## Критерии приёмки
 
-- [ ] Ready report renders `narrative.hero` before chart wheel, radar, Model A and raw scores.
-- [ ] Required Self sections appear in narrative-first order.
-- [ ] Career CTA appears after development section and does not replace Self content.
-- [ ] Evidence notes are visible via disclosure/details but not dominant in first viewport.
-- [ ] Unknown section id does not crash page and is logged/ignored with safe fallback.
-- [ ] Mobile layout is single-column and readable.
-- [ ] Frontend checks (`npm test`, `tsc`, `prettier`, `eslint`) pass.
+- [x] Ready report renders `narrative.hero` before chart wheel, radar, Model A and raw scores.
+- [x] Required Self sections appear in narrative-first order.
+- [x] Career CTA appears after development section and does not replace Self content.
+- [x] Evidence notes are visible via disclosure/details but not dominant in first viewport.
+- [x] Unknown section id does not crash page and is logged/ignored with safe fallback.
+- [x] Mobile layout is single-column and readable.
+- [x] Frontend checks (`npm test`, `tsc`, `prettier`, `eslint`) pass.

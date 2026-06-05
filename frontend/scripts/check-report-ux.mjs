@@ -3,6 +3,15 @@ import { resolve } from "node:path";
 
 const pagePath = resolve("src/app/(dashboard)/report/[profileId]/page.tsx");
 const page = readFileSync(pagePath, "utf8");
+const reportApi = readFileSync(resolve("src/lib/api/report.ts"), "utf8");
+const progressComponent = readFileSync(
+  resolve("src/components/report/report-generation-progress.tsx"),
+  "utf8",
+);
+const fallbackComponent = readFileSync(
+  resolve("src/components/report/deterministic-report-fallback.tsx"),
+  "utf8",
+);
 const dashboardPage = readFileSync(
   resolve("src/app/(dashboard)/dashboard/page.tsx"),
   "utf8",
@@ -35,6 +44,8 @@ const requiredFiles = [
   "src/components/report/technical-details-accordion.tsx",
   "src/components/glossary/term-help.tsx",
   "src/components/glossary/glossary-modal.tsx",
+  "src/components/report/report-generation-progress.tsx",
+  "src/components/report/deterministic-report-fallback.tsx",
   "src/lib/glossary/report-glossary.ts",
   "src/lib/report/score-labels.ts",
   "src/lib/report/view-model.ts",
@@ -255,6 +266,78 @@ for (const forbiddenRawRender of [
 
 if (allUiSource.includes("placeholder")) {
   throw new Error("Report page must not render placeholder report data");
+}
+
+for (const requiredStatus of [
+  "deterministic_ready",
+  "generating_narrative",
+  "ready",
+  "narrative_failed",
+]) {
+  if (!reportApi.includes(requiredStatus) || !page.includes(requiredStatus)) {
+    throw new Error(
+      `Report frontend must handle narrative status: ${requiredStatus}`,
+    );
+  }
+}
+
+for (const requiredApiExport of [
+  "export async function fetchReportById",
+  "export async function regenerateReportNarrative",
+  "/api/v1/reports/${reportId}/narrative/regenerate",
+]) {
+  if (!reportApi.includes(requiredApiExport)) {
+    throw new Error(
+      `Missing narrative report API helper: ${requiredApiExport}`,
+    );
+  }
+}
+
+for (const requiredPollingMarker of [
+  "ReportGenerationProgress",
+  "DeterministicReportFallback",
+  "NARRATIVE_TIMEOUT_MS",
+  "POLL_INTERVAL_MS",
+  "setTimeout",
+  "setInterval",
+  "fetchReportById",
+  "regenerateReportNarrative",
+]) {
+  if (!page.includes(requiredPollingMarker)) {
+    throw new Error(
+      `Missing report polling/fallback marker: ${requiredPollingMarker}`,
+    );
+  }
+}
+
+for (const requiredProgressText of [
+  "Собираем ваш текстовый отчёт",
+  "Текстовый отчёт ещё собирается",
+  "Показать технический отчёт",
+]) {
+  if (!progressComponent.includes(requiredProgressText)) {
+    throw new Error(
+      `Missing narrative progress UI text: ${requiredProgressText}`,
+    );
+  }
+}
+
+for (const requiredFallbackText of [
+  "Технический отчёт",
+  "Повторить генерацию",
+  "LLM-текст пока недоступен",
+]) {
+  if (!fallbackComponent.includes(requiredFallbackText)) {
+    throw new Error(
+      `Missing deterministic fallback UI text: ${requiredFallbackText}`,
+    );
+  }
+}
+
+if (/generating_narrative[\s\S]{0,160}<ReportContent/.test(page)) {
+  throw new Error(
+    "generating_narrative must show progress UI before deterministic report content",
+  );
 }
 
 for (const [name, source] of [

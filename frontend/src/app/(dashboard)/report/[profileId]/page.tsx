@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ArchetypeProfileSummary } from "@/components/report/archetype-profile-summary";
 import { AstrologyOverview } from "@/components/report/astrology-overview";
+import { DeterministicReportFallback } from "@/components/report/deterministic-report-fallback";
 import { LifeManifestations } from "@/components/report/life-manifestations";
 import { PracticalRecommendations } from "@/components/report/practical-recommendations";
 import { ReportExecutiveSummary } from "@/components/report/report-executive-summary";
+import { ReportGenerationProgress } from "@/components/report/report-generation-progress";
 import { ReportHeader } from "@/components/report/report-header";
 import { SocionicsProfileSimple } from "@/components/report/socionics-profile-simple";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
@@ -18,12 +20,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
-import { fetchReportApiData } from "@/lib/api/report";
+import {
+  fetchReportApiData,
+  fetchReportById,
+  regenerateReportNarrative,
+  type GeneratedReportApiResponse,
+} from "@/lib/api/report";
 import {
   toReportViewModel,
+  type ReportApiData,
   type ReportViewModel as ReportData,
 } from "@/lib/report/view-model";
 import { useAuthStore } from "@/stores/auth-store";
+
+const NARRATIVE_TIMEOUT_MS = 90_000;
+const POLL_INTERVAL_MS = 5_000;
 
 function ReportSkeleton() {
   return (
@@ -197,9 +208,60 @@ export default function ReportPage() {
   const profileId = params.profileId as string;
   const product = searchParams.get("product") ?? "self";
   const token = useAuthStore((state) => state.token);
+  const [apiData, setApiData] = useState<ReportApiData | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
+  const [currentReport, setCurrentReport] =
+    useState<GeneratedReportApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(
+    null,
+  );
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  function applyReportUpdate(
+    baseData: ReportApiData,
+    report: GeneratedReportApiResponse | undefined,
+  ) {
+    const nextApiData = { ...baseData, generatedReport: report };
+    setApiData(nextApiData);
+    setCurrentReport(report ?? null);
+    setData(toReportViewModel(nextApiData));
+  }
+
+  async function refreshCurrentReport() {
+    if (!apiData || !currentReport) {
+      return;
+    }
+    const report = await fetchReportById(currentReport.id, token || undefined);
+    applyReportUpdate(apiData, report);
+  }
+
+  async function retryNarrativeGeneration() {
+    if (!apiData || !currentReport) {
+      return;
+    }
+    try {
+      setIsRetrying(true);
+      setError(null);
+      const report = await regenerateReportNarrative(
+        currentReport.id,
+        token || undefined,
+      );
+      setShowFallback(false);
+      setIsTimedOut(false);
+      setGenerationStartedAt(Date.now());
+      setElapsedSeconds(0);
+      applyReportUpdate(apiData, report);
+    } catch (retryError) {
+      setError(getErrorMessage(retryError));
+    } finally {
+      setIsRetrying(false);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -208,23 +270,36 @@ export default function ReportPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const apiData = await fetchReportApiData(
+        setIsTimedOut(false);
+        setShowFallback(false);
+        setGenerationStartedAt(null);
+        setElapsedSeconds(0);
+        const loadedApiData = await fetchReportApiData(
           profileId,
           token || undefined,
           product,
         );
-        if (product !== "self" && !apiData.generatedReport) {
+        if (product !== "self" && !loadedApiData.generatedReport) {
           throw new Error(
             "Карьерный отчёт для этого профиля ещё не найден. " +
               "Вернитесь в раздел Career и нажмите «Построить отчёт».",
           );
         }
         if (isMounted) {
-          setData(toReportViewModel(apiData));
+          setApiData(loadedApiData);
+          setCurrentReport(loadedApiData.generatedReport ?? null);
+          setData(toReportViewModel(loadedApiData));
+          if (
+            loadedApiData.generatedReport?.status === "generating_narrative"
+          ) {
+            setGenerationStartedAt(Date.now());
+          }
         }
       } catch (loadError) {
         if (isMounted) {
           setError(getErrorMessage(loadError));
+          setApiData(null);
+          setCurrentReport(null);
           setData(null);
         }
       } finally {
@@ -243,11 +318,94 @@ export default function ReportPage() {
     };
   }, [profileId, product, token]);
 
+  useEffect(() => {
+    if (currentReport?.status !== "generating_narrative" || !apiData) {
+      return;
+    }
+
+    const startedAt = generationStartedAt ?? Date.now();
+    if (!generationStartedAt) {
+      setGenerationStartedAt(startedAt);
+    }
+
+    const updateElapsed = () => {
+      const elapsed = Date.now() - startedAt;
+      setElapsedSeconds(Math.floor(elapsed / 1000));
+      if (elapsed >= NARRATIVE_TIMEOUT_MS) {
+        setIsTimedOut(true);
+      }
+    };
+
+    updateElapsed();
+    const timerId = window.setInterval(updateElapsed, 1_000);
+    const pollId = window.setInterval(() => {
+      fetchReportById(currentReport.id, token || undefined)
+        .then((report) => {
+          applyReportUpdate(apiData, report);
+          if (report.status !== "generating_narrative") {
+            setGenerationStartedAt(null);
+            setIsTimedOut(false);
+          }
+        })
+        .catch((pollError: unknown) => {
+          setError(getErrorMessage(pollError));
+        });
+    }, POLL_INTERVAL_MS);
+    const timeoutId = window.setTimeout(() => {
+      setIsTimedOut(true);
+    }, NARRATIVE_TIMEOUT_MS);
+
+    return () => {
+      window.clearInterval(timerId);
+      window.clearInterval(pollId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [apiData, currentReport, generationStartedAt, token]);
+
+  const reportStatus = currentReport?.status;
+  const shouldShowProgress =
+    reportStatus === "generating_narrative" && !showFallback;
+  const shouldShowFallback = Boolean(
+    data &&
+    currentReport &&
+    (showFallback ||
+      reportStatus === "narrative_failed" ||
+      reportStatus === "deterministic_ready"),
+  );
+
   return (
     <div className="container mx-auto px-4 py-8">
       {isLoading && <ReportSkeleton />}
-      {!isLoading && error && <ReportError message={error} />}
-      {!isLoading && !error && data && <ReportContent data={data} />}
+      {!isLoading && error && !data && <ReportError message={error} />}
+      {!isLoading && !error && shouldShowProgress && (
+        <ReportGenerationProgress
+          elapsedSeconds={elapsedSeconds}
+          onRefresh={refreshCurrentReport}
+          onShowFallback={() => setShowFallback(true)}
+          timedOut={isTimedOut}
+        />
+      )}
+      {!isLoading && shouldShowFallback && data && currentReport && (
+        <DeterministicReportFallback
+          errorMessage={currentReport.error_message ?? error}
+          isRetrying={isRetrying}
+          onRetry={retryNarrativeGeneration}
+          reason={
+            reportStatus === "narrative_failed"
+              ? "failed"
+              : reportStatus === "deterministic_ready"
+                ? "deterministic_ready"
+                : "timeout"
+          }
+        >
+          <ReportContent data={data} />
+        </DeterministicReportFallback>
+      )}
+      {!isLoading &&
+        !error &&
+        data &&
+        !shouldShowProgress &&
+        !shouldShowFallback && <ReportContent data={data} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import {
   formatPlanetPlacementRu,
   signNameRu,
 } from "@/lib/astrology/labels";
+import type { GeneratedReportApiResponse } from "@/lib/api/report";
 import { confidenceLabel } from "@/lib/report/score-labels";
 
 export interface ReportPlanet {
@@ -112,44 +113,6 @@ export interface ChartSnapshotApiResponse {
   created_at?: string;
 }
 
-export interface GeneratedReportConfidenceApiResponse {
-  value: number;
-  label: string;
-  reason_codes: string[];
-}
-
-export interface GeneratedReportClaimApiResponse {
-  claim_id: string;
-  section: string;
-  archetype: string;
-  score: number;
-  confidence: GeneratedReportConfidenceApiResponse;
-  message: string;
-}
-
-export interface GeneratedReportApiResponse {
-  id: string;
-  profile_id: string;
-  product: string;
-  version: number;
-  status: string;
-  mode: string;
-  archetype: string | null;
-  score: number | null;
-  confidence: number | null;
-  report_data: {
-    product?: string;
-    archetype?: {
-      primary?: string;
-      score?: number;
-      confidence?: GeneratedReportConfidenceApiResponse;
-    };
-    claims?: GeneratedReportClaimApiResponse[];
-    all_archetype_scores?: Record<string, number>;
-    quality_warning?: string | null;
-  };
-}
-
 export interface ReportApiData {
   profile: ProfileApiResponse;
   chartSnapshot: ChartSnapshotApiResponse;
@@ -164,7 +127,7 @@ export interface ReportViewModel {
     archetype: string;
     score: number;
     confidence_label: string;
-    claims: GeneratedReportClaimApiResponse[];
+    claims: NonNullable<GeneratedReportApiResponse["report_data"]["claims"]>;
     all_archetype_scores: Record<string, number>;
     quality_warning: string | null;
   };

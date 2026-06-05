@@ -747,11 +747,9 @@ components:
         status:
           type: string
         title:
-          type: string
-          nullable: true
+          type: [string, "null"]
         hero:
-          type: object
-          nullable: true
+          type: [object, "null"]
           additionalProperties: true
         sections:
           type: array
@@ -759,24 +757,19 @@ components:
             type: object
             additionalProperties: true
         career_cta:
-          type: object
-          nullable: true
+          type: [object, "null"]
           additionalProperties: true
         content:
-          type: object
-          nullable: true
+          type: [object, "null"]
           additionalProperties: true
         error_message:
-          type: string
-          nullable: true
+          type: [string, "null"]
         generation_started_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         generation_finished_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
         generation_attempts:
           type: integer
         created_at:
@@ -805,29 +798,24 @@ components:
         mode:
           type: string
         archetype:
-          type: string
-          nullable: true
+          type: [string, "null"]
         score:
-          type: number
-          nullable: true
+          type: [number, "null"]
         confidence:
-          type: number
-          nullable: true
+          type: [number, "null"]
         pdf_url:
-          type: string
-          nullable: true
+          type: [string, "null"]
         pdf_generated:
           type: boolean
         report_data:
           type: object
           additionalProperties: true
         narrative:
-          allOf:
+          oneOf:
             - $ref: "#/components/schemas/NarrativeResponse"
-          nullable: true
+            - type: "null"
         error_message:
-          type: string
-          nullable: true
+          type: [string, "null"]
         created_at:
           type: string
           format: date-time

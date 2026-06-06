@@ -118,6 +118,21 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
 
+      - name: Install WeasyPrint native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcairo2 \
+            libffi-dev \
+            libgdk-pixbuf-2.0-0 \
+            libglib2.0-0 \
+            libharfbuzz-subset0 \
+            libharfbuzz0b \
+            libpango-1.0-0 \
+            libpangocairo-1.0-0 \
+            shared-mime-info \
+            fonts-dejavu-core
+
       - name: Install dependencies
         run: pip install -e ".[dev]"
         working-directory: backend

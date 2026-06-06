@@ -97,7 +97,7 @@ POST /api/v1/reports/generate
 | S08 | [Report API integration and regenerate endpoint](S08-report-api-narrative-endpoints.md) | ✅ Готово |
 | S09 | [Frontend status polling, timeout, retry and fallback](S09-frontend-status-polling-fallback.md) | ✅ Готово |
 | S10 | [Frontend narrative rendering components](S10-frontend-narrative-rendering.md) | ✅ Готово |
-| S11 | [PDF rendering from narrative JSON](S11-pdf-from-narrative-json.md) | 🟡 В работе |
+| S11 | [PDF rendering from narrative JSON](S11-pdf-from-narrative-json.md) | ✅ Готово |
 | S12 | [Quality gates, tests and observability](S12-quality-gates-observability.md) | ✅ Готово |
 
 ## Минимальный порядок разработки

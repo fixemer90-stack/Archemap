@@ -1,7 +1,7 @@
 # Story E11.S11: PDF rendering from narrative JSON
 
 **Feature:** [LLM Report Narrative](FEATURE.md)
-**Статус:** 🟨 В работе (код и тесты готовы, runtime smoke blocked by WeasyPrint system libs)
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -35,8 +35,13 @@ PDF должен использовать тот же saved narrative JSON, чт
 - [x] Technical appendix remains available but does not precede narrative content.
 - [x] PDF tests pass without external services except existing mocked storage as needed.
 
-## Notes / blockers
+## Verification
 
-- Unit coverage for `ready narrative`, `narrative_failed`, `missing narrative`, and PDF task wiring is green.
-- Real PDF smoke inside the current backend container is still blocked by missing WeasyPrint system library `libgobject-2.0-0` (`OSError: cannot load library 'libgobject-2.0-0'`).
-- Story code changes are in place, but container/runtime dependencies still need to be provisioned before calling the story fully shipped.
+- Backend Docker image now installs the native WeasyPrint runtime libs required for real PDF generation (`libglib2.0-0`, `libpango-1.0-0`, `libpangocairo-1.0-0`, `libcairo2`, `libgdk-pixbuf-2.0-0`, `libharfbuzz0b`).
+- Added a real smoke unit test `test_generate_report_pdf_smoke_returns_pdf_bytes` that calls WeasyPrint and asserts PDF bytes are produced.
+- Verified inside the backend container that PDF rendering succeeds and no LLM call is needed.
+
+## Notes
+
+- Unit coverage for `ready narrative`, `narrative_failed`, `missing narrative`, PDF task wiring, and real PDF byte generation is green.
+- PDF still renders from saved narrative JSON only; no second LLM call is introduced in the PDF path.

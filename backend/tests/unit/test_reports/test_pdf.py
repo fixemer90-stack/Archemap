@@ -10,7 +10,7 @@ import pytest
 
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.reports.models import Report
-from app.modules.reports.pdf import render_report_html
+from app.modules.reports.pdf import generate_report_pdf, render_report_html
 from app.modules.reports.tasks import _generate_pdf_async
 from tests.unit.test_report_narratives.test_schemas import make_self_narrative_payload
 
@@ -122,6 +122,19 @@ def test_render_report_html_handles_missing_narrative_without_llm_text() -> None
     assert "Вы умеете собирать людей вокруг смысла." in html
     assert "Текстовая narrative-версия недоступна" not in html
     assert "Главное о вас" not in html
+
+
+def test_generate_report_pdf_smoke_returns_pdf_bytes() -> None:
+    pdf = generate_report_pdf(
+        make_report_data(),
+        profile_name="Алексей",
+        narrative_content=make_self_narrative_payload(),
+        narrative_status="ready",
+        narrative_error=None,
+    )
+
+    assert pdf.startswith(b"%PDF")
+    assert len(pdf) > 1000
 
 
 def test_generate_pdf_task_uses_latest_ready_narrative_without_llm(

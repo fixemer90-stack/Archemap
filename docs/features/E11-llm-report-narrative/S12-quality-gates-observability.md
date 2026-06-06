@@ -73,4 +73,4 @@ Expected pass criteria:
 
 - Frontend regression coverage for timeout/fallback/order already lived in `frontend/scripts/check-report-ux.mjs`; S12 verifies and relies on it rather than duplicating the script.
 - Observability is implemented here as structured logs with `duration_ms`, `failure_kind`, `recovery_action`, `error_type` and explicit event names. A separate metrics backend was not present in the project, so no Prometheus/counter layer was added.
-- E11 feature as a whole is still not fully shipped while S11 runtime PDF smoke remains blocked by missing WeasyPrint system libs in the backend container.
+- S11 runtime PDF smoke blocker is removed: backend image and CI test job now install the native WeasyPrint libs required for real PDF rendering.

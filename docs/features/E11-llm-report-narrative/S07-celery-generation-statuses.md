@@ -1,49 +1,52 @@
-# Story E11.S07: Celery generation task, statuses and retry
+# Story E11.S08: Report API integration and regenerate endpoint
 
 **Feature:** [LLM Report Narrative](FEATURE.md)
 **Статус:** ✅ Готово
 
 ## Контекст
 
-Пользователь не должен ждать LLM внутри HTTP-запроса. Narrative generation должна идти асинхронно, иметь явные статусы и не превращаться в бесконечный spinner при timeout/provider error/validation failure.
+Frontend должен видеть статус narrative generation, получать deterministic fallback data, читать готовый narrative JSON и запускать регенерацию только LLM-текста без пересчёта chart/rules.
 
 ## Что сделано
 
-1. Добавлены report lifecycle statuses вокруг narrative layer: `deterministic_ready`, `generating_narrative`, `ready`, `narrative_failed`.
-2. Реализован Celery task `generate_report_narrative(report_id)` в `workers/tasks/reports.py`.
-3. Добавлен orchestration service `ReportNarrativeService.generate_for_report(report_id)`.
-4. Добавлена retry policy: retry только для timeout/provider unavailable; no retry для invalid input/report not found/validation failed after repair.
-5. Использованы поля `generation_started_at`, `generation_finished_at`, `error_message`, `generation_attempts` в `report_narratives`.
-6. Гарантирована idempotency через cache lookup и reuse existing narrative row по `report_id + prompt_version + input_hash + model_name`.
-7. Добавлены unit tests через direct task invocation и fake providers, без реального Celery broker.
+1. Обновлены response schemas `ReportResponse`: теперь API возвращает deterministic `report_data`, `status`, `error_message` и `narrative` с generation metadata.
+2. `POST /api/v1/reports/generate` теперь возвращает актуальный status (`generating_narrative` / `deterministic_ready`) и latest narrative state.
+3. `GET /api/v1/reports/{report_id}` возвращает `narrative: null` во время генерации и полный persisted narrative JSON при `ready`/`narrative_failed`.
+4. Добавлен `POST /api/v1/reports/{report_id}/narrative/regenerate`.
+5. В regenerate проверяются ownership и product support; повторный вызов при уже идущей генерации не делает лишний enqueue.
+6. Для regenerate добавлен `force=True`, чтобы новый LLM attempt не переиспользовал cache hit готового narrative.
+7. Обновлён `contracts/openapi.yaml`.
+8. Добавлены API tests на in-progress, ready payload, generate response shape, forced regenerate и denied access.
 
-## Затронутые файлы
+## Затрагиваемые файлы
 
-| Файл | Действие |
-|---|---|
-| `backend/workers/tasks/reports.py` | Celery task for narrative generation + retry/final failure handling |
-| `backend/app/modules/report_narratives/tasks.py` | Sync/async task bridge, retry classification, terminal failure finalizer |
-| `backend/app/modules/reports/service.py` | `deterministic_ready` status after deterministic save |
-| `backend/app/modules/reports/router.py` | Enqueue narrative task and switch to `generating_narrative` / fallback to `deterministic_ready` |
-| `backend/app/modules/report_narratives/service.py` | Narrative generation orchestration |
-| `backend/app/modules/report_narratives/prompts/__init__.py` | Prompt loader package export for typed imports |
-| `backend/tests/unit/test_report_narratives/test_tasks.py` | Task/status/retry/idempotency tests |
+| Файл                                                    | Действие                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| `backend/app/modules/reports/router.py`                 | Extend existing report endpoints, add regenerate route       |
+| `backend/app/modules/reports/schemas.py`                | Response schemas with narrative/status + serializer helpers  |
+| `backend/app/modules/report_narratives/service.py`      | Latest narrative lookup + force regeneration path            |
+| `backend/app/modules/report_narratives/tasks.py`        | Force flag propagation for task bridge                       |
+| `backend/workers/tasks/reports.py`                      | Celery task accepts `force` regenerate mode                  |
+| `contracts/openapi.yaml`                                | API contract update                                          |
+| `backend/tests/unit/test_reports/test_reports.py`       | Existing schema tests continue covering report serialization |
+| `backend/tests/unit/test_report_narratives/test_api.py` | New API tests                                                |
 
 ## Критерии приёмки
 
-- [x] `POST /reports/generate` не ждёт real LLM call.
-- [x] После deterministic save report получает статус `generating_narrative` или controlled fallback status.
-- [x] Successful task сохраняет narrative и переводит report в `ready`.
-- [x] Failed task сохраняет error и переводит report/narrative в `narrative_failed`, а не оставляет вечную генерацию.
-- [x] Retries ограничены `LLM_MAX_RETRIES`.
-- [x] Повторный task не создаёт duplicate completed narrative для того же hash/prompt/model.
+- [x] Generate response can return `status: generating_narrative`.
+- [x] Detail response with generation in progress has `narrative: null` and deterministic data available.
+- [x] Detail response ready includes persisted `narrative` with `prompt_version`, `model_name`, `sections`.
+- [x] Regenerate endpoint creates/enqueues a new narrative attempt without recomputing chart/rules.
+- [x] User cannot access/regenerate someone else’s report.
+- [x] OpenAPI contract matches implemented response shape.
+- [x] API tests cover in-progress, ready, narrative_failed/regenerate permission path.
 
 ## Проверка
 
 ```bash
 cd backend
-docker compose exec -T backend python -m ruff check app/modules/report_narratives app/modules/reports workers/tasks tests/unit/test_report_narratives
-docker compose exec -T backend python -m ruff format --check app/modules/report_narratives app/modules/reports workers/tasks tests/unit/test_report_narratives
-docker compose exec -T backend python -m mypy app/modules/report_narratives app/modules/reports workers/tasks tests/unit/test_report_narratives
-docker compose exec -T backend python -m pytest tests/unit/test_report_narratives -q
+docker compose exec -T backend python -m ruff check app/modules/report_narratives app/modules/reports workers/tasks tests/unit/test_report_narratives tests/unit/test_reports
+docker compose exec -T backend python -m ruff format --check app/modules/report_narratives app/modules/reports workers/tasks tests/unit/test_report_narratives tests/unit/test_reports
+docker compose exec -T backend python -m mypy app/modules/report_narratives app/modules/reports workers/tasks tests/unit/test_report_narratives tests/unit/test_reports
+docker compose exec -T backend python -m pytest tests/unit/test_report_narratives tests/unit/test_reports/test_reports.py -q
 ```

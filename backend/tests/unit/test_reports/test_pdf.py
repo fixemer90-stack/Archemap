@@ -207,7 +207,12 @@ def test_generate_pdf_task_uses_latest_ready_narrative_without_llm(
         async def __aenter__(self) -> FakeSession:
             return self
 
-        async def __aexit__(self, exc_type, exc, tb) -> None:
+        async def __aexit__(
+            self,
+            exc_type: object | None,
+            exc: object | None,
+            tb: object | None,
+        ) -> None:
             return None
 
         async def execute(self, statement):  # type: ignore[no-untyped-def]

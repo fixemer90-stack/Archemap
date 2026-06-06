@@ -194,6 +194,20 @@ def make_narrative_record(report: Report) -> ReportNarrative:
     )
 
 
+class FakeLogger:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str, dict[str, object]]] = []
+
+    def info(self, event: str, **kwargs: object) -> None:
+        self.events.append(("info", event, kwargs))
+
+    def warning(self, event: str, **kwargs: object) -> None:
+        self.events.append(("warning", event, kwargs))
+
+    def error(self, event: str, **kwargs: object) -> None:
+        self.events.append(("error", event, kwargs))
+
+
 class TestReportNarrativeService:
     @pytest.mark.asyncio
     async def test_reuses_cached_narrative_without_duplicate_generation(
@@ -265,6 +279,59 @@ class TestReportNarrativeService:
         assert result.content["title"] == "Ваш внутренний портрет"
         assert report_fixture.status == "ready"
         assert report_fixture.error_message is None
+
+    @pytest.mark.asyncio
+    async def test_logs_generation_lifecycle_without_prompt_or_api_key(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        service = ReportNarrativeService(db=db, llm_provider=ReadyProvider())
+        record = make_narrative_record(report_fixture)
+        fake_logger = FakeLogger()
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+        monkeypatch.setattr("app.modules.report_narratives.service.logger", fake_logger, raising=False)
+
+        await service.generate_for_report(report_fixture.id)
+
+        event_names = [event for _, event, _ in fake_logger.events]
+        assert "report_narrative_generation_started" in event_names
+        assert "report_narrative_generation_succeeded" in event_names
+
+        for _, _, payload in fake_logger.events:
+            assert "prompt" not in payload
+            assert "api_key" not in payload
+            for value in payload.values():
+                assert "super-secret-key" not in str(value)
+
+    @pytest.mark.asyncio
+    async def test_logs_validation_failure_kind_for_terminal_failure(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        service = ReportNarrativeService(db=db, llm_provider=NonRecoverableInvalidProvider())
+        record = make_narrative_record(report_fixture)
+        fake_logger = FakeLogger()
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+        monkeypatch.setattr("app.modules.report_narratives.service.logger", fake_logger, raising=False)
+
+        await service.generate_for_report(report_fixture.id)
+
+        failure_events = [
+            payload for _, event, payload in fake_logger.events if event == "report_narrative_generation_failed"
+        ]
+        assert failure_events
+        assert any(payload.get("failure_kind") == "validation_failed" for payload in failure_events)
+        assert any("duration_ms" in payload for payload in failure_events)
 
     @pytest.mark.asyncio
     async def test_recoverable_validation_failure_falls_back_after_single_repair_attempt(

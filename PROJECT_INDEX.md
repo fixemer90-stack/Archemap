@@ -1,438 +1,195 @@
-# Индекс проекта Astrotype
+# PROJECT_INDEX
 
-Быстрая карта репозитория `D:\Python\Balthier\Archemap` для навигации по коду, документации, API и проверкам.
+## Что это
 
-## 1. Что это за проект
+Astrotype — full-stack narrative-first платформа для астрологических отчётов, соционики и продуктовых вертикалей. Детерминированный backend считает карту, признаки, архетипы и evidence trail; UI и PDF показывают human-readable narrative поверх этих данных.
 
-Astrotype — full-stack SaaS для астрологических self-reports, соционики и продуктовых вертикалей. Архитектура: модульный монолит с FastAPI backend, Next.js frontend, PostgreSQL, Redis, Celery и MinIO/S3 для PDF-артефактов.
+## Быстрые ссылки
 
-Основной pipeline:
+- README: `README.md`
+- Product spec: `docs/SPEC.md`
+- Roadmap: `docs/ROADMAP.md`
+- OpenAPI: `contracts/openapi.yaml`
+- AsyncAPI: `contracts/asyncapi.yaml`
+- LLM design: `docs/design/llm-report-narrative-architecture.md`
+- E11 feature pack: `docs/features/E11-llm-report-narrative/FEATURE.md`
+- SRS E11: `docs/SRS/SRS-E11-llm-report-narrative.md`
 
-```text
-birth data
-  -> chart snapshot
-  -> normalized features
-  -> rules engine
-  -> claims + evidence
-  -> narrative report
-  -> UI / PDF
-```
+## Tech stack
 
-## 2. Быстрые ссылки
+- Backend: FastAPI, SQLAlchemy 2 async, PostgreSQL, Redis
+- Frontend: Next.js 15, React 19, Tailwind 4, Zustand, TanStack Query
+- Workers: Celery-style async task bridge
+- PDF: WeasyPrint + Jinja2
+- Storage: MinIO / S3
+- CI: GitHub Actions (`.github/workflows/ci.yml`)
 
-| Область | Куда идти |
-| --- | --- |
-| Общее описание и запуск | `README.md` |
-| Дорожная карта | `docs/ROADMAP.md` |
-| Полная продуктовая спецификация | `docs/SPEC.md` |
-| API auth | `docs/API-AUTH.md` |
-| OpenAPI contract | `contracts/openapi.yaml` |
-| AsyncAPI/event contract | `contracts/asyncapi.yaml` |
-| Дизайн-код | `docs/astrotype_design_code.md` |
-| UX отчётов | `docs/design/report-ux-redesign.md` |
-| Self storytelling | `docs/design/self-report-storytelling.md` |
-| LLM narrative architecture | `docs/design/llm-report-narrative-architecture.md` |
-| Feature/story docs | `docs/features/` |
-| SRS docs | `docs/SRS/` |
-| Kubernetes manifests | `infra/k8s/` |
-| Local orchestration | `docker-compose.yml` |
-
-## 3. Технологический стек
-
-### Backend
-
-- Python 3.12
-- FastAPI + Pydantic v2
-- SQLAlchemy 2 async + Alembic
-- PostgreSQL 16
-- Redis 7
-- Celery
-- Swiss Ephemeris / Flatlib
-- WeasyPrint + Jinja2
-- MinIO / S3
-- Ruff, mypy, pytest
-
-### Frontend
-
-- Next.js 15
-- React 19
-- Tailwind CSS 4
-- TanStack Query
-- Zustand
-- React Hook Form + Zod
-- ESLint, Prettier, TypeScript
-
-### Infra / integrations
-
-- Docker Compose для локального окружения
-- GitHub Actions CI/CD
-- Yandex OAuth
-- YooKassa / Yandex Pay architecture
-- Kubernetes manifests под staging/production
-
-## 4. Структура репозитория
+## Repository map
 
 ```text
-.
-├── backend/                  # FastAPI backend, domain modules, rules, tests, Celery workers
-│   ├── app/
-│   │   ├── api/              # Versioned API, middleware, health routes
-│   │   ├── chart_engine/     # Natal chart, ephemeris, socionics engine
-│   │   ├── core/             # Shared kernel: settings, base models, secrets/security
-│   │   ├── infrastructure/   # DB, Redis, email, geocoding, storage integrations
-│   │   └── modules/          # Domain modules
-│   ├── alembic/              # DB migrations
-│   ├── rules/                # YAML rulesets by product vertical
-│   ├── tests/                # Unit, integration, contract, chart tests
-│   └── workers/              # Celery app and tasks
-├── contracts/                # OpenAPI / AsyncAPI contracts
-├── docs/                     # Product, SRS, design, feature/story documentation
-├── frontend/                 # Next.js frontend
-│   ├── scripts/              # Frontend regression scripts
-│   └── src/
-│       ├── app/              # Next.js App Router pages
-│       ├── components/       # UI, chart, report, glossary, layout components
-│       ├── hooks/            # React hooks
-│       ├── lib/              # API clients, labels, report view models, utilities
-│       ├── providers/        # React providers
-│       ├── stores/           # Zustand stores
-│       └── types/            # Shared TS types
-├── infra/                    # Kubernetes manifests and overlays
-├── scripts/                  # Utility scripts
-├── docker-compose.yml        # Local services
-└── README.md                 # Main project README
+backend/
+  app/
+    api/                 Versioned API routers and middleware
+    chart_engine/        Natal chart + socionics computation
+    core/                Settings, base models, exceptions, secrets
+    infrastructure/      DB, Redis, email, storage, geocoding
+    modules/             Product/domain modules
+  alembic/               Migrations
+  rules/                 Deterministic interpretation rules
+  tests/                 Unit + integration tests
+  workers/               Worker entrypoints
+frontend/
+  src/app/               App Router pages
+  src/components/        UI/report/chart/layout components
+  src/lib/               API client, adapters, labels, utils
+  scripts/               Structural regression checks
+contracts/               OpenAPI + AsyncAPI
+.docs/ not used
+.github/workflows/       CI/CD workflows
+docs/                    Design, SRS, feature stories, reviews
 ```
 
-Текущий репозиторий содержит примерно 403 tracked files без dependency/build/generated директорий.
+## Backend module index
 
-## 5. Backend domain index
+- `app/modules/auth/` — login, register, OAuth, password reset, account linking
+- `app/modules/users/` — `/users/me`, profile name update
+- `app/modules/profiles/` — person profiles, geocoding inputs
+- `app/modules/charts/` — chart snapshots and socionics computation
+- `app/modules/rules/` — deterministic rules/resolver/interpretation
+- `app/modules/reports/` — report persistence, API, PDF, storage, tasks
+- `app/modules/report_narratives/` — LLM narrative layer over deterministic reports
+- `app/modules/payments/` — YooKassa payment flow
+- `app/modules/llm/` — provider abstraction, mock/openrouter providers
 
-| Модуль | Путь | Назначение |
-| --- | --- | --- |
-| API shell | `backend/app/api/` | Versioned router assembly, middleware, health endpoints |
-| Auth | `backend/app/modules/auth/` | Registration, email verification, login/logout, refresh, password reset, Yandex OAuth, account linking |
-| Users | `backend/app/modules/users/` | Current user profile, name update |
-| Profiles | `backend/app/modules/profiles/` | Birth profiles CRUD, geocoding |
-| Charts | `backend/app/modules/charts/` | Chart snapshots and chart retrieval by profile |
-| Chart engine | `backend/app/chart_engine/` | Ephemeris, astrological objects, aspects, houses, socionics calculation |
-| Rules | `backend/app/modules/rules/` | Rule engine API, ruleset loading, resolver, interpretation result |
-| Reports | `backend/app/modules/reports/` | Report generation, versioning, PDF rendering/storage, report API |
-| Payments | `backend/app/modules/payments/` | Payment models, YooKassa provider, payment webhook |
-| Billing/subscriptions/catalog | `backend/app/modules/billing/`, `subscriptions/`, `catalog/` | Commercial domain boundaries / future product modules |
-| Notifications/admin/webhooks | `backend/app/modules/notifications/`, `admin/`, `webhooks/` | Operational and integration boundaries |
-| Core | `backend/app/core/` | Base model, production secret validation, shared security/config primitives |
-| Infrastructure | `backend/app/infrastructure/` | DB/session, Redis, geocoding, email templates, external services |
-| Workers | `backend/workers/` | Celery app and async report tasks |
+## LLM narrative implementation paths
 
-## 6. Backend API index
+Core backend:
+- `backend/app/modules/report_narratives/schemas.py` — `NarrativeInput`, `SelfNarrative`
+- `backend/app/modules/report_narratives/input_builder.py` — deterministic DTO builder
+- `backend/app/modules/report_narratives/hash.py` — stable narrative input hash
+- `backend/app/modules/report_narratives/prompts.py` + `prompts/` — prompt loading/versioning
+- `backend/app/modules/report_narratives/validators.py` — contract validation + recovery policy
+- `backend/app/modules/report_narratives/fallback.py` — deterministic fallback narrative
+- `backend/app/modules/report_narratives/service.py` — cache, generation, validation, structured logs
+- `backend/app/modules/report_narratives/tasks.py` — async task orchestration helpers
+- `backend/app/modules/report_narratives/models.py` — `ReportNarrative` storage model
 
-Все product API подключаются под `/api/v1`.
+LLM provider layer:
+- `backend/app/modules/llm/provider.py` — factory
+- `backend/app/modules/llm/providers/mock.py` — offline-safe test provider
+- `backend/app/modules/llm/providers/openrouter.py` — real network provider
 
-### Health
+Report integration:
+- `backend/app/modules/reports/router.py` — report endpoints
+- `backend/app/modules/reports/schemas.py` — response contracts with narrative status/payload
+- `backend/app/modules/reports/tasks.py` — PDF task wiring reads saved narrative JSON
+- `backend/app/modules/reports/pdf.py` — PDF rendering from deterministic data + saved narrative
+- `backend/app/modules/reports/templates/report.html` — narrative-first PDF template
+- `backend/workers/tasks/reports.py` — worker entrypoints
 
+## Frontend route/component index
+
+Routes:
+- `frontend/src/app/(dashboard)/dashboard/page.tsx` — dashboard
+- `frontend/src/app/(dashboard)/products/self/page.tsx` — Self product
+- `frontend/src/app/(dashboard)/products/career/page.tsx` — Career product
+- `frontend/src/app/(dashboard)/report/[profileId]/page.tsx` — report page with polling/fallback
+- `frontend/src/app/(auth)/register/page.tsx` — registration + OAuth complete-profile
+
+Narrative UI:
+- `frontend/src/components/report/report-generation-progress.tsx` — generating state
+- `frontend/src/components/report/deterministic-report-fallback.tsx` — fallback after timeout/failure
+- `frontend/src/components/report/report-narrative-page.tsx` — ready narrative rendering root
+- `frontend/src/components/report/narrative-section.tsx` — narrative section renderer
+- `frontend/src/components/report/career-cta.tsx` — Self→Career upsell block
+- `frontend/src/components/report/evidence-notes.tsx` — collapsed evidence disclosure
+- `frontend/src/lib/report/view-model.ts` — narrative + deterministic adapter
+- `frontend/src/lib/api/report.ts` — report API contract and regenerate endpoint
+
+## API/route index
+
+Main REST prefix: `/api/v1`
+
+Important report routes:
+- `POST /api/v1/reports/generate`
+- `GET /api/v1/reports/{report_id}`
+- `GET /api/v1/reports`
+- `GET /api/v1/reports/{report_id}/versions`
+- `POST /api/v1/reports/{report_id}/narrative/regenerate`
+- `POST /api/v1/reports/{report_id}/pdf`
+
+Health:
 - `GET /api/v1/health`
-- `GET /api/v1/health/secrets`
 
-### Auth: `/api/v1/auth`
+## Rules/product verticals
 
-- `POST /register`
-- `POST /complete-profile`
-- `POST /verify`
-- `POST /resend-verification`
-- `POST /refresh`
-- `POST /logout`
-- `POST /password-reset/request`
-- `POST /password-reset/confirm`
-- `POST /change-password`
-- `GET /oauth/yandex/start`
-- `GET /oauth/yandex/callback`
-- `GET /linked-providers`
-- `DELETE /unlink/{provider}`
+- `backend/rules/self/` — Self archetypes and evidence templates
+- `backend/rules/career/` — Career archetypes and evidence templates
+- Future verticals follow the same pattern under `backend/rules/{vertical}/`
 
-### Users: `/api/v1/users`
+## Quality gates
 
-- `GET /me`
-- `PATCH /me`
-
-### Profiles: `/api/v1/profiles`
-
-- `GET /geocode`
-- `POST /`
-- `GET /`
-- `GET /{profile_id}`
-- `PATCH /{profile_id}`
-- `DELETE /{profile_id}`
-
-### Charts: `/api/v1/profiles/{profile_id}/chart`
-
-- `POST /`
-- `GET /`
-- `GET /{snapshot_id}`
-
-### Rules: `/api/v1/rules`
-
-- `POST /interpret`
-- `GET /rulesets`
-
-### Reports: `/api/v1/reports`
-
-- `POST /generate`
-- `GET /`
-- `GET /{report_id}`
-- `GET /{report_id}/pdf`
-- `GET /{report_id}/versions`
-- `GET /{report_id}/versions/{version}`
-
-### Payments: `/api/v1/payments`
-
-- `POST /`
-- `GET /`
-- `GET /{payment_id}`
-- `POST /webhooks/yookassa`
-
-### Other mounted module prefixes
-
-- `/api/v1/admin`
-- `/api/v1/authorization`
-- `/api/v1/billing`
-- `/api/v1/catalog`
-- `/api/v1/notifications`
-- `/api/v1/reconciliation`
-- `/api/v1/subscriptions`
-- `/api/v1/webhooks`
-
-## 7. Frontend route index
-
-| Route | Source | Назначение |
-| --- | --- | --- |
-| `/` | `frontend/src/app/page.tsx` | Landing page |
-| `/register` | `frontend/src/app/(auth)/register/page.tsx` | Registration / OAuth complete-profile flow |
-| `/login` | `frontend/src/app/(auth)/login/page.tsx` | Login |
-| `/verify` | `frontend/src/app/(auth)/verify/page.tsx` | Email verification / resend |
-| `/forgot-password` | `frontend/src/app/(auth)/forgot-password/page.tsx` | Password reset request |
-| `/reset-password` | `frontend/src/app/(auth)/reset-password/page.tsx` | Password reset confirm |
-| `/auth/callback` | `frontend/src/app/(auth)/auth/callback/page.tsx` | OAuth callback UI |
-| `/dashboard` | `frontend/src/app/(dashboard)/dashboard/page.tsx` | User dashboard and product cards |
-| `/products/self` | `frontend/src/app/(dashboard)/products/self/page.tsx` | Self product flow |
-| `/products/career` | `frontend/src/app/(dashboard)/products/career/page.tsx` | Career product flow |
-| `/products/love` | `frontend/src/app/(dashboard)/products/love/page.tsx` | Love product page |
-| `/products/child` | `frontend/src/app/(dashboard)/products/child/page.tsx` | Child product page |
-| `/report/[profileId]` | `frontend/src/app/(dashboard)/report/[profileId]/page.tsx` | Report view |
-| `/settings` | `frontend/src/app/(dashboard)/settings/page.tsx` | Profile settings and password change |
-| `/billing` | `frontend/src/app/(dashboard)/billing/page.tsx` | Billing UI |
-| `/subscriptions` | `frontend/src/app/(dashboard)/subscriptions/page.tsx` | Subscription UI |
-
-## 8. Product verticals and rules
-
-| Vertical | Rules path | Frontend path | Status |
-| --- | --- | --- | --- |
-| Self | `backend/rules/self/` | `frontend/src/app/(dashboard)/products/self/page.tsx` | Implemented |
-| Career | `backend/rules/career/` | `frontend/src/app/(dashboard)/products/career/page.tsx` | Implemented |
-| Love | planned | `frontend/src/app/(dashboard)/products/love/page.tsx` | Planned / product shell |
-| Child | planned | `frontend/src/app/(dashboard)/products/child/page.tsx` | Planned / product shell |
-
-Rule vertical structure:
-
-```text
-backend/rules/{vertical}/
-├── archetypes_v1.yaml
-└── evidence_templates_v1.yaml
-```
-
-## 9. Important implementation paths
-
-### Auth and user identity
-
-- `backend/app/modules/auth/router.py`
-- `backend/app/modules/auth/service.py`
-- `backend/app/modules/auth/schemas.py`
-- `backend/app/modules/auth/verification.py`
-- `backend/app/modules/auth/oauth/`
-- `backend/app/modules/users/router.py`
-- `backend/app/modules/users/models.py`
-- `frontend/src/stores/auth-store.ts`
-- `frontend/src/app/(auth)/register/page.tsx`
-- `frontend/src/app/(auth)/login/page.tsx`
-- `frontend/src/app/(auth)/verify/page.tsx`
-- `frontend/src/app/(dashboard)/settings/page.tsx`
-
-### Chart and socionics
-
-- `backend/app/chart_engine/ephemeris.py`
-- `backend/app/chart_engine/socionics.py`
-- `backend/app/modules/charts/service.py`
-- `backend/app/modules/charts/router.py`
-- `backend/app/modules/charts/schemas.py`
-- `backend/tests/chart/test_socionics.py`
-- `frontend/src/components/chart/natal-chart.tsx`
-- `frontend/src/lib/astrology/labels.ts`
-
-### Reports
-
-- `backend/app/modules/reports/service.py`
-- `backend/app/modules/reports/router.py`
-- `backend/app/modules/reports/models.py`
-- `backend/app/modules/reports/schemas.py`
-- `backend/app/modules/reports/pdf.py`
-- `backend/app/modules/reports/storage.py`
-- `backend/app/modules/reports/templates/report.html`
-- `backend/workers/tasks/reports.py`
-- `frontend/src/app/(dashboard)/report/[profileId]/page.tsx`
-- `frontend/src/lib/report/view-model.ts`
-- `frontend/src/lib/api/report.ts`
-- `frontend/src/components/report/`
-
-### Report UX / glossary / localization
-
-- `frontend/src/components/report/report-header.tsx`
-- `frontend/src/components/report/report-executive-summary.tsx`
-- `frontend/src/components/report/astrology-overview.tsx`
-- `frontend/src/components/report/archetype-profile-summary.tsx`
-- `frontend/src/components/report/socionics-profile-simple.tsx`
-- `frontend/src/components/report/technical-details-accordion.tsx`
-- `frontend/src/components/glossary/term-help.tsx`
-- `frontend/src/lib/glossary/report-glossary.ts`
-- `frontend/scripts/check-report-ux.mjs`
-
-### Payments
-
-- `backend/app/modules/payments/models.py`
-- `backend/app/modules/payments/router.py`
-- `backend/app/modules/payments/schemas.py`
-- `backend/app/modules/payments/service.py`
-- `backend/app/modules/payments/providers/yookassa.py`
-- `backend/alembic/versions/a7b8c9d0e1f2_add_payments_tables.py`
-
-### Rate limiting and production safety
-
-- `backend/app/api/middleware.py`
-- `backend/app/api/v1/health.py`
-- `backend/app/config.py`
-- `backend/app/core/secrets.py`
-- `backend/tests/unit/test_rate_limit.py`
-
-## 10. Local runbook
-
-### Docker start
-
-```bash
-cd /mnt/d/Python/Balthier/Archemap
-docker compose up -d --build
-```
-
-Local URLs:
-
-| Service | URL |
-| --- | --- |
-| Frontend | `http://localhost:3000` |
-| Backend API | `http://localhost:8000` |
-| Health | `http://localhost:8000/api/v1/health` |
-| OpenAPI UI | `http://localhost:8000/docs` |
-| MinIO Console | `http://localhost:9001` |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
-
-### Useful Docker commands
-
-```bash
-docker compose ps
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose up -d --build
-docker compose down
-```
-
-If local PostgreSQL auth/volume state is broken:
-
-```bash
-docker compose down -v
-docker compose up -d --build
-```
-
-## 11. Quality gates
-
-### Backend
-
+Backend:
 ```bash
 cd backend
-python3 -m ruff check .
-python3 -m ruff format --check .
-python3 -m mypy .
-python3 -m pytest tests/unit -q
+ruff check .
+ruff format --check .
+mypy .
+pytest tests/unit -q
+pytest tests/integration -q
 ```
 
-If host Python is missing project dependencies, run parity checks inside Docker backend:
-
-```bash
-docker compose exec -T backend sh -lc 'cd /app && python -m ruff check . && python -m ruff format --check . && python -m mypy . && python -m pytest tests/unit -q'
-```
-
-### Frontend
-
+Frontend:
 ```bash
 cd frontend
 npm test
 npx tsc --noEmit --pretty false
 npx prettier --check .
 npx eslint .
+npm run build
 ```
 
-## 12. Documentation index
+Report narrative regression focus:
+- `backend/tests/unit/test_report_narratives/`
+- `backend/tests/unit/test_reports/test_pdf.py`
+- `frontend/scripts/check-report-ux.mjs`
 
-### Core docs
+CI guardrails:
+- `.github/workflows/ci.yml` explicitly pins test env to `LLM_PROVIDER=mock` and `LLM_ENABLED=false`
+- Automated tests must not hit real LLM network providers
 
-- `README.md` — overview, launch, structure, docs table, CI/CD.
-- `docs/SPEC.md` — full product specification.
-- `docs/ROADMAP.md` — epic roadmap and statuses.
-- `docs/API-AUTH.md` — auth API behavior.
-- `docs/MVP-STATUS.md` — MVP state.
-- `docs/canonical-data-rules-socionics.md` — canonical domain/rules/socionics notes.
-- `docs/Socionics/README.md` — socionics-specific documentation entry.
+## Local runbook
 
-### Design docs
+```bash
+docker compose up -d --build
+docker compose ps
+curl http://localhost:8000/api/v1/health
+```
 
-- `docs/astrotype_design_code.md` — visual identity and design tokens.
-- `docs/design/report-ux-redesign.md` — report UX redesign.
-- `docs/design/self-report-storytelling.md` — narrative-first Self report direction.
-- `docs/design/llm-report-narrative-architecture.md` — controlled LLM narrative layer.
+Useful logs:
+```bash
+docker compose logs -f backend
+docker compose logs -f frontend
+```
 
-### Feature docs
+If Postgres auth/volumes are broken:
+```bash
+docker compose down -v
+docker compose up -d --build
+```
 
-Feature directories live under `docs/features/`:
+## Documentation index
 
-- `E1-foundation`
-- `E2-identity`
-- `E3-chart-engine`
-- `E4-rules-content`
-- `E5-products-reports`
-- `E6-billing-subscriptions`
-- `E7-notifications-admin`
-- `E8-production-scale`
-- `E9-frontend-self-report`
-- `E10-report-ux-redesign`
-- `E11-llm-report-narrative`
+- `docs/design/report-ux-redesign.md`
+- `docs/design/self-report-storytelling.md`
+- `docs/design/llm-report-narrative-architecture.md`
+- `docs/features/E11-llm-report-narrative/FEATURE.md`
+- `docs/SRS/SRS-E11-llm-report-narrative.md`
 
-Each feature directory uses `FEATURE.md` plus story docs `Sxx-*.md`.
+## Current known gotchas
 
-## 13. Common gotchas
-
-- Canonical path for this request is `/mnt/d/Python/Balthier/Archemap`, which maps to `D:\Python\Balthier\Archemap`.
-- In this environment `/home/balthier/archemap` currently resolves to the same physical path as `/mnt/d/Python/Balthier/Archemap`.
-- Do not assume Docker is serving the same source tree unless mounts are checked with `docker inspect`.
-- Backend health endpoint is `/api/v1/health`, not `/health`.
-- Frontend protected fetches must support HttpOnly cookie auth; do not require JS token to exist before calling protected API.
-- After socionics scoring changes, bump `ENGINE_VERSION` so cached chart snapshots recompute.
-- Next dev cache can serve stale chunks; if source is fixed but UI is old, inspect served chunk and clear `/app/.next` inside frontend container.
-- Keep Self report narrative-first. Raw scores, confidence and evidence belong in progressive disclosure.
-- Self may mention career only briefly; deep career analysis belongs to Career product.
-
-## 14. Maintenance rules for this index
-
-Update this file when:
-
-- a new backend module or router prefix is added;
-- a new frontend route appears;
-- a product vertical changes status;
-- core docs are moved/renamed;
-- local run or quality-gate commands change;
-- Docker/Kubernetes service topology changes.
+- `/home/balthier/archemap` and `/mnt/d/Python/Balthier/Archemap` may drift; verify before editing docs/config.
+- Report docs must stay honest: story is not done until code/tests/runtime checks actually pass.
+- PDF runtime in the current backend container still needs WeasyPrint system libs for real end-to-end smoke.
+- Frontend report regression is structural: `npm test` runs `scripts/check-report-ux.mjs`, not a browser unit test runner.
+- OAuth cookie-auth flows must work even when JS token state is empty.

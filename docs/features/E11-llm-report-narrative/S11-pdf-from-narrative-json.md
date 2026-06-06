@@ -1,7 +1,7 @@
 # Story E11.S11: PDF rendering from narrative JSON
 
 **Feature:** [LLM Report Narrative](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** 🟨 В работе (код и тесты готовы, runtime smoke blocked by WeasyPrint system libs)
 
 ## Контекст
 
@@ -28,9 +28,15 @@ PDF должен использовать тот же saved narrative JSON, чт
 
 ## Критерии приёмки
 
-- [ ] PDF for ready narrative uses stored JSON exactly as source text.
-- [ ] PDF generation never calls `LLMProvider`.
-- [ ] `narrative_failed` still produces a useful deterministic PDF/fallback or explicit unavailable state.
-- [ ] PDF contains Career CTA for Self narrative.
-- [ ] Technical appendix remains available but does not precede narrative content.
-- [ ] PDF tests pass without external services except existing mocked storage as needed.
+- [x] PDF for ready narrative uses stored JSON exactly as source text.
+- [x] PDF generation never calls `LLMProvider`.
+- [x] `narrative_failed` still produces a useful deterministic PDF/fallback or explicit unavailable state.
+- [x] PDF contains Career CTA for Self narrative.
+- [x] Technical appendix remains available but does not precede narrative content.
+- [x] PDF tests pass without external services except existing mocked storage as needed.
+
+## Notes / blockers
+
+- Unit coverage for `ready narrative`, `narrative_failed`, `missing narrative`, and PDF task wiring is green.
+- Real PDF smoke inside the current backend container is still blocked by missing WeasyPrint system library `libgobject-2.0-0` (`OSError: cannot load library 'libgobject-2.0-0'`).
+- Story code changes are in place, but container/runtime dependencies still need to be provisioned before calling the story fully shipped.

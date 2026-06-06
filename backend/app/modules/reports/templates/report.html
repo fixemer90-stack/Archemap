@@ -34,6 +34,16 @@
       margin-top: 16px;
       margin-bottom: 8px;
     }
+    p {
+      margin: 0 0 10px;
+    }
+    ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+    }
+    li {
+      margin-bottom: 4px;
+    }
     .header {
       text-align: center;
       margin-bottom: 32px;
@@ -50,37 +60,17 @@
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 16px;
+      page-break-inside: avoid;
     }
-    .archetype-primary {
-      text-align: center;
-      padding: 24px;
-      background: linear-gradient(135deg, rgba(91, 63, 214, 0.2), rgba(216, 180, 90, 0.1));
+    .narrative-hero {
+      background: linear-gradient(135deg, rgba(91, 63, 214, 0.22), rgba(216, 180, 90, 0.12));
       border-radius: 16px;
-      margin-bottom: 24px;
+      padding: 20px;
+      margin-bottom: 20px;
     }
-    .archetype-primary .name {
-      font-size: 32px;
-      color: #D8B45A;
-      font-weight: 700;
+    .muted {
+      color: #D8DCE8;
     }
-    .archetype-primary .score {
-      font-size: 18px;
-      color: #8DA8FF;
-      margin-top: 8px;
-    }
-    .confidence-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .confidence-high { background: rgba(76, 175, 80, 0.2); color: #81C784; }
-    .confidence-medium_high { background: rgba(139, 195, 74, 0.2); color: #AED581; }
-    .confidence-medium { background: rgba(255, 193, 7, 0.2); color: #FFD54F; }
-    .confidence-medium_low { background: rgba(255, 152, 0, 0.2); color: #FFB74D; }
-    .confidence-low { background: rgba(244, 67, 54, 0.2); color: #EF9A9A; }
     .claim {
       margin-bottom: 20px;
       page-break-inside: avoid;
@@ -92,12 +82,18 @@
     .evidence {
       font-size: 11px;
       color: #D8DCE8;
-      margin-top: 8px;
+      margin-top: 10px;
       padding-left: 12px;
       border-left: 2px solid rgba(91, 63, 214, 0.3);
     }
-    .chart-section {
-      margin-top: 24px;
+    .warning {
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 16px 0;
+      color: #FFB74D;
+      font-size: 11px;
     }
     .planet-table, .aspect-table {
       width: 100%;
@@ -146,15 +142,6 @@
       color: #D8DCE8;
       text-align: center;
     }
-    .warning {
-      background: rgba(255, 152, 0, 0.1);
-      border: 1px solid rgba(255, 152, 0, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      margin-top: 16px;
-      color: #FFB74D;
-      font-size: 11px;
-    }
   </style>
 </head>
 <body>
@@ -165,134 +152,206 @@
     {% endif %}
   </div>
 
-  <!-- Primary Archetype -->
-  {% if archetype.get('primary') %}
-  <div class="archetype-primary">
-    <div class="name">{{ archetype.primary }}</div>
-    <div>Score: {{ (archetype.score * 100)|round(1) }}%</div>
-    {% if archetype.get('confidence') %}
-    <span class="confidence-badge confidence-{{ archetype.confidence.label }}">
-      {{ archetype.confidence.label }} ({{ (archetype.confidence.value * 100)|round(0)|int }}%)
-    </span>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- Claims -->
-  {% if claims %}
-  <h2>Интерпретация</h2>
-  {% for claim in claims %}
-  <div class="claim">
-    <h3>{{ claim.archetype }} <span class="score">({{ (claim.score * 100)|round(1) }}%)</span></h3>
-    <p>{{ claim.message }}</p>
-    {% if claim.basis %}
-    <div class="evidence">
-      <strong>Основания:</strong><br>
-      {% for item in claim.basis %}
-      {{ item.feature }}: {{ "%.2f"|format(item.value) }} (вклад: {{ "%.3f"|format(item.contribution) }})<br>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% if claim.counter_evidence %}
-    <div class="evidence">
-      <strong>Контрдоказательства:</strong><br>
-      {% for item in claim.counter_evidence %}
-      {{ item.feature }}: {{ "%.2f"|format(item.value) }} (вклад: {{ "%.3f"|format(item.contribution) }})<br>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </div>
-  {% endfor %}
-  {% endif %}
-
-  <!-- Chart -->
-  {% if chart %}
-  <div class="chart-section">
-    <h2>Натальная карта</h2>
-
-    <!-- Elements -->
-    {% if chart.elements %}
-    <h3>Стихии</h3>
-    <div class="elements">
-      <div class="element">
-        <div class="label">Огонь</div>
-        <div class="value">{{ (chart.elements.fire * 100)|round(0)|int }}%</div>
-      </div>
-      <div class="element">
-        <div class="label">Земля</div>
-        <div class="value">{{ (chart.elements.earth * 100)|round(0)|int }}%</div>
-      </div>
-      <div class="element">
-        <div class="label">Воздух</div>
-        <div class="value">{{ (chart.elements.air * 100)|round(0)|int }}%</div>
-      </div>
-      <div class="element">
-        <div class="label">Вода</div>
-        <div class="value">{{ (chart.elements.water * 100)|round(0)|int }}%</div>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Planets -->
-    {% if chart.planets %}
-    <h3>Планеты</h3>
-    <table class="planet-table">
-      <thead>
-        <tr>
-          <th>Планета</th>
-          <th>Знак</th>
-          <th>Градус</th>
-          <th>Дом</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in chart.planets %}
-        <tr>
-          <td>{{ p.name }}</td>
-          <td>{{ p.sign }}</td>
-          <td>{{ "%.2f"|format(p.sign_degree) }}°</td>
-          <td>{{ p.house }}</td>
-        </tr>
+  {% if narrative %}
+  <section>
+    <div class="narrative-hero">
+      <h2>{{ narrative.hero.title }}</h2>
+      <p>{{ narrative.hero.body }}</p>
+      {% if narrative.hero.bullets %}
+      <ul>
+        {% for bullet in narrative.hero.bullets %}
+        <li>{{ bullet }}</li>
         {% endfor %}
-      </tbody>
-    </table>
+      </ul>
+      {% endif %}
+      {% if narrative.hero.evidence_notes %}
+      <div class="evidence">
+        <strong>Почему так видно</strong><br>
+        {% for note in narrative.hero.evidence_notes %}
+        {{ note.claim }} — {{ note.fact_ids|join(', ') }}<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% for section in narrative.sections %}
+    <div class="card">
+      <h2>{{ section.title }}</h2>
+      <p>{{ section.body }}</p>
+      {% if section.bullets %}
+      <ul>
+        {% for bullet in section.bullets %}
+        <li>{{ bullet }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if section.evidence_notes %}
+      <div class="evidence">
+        <strong>Почему так видно</strong><br>
+        {% for note in section.evidence_notes %}
+        {{ note.claim }} — {{ note.fact_ids|join(', ') }}<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if narrative.career_cta %}
+    <div class="card">
+      <h2>{{ narrative.career_cta.title }}</h2>
+      <p>{{ narrative.career_cta.body }}</p>
+      {% if narrative.career_cta.bullets %}
+      <ul>
+        {% for bullet in narrative.career_cta.bullets %}
+        <li>{{ bullet }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <p><strong>{{ narrative.career_cta.button_label }}</strong></p>
+    </div>
     {% endif %}
 
-    <!-- Aspects -->
-    {% if chart.aspects %}
-    <h3>Аспекты</h3>
-    <table class="aspect-table">
-      <thead>
-        <tr>
-          <th>Планета A</th>
-          <th>Планета B</th>
-          <th>Аспект</th>
-          <th>Орб</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for a in chart.aspects %}
-        <tr>
-          <td>{{ a.planet_a }}</td>
-          <td>{{ a.planet_b }}</td>
-          <td>{{ a.aspect_type }}</td>
-          <td>{{ "%.2f"|format(a.orb) }}°</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-  </div>
+    <div class="card">
+      <h2>Финальное резюме</h2>
+      <p>{{ narrative.final_summary }}</p>
+    </div>
+  </section>
   {% endif %}
 
-  <!-- Warning -->
+  {% if fallback_warning %}
+  <div class="warning">⚠ {{ fallback_warning }}</div>
+  {% endif %}
+
+  <section>
+    <h2>Техническое приложение</h2>
+
+    {% if archetype.get('primary') %}
+    <div class="card">
+      <h3>Архетип</h3>
+      <p><strong>{{ archetype.primary }}</strong></p>
+      {% if archetype.get('score') is not none %}
+      <p class="muted">Показатель: {{ (archetype.score * 100)|round(1) }}%</p>
+      {% endif %}
+      {% if archetype.get('confidence') %}
+      <p class="muted">
+        Уверенность: {{ archetype.confidence.label }}
+        ({{ (archetype.confidence.value * 100)|round(0)|int }}%)
+      </p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if claims %}
+    <h3>Детерминированные выводы</h3>
+    {% for claim in claims %}
+    <div class="claim">
+      <p>
+        <strong>{{ claim.archetype }}</strong>
+        <span class="score">({{ (claim.score * 100)|round(1) }}%)</span>
+      </p>
+      <p>{{ claim.message }}</p>
+      {% if claim.basis %}
+      <div class="evidence">
+        <strong>Основания:</strong><br>
+        {% for item in claim.basis %}
+        {{ item.feature }}: {{ "%.2f"|format(item.value) }} (вклад: {{ "%.3f"|format(item.contribution) }})<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if claim.counter_evidence %}
+      <div class="evidence">
+        <strong>Контрдоказательства:</strong><br>
+        {% for item in claim.counter_evidence %}
+        {{ item.feature }}: {{ "%.2f"|format(item.value) }} (вклад: {{ "%.3f"|format(item.contribution) }})<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if chart %}
+    <div class="card">
+      <h3>Натальная карта</h3>
+
+      {% if chart.elements %}
+      <div class="elements">
+        <div class="element">
+          <div class="label">Огонь</div>
+          <div class="value">{{ (chart.elements.fire * 100)|round(0)|int }}%</div>
+        </div>
+        <div class="element">
+          <div class="label">Земля</div>
+          <div class="value">{{ (chart.elements.earth * 100)|round(0)|int }}%</div>
+        </div>
+        <div class="element">
+          <div class="label">Воздух</div>
+          <div class="value">{{ (chart.elements.air * 100)|round(0)|int }}%</div>
+        </div>
+        <div class="element">
+          <div class="label">Вода</div>
+          <div class="value">{{ (chart.elements.water * 100)|round(0)|int }}%</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if chart.planets %}
+      <h3>Планеты</h3>
+      <table class="planet-table">
+        <thead>
+          <tr>
+            <th>Планета</th>
+            <th>Знак</th>
+            <th>Градус</th>
+            <th>Дом</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in chart.planets %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.sign }}</td>
+            <td>{{ "%.2f"|format(p.sign_degree) }}°</td>
+            <td>{{ p.house }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if chart.aspects %}
+      <h3>Аспекты</h3>
+      <table class="aspect-table">
+        <thead>
+          <tr>
+            <th>Планета A</th>
+            <th>Планета B</th>
+            <th>Аспект</th>
+            <th>Орб</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in chart.aspects %}
+          <tr>
+            <td>{{ a.planet_a }}</td>
+            <td>{{ a.planet_b }}</td>
+            <td>{{ a.aspect_type }}</td>
+            <td>{{ "%.2f"|format(a.orb) }}°</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
   {% if quality_warning %}
   <div class="warning">
     ⚠ {{ quality_warning }}
   </div>
   {% endif %}
 
-  <!-- Footer -->
   <div class="footer">
     <p>Astrotype — {{ provenance.get('ruleset_version', 'v1') }} | {{ provenance.get('engine_version', '0.1.0') }}</p>
   </div>

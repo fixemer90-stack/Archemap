@@ -11,6 +11,7 @@ import structlog
 from sqlalchemy import select
 
 from app.infrastructure.database import async_session_factory
+from app.modules.report_narratives.service import get_latest_narrative_for_report
 from app.modules.reports.models import Report
 from app.modules.reports.pdf import generate_report_pdf
 from app.modules.reports.storage import S3Storage, build_report_key, get_signed_ttl
@@ -67,8 +68,17 @@ async def _generate_pdf_async(
         if not report.report_data:
             raise ValueError(f"Report {report_id} has no data")
 
+        # Load latest saved narrative if present; PDF must never trigger a new LLM call.
+        narrative = await get_latest_narrative_for_report(db=db, report_id=report_id)
+
         # Generate PDF
-        pdf_bytes = generate_report_pdf(report.report_data, profile_name)
+        pdf_bytes = generate_report_pdf(
+            report.report_data,
+            profile_name,
+            narrative_content=narrative.content if narrative is not None else None,
+            narrative_status=narrative.status if narrative is not None else None,
+            narrative_error=narrative.error_message if narrative is not None else None,
+        )
 
         # Upload to S3
         storage = S3Storage()

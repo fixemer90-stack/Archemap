@@ -12,22 +12,27 @@ const billingPage = readFileSync(billingPath, "utf8");
 const sidebar = readFileSync(sidebarPath, "utf8");
 
 for (const marker of [
+  "Astrotype Membership",
+  "Откройте полную карту своей личности",
   "Free",
   "Бесплатный вход",
   "Расчёт натальной карты",
-  "базовый тип",
+  "Базовый тип и архетип",
   "3 сильные стороны",
   "Teaser платного отчёта",
   "Plus",
-  "699–999 ₽",
-  "€7.99–€9.99",
+  "999 ₽",
+  "Полный доступ к персональной карте",
   "Полный личностный отчёт",
+  "Сильные стороны мышления и поведения",
   "Профессиональный профиль",
-  "Отношения и стиль привязанности",
+  "Отношения и типичные сценарии близости",
   "Совместимость с другими людьми",
-  "10–30 персональных AI-вопросов",
+  "20 персональных вопросов к карте",
   "Сохранение нескольких профилей",
-  "Frontend подготовлен",
+  "Free — вход в систему. Plus — полная карта личности, отношений",
+  "и карьеры.",
+  "Frontend-only",
 ]) {
   if (!billingPage.includes(marker)) {
     throw new Error(`Billing page missing marker: ${marker}`);
@@ -35,6 +40,13 @@ for (const marker of [
 }
 
 for (const forbidden of [
+  "699–999 ₽",
+  "€7.99–€9.99",
+  "закрытый доступ к себе",
+  "relational-слой",
+  "стиль привязанности",
+  "Сила функций и архетипов",
+  "10–30 персональных AI-вопросов",
   "/api/v1/payments",
   "createPayment",
   "product_id",
@@ -43,7 +55,7 @@ for (const forbidden of [
 ]) {
   if (billingPage.includes(forbidden)) {
     throw new Error(
-      `Billing page must stay frontend-only for now; found: ${forbidden}`,
+      `Billing page must stay fixed-price frontend-only for now; found: ${forbidden}`,
     );
   }
 }

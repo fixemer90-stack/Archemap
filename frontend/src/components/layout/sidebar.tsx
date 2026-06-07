@@ -61,8 +61,8 @@ const productItems = [
 
 const settingsItems = [
   {
-    title: "Подписки",
-    href: "/subscriptions",
+    title: "Оплата",
+    href: "/billing",
     icon: CreditCard,
   },
   {

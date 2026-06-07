@@ -2,7 +2,7 @@
 
 **Версия:** 1.0
 **Дата:** 2026-06-04
-**Статус:** Planned
+**Статус:** Implemented
 **Источник:** `docs/design/llm-report-narrative-architecture.md`
 
 ---

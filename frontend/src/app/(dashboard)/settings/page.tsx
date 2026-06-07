@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const token = useAuthStore((s) => s.token);
 
   // Profile form
-  const [name, setName] = useState(user?.name || "");
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -24,9 +24,7 @@ export default function SettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
-  useEffect(() => {
-    if (user?.name) setName(user.name);
-  }, [user]);
+  const name = nameDraft ?? user?.name ?? "";
 
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +53,7 @@ export default function SettingsPage() {
 
       const updatedUser = await res.json();
       setUser(updatedUser);
+      setNameDraft(null);
       setProfileSuccess(true);
     } catch (err) {
       setProfileError(
@@ -145,7 +144,7 @@ export default function SettingsPage() {
             <label className="text-sm font-medium">Имя</label>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setNameDraft(e.target.value)}
               placeholder="Ваше имя"
               maxLength={120}
             />

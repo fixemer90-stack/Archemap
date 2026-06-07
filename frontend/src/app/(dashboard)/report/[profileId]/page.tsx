@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ArchetypeProfileSummary } from "@/components/report/archetype-profile-summary";
 import { AstrologyOverview } from "@/components/report/astrology-overview";
@@ -228,9 +228,7 @@ export default function ReportPage() {
   const [isTimedOut, setIsTimedOut] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(
-    null,
-  );
+  const generationStartedAtRef = useRef<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function applyReportUpdate(
@@ -264,7 +262,7 @@ export default function ReportPage() {
       );
       setShowFallback(false);
       setIsTimedOut(false);
-      setGenerationStartedAt(Date.now());
+      generationStartedAtRef.current = Date.now();
       setElapsedSeconds(0);
       applyReportUpdate(apiData, report);
     } catch (retryError) {
@@ -283,7 +281,7 @@ export default function ReportPage() {
         setError(null);
         setIsTimedOut(false);
         setShowFallback(false);
-        setGenerationStartedAt(null);
+        generationStartedAtRef.current = null;
         setElapsedSeconds(0);
         const loadedApiData = await fetchReportApiData(
           profileId,
@@ -303,7 +301,7 @@ export default function ReportPage() {
           if (
             loadedApiData.generatedReport?.status === "generating_narrative"
           ) {
-            setGenerationStartedAt(Date.now());
+            generationStartedAtRef.current = Date.now();
           }
         }
       } catch (loadError) {
@@ -334,10 +332,8 @@ export default function ReportPage() {
       return;
     }
 
-    const startedAt = generationStartedAt ?? Date.now();
-    if (!generationStartedAt) {
-      setGenerationStartedAt(startedAt);
-    }
+    const startedAt = generationStartedAtRef.current ?? Date.now();
+    generationStartedAtRef.current = startedAt;
 
     const updateElapsed = () => {
       const elapsed = Date.now() - startedAt;
@@ -354,7 +350,7 @@ export default function ReportPage() {
         .then((report) => {
           applyReportUpdate(apiData, report);
           if (report.status !== "generating_narrative") {
-            setGenerationStartedAt(null);
+            generationStartedAtRef.current = null;
             setIsTimedOut(false);
           }
         })
@@ -371,7 +367,7 @@ export default function ReportPage() {
       window.clearInterval(pollId);
       window.clearTimeout(timeoutId);
     };
-  }, [apiData, currentReport, generationStartedAt, token]);
+  }, [apiData, currentReport, token]);
 
   const reportStatus = currentReport?.status;
   const shouldShowProgress =

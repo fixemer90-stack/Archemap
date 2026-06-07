@@ -1,5 +1,7 @@
 # Feature E11: LLM Report Narrative — управляемый сторителлинг отчётов
 
+**Статус:** ✅ Готово
+
 ## Цель
 
 Добавить поверх детерминированного Astrotype report engine контролируемый LLM narrative layer: система продолжает считать карту, соционику, архетипы, evidence и confidence детерминированно, а LLM превращает уже рассчитанные факты в мягкий структурированный narrative JSON для UI и PDF.
@@ -70,18 +72,18 @@ POST /api/v1/reports/generate
 
 ## Критерии приёмки фичи
 
-- [ ] Детерминированный расчёт отчёта остаётся source of truth; LLM не получает raw birth data как единственную основу и не рассчитывает карту.
-- [ ] `NarrativeInput` и `SelfNarrative` зафиксированы в backend schemas и покрыты unit tests.
-- [ ] LLM output сохраняется отдельно от `reports.report_data` и версионируется через `prompt_version`, `model_name`, `input_hash`.
-- [ ] `MockLLMProvider` позволяет запускать все tests без внешней сети и API key.
-- [ ] Prompt `self_story_v1` запрещает новые факты, фатализм, диагнозы, карьерный deep dive в Self и графичную сексуальность.
-- [ ] Validator отклоняет unknown `evidence_refs`, отсутствующие обязательные секции, forbidden terms и Self/Career boundary violations.
-- [ ] Narrative generation идёт асинхронно через Celery; HTTP request не ждёт LLM.
-- [ ] Статусы `generating_narrative`, `ready`, `narrative_failed` не дают бесконечного spinner на frontend.
-- [ ] `POST /api/v1/reports/{report_id}/narrative/regenerate` регенерирует только narrative layer и не пересчитывает chart/rules.
-- [ ] Frontend показывает narrative-first report, polling/timeout state, retry action и deterministic fallback.
-- [ ] PDF строится из сохранённого narrative JSON, без второго LLM-вызова.
-- [ ] Backend gates (`ruff`, `format`, `mypy`, `pytest`) и frontend gates (`npm test`, `tsc`, `prettier`, `eslint`) проходят.
+- [x] Детерминированный расчёт отчёта остаётся source of truth; LLM не получает raw birth data как единственную основу и не рассчитывает карту.
+- [x] `NarrativeInput` и `SelfNarrative` зафиксированы в backend schemas и покрыты unit tests.
+- [x] LLM output сохраняется отдельно от `reports.report_data` и версионируется через `prompt_version`, `model_name`, `input_hash`.
+- [x] `MockLLMProvider` позволяет запускать все tests без внешней сети и API key.
+- [x] Prompt `self_story_v1` запрещает новые факты, фатализм, диагнозы, карьерный deep dive в Self и графичную сексуальность.
+- [x] Validator отклоняет unknown `evidence_refs`, отсутствующие обязательные секции, forbidden terms и Self/Career boundary violations.
+- [x] Narrative generation идёт асинхронно через Celery; HTTP request не ждёт LLM.
+- [x] Статусы `generating_narrative`, `ready`, `narrative_failed` не дают бесконечного spinner на frontend.
+- [x] `POST /api/v1/reports/{report_id}/narrative/regenerate` регенерирует только narrative layer и не пересчитывает chart/rules.
+- [x] Frontend показывает narrative-first report, polling/timeout state, retry action и deterministic fallback.
+- [x] PDF строится из сохранённого narrative JSON, без второго LLM-вызова.
+- [x] Backend gates (`ruff`, `format`, `mypy`, `pytest`) и frontend gates (`npm test`, `tsc`, `prettier`, `eslint`) проходят.
 
 ## Stories
 

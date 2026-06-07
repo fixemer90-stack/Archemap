@@ -32,7 +32,7 @@
 | E8 | Production & Scale | ⬜ Не начато |
 | E9 | Frontend Self Report | ✅ Готово |
 | E10 | Report UX Redesign | ✅ Готово |
-| E11 | LLM Report Narrative | ⬜ Не начато |
+| E11 | LLM Report Narrative | ✅ Готово |
 
 ---
 
@@ -172,7 +172,7 @@
 
 ## Epic 11: LLM Report Narrative
 
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 **Оценка:** 2–3 недели
 **Зависимости:** E3, E4, E5, E10
 

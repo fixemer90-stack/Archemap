@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useCallback, useEffect, useRef } from "react";
+import { Suspense, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -34,20 +34,31 @@ export default function RegisterPage() {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isOAuthCompleteProfile = searchParams.get("step") === "2";
+  const requestedStep = (() => {
+    const stepParam = searchParams.get("step");
+    if (!stepParam) {
+      return null;
+    }
 
-  const [step, setStep] = useState(1);
+    const stepNum = parseInt(stepParam, 10);
+    return stepNum >= 1 && stepNum <= 3 ? stepNum : null;
+  })();
+  const oauthBirthDate = searchParams.get("birth_date");
+  const oauthEmail = searchParams.get("email");
+  const isOAuthCompleteProfile = requestedStep === 2;
+
+  const [step, setStep] = useState(requestedStep ?? (oauthBirthDate ? 2 : 1));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Step 1: Credentials
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(oauthEmail ?? "");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
   // Step 2: Birth data
-  const [birthDate, setBirthDate] = useState("");
+  const [birthDate, setBirthDate] = useState(oauthBirthDate ?? "");
   const [birthTime, setBirthTime] = useState("");
   const [birthTimeAccuracy, setBirthTimeAccuracy] = useState<
     "exact" | "approximate" | "unknown"
@@ -63,31 +74,6 @@ function RegisterForm() {
   const [placeLoading, setPlaceLoading] = useState(false);
   const [showPlaceDropdown, setShowPlaceDropdown] = useState(false);
   const placeDebounceRef = useRef<NodeJS.Timeout>(undefined);
-
-  // Pre-fill from OAuth callback
-  useEffect(() => {
-    const oauthBirthDate = searchParams.get("birth_date");
-    const oauthEmail = searchParams.get("email");
-    const stepParam = searchParams.get("step");
-
-    if (stepParam) {
-      const stepNum = parseInt(stepParam, 10);
-      if (stepNum >= 1 && stepNum <= 3) {
-        setStep(stepNum);
-      }
-    }
-
-    if (oauthBirthDate) {
-      setBirthDate(oauthBirthDate);
-      if (!stepParam) {
-        setStep(2); // Jump to birth data step if no step specified
-      }
-    }
-
-    if (oauthEmail) {
-      setEmail(oauthEmail);
-    }
-  }, [searchParams]);
 
   // ── Geocoding search ──────────────────────────────────────────────
   const searchPlace = useCallback(async (query: string) => {

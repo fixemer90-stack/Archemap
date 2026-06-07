@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import httpx
 import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -174,7 +175,20 @@ class PaymentsService:
         if provider == "yookassa":
             yookassa = YooKassaProvider()
             event = yookassa.parse_webhook_event(payload)
-            canonical_payload = await yookassa.get_payment(event["payment_id"])
+            try:
+                canonical_payload = await yookassa.get_payment(event["payment_id"])
+            except httpx.HTTPError as exc:
+                logger.warning(
+                    "webhook_provider_reconciliation_failed",
+                    provider=provider,
+                    payment_id=event["payment_id"],
+                    error=str(exc),
+                )
+                webhook.processed = False
+                webhook.processed_at = None
+                webhook.error_message = "Provider reconciliation failed"
+                await self.db.flush()
+                raise
             canonical_event = yookassa.parse_webhook_event({"object": canonical_payload})
             canonical_event["event_type"] = event["event_type"]
             event = canonical_event
@@ -220,7 +234,7 @@ class PaymentsService:
         new_status = self._map_provider_status(event["status"])
         payment.status = new_status
 
-        if new_status == "succeeded":
+        if new_status == "succeeded" and event.get("paid") is True:
             payment.paid_at = datetime.now(UTC)
             payment.payment_method_type = event.get("payment_method", {}).get("type")
             product = (payment.metadata_json or {}).get("product")
@@ -232,6 +246,25 @@ class PaymentsService:
                     source_payment_id=payment.id,
                     metadata={"product_id": product_id} if product_id else None,
                 )
+        elif new_status == "succeeded":
+            logger.warning(
+                "webhook_succeeded_without_paid_true",
+                provider=provider,
+                payment_id=event["payment_id"],
+                local_payment_id=str(payment.id),
+                paid=event.get("paid"),
+            )
+            payment.status = old_status
+            webhook.processed = True
+            webhook.processed_at = datetime.now(UTC)
+            webhook.error_message = "Payment payload mismatch"
+            await self.db.flush()
+            return {
+                "processed": False,
+                "payment_id": str(payment.id),
+                "status": old_status,
+                "message": "Payment payload mismatch",
+            }
         elif new_status == "failed":
             payment.failed_at = datetime.now(UTC)
             payment.error_code = event.get("status")
@@ -300,4 +333,17 @@ class PaymentsService:
         if event.get("currency") != payment.currency:
             return False
         event_amount = float(event.get("amount") or 0)
-        return abs(event_amount - float(payment.amount)) < 0.01
+        if abs(event_amount - float(payment.amount)) >= 0.01:
+            return False
+
+        metadata = event.get("metadata") or {}
+        payment_metadata = payment.metadata_json or {}
+        if metadata.get("payment_id") != str(payment.id):
+            return False
+        if metadata.get("user_id") != str(payment.user_id):
+            return False
+        if metadata.get("product_id") != payment_metadata.get("product_id"):
+            return False
+        if payment_metadata.get("product") and metadata.get("product") != payment_metadata.get("product"):
+            return False
+        return event.get("status") != "succeeded" or event.get("paid") is True

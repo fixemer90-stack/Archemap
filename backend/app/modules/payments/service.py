@@ -11,6 +11,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.modules.authorization.service import EntitlementsService
+from app.modules.catalog.service import CatalogService
 from app.modules.payments.models import Payment, PaymentWebhook
 from app.modules.payments.providers.yookassa import YooKassaProvider
 
@@ -93,6 +95,29 @@ class PaymentsService:
 
         return payment
 
+    async def create_payment_for_product(
+        self,
+        user_id: UUID,
+        product_id: str,
+        provider: str = "yookassa",
+        return_url: str = "",
+    ) -> Payment:
+        """Create checkout for a server-priced product.
+
+        The client supplies only ``product_id``. Price, currency, description,
+        and commercial metadata are owned by backend catalog.
+        """
+        product = CatalogService().get_product(product_id)
+        return await self.create_payment(
+            user_id=user_id,
+            amount=product.amount,
+            provider=provider,
+            currency=product.currency,
+            description=product.description,
+            metadata={"product_id": product.product_id, "product": product.product},
+            return_url=return_url,
+        )
+
     async def get_payment(self, payment_id: UUID, user_id: UUID) -> Payment:
         """Get payment by ID."""
         result = await self.db.execute(select(Payment).where(Payment.id == payment_id, Payment.user_id == user_id))
@@ -143,10 +168,16 @@ class PaymentsService:
         self.db.add(webhook)
         await self.db.flush()
 
-        # Parse event
+        # Parse event. YooKassa does not sign notification bodies with an
+        # X-Signature HMAC. Per official docs, authenticity must be checked by
+        # reconciling the current object status via API and/or sender IP.
         if provider == "yookassa":
             yookassa = YooKassaProvider()
             event = yookassa.parse_webhook_event(payload)
+            canonical_payload = await yookassa.get_payment(event["payment_id"])
+            canonical_event = yookassa.parse_webhook_event({"object": canonical_payload})
+            canonical_event["event_type"] = event["event_type"]
+            event = canonical_event
         else:
             raise ValidationError(f"Unsupported provider: {provider}")
 
@@ -166,6 +197,24 @@ class PaymentsService:
             await self.db.flush()
             return {"processed": False, "message": "Payment not found"}
 
+        if not self._event_matches_payment(payment, event):
+            logger.warning(
+                "webhook_payment_mismatch",
+                provider=provider,
+                payment_id=event["payment_id"],
+                local_payment_id=str(payment.id),
+            )
+            webhook.processed = True
+            webhook.processed_at = datetime.now(UTC)
+            webhook.error_message = "Payment payload mismatch"
+            await self.db.flush()
+            return {
+                "processed": False,
+                "payment_id": str(payment.id),
+                "status": payment.status,
+                "message": "Payment payload mismatch",
+            }
+
         # Update payment status
         old_status = payment.status
         new_status = self._map_provider_status(event["status"])
@@ -174,6 +223,15 @@ class PaymentsService:
         if new_status == "succeeded":
             payment.paid_at = datetime.now(UTC)
             payment.payment_method_type = event.get("payment_method", {}).get("type")
+            product = (payment.metadata_json or {}).get("product")
+            product_id = (payment.metadata_json or {}).get("product_id")
+            if product:
+                await EntitlementsService(self.db).grant_paid_product(
+                    user_id=payment.user_id,
+                    product=product,
+                    source_payment_id=payment.id,
+                    metadata={"product_id": product_id} if product_id else None,
+                )
         elif new_status == "failed":
             payment.failed_at = datetime.now(UTC)
             payment.error_code = event.get("status")
@@ -234,3 +292,12 @@ class PaymentsService:
             "canceled": "cancelled",
         }
         return status_map.get(provider_status, "pending")
+
+    def _event_matches_payment(self, payment: Payment, event: dict[str, Any]) -> bool:
+        """Validate provider object against local immutable payment facts."""
+        if event.get("payment_id") != payment.provider_payment_id:
+            return False
+        if event.get("currency") != payment.currency:
+            return False
+        event_amount = float(event.get("amount") or 0)
+        return abs(event_amount - float(payment.amount)) < 0.01

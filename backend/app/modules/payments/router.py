@@ -6,7 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,12 +35,9 @@ async def create_payment(
     Returns payment details including confirmation_url for redirect.
     """
     service = PaymentsService(db)
-    payment = await service.create_payment(
+    payment = await service.create_payment_for_product(
         user_id=current_user,
-        amount=body.amount,
-        currency=body.currency,
-        description=body.description,
-        metadata=body.metadata,
+        product_id=body.product_id,
         return_url=body.return_url,
     )
 
@@ -136,27 +133,13 @@ async def get_payment(
 async def yookassa_webhook(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
-    x_signature: str | None = Header(None, alias="X-Signature"),
 ) -> WebhookEventResponse | JSONResponse:
     """Handle YooKassa webhook events.
 
     YooKassa sends events when payment status changes.
-    We verify the signature and update the payment record.
+    We acknowledge valid notification delivery with HTTP 200; authenticity is
+    checked inside the service by reconciling the current YooKassa object.
     """
-    body = await request.body()
-
-    # Verify signature
-    from app.modules.payments.providers.yookassa import YooKassaProvider
-
-    yookassa = YooKassaProvider()
-
-    if x_signature and not yookassa.verify_webhook(body, x_signature):
-        logger.warning("yookassa_webhook_invalid_signature")
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Invalid signature"},
-        )
-
     # Parse payload
     try:
         payload = await request.json()

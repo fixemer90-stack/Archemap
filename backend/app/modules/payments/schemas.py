@@ -3,19 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreatePaymentRequest(BaseModel):
-    """Request to create a payment."""
+    """Request to create a payment for a server-priced product."""
 
-    amount: float = Field(..., gt=0, description="Payment amount")
-    currency: str = Field("RUB", description="Currency code")
-    description: str = Field("", max_length=500, description="Payment description")
+    model_config = ConfigDict(extra="forbid")
+
+    product_id: str = Field(..., min_length=1, max_length=80, description="Server-side product/plan identifier")
     return_url: str = Field("", description="URL to redirect after payment")
-    metadata: dict[str, Any] | None = Field(None, description="Custom metadata")
 
 
 class PaymentResponse(BaseModel):

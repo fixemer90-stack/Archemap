@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from base64 import b64encode
 from typing import Any
 from uuid import uuid4
@@ -27,7 +25,6 @@ class YooKassaProvider:
     def __init__(self) -> None:
         self.shop_id = settings.YOOKASSA_SHOP_ID
         self.secret_key = settings.YOOKASSA_SECRET_KEY
-        self.webhook_secret = settings.YOOKASSA_WEBHOOK_SECRET
 
     def _get_auth_header(self) -> str:
         """Get Basic auth header for YooKassa API."""
@@ -206,28 +203,6 @@ class YooKassaProvider:
 
         logger.info("yookassa_payment_cancelled", payment_id=payment_id)
         return result
-
-    def verify_webhook(self, body: bytes, signature: str) -> bool:
-        """Verify webhook signature from YooKassa.
-
-        Args:
-            body: Raw request body
-            signature: Signature from X-Signature header
-
-        Returns:
-            True if signature is valid
-        """
-        if not self.webhook_secret:
-            logger.warning("yookassa_webhook_secret_not_set")
-            return False
-
-        expected = hmac.new(
-            self.webhook_secret.encode(),
-            body,
-            hashlib.sha256,
-        ).hexdigest()
-
-        return hmac.compare_digest(expected, signature)
 
     def parse_webhook_event(self, body: dict[str, Any]) -> dict[str, Any]:
         """Parse webhook event from YooKassa.

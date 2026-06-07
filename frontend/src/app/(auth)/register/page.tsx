@@ -219,6 +219,7 @@ function RegisterForm() {
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        credentials: "include",
       });
 
       if (!res.ok) {

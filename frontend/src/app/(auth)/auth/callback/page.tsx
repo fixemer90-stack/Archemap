@@ -24,13 +24,13 @@ function CallbackContent() {
       if (email) {
         registerUrl += `&email=${encodeURIComponent(email)}`;
       }
-      router.push(registerUrl);
+      router.replace(registerUrl);
       return;
     }
 
     // Existing user with profile → dashboard
     // Auth state will be fetched from /api/v1/users/me on dashboard load
-    router.push("/dashboard");
+    router.replace("/dashboard");
   }, [searchParams, router]);
 
   return (

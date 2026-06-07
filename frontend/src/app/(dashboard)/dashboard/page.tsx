@@ -78,6 +78,7 @@ export default function DashboardPage() {
       try {
         const res = await fetch("/api/v1/users/me", {
           headers: authHeaders(token),
+          credentials: "include",
         });
         if (res.ok) {
           const data = await res.json();
@@ -95,6 +96,7 @@ export default function DashboardPage() {
       try {
         const res = await fetch("/api/v1/profiles", {
           headers: authHeaders(token),
+          credentials: "include",
         });
         if (res.ok) {
           const data = await res.json();

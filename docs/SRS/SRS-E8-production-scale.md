@@ -31,6 +31,7 @@ E1-E7 (Application)  →  E8 (Production & Scale)  →  Production
 | **HPA** | Horizontal Pod Autoscaler — автомасштабирование подов |
 | **GitOps** | Деплой через Git: push → CI → Argo CD → K8s |
 | **SLO** | Service Level Objective — целевые метрики доступности |
+| **Blueprint deploy** | Декларативное описание сервисов для Render (`render.yaml`) |
 
 ### 1.4 Ссылки
 
@@ -73,6 +74,8 @@ flowchart TD
 | **F8.5** | Load testing | S05 |
 | **F8.6** | K8s deployment | S06 |
 | **F8.7** | GitOps: push-to-deploy | S07 |
+| **F8.8** | Render MVP deployment contract | S08 |
+| **F8.9** | Artifact storage strategy for Render / S3 replacement | S09 |
 
 ### 2.3 Ограничения
 
@@ -82,6 +85,7 @@ flowchart TD
 | **C2** | PostgreSQL — managed service (не self-hosted в K8s) |
 | **C3** | Минимум 2 replicas для backend/frontend |
 | **C4** | Zero-downtime deploys |
+| **C5** | До K8s нужен более простой managed deployment path для MVP (Render) |
 
 ---
 
@@ -158,6 +162,28 @@ flowchart TD
 
 **FR-8.7.3** Notifications ДОЛЖНЫ отправляться при деплое и rollback.
 
+### 3.8 Render Deploy (FR-8.8)
+
+**FR-8.8.1** Система ДОЛЖНА иметь Render deployment contract для backend web service, worker, managed Postgres и managed Redis/Valkey.
+
+**FR-8.8.2** Backend start command ДОЛЖЕН использовать production runtime без `--reload` и учитывать Render `$PORT`.
+
+**FR-8.8.3** Worker ДОЛЖЕН деплоиться как отдельный background worker с тем же env contract, что и backend для `DATABASE_URL`, `REDIS_URL`, `CELERY_*`, `S3_*`, `LLM_*`.
+
+**FR-8.8.4** Frontend deployment mode ДОЛЖЕН быть явно определён: текущий код либо идёт как Render Web Service, либо перед этим выполняется отдельный refactor под static hosting.
+
+**FR-8.8.5** PDF/report artifact flow ДОЛЖЕН сохранить внешний S3-compatible storage, потому что текущий backend runtime зависит от `S3Storage`.
+
+### 3.9 Artifact Storage Strategy (FR-8.9)
+
+**FR-8.9.1** Документация ДОЛЖНА явно фиксировать storage decision для Render MVP: внешний S3-compatible provider или отдельный refactor-track на замену artifact backend.
+
+**FR-8.9.2** Система НЕ ДОЛЖНА считать локальный filesystem Render валидной заменой S3 для PDF/report artifacts.
+
+**FR-8.9.3** Bucket/container existence ДОЛЖНА быть описана как явный bootstrap step, если runtime path не подтверждает автоматический вызов `ensure_bucket()`.
+
+**FR-8.9.4** Deployment/runbook contract ДОЛЖЕН включать smoke check: upload artifact -> generate signed URL -> artifact доступен по ссылке.
+
 ---
 
 ## 4. Нефункциональные требования
@@ -206,6 +232,16 @@ flowchart TD
 ### 6.1 Архитектура деплоя
 
 ```
+Render MVP path:
+Internet → Render edge / CDN
+                    ├── Frontend (web service или static после refactor)
+                    ├── Backend web service
+                    ├── Worker background service
+                    ├── PostgreSQL (managed)
+                    ├── Redis/Valkey (managed)
+                    └── S3-compatible storage (external provider; not Render local disk)
+
+Later target:
 Internet → CDN → Load Balancer → K8s Ingress
                                     ├── Backend (2+ pods)
                                     ├── Frontend (2+ pods)

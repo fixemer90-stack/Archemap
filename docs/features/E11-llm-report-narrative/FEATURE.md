@@ -8,6 +8,10 @@
 
 Фича опирается на technical design: [`docs/design/llm-report-narrative-architecture.md`](../../design/llm-report-narrative-architecture.md).
 
+Для быстрого понимания реального сценария использования и того, какой вход получает LLM, см. [`WORKFLOW.md`](WORKFLOW.md).
+
+Для интеграции frontend/backend по endpoint'ам, статусам и regenerate-flow см. [`API.md`](API.md).
+
 ## Проблема
 
 Текущий deterministic report может быть проверяемым, но сложный живой сторителлинг трудно качественно собрать только шаблонами. Нужны связность, переходы, индивидуальные формулировки, взрослый и неграфичный блок близости/сексуальности, а также строгие границы между Self и Career.

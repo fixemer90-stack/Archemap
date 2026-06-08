@@ -33,6 +33,7 @@
 | E9 | Frontend Self Report | ✅ Готово |
 | E10 | Report UX Redesign | ✅ Готово |
 | E11 | LLM Report Narrative | ✅ Готово |
+| E12 | LLM Report Runtime Readiness | ⬜ Не начато |
 
 ---
 
@@ -167,6 +168,8 @@
 | 8.5 | Load testing | Нагрузочное тестирование | `tests/load/`, k6/locust scripts | 500 concurrent users; p95 < 500ms для report generation |
 | 8.6 | Yandex Managed K8s | Деплой на Yandex Managed Kubernetes | `deploy/k8s/`, Helm charts | Pod autoscaling; health checks; rolling updates; zero-downtime deploy |
 | 8.7 | GitOps (Argo CD) | Автоматический деплой из Git | `deploy/argocd/`, `deploy/apps/` | Push в main → Argo CD sync → deploy; rollback через revert commit |
+| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | Есть первый managed deploy path без K8s; зафиксирован frontend mode и внешний S3 contract |
+| 8.9 | Artifact storage strategy | Решение по Render/S3: внешний S3-compatible provider или отдельный storage refactor | `reports/storage.py`, deploy docs | Нет скрытой зависимости на локальный диск; PDF/artifact flow имеет явный storage contract |
 
 ---
 
@@ -188,6 +191,25 @@
 
 ---
 
+## Epic 12: LLM Report Runtime Readiness
+
+**Статус:** ⬜ Не начато
+**Оценка:** 1–2 недели
+**Зависимости:** E11 ✅, E5 🟡, E1 ✅
+
+| # | Фича | Описание | Документы | Критерии приёмки |
+|---|------|----------|-----------|------------------|
+| 12.1 | Runtime inventory | Что реально нужно для запуска E11, а не только для code-complete состояния | `docs/features/E12-llm-report-runtime-readiness/S01-runtime-inventory-gap-analysis.md` | Есть явный список сервисов, env и gap list |
+| 12.2 | Worker/dev orchestration | Отдельный Celery worker и narrative-ready local stack | `docs/features/E12-llm-report-runtime-readiness/S02-dev-orchestration-worker-runtime.md` | Narrative tasks реально исполняются в dev stack |
+| 12.3 | LLM env contract | Disabled/mock/real provider modes и required env | `docs/features/E12-llm-report-runtime-readiness/S03-llm-environment-contract.md` | Понятно, как включить mock и real LLM path |
+| 12.4 | Storage/PDF bootstrap | Bucket/bootstrap contract для полного deliverable path | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | PDF path не зависит от скрытых ручных шагов |
+| 12.5 | Runbook + smoke | Пошаговый запуск, логи, generate/polling/regenerate/PDF checks | `docs/features/E12-llm-report-runtime-readiness/S05-local-runbook-start-logs-smoke.md` | Новый участник команды может прогнать flow по документации |
+| 12.6 | Triage + launch checklist | Симптомы, причины, readiness checklist | `docs/features/E12-llm-report-runtime-readiness/S06-failure-triage-launch-checklist.md` | Есть критерий «готовы запускать LLM-report» |
+
+Полный контракт: `docs/SRS/SRS-E12-llm-report-runtime-readiness.md`.
+
+---
+
 ## Зависимости между эпиками
 
 ```
@@ -199,7 +221,7 @@ E1 (Foundation) ✅
                           ├─► E6 (Billing & Subscriptions)
                           │     └─► E7 (Notifications & Admin) ──► E8 (Production & Scale)
                           ├─► E7 (Notifications & Admin)
-                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative)
+                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative) ✅ ──► E12 (LLM Report Runtime Readiness)
 ```
 
 **Критический путь:** E2 → E3 → E4 → E5 → E6 → E7 → E8

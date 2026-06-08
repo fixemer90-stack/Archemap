@@ -43,6 +43,8 @@ Deterministic chart/rules/socionics/report_data
 | Документ | Путь |
 |---|---|
 | Technical design | `docs/design/llm-report-narrative-architecture.md` |
+| Workflow explainer | `docs/features/E11-llm-report-narrative/WORKFLOW.md` |
+| API explainer | `docs/features/E11-llm-report-narrative/API.md` |
 | Feature docs | `docs/features/E11-llm-report-narrative/` |
 | Report UX redesign | `docs/features/E10-report-ux-redesign/` |
 | Self storytelling | `docs/design/self-report-storytelling.md` |

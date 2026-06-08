@@ -40,3 +40,17 @@ def test_fallback_reuses_known_evidence_ids_only() -> None:
             used_fact_ids.update(note.fact_ids)
 
     assert used_fact_ids <= known_fact_ids
+
+
+def test_fallback_handles_empty_section_sources_without_index_error() -> None:
+    payload = make_narrative_input_payload()
+    payload["relationship_patterns"] = []
+    payload["sexuality_patterns"] = []
+    payload["development_recommendations"] = []
+    payload["risks"] = []
+    narrative_input = NarrativeInput.model_validate(payload)
+
+    fallback = build_deterministic_self_fallback(narrative_input, reason="provider disabled")
+
+    assert fallback.sections
+    assert all(isinstance(section.evidence_notes, list) for section in fallback.sections)

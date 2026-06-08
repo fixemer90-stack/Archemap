@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Coroutine
 from typing import Any, TypeVar
 from uuid import UUID
@@ -10,6 +9,8 @@ from uuid import UUID
 import structlog
 from sqlalchemy import select
 
+from app.infrastructure import model_registry as _model_registry  # noqa: F401
+from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.report_narratives.service import get_latest_narrative_for_report
 from app.modules.reports.models import Report
@@ -23,11 +24,7 @@ T = TypeVar("T")
 
 def _run_async(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
     """Run async code in sync Celery task."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    return run_async_in_worker(coro)
 
 
 def generate_pdf_task(report_id: str, user_id: str, profile_name: str = "") -> dict[str, Any]:

@@ -144,7 +144,8 @@ def _section_notes(section_id: str, narrative_input: NarrativeInput) -> list[Evi
         "sexuality": narrative_input.sexuality_patterns,
         "development": narrative_input.development_recommendations,
     }
-    claim = source_map.get(section_id, [None])[0]
+    claims = source_map.get(section_id, [])
+    claim = claims[0] if claims else None
     note = _claim_to_note(claim)
     return [note] if note is not None else []
 

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from types import SimpleNamespace
 from typing import Any, TypeVar, cast
 from unittest.mock import AsyncMock
@@ -23,6 +25,7 @@ from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.schemas import NarrativeInput
 from app.modules.report_narratives.service import ReportNarrativeService
 from app.modules.report_narratives.tasks import (
+    _run_async,
     finalize_narrative_task_failure,
     generate_report_narrative_task,
     should_retry_narrative_task_error,
@@ -107,6 +110,34 @@ class NeverCalledProvider:
         del narrative_input
         del schema
         raise AssertionError("Provider must not be called when cache hit exists")
+
+
+def test_report_tasks_import_registers_profile_table_in_metadata() -> None:
+    output = subprocess.check_output(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from app.infrastructure.database import Base;"
+                "import app.modules.report_narratives.tasks;"
+                "print(sorted(Base.metadata.tables.keys()))"
+            ),
+        ],
+        text=True,
+    )
+    assert "person_profiles" in output
+
+
+def test_report_narrative_task_runner_reuses_process_event_loop() -> None:
+    async def get_loop_id() -> int:
+        import asyncio
+
+        return id(asyncio.get_running_loop())
+
+    first = _run_async(get_loop_id())
+    second = _run_async(get_loop_id())
+
+    assert first == second
 
 
 @pytest.fixture

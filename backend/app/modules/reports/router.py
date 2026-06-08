@@ -47,6 +47,14 @@ async def generate_report(
         mode=body.mode,
     )
 
+    if report.product == "self":
+        report.status = "generating_narrative"
+        report.error_message = None
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(report)
+
     # Trigger async PDF generation (S06)
     try:
         from workers.tasks.reports import generate_pdf
@@ -64,13 +72,13 @@ async def generate_report(
             from workers.tasks.reports import generate_report_narrative
 
             generate_report_narrative.delay(report_id=str(report.id))
-            report.status = "generating_narrative"
-            report.error_message = None
         except Exception as exc:
             report.status = "deterministic_ready"
             report.error_message = f"Narrative task enqueue failed: {exc}"
             logger.warning("narrative_task_enqueue_failed", report_id=str(report.id), error=str(exc))
-        await db.flush()
+            await db.flush()
+            await db.commit()
+            await db.refresh(report)
 
     narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
     return build_report_response(report, narrative)

@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
+import pytest
+
+import app.modules.reports.router as reports_router
 from app.modules.reports.models import Report, ReportVersion
-from app.modules.reports.schemas import ReportResponse, ReportVersionResponse
-from app.modules.reports.service import _build_chart_summary
+from app.modules.reports.schemas import GenerateReportRequest, ReportResponse, ReportVersionResponse
+from app.modules.reports.service import ReportService, _build_chart_summary
+from app.modules.reports.tasks import _run_async as _run_async_pdf_task
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -84,6 +88,18 @@ def make_report(
         confidence=0.72,
         pdf_generated=False,
     )
+
+
+def test_pdf_task_runner_reuses_process_event_loop() -> None:
+    async def get_loop_id() -> int:
+        import asyncio
+
+        return id(asyncio.get_running_loop())
+
+    first = _run_async_pdf_task(get_loop_id())
+    second = _run_async_pdf_task(get_loop_id())
+
+    assert first == second
 
 
 # ── Chart summary tests ──────────────────────────────────────────────
@@ -266,3 +282,180 @@ class TestReportSchemas:
 
         assert response.id == version.id
         assert response.report_id == version.report_id
+
+
+@pytest.mark.asyncio
+async def test_generate_report_route_refreshes_report_before_serializing_after_enqueue_status_update(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeReport:
+        def __init__(self) -> None:
+            self.id = uuid4()
+            self.profile_id = uuid4()
+            self.product = "self"
+            self.version = 1
+            self.status = "deterministic_ready"
+            self.mode = "full"
+            self.archetype = "Стратег"
+            self.score = 0.91
+            self.confidence = 0.83
+            self.pdf_url = None
+            self.pdf_generated = False
+            self.report_data = {"product": "self", "archetype": {"primary": "Стратег"}}
+            self.error_message = None
+            self.created_at = datetime.now(UTC)
+            self._updated_at = datetime.now(UTC)
+            self._fresh = True
+
+        @property
+        def updated_at(self) -> datetime:
+            if not self._fresh:
+                raise RuntimeError("stale updated_at")
+            return self._updated_at
+
+    class FakeDB:
+        def __init__(self, report: FakeReport) -> None:
+            self.report = report
+            self.refresh_calls = 0
+            self.commit_calls = 0
+
+        async def flush(self) -> None:
+            self.report._fresh = False
+
+        async def commit(self) -> None:
+            self.commit_calls += 1
+
+        async def refresh(self, report: FakeReport) -> None:
+            assert report is self.report
+            self.refresh_calls += 1
+            self.report._fresh = True
+
+    report = FakeReport()
+    db = FakeDB(report)
+    user_id = uuid4()
+
+    async def fake_generate_report(
+        self: ReportService,
+        profile_id: UUID,
+        user_id: UUID,
+        product: str = "self",
+        mode: str = "full",
+    ) -> FakeReport:
+        assert profile_id == report.profile_id
+        assert user_id == user_id
+        assert product == "self"
+        assert mode == "full"
+        return report
+
+    async def fake_get_latest_narrative_for_report(*, db: FakeDB, report_id: UUID) -> None:
+        assert report_id == report.id
+        return None
+
+    class DummyTask:
+        def delay(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+    monkeypatch.setattr(ReportService, "generate_report", fake_generate_report)
+    monkeypatch.setattr(reports_router, "get_latest_narrative_for_report", fake_get_latest_narrative_for_report)
+
+    from workers.tasks import reports as worker_reports
+
+    monkeypatch.setattr(worker_reports, "generate_pdf", DummyTask())
+    monkeypatch.setattr(worker_reports, "generate_report_narrative", DummyTask())
+
+    response = await reports_router.generate_report(
+        GenerateReportRequest(profile_id=str(report.profile_id), product="self", mode="full"),
+        db=cast(Any, db),
+        current_user=user_id,
+    )
+
+    assert db.refresh_calls == 1
+    assert response.id == report.id
+    assert response.status == "generating_narrative"
+
+
+@pytest.mark.asyncio
+async def test_generate_report_route_commits_report_before_enqueuing_background_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeReport:
+        def __init__(self) -> None:
+            self.id = uuid4()
+            self.profile_id = uuid4()
+            self.product = "self"
+            self.version = 1
+            self.status = "deterministic_ready"
+            self.mode = "full"
+            self.archetype = "Стратег"
+            self.score = 0.91
+            self.confidence = 0.83
+            self.pdf_url = None
+            self.pdf_generated = False
+            self.report_data = {"product": "self", "archetype": {"primary": "Стратег"}}
+            self.error_message = None
+            self.created_at = datetime.now(UTC)
+            self.updated_at = datetime.now(UTC)
+
+    class FakeDB:
+        def __init__(self, report: FakeReport) -> None:
+            self.report = report
+            self.commit_calls = 0
+            self.refresh_calls = 0
+
+        async def flush(self) -> None:
+            return None
+
+        async def commit(self) -> None:
+            self.commit_calls += 1
+
+        async def refresh(self, report: FakeReport) -> None:
+            assert report is self.report
+            self.refresh_calls += 1
+
+    report = FakeReport()
+    db = FakeDB(report)
+    user_id = uuid4()
+
+    async def fake_generate_report(
+        self: ReportService,
+        profile_id: UUID,
+        user_id: UUID,
+        product: str = "self",
+        mode: str = "full",
+    ) -> FakeReport:
+        return report
+
+    async def fake_get_latest_narrative_for_report(*, db: FakeDB, report_id: UUID) -> None:
+        return None
+
+    class CommitCheckingTask:
+        def __init__(self, db: FakeDB) -> None:
+            self.db = db
+            self.delay_calls = 0
+
+        def delay(self, *args: Any, **kwargs: Any) -> None:
+            assert self.db.commit_calls >= 1, "task enqueued before report commit"
+            self.delay_calls += 1
+            return None
+
+    pdf_task = CommitCheckingTask(db)
+    narrative_task = CommitCheckingTask(db)
+
+    monkeypatch.setattr(ReportService, "generate_report", fake_generate_report)
+    monkeypatch.setattr(reports_router, "get_latest_narrative_for_report", fake_get_latest_narrative_for_report)
+
+    from workers.tasks import reports as worker_reports
+
+    monkeypatch.setattr(worker_reports, "generate_pdf", pdf_task)
+    monkeypatch.setattr(worker_reports, "generate_report_narrative", narrative_task)
+
+    response = await reports_router.generate_report(
+        GenerateReportRequest(profile_id=str(report.profile_id), product="self", mode="full"),
+        db=cast(Any, db),
+        current_user=user_id,
+    )
+
+    assert db.commit_calls >= 1
+    assert pdf_task.delay_calls == 1
+    assert narrative_task.delay_calls == 1
+    assert response.id == report.id

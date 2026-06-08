@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any, TypeVar
@@ -11,6 +10,8 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.core.exceptions import NotFoundError
+from app.infrastructure import model_registry as _model_registry  # noqa: F401
+from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.llm import LLMProviderUnavailableError, LLMTimeoutError
 from app.modules.report_narratives.models import ReportNarrative
@@ -22,11 +23,7 @@ T = TypeVar("T")
 
 def _run_async(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
     """Run async code in a synchronous Celery task context."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    return run_async_in_worker(coro)
 
 
 def generate_report_narrative_task(report_id: str, *, force: bool = False) -> dict[str, str]:

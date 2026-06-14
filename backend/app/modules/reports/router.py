@@ -36,9 +36,10 @@ async def _commit_report_changes_if_persistent(db: AsyncSession, report: object)
     persistent within the request session. Real service results are persistent and
     still need the commit/refresh cycle.
     """
-    state = sa_inspect(report, raiseerr=False)
-    if state is None or not state.persistent:
-        return
+    if isinstance(db, AsyncSession):
+        state = sa_inspect(report, raiseerr=False)
+        if state is None or not state.persistent:
+            return
     await db.flush()
     await db.commit()
     await db.refresh(report)

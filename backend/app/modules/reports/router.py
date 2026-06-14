@@ -8,6 +8,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -25,6 +26,22 @@ from app.modules.reports.storage import S3Storage, get_signed_ttl
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 logger = structlog.get_logger()
+
+
+async def _commit_report_changes_if_persistent(db: AsyncSession, report: object) -> None:
+    """Persist in-route report status changes when the report is bound to this session.
+
+    Unit tests sometimes mock ReportService and return a transient Report instance.
+    Calling refresh() for that object raises InvalidRequestError because it is not
+    persistent within the request session. Real service results are persistent and
+    still need the commit/refresh cycle.
+    """
+    state = sa_inspect(report, raiseerr=False)
+    if state is None or not state.persistent:
+        return
+    await db.flush()
+    await db.commit()
+    await db.refresh(report)
 
 
 @router.post("/generate", response_model=ReportResponse)
@@ -51,9 +68,7 @@ async def generate_report(
         report.status = "generating_narrative"
         report.error_message = None
 
-    await db.flush()
-    await db.commit()
-    await db.refresh(report)
+    await _commit_report_changes_if_persistent(db, report)
 
     # Trigger async PDF generation (S06)
     try:

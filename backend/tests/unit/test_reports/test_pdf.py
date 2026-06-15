@@ -184,17 +184,6 @@ def test_generate_pdf_task_uses_latest_ready_narrative_without_llm(
         captured["narrative_error"] = narrative_error
         return b"%PDF-test"
 
-    class FakeStorage:
-        async def upload(self, key: str, content: bytes, content_type: str) -> None:
-            captured["upload_key"] = key
-            captured["upload_content"] = content
-            captured["upload_content_type"] = content_type
-
-        def get_signed_url(self, key: str, expires_in: int) -> str:
-            captured["signed_url_key"] = key
-            captured["signed_url_ttl"] = expires_in
-            return f"https://example.com/{key}"
-
     class FakeScalarCollection:
         def __init__(self, value: object) -> None:
             self._value = value
@@ -250,14 +239,11 @@ def test_generate_pdf_task_uses_latest_ready_narrative_without_llm(
         "app.modules.reports.tasks.generate_report_pdf",
         fake_generate_report_pdf,
     )
-    monkeypatch.setattr("app.modules.reports.tasks.S3Storage", FakeStorage)
-
     result = asyncio.run(_generate_pdf_async(report.id, report.user_id, "Алексей"))
 
-    assert fake_session.committed is True
+    assert fake_session.committed is False
     assert captured["profile_name"] == "Алексей"
     assert captured["narrative_content"] == make_self_narrative_payload()
     assert captured["narrative_status"] == "ready"
     assert captured["narrative_error"] is None
-    assert captured["upload_content"] == b"%PDF-test"
-    assert result["pdf_url"].startswith("https://example.com/")
+    assert result == {"report_id": str(report.id), "size": len(b"%PDF-test"), "stored": False}

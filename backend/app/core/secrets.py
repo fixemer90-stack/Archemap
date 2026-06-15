@@ -9,8 +9,6 @@ logger = structlog.get_logger()
 # Secrets that must not use default values in production
 INSECURE_DEFAULTS: dict[str, str] = {
     "SECRET_KEY": "change-me",
-    "S3_ACCESS_KEY_ID": "minioadmin",
-    "S3_SECRET_ACCESS_KEY": "minioadmin",
     "DATABASE_URL": "postgresql+asyncpg://archemap:archemap@localhost:5432/archemap",
 }
 
@@ -28,7 +26,6 @@ ROTATION_SCHEDULE: dict[str, str] = {
     "DATABASE_URL": "On password change",
     "YANDEX_CLIENT_SECRET": "On Yandex Console rotation",
     "SMTP_PASSWORD": "On SMTP password change",
-    "S3_SECRET_ACCESS_KEY": "On key rotation",
 }
 
 
@@ -86,8 +83,6 @@ def get_secret_status() -> dict[str, bool]:
         "YANDEX_CLIENT_ID",
         "YANDEX_CLIENT_SECRET",
         "SMTP_PASSWORD",
-        "S3_ACCESS_KEY_ID",
-        "S3_SECRET_ACCESS_KEY",
         "SENTRY_DSN",
     ]
 

@@ -29,24 +29,6 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    container_name: astrotype-minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   backend:
     build:
       context: ./backend
@@ -62,10 +44,6 @@ services:
       APP_ENV: development
       APP_DEBUG: "true"
       FRONTEND_URL: http://localhost:3000
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY_ID: minioadmin
-      S3_SECRET_ACCESS_KEY: minioadmin
-      S3_BUCKET_NAME: astrotype
       LLM_ENABLED: ${LLM_ENABLED:-false}
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       LLM_MODEL: ${LLM_MODEL:-mock-self-v1}
@@ -78,8 +56,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      minio:
         condition: service_healthy
     volumes:
       - ./backend:/app
@@ -102,10 +78,6 @@ services:
       APP_ENV: development
       APP_DEBUG: "true"
       FRONTEND_URL: http://localhost:3000
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY_ID: minioadmin
-      S3_SECRET_ACCESS_KEY: minioadmin
-      S3_BUCKET_NAME: astrotype
       LLM_ENABLED: ${LLM_ENABLED:-false}
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       LLM_MODEL: ${LLM_MODEL:-mock-self-v1}
@@ -118,8 +90,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      minio:
         condition: service_healthy
     volumes:
       - ./backend:/app
@@ -143,4 +113,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:

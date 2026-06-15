@@ -3,6 +3,21 @@
 **Feature:** [LLM Report Runtime Readiness](FEATURE.md)
 **Статус:** ✅ Готово
 
+## Текущий контракт после refactor: S3 больше не нужен
+
+Этот документ исторически описывал S3/MinIO bootstrap path. Контракт переигран: готовые PDF больше не хранятся как object-storage artifacts.
+
+Актуальный runtime contract:
+
+- `reports.report_data` хранит deterministic report JSON в PostgreSQL;
+- `report_narratives.content` хранит narrative JSON в PostgreSQL;
+- `POST /api/v1/reports/generate` больше не enqueue'ит PDF artifact task;
+- `GET /api/v1/reports/{id}/pdf` рендерит PDF на лету из сохранённых JSON и возвращает `200 application/pdf`;
+- `pdf_url` / `pdf_generated` остаются legacy-полями до отдельной миграции удаления;
+- MinIO/S3 env vars, bucket bootstrap и signed URL больше не являются обязательными для локального/dev report flow.
+
+Ниже оставлен исторический анализ прежнего S3-контракта как контекст решения.
+
 ## Контекст
 
 E11 narrative flow считается реально готовым только если после deterministic/narrative generation система может отдать финальный PDF deliverable. В текущем коде PDF generation идёт отдельной Celery task и публикует артефакт в S3-compatible storage. Значит, narrative-ready runtime без storage bootstrap остаётся частично рабочим: report может стать `ready`, но PDF download path останется сломанным.

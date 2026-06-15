@@ -17,7 +17,7 @@ from workers.celery_app import app
     time_limit=180,
 )
 def generate_pdf(self: Any, report_id: str, user_id: str, profile_name: str = "") -> dict[str, Any]:
-    """Generate PDF for a report and upload to S3."""
+    """Legacy compatibility task: generate PDF from persisted JSON without artifact storage."""
     from app.modules.reports.tasks import generate_pdf_task
 
     try:

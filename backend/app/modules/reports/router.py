@@ -7,12 +7,13 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import Response
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.modules.report_narratives.service import get_latest_narrative_for_report
+from app.modules.reports.pdf import generate_report_pdf
 from app.modules.reports.schemas import (
     GenerateReportRequest,
     ReportListResponse,
@@ -22,7 +23,6 @@ from app.modules.reports.schemas import (
     build_report_response,
 )
 from app.modules.reports.service import ReportService
-from app.modules.reports.storage import S3Storage, get_signed_ttl
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 logger = structlog.get_logger()
@@ -71,17 +71,8 @@ async def generate_report(
 
     await _commit_report_changes_if_persistent(db, report)
 
-    # Trigger async PDF generation (S06)
-    try:
-        from workers.tasks.reports import generate_pdf
-
-        generate_pdf.delay(
-            report_id=str(report.id),
-            user_id=str(current_user),
-        )
-    except Exception as exc:
-        # PDF generation is non-critical, don't fail the request
-        logger.warning("pdf_task_enqueue_failed", error=str(exc))
+    # PDF is generated on demand from JSON stored in Postgres. Do not enqueue
+    # artifact generation/upload here; report_data + narrative rows are the source of truth.
 
     if report.product == "self":
         try:
@@ -175,34 +166,34 @@ async def get_report_pdf(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
-) -> RedirectResponse:
-    """Get signed URL for report PDF download.
+) -> Response:
+    """Render report PDF on demand from JSON stored in Postgres.
 
-    Returns 307 redirect to signed S3 URL.
-    If PDF not generated yet, returns 404.
+    The persisted source of truth is report.report_data plus the latest narrative
+    JSON row. We intentionally do not depend on pre-generated S3 artifacts here.
     """
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
 
-    if not report.pdf_generated or not report.pdf_url:
+    if not report.report_data:
         raise HTTPException(
-            status_code=404,
-            detail="PDF not generated yet. Please wait and try again.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report data is not available yet. Please wait and try again.",
         )
 
-    # Refresh signed URL (may have expired)
-    from app.modules.reports.storage import build_report_key
-
-    storage = S3Storage()
-    key = build_report_key(
-        user_id=str(current_user),
-        report_id=str(report_id),
-        version=report.version,
+    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    pdf_bytes = generate_report_pdf(
+        report.report_data,
+        narrative_content=narrative.content if narrative is not None else None,
+        narrative_status=narrative.status if narrative is not None else None,
+        narrative_error=narrative.error_message if narrative is not None else None,
     )
-    ttl = get_signed_ttl(report.mode)
-    fresh_url = storage.get_signed_url(key, expires_in=ttl)
-
-    return RedirectResponse(url=fresh_url, status_code=307)
+    filename = f"astrotype-report-{report.id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{report_id}/versions", response_model=ReportVersionListResponse)

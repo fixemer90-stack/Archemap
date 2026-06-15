@@ -375,7 +375,7 @@ async def test_generate_report_route_refreshes_report_before_serializing_after_e
 
 
 @pytest.mark.asyncio
-async def test_generate_report_route_commits_report_before_enqueuing_background_tasks(
+async def test_generate_report_route_commits_report_before_enqueuing_narrative_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FakeReport:
@@ -438,7 +438,6 @@ async def test_generate_report_route_commits_report_before_enqueuing_background_
             self.delay_calls += 1
             return None
 
-    pdf_task = CommitCheckingTask(db)
     narrative_task = CommitCheckingTask(db)
 
     monkeypatch.setattr(ReportService, "generate_report", fake_generate_report)
@@ -446,7 +445,6 @@ async def test_generate_report_route_commits_report_before_enqueuing_background_
 
     from workers.tasks import reports as worker_reports
 
-    monkeypatch.setattr(worker_reports, "generate_pdf", pdf_task)
     monkeypatch.setattr(worker_reports, "generate_report_narrative", narrative_task)
 
     response = await reports_router.generate_report(
@@ -456,6 +454,53 @@ async def test_generate_report_route_commits_report_before_enqueuing_background_
     )
 
     assert db.commit_calls >= 1
-    assert pdf_task.delay_calls == 1
     assert narrative_task.delay_calls == 1
     assert response.id == report.id
+
+
+@pytest.mark.asyncio
+async def test_get_report_pdf_renders_on_demand_from_report_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = make_report(status="ready")
+    report.pdf_generated = False
+    report.pdf_url = None
+    captured: dict[str, object] = {}
+
+    async def fake_get_report(self: ReportService, report_id: UUID, user_id: UUID) -> Report:
+        captured["report_id"] = report_id
+        captured["user_id"] = user_id
+        return report
+
+    async def fake_get_latest_narrative_for_report(*, db: object, report_id: UUID) -> None:
+        captured["narrative_report_id"] = report_id
+        return None
+
+    def fake_generate_report_pdf(
+        report_data: dict[str, Any],
+        profile_name: str = "",
+        *,
+        narrative_content: dict[str, Any] | None,
+        narrative_status: str | None,
+        narrative_error: str | None,
+    ) -> bytes:
+        captured["report_data"] = report_data
+        captured["profile_name"] = profile_name
+        captured["narrative_content"] = narrative_content
+        captured["narrative_status"] = narrative_status
+        captured["narrative_error"] = narrative_error
+        return b"%PDF-on-demand"
+
+    monkeypatch.setattr(ReportService, "get_report", fake_get_report)
+    monkeypatch.setattr(reports_router, "get_latest_narrative_for_report", fake_get_latest_narrative_for_report)
+    monkeypatch.setattr(reports_router, "generate_report_pdf", fake_generate_report_pdf)
+
+    current_user = uuid4()
+    response = await reports_router.get_report_pdf(report.id, db=cast(Any, object()), current_user=current_user)
+
+    assert response.status_code == 200
+    assert response.media_type == "application/pdf"
+    assert response.body == b"%PDF-on-demand"
+    assert "attachment" in response.headers["content-disposition"]
+    assert captured["report_data"] == report.report_data
+    assert captured["narrative_report_id"] == report.id

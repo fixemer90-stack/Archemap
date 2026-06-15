@@ -28,7 +28,6 @@ dependencies = [
     "structlog>=25.5.0,<27",
     "opentelemetry-api>=1.29,<2",
     "opentelemetry-sdk>=1.29,<2",
-    "boto3>=1.38,<2",
     "weasyprint>=68,<70",
     "jinja2>=3.1,<4",
     "opentelemetry-instrumentation-fastapi>=0.50b0",
@@ -93,7 +92,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "jose.*", "sentry_sdk.*", "redis.*", "bcrypt.*", "yaml.*", "swisseph.*", "pyswisseph.*", "weasyprint.*", "boto3.*", "botocore.*", "jinja2.*"]
+module = ["celery.*", "jose.*", "sentry_sdk.*", "redis.*", "bcrypt.*", "yaml.*", "swisseph.*", "pyswisseph.*", "weasyprint.*", "jinja2.*"]
 ignore_missing_imports = true
 
 # ── Pytest ────────────────────────────────────────────────────────────

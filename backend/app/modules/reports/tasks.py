@@ -15,7 +15,6 @@ from app.infrastructure.database import async_session_factory
 from app.modules.report_narratives.service import get_latest_narrative_for_report
 from app.modules.reports.models import Report
 from app.modules.reports.pdf import generate_report_pdf
-from app.modules.reports.storage import S3Storage, build_report_key, get_signed_ttl
 
 logger = structlog.get_logger()
 
@@ -28,9 +27,11 @@ def _run_async(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
 
 
 def generate_pdf_task(report_id: str, user_id: str, profile_name: str = "") -> dict[str, Any]:
-    """Generate PDF for a report and upload to S3.
+    """Generate PDF bytes for a report from persisted JSON.
 
-    Called asynchronously by Celery after report generation.
+    Legacy task entrypoint retained for compatibility, but the application no
+    longer stores generated PDF artifacts in S3. Runtime downloads are rendered
+    on demand by the reports API.
     """
     logger.info("pdf_task_start", report_id=report_id)
 
@@ -68,7 +69,7 @@ async def _generate_pdf_async(
         # Load latest saved narrative if present; PDF must never trigger a new LLM call.
         narrative = await get_latest_narrative_for_report(db=db, report_id=report_id)
 
-        # Generate PDF
+        # Generate PDF from persisted JSON. Do not upload/store the artifact.
         pdf_bytes = generate_report_pdf(
             report.report_data,
             profile_name,
@@ -77,26 +78,8 @@ async def _generate_pdf_async(
             narrative_error=narrative.error_message if narrative is not None else None,
         )
 
-        # Upload to S3
-        storage = S3Storage()
-        key = build_report_key(
-            user_id=str(user_id),
-            report_id=str(report_id),
-            version=report.version,
-        )
-        await storage.upload(key, pdf_bytes, content_type="application/pdf")
-
-        # Generate signed URL
-        ttl = get_signed_ttl(report.mode)
-        signed_url = storage.get_signed_url(key, expires_in=ttl)
-
-        # Update report
-        report.pdf_url = signed_url
-        report.pdf_generated = True
-        await db.commit()
-
         return {
             "report_id": str(report_id),
-            "pdf_url": signed_url,
-            "key": key,
+            "size": len(pdf_bytes),
+            "stored": False,
         }

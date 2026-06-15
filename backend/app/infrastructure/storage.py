@@ -1,32 +1,27 @@
-"""Object storage client (S3-compatible). Placeholder — implement with boto3/aiobotocore."""
+"""Legacy object storage boundary.
+
+The report PDF path no longer uses object storage. Keep this module as a small
+compatibility placeholder so old imports fail explicitly if someone tries to use
+artifact storage again without adding a new storage contract.
+"""
 
 from __future__ import annotations
 
-from app.config import settings
-
 
 class StorageClient:
-    """Thin wrapper around an S3-compatible object store.
-
-    TODO: implement using aiobotocore for async uploads/downloads.
-    """
-
-    def __init__(self) -> None:
-        self.endpoint_url = settings.S3_ENDPOINT_URL
-        self.bucket = settings.S3_BUCKET_NAME
-        self.region = settings.S3_REGION
+    """Disabled object-storage client placeholder."""
 
     async def upload(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> str:
-        raise NotImplementedError
+        raise NotImplementedError("Object storage is not configured for this application runtime")
 
     async def download(self, key: str) -> bytes:
-        raise NotImplementedError
+        raise NotImplementedError("Object storage is not configured for this application runtime")
 
     async def delete(self, key: str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError("Object storage is not configured for this application runtime")
 
     async def presigned_url(self, key: str, expires_in: int = 3600) -> str:
-        raise NotImplementedError
+        raise NotImplementedError("Object storage is not configured for this application runtime")
 
 
 def get_storage_client() -> StorageClient:

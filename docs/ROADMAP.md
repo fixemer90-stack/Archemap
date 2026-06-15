@@ -3,6 +3,8 @@
 > **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
 > **Обновлено:** 2026-06-15
 
+> **Последнее архитектурное решение:** PDF больше не хранится как S3/MinIO artifact. Источник истины — JSON в PostgreSQL (`reports.report_data` + `report_narratives.content`), а `GET /reports/{id}/pdf` рендерит PDF on demand.
+
 ---
 
 ## Обзор вертикалей
@@ -103,7 +105,12 @@
 **Оценка:** 4–5 недель
 **Зависимости:** E3, E4
 
-Текущее состояние по storage/PDF path: deterministic report JSON и narrative JSON хранятся в PostgreSQL; `GET /reports/{id}/pdf` рендерит PDF on demand. S3/MinIO и persisted PDF artifacts больше не входят в обязательный runtime contract.
+Текущее состояние по storage/PDF path:
+
+- deterministic report JSON и narrative JSON хранятся в PostgreSQL;
+- `GET /reports/{id}/pdf` рендерит PDF on demand;
+- S3/MinIO и persisted PDF artifacts больше не входят в обязательный runtime contract;
+- legacy-поля `pdf_url` / `pdf_generated` пока остаются для совместимости схемы/API и будут удаляться отдельной миграцией.
 
 | # | Фича | Описание | Файлы/модули | Критерии приёмки |
 |---|------|----------|---------------|------------------|
@@ -170,8 +177,8 @@
 | 8.5 | Load testing | Нагрузочное тестирование | `tests/load/`, k6/locust scripts | 500 concurrent users; p95 < 500ms для report generation |
 | 8.6 | Yandex Managed K8s | Деплой на Yandex Managed Kubernetes | `deploy/k8s/`, Helm charts | Pod autoscaling; health checks; rolling updates; zero-downtime deploy |
 | 8.7 | GitOps (Argo CD) | Автоматический деплой из Git | `deploy/argocd/`, `deploy/apps/` | Push в main → Argo CD sync → deploy; rollback через revert commit |
-| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | ⬜ Не начато: deploy contract описан; PDF flow больше не требует S3/object storage, но render blueprint/code path ещё не доведён |
-| 8.9 | PDF storage strategy | Решение по PDF delivery для managed deploy | `reports/storage.py`, `reports/pdf.py`, deploy docs | ✅ Готово: S3 не обязателен; source of truth = JSON в PostgreSQL, PDF = on-demand rendering |
+| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | ⬜ Не начато: deploy contract и storage-decision docs синхронизированы; реальный render blueprint/runtime rollout ещё не доведён |
+| 8.9 | PDF storage strategy | Решение по PDF delivery для managed deploy | `reports/storage.py`, `reports/pdf.py`, deploy docs | ✅ Готово: S3 не обязателен; source of truth = JSON в PostgreSQL, PDF = on-demand rendering; env/infra contract очищен от обязательных `S3_*` |
 
 ---
 
@@ -242,7 +249,7 @@ E1 (Foundation) ✅
 | E5 | Только Self-отчёт (free preview + полная версия по подписке) | Love, Child, Career |
 | E6 | 1 план подписки (Self), 1 платёжный провайдер (YooKassa) | CloudPayments, Stripe, mobile billing |
 | E7 | Email-уведомления, базовый admin | SMS, push, analytics |
-| E8 | Rate limiting, базовая observability, runtime/deploy docs, PDF delivery без S3 | WAF, load testing, GitOps, полный managed deploy |
+| E8 | Rate limiting, базовая observability, runtime/deploy docs, PDF delivery без S3 и без обязательного object storage | WAF, load testing, GitOps, полный managed deploy |
 
 **Оценка MVP:** 12–16 недель от текущего состояния.
 

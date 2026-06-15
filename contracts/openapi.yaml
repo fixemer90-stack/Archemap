@@ -366,6 +366,41 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/reports/{report_id}/pdf:
+    get:
+      operationId: downloadReportPdf
+      tags: [Reports]
+      summary: Render report PDF on demand from stored report JSON
+      description: |
+        The API does not require a pre-generated PDF artifact, `pdf_url`,
+        `pdf_generated=true`, S3, MinIO, or signed URLs. It loads persisted
+        report JSON and the latest saved narrative JSON, renders the PDF, and
+        returns the bytes directly.
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: PDF rendered from persisted JSON
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Attachment filename for the generated PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /v1/reports/{report_id}/narrative/regenerate:
     post:
       operationId: regenerateReportNarrative

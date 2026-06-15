@@ -1,82 +1,93 @@
-# Story E8.S09: Artifact Storage Strategy for Render / S3 Replacement
+# Story E8.S09: Report PDF storage strategy — DB JSON source of truth
 
 **Feature:** [Production & Scale](FEATURE.md)
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 
 ## Контекст
 
-Render закрывает web services, background workers, managed Postgres и managed Redis/Valkey, но не закрывает хранение PDF/report artifacts сам по себе.
+Первоначальный Render/K8s план предполагал S3-compatible хранилище для готовых PDF artifacts: worker генерирует PDF, загружает его в S3/MinIO, API отдаёт signed URL.
 
-Текущий backend уже жёстко завязан на S3-compatible storage:
-- `backend/app/modules/reports/storage.py` создаёт `boto3` client и работает только через `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `S3_REGION`;
-- `backend/app/modules/reports/tasks.py` после генерации PDF всегда делает `await storage.upload(...)` и затем `storage.get_signed_url(...)`;
-- helper `ensure_bucket()` существует, но по текущему коду нигде не вызывается автоматически, значит bucket bootstrap пока остаётся внешним операционным шагом.
+Для текущего MVP это избыточно. Принято новое решение:
 
-Это создаёт реальный deployment gap:
-- локальный `minio` из `docker-compose.yml` не существует на Render;
-- хранение PDF на локальном filesystem Render нельзя считать рабочей заменой: файловая система эфемерна, web и worker разделены, signed URL contract пропадает;
-- попытка "просто выключить S3" ломает deliverable path отчётов, где `pdf_generated` и `pdf_url` ожидают настоящий artifact backend.
+- готовые PDF не хранятся как persisted artifacts;
+- источник истины хранится в PostgreSQL как JSON:
+  - `reports.report_data` — deterministic report JSON;
+  - `report_narratives.content` — narrative JSON, если он уже сгенерирован;
+- `GET /reports/{id}/pdf` рендерит PDF на лету из этих JSON-данных и возвращает `200 application/pdf`;
+- S3/MinIO, bucket bootstrap, signed URLs и object-storage credentials не входят в обязательный runtime contract.
 
-## Что сделать
+## Решение
 
-1. Принять и зафиксировать MVP-решение по storage:
-   - preferred path: сохранить S3-compatible contract и подключить внешний provider;
-   - alternative path: отдельный refactor stories, если продукт хочет уйти от S3-интерфейса полностью.
-2. Для preferred path описать допустимых провайдеров и критерии выбора:
-   - Cloudflare R2;
-   - Backblaze B2 S3-compatible;
-   - Yandex Object Storage;
-   - любой другой provider с S3 API и presigned URL support.
-3. Зафиксировать, что для Render MVP не подходит как "решение":
-   - локальный диск внутри web service;
-   - локальный диск внутри worker;
-   - Render persistent disk как общий artifact store между web и worker без отдельного application refactor;
-   - хранение PDF только в Postgres как быстрый инфраструктурный workaround.
-4. Описать bootstrap contract:
-   - bucket/container должен существовать до первого `reports.generate_pdf`;
-   - если автосоздание bucket не добавлено в runtime path, это должен быть явный deploy step/operator checklist item;
-   - smoke check обязан проверять upload и получение signed URL, а не только успешную генерацию report row в БД.
-5. Если команда выбирает replacement instead of workaround, выделить отдельный engineering scope:
-   - abstraction layer поверх `S3Storage`;
-   - новый storage backend contract;
-   - миграция `pdf_url`/artifact delivery semantics;
-   - обновление runbooks, tests и Render deploy docs.
-6. Синхронизировать решение с E8 S08 и E12 runtime docs, чтобы deployment contract и локальный runbook не расходились.
+### Runtime contract
 
-## Рекомендуемое решение
+```text
+POST /reports/generate
+  -> writes reports.report_data JSON
+  -> for self reports enqueues narrative generation
+  -> narrative worker writes report_narratives.content JSON
+  -> no PDF artifact upload
 
-Для первого deploy на Render рекомендован не storage replacement, а storage carry-over:
+GET /reports/{id}/pdf
+  -> loads report by id/user
+  -> loads latest narrative JSON if available
+  -> renders HTML from stored JSON
+  -> WeasyPrint produces PDF bytes
+  -> API returns 200 application/pdf
+```
 
-- оставить текущий S3-compatible application contract без изменений;
-- вместо локального MinIO подключить внешний managed/object-storage provider;
-- первыми кандидатами считать Cloudflare R2 или Yandex Object Storage, потому что они сохраняют presigned URL workflow без application refactor.
+### Почему не S3 сейчас
 
-Иными словами, проблему с S3 сейчас лучше не «обходить» локальным диском Render, а вынести наружу в совместимый object storage. Полная замена S3-интерфейса допустима, но только как отдельный engineering track после первого рабочего managed deploy.
+S3-compatible storage полезен, когда PDF нужно кэшировать/шарить как долгоживущий artifact. Сейчас это даёт лишние операционные зависимости:
+
+- отдельный provider или MinIO;
+- секреты `S3_*`;
+- bucket bootstrap;
+- signed URL topology между backend/worker/browser;
+- дополнительный failure mode, не связанный с ценностью MVP.
+
+При хранении JSON в Postgres PDF остаётся воспроизводимым: мы можем в любой момент собрать его заново из persisted report/narrative data.
+
+### Legacy поля
+
+`reports.pdf_url`, `reports.pdf_generated`, `report_versions.pdf_url` пока остаются в БД/API как legacy-поля для совместимости схемы и контрактов.
+
+Правила:
+
+- новый runtime path не должен зависеть от `pdf_generated=true`;
+- `/reports/{id}/pdf` не должен требовать `pdf_url`;
+- новые PDF artifacts не должны сохраняться в S3/MinIO;
+- удаление legacy-полей — отдельная миграция после стабилизации frontend/API-контракта.
 
 ## Затрагиваемые файлы
 
-| Путь | Описание |
+| Путь | Роль |
 |---|---|
-| `backend/app/modules/reports/storage.py` | Текущий S3-only artifact backend |
-| `backend/app/modules/reports/tasks.py` | PDF upload + signed URL path |
-| `docker-compose.yml` | Локальный MinIO baseline, отсутствующий на Render |
-| `docs/features/E8-production-scale/S08-render-deploy.md` | Render deploy contract, который зависит от storage decision |
-| `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | Runtime/bootstrap story, которую нужно держать синхронной с deployment решением |
-| `docs/SRS/SRS-E8-production-scale.md` | Инфраструктурный контракт на уровне требований |
+| `backend/app/modules/reports/router.py` | `/reports/{id}/pdf` рендерит PDF on demand |
+| `backend/app/modules/reports/pdf.py` | HTML + WeasyPrint PDF rendering |
+| `backend/app/modules/reports/tasks.py` | Legacy task returns PDF size only, без storage upload |
+| `backend/app/modules/reports/storage.py` | Legacy stub, S3 runtime удалён |
+| `docker-compose.yml` | Local runtime без MinIO |
+| `.env.example`, `backend/.env.example.*` | S3 env удалён из обязательных примеров |
+| `infra/k8s/base/secrets.yaml` | S3 secrets удалены из base secret contract |
 
 ## Acceptance Criteria
 
-- [ ] В документации есть явное решение: для Render MVP используется внешний S3-compatible provider, либо создан отдельный refactor-track на замену storage backend.
-- [ ] Задокументировано, почему локальный filesystem Render не может считаться рабочей заменой для PDF/report artifacts.
-- [ ] Перечислен обязательный env contract для external object storage: endpoint, bucket, credentials, region.
-- [ ] Явно отмечено, что `ensure_bucket()` сейчас не является подтверждённым runtime bootstrap path и bucket existence нельзя считать автоматической.
-- [ ] Есть bootstrap/smoke checklist: bucket exists -> upload succeeds -> signed URL opens artifact.
-- [ ] Если выбран полный отказ от S3, документация фиксирует это как отдельную инженерную задачу, а не как незаметную настройку Render.
-- [ ] S08 Render deploy и E8 SRS не расходятся с принятым storage decision.
+- [x] Документация фиксирует отказ от S3-compatible storage для MVP PDF path.
+- [x] Runtime source of truth — JSON в Postgres (`reports.report_data`, `report_narratives.content`).
+- [x] `/reports/{id}/pdf` возвращает PDF bytes напрямую (`200 application/pdf`).
+- [x] PDF endpoint работает без `pdf_generated=true` и без `pdf_url`.
+- [x] Local compose не требует MinIO.
+- [x] Env examples не требуют `S3_*`.
+- [x] K8s base secrets не требуют `S3_*`.
+- [x] Legacy `pdf_url` / `pdf_generated` явно помечены как совместимость до отдельной миграции.
 
-## Примечания
+## Будущая оптимизация
 
-- Самый быстрый путь к первому деплою на Render — не заменять storage layer, а оставить S3-compatible contract и подключить внешний provider.
-- Полноценная замена S3 — это уже не infra-tweak, а изменение application contract: `reports/tasks.py`, signed URLs, bootstrap, smoke checks и, возможно, API ожиданий frontend.
-- Если продукту важен именно отказ от внешнего object storage, это лучше делать отдельной серией stories после первого рабочего managed deploy, а не смешивать с первичным Render rollout.
-- Render persistent disk не закрывает текущий контракт артефактов: worker и web service разделены, а код ожидает единый object store с upload + signed URL semantics.
+Если PDF generation станет дорогим, можно добавить отдельный cache layer. Это должна быть новая история с явными правилами:
+
+- cache key / invalidation;
+- TTL;
+- где хранить cache artifact;
+- как не ломать source-of-truth модель Postgres JSON.
+
+Это не должно незаметно возвращать S3 как обязательную dependency для MVP.

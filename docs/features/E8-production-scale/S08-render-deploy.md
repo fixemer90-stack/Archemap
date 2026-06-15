@@ -8,9 +8,9 @@
 Нужен первый managed deploy path без Kubernetes: Render должен стать MVP-окружением для frontend, backend, worker и managed data services.
 
 Текущий runtime-контракт уже частично готов в коде:
-- `docker-compose.yml` поднимает `backend`, `worker`, `frontend`, `postgres`, `redis`, `minio`;
+- `docker-compose.yml` поднимает `backend`, `worker`, `frontend`, `postgres`, `redis`;
 - backend и worker уже разделены на разные процессы и используют общий env contract из `backend/app/config.py`;
-- worker стартует через `celery -A workers.celery_app.app worker --loglevel=INFO` и обрабатывает `reports.generate_pdf` и `reports.generate_report_narrative`;
+- worker стартует через `celery -A workers.celery_app.app worker --loglevel=INFO` и обрабатывает narrative/report background tasks; PDF artifacts не загружаются в object storage, потому что `/reports/{id}/pdf` рендерится on demand из JSON в Postgres;
 - frontend сейчас зависит от живого Next.js server: `frontend/next.config.ts` проксирует `/api/:path*` в `BACKEND_URL`, а код массово использует `/api/v1/...`.
 
 Из этого следует текущий deploy target:
@@ -31,7 +31,7 @@ Pure static hosting пока не является честным MVP-целью
 - `worker` — Render Background Worker;
 - `postgres` — Render Managed Postgres;
 - `redis`/`valkey` — Render Managed Redis/Valkey;
-- object storage — внешний S3-compatible provider, не локальный диск Render.
+- object storage для PDF не нужен в MVP: persisted source of truth — JSON в Postgres, PDF формируется on demand.
 
 Это означает, что формулировка `frontend web/static` на текущем этапе должна читаться так: `web` — да, `static` — только как future target после отдельной истории на отказ от runtime rewrites.
 
@@ -55,16 +55,16 @@ Pure static hosting пока не является честным MVP-целью
    - `DATABASE_URL`;
    - `REDIS_URL`, `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`;
    - `FRONTEND_URL`, `BACKEND_URL`, OAuth redirect URIs;
-   - email, YooKassa, `LLM_*`;
-   - `S3_*` для artifact storage.
+   - email, YooKassa, `LLM_*`.
 5. Зафиксировать health checks и smoke probes:
    - backend health: `GET /api/v1/health`;
    - frontend: landing, login, billing;
-   - worker: логи о подключении к broker и обработке `reports.generate_pdf` / `reports.generate_report_narrative`.
+   - worker: логи о подключении к broker и обработке narrative задач;
+   - PDF smoke: persisted report JSON -> `GET /api/v1/reports/{id}/pdf` возвращает `200 application/pdf`.
 6. Явно описать blockers и границы Story:
    - frontend static deploy пока не готов;
    - текущие Dockerfiles dev-ориентированы и потребуют production commands/build stages;
-   - external object storage не закрывается самим Render и должен идти отдельным решением из S09.
+   - PDF storage не должен добавлять S3-зависимость; если caching PDF понадобится позже, это отдельная история из S09.
 
 ## Затрагиваемые файлы
 
@@ -87,10 +87,10 @@ Pure static hosting пока не является честным MVP-целью
 - [ ] Backend start command описан как production runtime без `--reload` и использует Render `$PORT`.
 - [ ] Worker описан как отдельный Render Background Worker с корректным Celery command.
 - [ ] Frontend mode зафиксирован честно: текущий MVP — Web Service; Static Site остаётся отдельной задачей/refactor, а не скрытым допущением.
-- [ ] Env contract перечисляет backend/frontend/worker переменные, включая auth, queue, payments, email, LLM и storage.
+- [ ] Env contract перечисляет backend/frontend/worker переменные, включая auth, queue, payments, email и LLM; `S3_*` не является обязательным для PDF flow.
 - [ ] В Story явно записано, почему `next.config.ts` rewrites и `/api/v1/...` fetch contract блокируют pure static deploy прямо сейчас.
-- [ ] Есть post-deploy smoke checklist для backend/frontend/worker, включая OAuth/cookie-auth и enqueue задач.
-- [ ] Story не обещает, что Render сам решает storage-проблему; зависимость на object storage делегирована в S09.
+- [ ] Есть post-deploy smoke checklist для backend/frontend/worker, включая OAuth/cookie-auth, enqueue narrative задач и PDF on-demand download.
+- [ ] Story не требует object storage для PDF; S09 фиксирует JSON-in-Postgres decision и future-cache границы.
 
 ## Примечания
 

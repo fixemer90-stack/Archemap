@@ -59,7 +59,7 @@ flowchart TD
     Ingress --> Frontend[Frontend Pods]
     Backend --> PG[(PostgreSQL)]
     Backend --> Redis[(Redis)]
-    Backend --> S3[(S3/MinIO)]
+    Backend --> ReportsJSON[(Report JSON in PostgreSQL)]
     Backend --> Monitoring[Prometheus + Grafana]
 ```
 
@@ -168,21 +168,21 @@ flowchart TD
 
 **FR-8.8.2** Backend start command ДОЛЖЕН использовать production runtime без `--reload` и учитывать Render `$PORT`.
 
-**FR-8.8.3** Worker ДОЛЖЕН деплоиться как отдельный background worker с тем же env contract, что и backend для `DATABASE_URL`, `REDIS_URL`, `CELERY_*`, `S3_*`, `LLM_*`.
+**FR-8.8.3** Worker ДОЛЖЕН деплоиться как отдельный background worker с тем же env contract, что и backend для `DATABASE_URL`, `REDIS_URL`, `CELERY_*`, `LLM_*`.
 
 **FR-8.8.4** Frontend deployment mode ДОЛЖЕН быть явно определён: текущий код либо идёт как Render Web Service, либо перед этим выполняется отдельный refactor под static hosting.
 
-**FR-8.8.5** PDF/report artifact flow ДОЛЖЕН сохранить внешний S3-compatible storage, потому что текущий backend runtime зависит от `S3Storage`.
+**FR-8.8.5** PDF/report flow НЕ ДОЛЖЕН требовать внешний S3-compatible storage для MVP: persisted source of truth — JSON в PostgreSQL, а PDF рендерится на лету из `reports.report_data` и `report_narratives.content`.
 
 ### 3.9 Artifact Storage Strategy (FR-8.9)
 
-**FR-8.9.1** Документация ДОЛЖНА явно фиксировать storage decision для Render MVP: внешний S3-compatible provider или отдельный refactor-track на замену artifact backend.
+**FR-8.9.1** Документация ДОЛЖНА явно фиксировать storage decision для Render MVP: готовые PDF не хранятся как artifacts, source of truth хранится как JSON в PostgreSQL.
 
-**FR-8.9.2** Система НЕ ДОЛЖНА считать локальный filesystem Render валидной заменой S3 для PDF/report artifacts.
+**FR-8.9.2** Система НЕ ДОЛЖНА считать локальный filesystem Render валидным persisted storage для PDF/report artifacts; если caching понадобится позже, он должен быть отдельной архитектурной задачей.
 
-**FR-8.9.3** Bucket/container existence ДОЛЖНА быть описана как явный bootstrap step, если runtime path не подтверждает автоматический вызов `ensure_bucket()`.
+**FR-8.9.3** `/reports/{id}/pdf` ДОЛЖЕН работать без `pdf_generated=true`, без `pdf_url`, без bucket/container bootstrap и без `S3_*` секретов.
 
-**FR-8.9.4** Deployment/runbook contract ДОЛЖЕН включать smoke check: upload artifact -> generate signed URL -> artifact доступен по ссылке.
+**FR-8.9.4** Deployment/runbook contract ДОЛЖЕН включать smoke check: persisted report JSON exists -> optional narrative JSON exists -> `/reports/{id}/pdf` returns `200 application/pdf`.
 
 ---
 

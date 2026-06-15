@@ -1,7 +1,7 @@
 # Astrotype — Дорожная карта
 
 > **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
-> **Обновлено:** 2026-05-29
+> **Обновлено:** 2026-06-15
 
 ---
 
@@ -26,14 +26,14 @@
 | E2 | Identity | 🟡 В процессе |
 | E3 | Profile & Chart Engine | ✅ Готово |
 | E4 | Rules & Content | ✅ Готово (S06 CMS — backlog) |
-| E5 | Products & Reports | ⬜ Не начато |
+| E5 | Products & Reports | 🟡 В процессе |
 | E6 | Billing & Subscriptions | ⬜ Не начато |
 | E7 | Notifications & Admin | ⬜ Не начато |
-| E8 | Production & Scale | ⬜ Не начато |
+| E8 | Production & Scale | 🟡 В процессе |
 | E9 | Frontend Self Report | ✅ Готово |
 | E10 | Report UX Redesign | ✅ Готово |
 | E11 | LLM Report Narrative | ✅ Готово |
-| E12 | LLM Report Runtime Readiness | ⬜ Не начато |
+| E12 | LLM Report Runtime Readiness | ✅ Готово |
 
 ---
 
@@ -97,21 +97,21 @@
 
 ---
 
-## Epic 5: Products & Reports
+## Epic 5: Products & Reports 🟡
 
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 В процессе
 **Оценка:** 4–5 недель
 **Зависимости:** E3, E4
 
 | # | Фича | Описание | Файлы/модули | Критерии приёмки |
 |---|------|----------|---------------|------------------|
-| 5.1 | Self-отчёт | Генерация персонального отчёта по натальной карте | `reports/self/`, `reports/generator.py` | Отчёт содержит: солнце, луна, асцендент, доминанты, архетип; PDF/API |
+| 5.1 | Self-отчёт | Генерация персонального отчёта по натальной карте | `reports/self/`, `reports/generator.py` | ✅ Готово |
 | 5.2 | Love: совместимость | Анализ пары: синастрия, паттерны, триггеры | `reports/love/`, `reports/synastry.py` | Два профиля → отчёт; оценка совместимости 0–100; топ-3 триггера |
 | 5.3 | Child: профиль | Профиль ребёнка + рекомендации родителю | `reports/child/`, `reports/child_profile.py` | По дате/времени/месту → темперамент, сильные стороны, советы по воспитанию |
-| 5.4 | Career: сильные стороны | Карьерные рекомендации по карте | `reports/career/`, `reports/career_profile.py` | Топ-5 профессий, сильные/слабые стороны, рекомендации по развитию |
-| 5.5 | Версионирование отчётов | Хранение версий сгенерированных отчётов | `reports/models.py` | При изменении профиля — новый отчёт (старый сохраняется); история доступна |
-| 5.6 | Хранилище отчётов | Хранение PDF и структурированных данных | `reports/storage.py`, S3/MinIO | PDF генерируется асинхронно; доступен по ссылке; TTL 30 дней для free |
-| 5.7 | API отчётов | REST-эндпоинты для генерации и получения отчётов | `reports/views.py`, `reports/serializers.py` | POST generate, GET list/detail; pagination; permissions |
+| 5.4 | Career: сильные стороны | Карьерные рекомендации по карте | `reports/career/`, `reports/career_profile.py` | ✅ Готово |
+| 5.5 | Версионирование отчётов | Хранение версий сгенерированных отчётов | `reports/models.py` | ✅ Готово |
+| 5.6 | Хранилище отчётов | Источник истины = JSON в PostgreSQL; PDF рендерится on demand без S3/MinIO | `reports/storage.py`, `reports/pdf.py`, `reports/router.py` | ✅ Готово |
+| 5.7 | API отчётов | REST-эндпоинты для генерации и получения отчётов | `reports/views.py`, `reports/serializers.py` | ✅ Готово |
 
 ---
 
@@ -153,23 +153,23 @@
 
 ---
 
-## Epic 8: Production & Scale
+## Epic 8: Production & Scale 🟡
 
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 В процессе
 **Оценка:** 3–4 недели
 **Зависимости:** E6, E7
 
 | # | Фича | Описание | Файлы/модули | Критерии приёмки |
 |---|------|----------|---------------|------------------|
-| 8.1 | Rate limiting | Ограничение запросов по API | `middleware/rate_limit.py`, Redis | 100 req/min/user для API; 10 req/min для auth; 429 при превышении |
+| 8.1 | Rate limiting | Ограничение запросов по API | `middleware/rate_limit.py`, Redis | 🟡 Частично: login/geocode limits готовы; глобальный лимит ещё нет |
 | 8.2 | WAF | Web Application Firewall (ModSecurity / Cloudflare) | infra/, nginx config | Блокировка SQLi, XSS, path traversal; логирование |
-| 8.3 | Secrets manager | Хранение секретов (Yandex Lockbox / Vault) | `config/secrets.py`, deploy scripts | Ни одного секрета в коде/env-файлах; ротация через CI |
-| 8.4 | Observability | Трассировка, метрики, логи | `observability/`, OTEL config, Prometheus, Loki | Traces в Jaeger; метрики в Grafana; логи в Loki; alerting |
+| 8.3 | Secrets manager | Хранение секретов (Yandex Lockbox / Vault) | `config/secrets.py`, deploy scripts | ✅ Базовые production guards и validation готовы; полноценный secrets manager ещё нет |
+| 8.4 | Observability | Трассировка, метрики, логи | `observability/`, OTEL config, Prometheus, Loki | 🟡 Частично: OTEL + structlog есть; полный metrics/logs stack ещё нет |
 | 8.5 | Load testing | Нагрузочное тестирование | `tests/load/`, k6/locust scripts | 500 concurrent users; p95 < 500ms для report generation |
 | 8.6 | Yandex Managed K8s | Деплой на Yandex Managed Kubernetes | `deploy/k8s/`, Helm charts | Pod autoscaling; health checks; rolling updates; zero-downtime deploy |
 | 8.7 | GitOps (Argo CD) | Автоматический деплой из Git | `deploy/argocd/`, `deploy/apps/` | Push в main → Argo CD sync → deploy; rollback через revert commit |
-| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | Есть первый managed deploy path без K8s; зафиксирован frontend mode и внешний S3 contract |
-| 8.9 | Artifact storage strategy | Решение по Render/S3: внешний S3-compatible provider или отдельный storage refactor | `reports/storage.py`, deploy docs | Нет скрытой зависимости на локальный диск; PDF/artifact flow имеет явный storage contract |
+| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | ⬜ Не начато: deploy contract описан, но render blueprint/code path ещё не доведён |
+| 8.9 | PDF storage strategy | Решение по PDF delivery для managed deploy | `reports/storage.py`, `reports/pdf.py`, deploy docs | ✅ Готово: S3 не обязателен; source of truth = JSON в PostgreSQL, PDF = on-demand rendering |
 
 ---
 
@@ -191,20 +191,20 @@
 
 ---
 
-## Epic 12: LLM Report Runtime Readiness
+## Epic 12: LLM Report Runtime Readiness ✅
 
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Готово
 **Оценка:** 1–2 недели
 **Зависимости:** E11 ✅, E5 🟡, E1 ✅
 
 | # | Фича | Описание | Документы | Критерии приёмки |
 |---|------|----------|-----------|------------------|
-| 12.1 | Runtime inventory | Что реально нужно для запуска E11, а не только для code-complete состояния | `docs/features/E12-llm-report-runtime-readiness/S01-runtime-inventory-gap-analysis.md` | Есть явный список сервисов, env и gap list |
-| 12.2 | Worker/dev orchestration | Отдельный Celery worker и narrative-ready local stack | `docs/features/E12-llm-report-runtime-readiness/S02-dev-orchestration-worker-runtime.md` | Narrative tasks реально исполняются в dev stack |
-| 12.3 | LLM env contract | Disabled/mock/real provider modes и required env | `docs/features/E12-llm-report-runtime-readiness/S03-llm-environment-contract.md` | Понятно, как включить mock и real LLM path |
-| 12.4 | Storage/PDF bootstrap | Bucket/bootstrap contract для полного deliverable path | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | PDF path не зависит от скрытых ручных шагов |
-| 12.5 | Runbook + smoke | Пошаговый запуск, логи, generate/polling/regenerate/PDF checks | `docs/features/E12-llm-report-runtime-readiness/S05-local-runbook-start-logs-smoke.md` | Новый участник команды может прогнать flow по документации |
-| 12.6 | Triage + launch checklist | Симптомы, причины, readiness checklist | `docs/features/E12-llm-report-runtime-readiness/S06-failure-triage-launch-checklist.md` | Есть критерий «готовы запускать LLM-report» |
+| 12.1 | Runtime inventory | Что реально нужно для запуска E11, а не только для code-complete состояния | `docs/features/E12-llm-report-runtime-readiness/S01-runtime-inventory-gap-analysis.md` | ✅ Готово |
+| 12.2 | Worker/dev orchestration | Отдельный Celery worker и narrative-ready local stack | `docs/features/E12-llm-report-runtime-readiness/S02-dev-orchestration-worker-runtime.md` | ✅ Готово |
+| 12.3 | LLM env contract | Disabled/mock/real provider modes и required env | `docs/features/E12-llm-report-runtime-readiness/S03-llm-environment-contract.md` | ✅ Готово |
+| 12.4 | PDF delivery/runtime path | Полный deliverable path без скрытых ручных шагов и без обязательного object storage | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | ✅ Готово |
+| 12.5 | Runbook + smoke | Пошаговый запуск, логи, generate/polling/regenerate/PDF checks | `docs/features/E12-llm-report-runtime-readiness/S05-local-runbook-start-logs-smoke.md` | ✅ Готово |
+| 12.6 | Triage + launch checklist | Симптомы, причины, readiness checklist | `docs/features/E12-llm-report-runtime-readiness/S06-failure-triage-launch-checklist.md` | ✅ Готово |
 
 Полный контракт: `docs/SRS/SRS-E12-llm-report-runtime-readiness.md`.
 
@@ -240,7 +240,7 @@ E1 (Foundation) ✅
 | E5 | Только Self-отчёт (free preview + полная версия по подписке) | Love, Child, Career |
 | E6 | 1 план подписки (Self), 1 платёжный провайдер (YooKassa) | CloudPayments, Stripe, mobile billing |
 | E7 | Email-уведомления, базовый admin | SMS, push, analytics |
-| E8 | Rate limiting, базовая observability | WAF, load testing, GitOps |
+| E8 | Rate limiting, базовая observability, runtime/deploy docs | WAF, load testing, GitOps, полный managed deploy |
 
 **Оценка MVP:** 12–16 недель от текущего состояния.
 

@@ -19,7 +19,7 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 - [ ] K8s: Yandex Managed, autoscaling, rolling updates
 - [ ] GitOps: Argo CD, push-to-deploy, rollback через revert
 - [ ] Render: описан и подготовлен MVP-деплой frontend/backend/worker + managed Postgres + managed Redis/Valkey
-- [ ] Object storage strategy для managed deploy зафиксирована: внешний S3-compatible provider или отдельный storage-refactor, без скрытой зависимости на локальный диск
+- [x] PDF storage strategy для managed deploy зафиксирована: source of truth = JSON в PostgreSQL, PDF = on-demand rendering без обязательного S3
 
 ## Stories
 
@@ -33,7 +33,7 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 | S06 | [K8s deploy](S06-k8s-deploy.md) | ⬜ Не начато |
 | S07 | [GitOps](S07-gitops.md) | ⬜ Не начато |
 | S08 | [Render deploy](S08-render-deploy.md) | ⬜ Не начато |
-| S09 | [Artifact storage strategy for Render / S3 replacement](S09-artifact-storage-strategy.md) | ⬜ Не начато |
+| S09 | [PDF storage strategy: DB JSON source of truth + on-demand rendering](S09-artifact-storage-strategy.md) | ✅ Готово |
 
 ## Текущее состояние
 
@@ -55,6 +55,6 @@ Production-ready: rate limiting, WAF, secrets management, observability, load te
 - Metrics (Prometheus + Grafana)
 - Load testing (k6, Locust)
 - Render-ready blueprint для MVP-деплоя: backend web service, worker, managed Postgres, managed Redis/Valkey, отдельное решение по frontend (static vs web service)
-- Явная стратегия object storage для managed deploy: внешний S3-compatible provider как быстрый MVP путь либо отдельный refactor, если продукт хочет уйти от S3-интерфейса полностью
+- Явная стратегия PDF delivery для managed deploy: source of truth = JSON в PostgreSQL, PDF рендерится on demand; optional caching/storage может быть отдельной будущей историей
 - K8s deployment (Yandex Managed Kubernetes)
 - GitOps (Argo CD)

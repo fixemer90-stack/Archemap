@@ -2,7 +2,7 @@
 
 ## Цель
 
-Четыре продуктовых отчёта (Self, Love, Child, Career) с PDF-экспортом, версионированием и API.
+Четыре продуктовых отчёта (Self, Love, Child, Career) с PDF-экспортом, версионированием и API. Источник истины для отчёта — JSON в PostgreSQL; PDF рендерится on demand.
 
 ## Зависимости
 
@@ -15,7 +15,7 @@
 - [ ] Child: темперамент, сильные стороны, советы по воспитанию
 - [ ] Career: топ-5 профессий, сильные/слабые стороны
 - [ ] Версионирование отчётов: история, immutable по умолчанию
-- [ ] PDF-генерация (WeasyPrint/Playwright)
+- [x] PDF-генерация on demand из сохранённого JSON (WeasyPrint)
 - [ ] REST API: POST generate, GET list/detail
 
 ## Stories
@@ -27,5 +27,5 @@
 | S03 | [Child: детский профиль, рекомендации родителю, мягкий tone, без диагнозов](S03-child-profile.md) | ⬜ Не начато |
 | S04 | [Career: сильные стороны, роли, рабочая среда, anti-patterns, growth map](S04-career-profile.md) | ✅ Готово |
 | S05 | [Версионирование: при изменении профиля — новый artifact, старый сохраняется](S05-report-versioning.md) | ✅ Готово |
-| S06 | [Хранилище: PDF + JSON в S3/MinIO, signed links, TTL для free](S06-report-storage.md) | ✅ Готово |
+| S06 | [Хранилище: JSON в PostgreSQL как source of truth, PDF on demand без S3/MinIO](S06-report-storage.md) | ✅ Готово |
 | S07 | [REST API отчётов: POST generate, GET list/detail, pagination, permissions](S07-report-api.md) | ✅ Готово |

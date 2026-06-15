@@ -33,7 +33,7 @@
 | E9 | Frontend Self Report | ✅ Готово |
 | E10 | Report UX Redesign | ✅ Готово |
 | E11 | LLM Report Narrative | ✅ Готово |
-| E12 | LLM Report Runtime Readiness | ✅ Готово |
+| E12 | LLM Report Runtime Readiness | ✅ Готово (PDF delivery без обязательного object storage) |
 
 ---
 
@@ -103,6 +103,8 @@
 **Оценка:** 4–5 недель
 **Зависимости:** E3, E4
 
+Текущее состояние по storage/PDF path: deterministic report JSON и narrative JSON хранятся в PostgreSQL; `GET /reports/{id}/pdf` рендерит PDF on demand. S3/MinIO и persisted PDF artifacts больше не входят в обязательный runtime contract.
+
 | # | Фича | Описание | Файлы/модули | Критерии приёмки |
 |---|------|----------|---------------|------------------|
 | 5.1 | Self-отчёт | Генерация персонального отчёта по натальной карте | `reports/self/`, `reports/generator.py` | ✅ Готово |
@@ -168,7 +170,7 @@
 | 8.5 | Load testing | Нагрузочное тестирование | `tests/load/`, k6/locust scripts | 500 concurrent users; p95 < 500ms для report generation |
 | 8.6 | Yandex Managed K8s | Деплой на Yandex Managed Kubernetes | `deploy/k8s/`, Helm charts | Pod autoscaling; health checks; rolling updates; zero-downtime deploy |
 | 8.7 | GitOps (Argo CD) | Автоматический деплой из Git | `deploy/argocd/`, `deploy/apps/` | Push в main → Argo CD sync → deploy; rollback через revert commit |
-| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | ⬜ Не начато: deploy contract описан, но render blueprint/code path ещё не доведён |
+| 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | ⬜ Не начато: deploy contract описан; PDF flow больше не требует S3/object storage, но render blueprint/code path ещё не доведён |
 | 8.9 | PDF storage strategy | Решение по PDF delivery для managed deploy | `reports/storage.py`, `reports/pdf.py`, deploy docs | ✅ Готово: S3 не обязателен; source of truth = JSON в PostgreSQL, PDF = on-demand rendering |
 
 ---
@@ -202,7 +204,7 @@
 | 12.1 | Runtime inventory | Что реально нужно для запуска E11, а не только для code-complete состояния | `docs/features/E12-llm-report-runtime-readiness/S01-runtime-inventory-gap-analysis.md` | ✅ Готово |
 | 12.2 | Worker/dev orchestration | Отдельный Celery worker и narrative-ready local stack | `docs/features/E12-llm-report-runtime-readiness/S02-dev-orchestration-worker-runtime.md` | ✅ Готово |
 | 12.3 | LLM env contract | Disabled/mock/real provider modes и required env | `docs/features/E12-llm-report-runtime-readiness/S03-llm-environment-contract.md` | ✅ Готово |
-| 12.4 | PDF delivery/runtime path | Полный deliverable path без скрытых ручных шагов и без обязательного object storage | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | ✅ Готово |
+| 12.4 | PDF delivery/runtime path | Полный deliverable path: report JSON/narrative JSON -> on-demand PDF без скрытых ручных шагов и без обязательного object storage | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | ✅ Готово |
 | 12.5 | Runbook + smoke | Пошаговый запуск, логи, generate/polling/regenerate/PDF checks | `docs/features/E12-llm-report-runtime-readiness/S05-local-runbook-start-logs-smoke.md` | ✅ Готово |
 | 12.6 | Triage + launch checklist | Симптомы, причины, readiness checklist | `docs/features/E12-llm-report-runtime-readiness/S06-failure-triage-launch-checklist.md` | ✅ Готово |
 
@@ -240,7 +242,7 @@ E1 (Foundation) ✅
 | E5 | Только Self-отчёт (free preview + полная версия по подписке) | Love, Child, Career |
 | E6 | 1 план подписки (Self), 1 платёжный провайдер (YooKassa) | CloudPayments, Stripe, mobile billing |
 | E7 | Email-уведомления, базовый admin | SMS, push, analytics |
-| E8 | Rate limiting, базовая observability, runtime/deploy docs | WAF, load testing, GitOps, полный managed deploy |
+| E8 | Rate limiting, базовая observability, runtime/deploy docs, PDF delivery без S3 | WAF, load testing, GitOps, полный managed deploy |
 
 **Оценка MVP:** 12–16 недель от текущего состояния.
 

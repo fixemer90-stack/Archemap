@@ -214,7 +214,10 @@ function getErrorMessage(error: unknown): string {
   return "Неизвестная ошибка загрузки";
 }
 
-async function downloadReportPdf(reportId: string, token?: string): Promise<void> {
+async function downloadReportPdf(
+  reportId: string,
+  token?: string,
+): Promise<void> {
   const headers: Record<string, string> = {};
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -410,10 +413,10 @@ export default function ReportPage() {
     reportStatus === "generating_narrative" && !showFallback;
   const shouldShowFallback = Boolean(
     data &&
-      currentReport &&
-      (showFallback ||
-        reportStatus === "narrative_failed" ||
-        reportStatus === "deterministic_ready"),
+    currentReport &&
+    (showFallback ||
+      reportStatus === "narrative_failed" ||
+      reportStatus === "deterministic_ready"),
   );
 
   async function handleDownloadPdf() {

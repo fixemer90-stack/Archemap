@@ -504,3 +504,32 @@ async def test_get_report_pdf_renders_on_demand_from_report_json(
     assert "attachment" in response.headers["content-disposition"]
     assert captured["report_data"] == report.report_data
     assert captured["narrative_report_id"] == report.id
+
+
+@pytest.mark.asyncio
+async def test_head_report_pdf_returns_headers_without_rendering_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = make_report(status="ready")
+    captured: dict[str, object] = {}
+
+    async def fake_get_report(self: ReportService, report_id: UUID, user_id: UUID) -> Report:
+        captured["report_id"] = report_id
+        captured["user_id"] = user_id
+        return report
+
+    monkeypatch.setattr(ReportService, "get_report", fake_get_report)
+
+    current_user = uuid4()
+    response = await reports_router.head_report_pdf(
+        report.id,
+        db=cast(Any, object()),
+        current_user=current_user,
+    )
+
+    assert response.status_code == 200
+    assert response.media_type == "application/pdf"
+    assert response.body == b""
+    assert "attachment" in response.headers["content-disposition"]
+    assert captured["report_id"] == report.id
+    assert captured["user_id"] == current_user

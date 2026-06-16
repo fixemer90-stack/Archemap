@@ -161,6 +161,40 @@ async def regenerate_report_narrative(
     return build_report_response(report, narrative)
 
 
+async def _get_report_pdf_headers(
+    report_id: UUID,
+    db: AsyncSession,
+    current_user: UUID,
+) -> dict[str, str]:
+    service = ReportService(db)
+    report = await service.get_report(report_id, current_user)
+
+    if not report.report_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report data is not available yet. Please wait and try again.",
+        )
+
+    filename = f"astrotype-report-{report.id}.pdf"
+    return {"Content-Disposition": f'attachment; filename="{filename}"'}
+
+
+@router.head("/{report_id}/pdf")
+async def head_report_pdf(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> Response:
+    """Return PDF availability/headers without generating the body.
+
+    This explicit HEAD route avoids FastAPI's auto-generated HEAD path for the GET
+    endpoint, which currently triggers an OpenTelemetry route-inspection crash in
+    our stack for included routers.
+    """
+    headers = await _get_report_pdf_headers(report_id, db, current_user)
+    return Response(status_code=status.HTTP_200_OK, media_type="application/pdf", headers=headers)
+
+
 @router.get("/{report_id}/pdf")
 async def get_report_pdf(
     report_id: UUID,
@@ -172,14 +206,9 @@ async def get_report_pdf(
     The persisted source of truth is report.report_data plus the latest narrative
     JSON row. We intentionally do not depend on pre-generated S3 artifacts here.
     """
+    headers = await _get_report_pdf_headers(report_id, db, current_user)
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
-
-    if not report.report_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Report data is not available yet. Please wait and try again.",
-        )
 
     narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
     pdf_bytes = generate_report_pdf(
@@ -188,11 +217,10 @@ async def get_report_pdf(
         narrative_status=narrative.status if narrative is not None else None,
         narrative_error=narrative.error_message if narrative is not None else None,
     )
-    filename = f"astrotype-report-{report.id}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers=headers,
     )
 
 

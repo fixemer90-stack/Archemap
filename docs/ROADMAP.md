@@ -3,8 +3,6 @@
 > **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
 > **Обновлено:** 2026-06-15
 
-> **Последнее архитектурное решение:** PDF больше не хранится как S3/MinIO artifact. Источник истины — JSON в PostgreSQL (`reports.report_data` + `report_narratives.content`), а `GET /reports/{id}/pdf` рендерит PDF on demand.
-
 ---
 
 ## Обзор вертикалей
@@ -105,12 +103,11 @@
 **Оценка:** 4–5 недель
 **Зависимости:** E3, E4
 
-Текущее состояние по storage/PDF path:
+Текущее состояние PDF path:
 
-- deterministic report JSON и narrative JSON хранятся в PostgreSQL;
-- `GET /reports/{id}/pdf` рендерит PDF on demand;
-- S3/MinIO и persisted PDF artifacts больше не входят в обязательный runtime contract;
-- legacy-поля `pdf_url` / `pdf_generated` пока остаются для совместимости схемы/API и будут удаляться отдельной миграцией.
+- отчёт доступен для скачивания сразу из сохранённых данных профиля и narrative-слоя;
+- отдельное файловое хранилище для PDF больше не является обязательной частью runtime;
+- старые поля `pdf_url` / `pdf_generated` пока сохраняются для совместимости и будут убраны отдельной миграцией.
 
 | # | Фича | Описание | Файлы/модули | Критерии приёмки |
 |---|------|----------|---------------|------------------|
@@ -119,7 +116,7 @@
 | 5.3 | Child: профиль | Профиль ребёнка + рекомендации родителю | `reports/child/`, `reports/child_profile.py` | По дате/времени/месту → темперамент, сильные стороны, советы по воспитанию |
 | 5.4 | Career: сильные стороны | Карьерные рекомендации по карте | `reports/career/`, `reports/career_profile.py` | ✅ Готово |
 | 5.5 | Версионирование отчётов | Хранение версий сгенерированных отчётов | `reports/models.py` | ✅ Готово |
-| 5.6 | Хранилище отчётов | Источник истины = JSON в PostgreSQL; PDF рендерится on demand без S3/MinIO | `reports/storage.py`, `reports/pdf.py`, `reports/router.py` | ✅ Готово |
+| 5.6 | Хранилище отчётов | Отчёт собирается из сохранённых данных приложения; отдельное object storage для PDF не требуется | `reports/storage.py`, `reports/pdf.py`, `reports/router.py` | ✅ Готово |
 | 5.7 | API отчётов | REST-эндпоинты для генерации и получения отчётов | `reports/views.py`, `reports/serializers.py` | ✅ Готово |
 
 ---
@@ -178,7 +175,7 @@
 | 8.6 | Yandex Managed K8s | Деплой на Yandex Managed Kubernetes | `deploy/k8s/`, Helm charts | Pod autoscaling; health checks; rolling updates; zero-downtime deploy |
 | 8.7 | GitOps (Argo CD) | Автоматический деплой из Git | `deploy/argocd/`, `deploy/apps/` | Push в main → Argo CD sync → deploy; rollback через revert commit |
 | 8.8 | Render deploy MVP | Blueprint для frontend/backend/worker + managed Postgres + managed Redis/Valkey | `render.yaml`, deploy docs | ⬜ Не начато: deploy contract и storage-decision docs синхронизированы; реальный render blueprint/runtime rollout ещё не доведён |
-| 8.9 | PDF storage strategy | Решение по PDF delivery для managed deploy | `reports/storage.py`, `reports/pdf.py`, deploy docs | ✅ Готово: S3 не обязателен; source of truth = JSON в PostgreSQL, PDF = on-demand rendering; env/infra contract очищен от обязательных `S3_*` |
+| 8.9 | PDF storage strategy | Решение по PDF delivery для managed deploy | `reports/storage.py`, `reports/pdf.py`, deploy docs | ✅ Готово: отдельное object storage не является обязательным для MVP; env/infra contract очищен от обязательных `S3_*` |
 
 ---
 
@@ -211,7 +208,7 @@
 | 12.1 | Runtime inventory | Что реально нужно для запуска E11, а не только для code-complete состояния | `docs/features/E12-llm-report-runtime-readiness/S01-runtime-inventory-gap-analysis.md` | ✅ Готово |
 | 12.2 | Worker/dev orchestration | Отдельный Celery worker и narrative-ready local stack | `docs/features/E12-llm-report-runtime-readiness/S02-dev-orchestration-worker-runtime.md` | ✅ Готово |
 | 12.3 | LLM env contract | Disabled/mock/real provider modes и required env | `docs/features/E12-llm-report-runtime-readiness/S03-llm-environment-contract.md` | ✅ Готово |
-| 12.4 | PDF delivery/runtime path | Полный deliverable path: report JSON/narrative JSON -> on-demand PDF без скрытых ручных шагов и без обязательного object storage | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | ✅ Готово |
+| 12.4 | PDF delivery/runtime path | Полный deliverable path: сохранённый отчёт -> PDF без скрытых ручных шагов и без обязательного object storage | `docs/features/E12-llm-report-runtime-readiness/S04-object-storage-pdf-bootstrap.md` | ✅ Готово |
 | 12.5 | Runbook + smoke | Пошаговый запуск, логи, generate/polling/regenerate/PDF checks | `docs/features/E12-llm-report-runtime-readiness/S05-local-runbook-start-logs-smoke.md` | ✅ Готово |
 | 12.6 | Triage + launch checklist | Симптомы, причины, readiness checklist | `docs/features/E12-llm-report-runtime-readiness/S06-failure-triage-launch-checklist.md` | ✅ Готово |
 

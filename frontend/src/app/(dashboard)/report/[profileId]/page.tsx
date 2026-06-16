@@ -13,6 +13,7 @@ import { ReportHeader } from "@/components/report/report-header";
 import { ReportNarrativePage } from "@/components/report/report-narrative-page";
 import { SocionicsProfileSimple } from "@/components/report/socionics-profile-simple";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -213,6 +214,40 @@ function getErrorMessage(error: unknown): string {
   return "Неизвестная ошибка загрузки";
 }
 
+async function downloadReportPdf(reportId: string, token?: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`/api/v1/reports/${reportId}/pdf`, {
+    method: "GET",
+    headers,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const data = (await response.json()) as { detail?: string };
+      detail = data.detail || detail;
+    } catch {
+      // Keep non-JSON error message as status text.
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = `report-${reportId}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 export default function ReportPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -230,6 +265,7 @@ export default function ReportPage() {
   const [isRetrying, setIsRetrying] = useState(false);
   const generationStartedAtRef = useRef<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   function applyReportUpdate(
     baseData: ReportApiData,
@@ -374,14 +410,42 @@ export default function ReportPage() {
     reportStatus === "generating_narrative" && !showFallback;
   const shouldShowFallback = Boolean(
     data &&
-    currentReport &&
-    (showFallback ||
-      reportStatus === "narrative_failed" ||
-      reportStatus === "deterministic_ready"),
+      currentReport &&
+      (showFallback ||
+        reportStatus === "narrative_failed" ||
+        reportStatus === "deterministic_ready"),
   );
+
+  async function handleDownloadPdf() {
+    if (!currentReport) {
+      return;
+    }
+    try {
+      setIsDownloadingPdf(true);
+      setError(null);
+      await downloadReportPdf(currentReport.id, token || undefined);
+    } catch (downloadError) {
+      setError(getErrorMessage(downloadError));
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {!isLoading && data && currentReport && (
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
+          <div>
+            <div className="text-sm font-medium">{data.profile.name}</div>
+            <div className="text-xs text-muted-foreground">
+              PDF собирается на лету из JSON в базе
+            </div>
+          </div>
+          <Button onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+            {isDownloadingPdf ? "Собираем PDF..." : "Скачать PDF"}
+          </Button>
+        </div>
+      )}
       {isLoading && <ReportSkeleton />}
       {!isLoading && error && !data && <ReportError message={error} />}
       {!isLoading && !error && shouldShowProgress && (

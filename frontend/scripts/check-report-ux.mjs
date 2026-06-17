@@ -67,6 +67,7 @@ const requiredFiles = [
   "src/components/report/report-generation-progress.tsx",
   "src/components/report/deterministic-report-fallback.tsx",
   "src/components/report/report-narrative-page.tsx",
+  "src/components/report/report-pdf-actions.tsx",
   "src/components/report/narrative-section.tsx",
   "src/components/report/career-cta.tsx",
   "src/components/report/evidence-notes.tsx",
@@ -222,9 +223,20 @@ for (const requiredNarrativeText of [
   "Карьерный отчёт",
   "Почему так видно",
   "Финальное резюме",
+  "Сохранить этот разбор",
 ]) {
-  if (!reportNarrativeSource.includes(requiredNarrativeText)) {
+  if (!allUiSource.includes(requiredNarrativeText)) {
     throw new Error(`Missing narrative UI text: ${requiredNarrativeText}`);
+  }
+}
+
+if (!page.includes('data.product === "career"')) {
+  throw new Error("Top PDF action must remain a Career-only header action");
+}
+
+for (const marker of ["<ReportPdfActions", "Сохранить PDF"]) {
+  if (!allUiSource.includes(marker)) {
+    throw new Error(`Missing PDF action marker: ${marker}`);
   }
 }
 

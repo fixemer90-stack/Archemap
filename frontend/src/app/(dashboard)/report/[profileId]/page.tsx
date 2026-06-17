@@ -11,6 +11,7 @@ import { ReportExecutiveSummary } from "@/components/report/report-executive-sum
 import { ReportGenerationProgress } from "@/components/report/report-generation-progress";
 import { ReportHeader } from "@/components/report/report-header";
 import { ReportNarrativePage } from "@/components/report/report-narrative-page";
+import { ReportPdfActions } from "@/components/report/report-pdf-actions";
 import { SocionicsProfileSimple } from "@/components/report/socionics-profile-simple";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
 import { Button } from "@/components/ui/button";
@@ -51,13 +52,24 @@ function ReportSkeleton() {
 
 function ReportContent({
   data,
+  isDownloadingPdf,
+  onDownloadPdf,
   profileId,
 }: {
   data: ReportData;
+  isDownloadingPdf: boolean;
+  onDownloadPdf: () => void | Promise<void>;
   profileId: string;
 }) {
   if (data.product === "self" && data.narrative) {
-    return <ReportNarrativePage data={data} profileId={profileId} />;
+    return (
+      <ReportNarrativePage
+        data={data}
+        isDownloadingPdf={isDownloadingPdf}
+        onDownloadPdf={onDownloadPdf}
+        profileId={profileId}
+      />
+    );
   }
 
   if (data.product === "career" && data.generated_report) {
@@ -73,6 +85,12 @@ function ReportContent({
       <PracticalRecommendations recommendations={data.recommendations} />
       <ArchetypeProfileSummary archetype={data.archetype} />
       <SocionicsProfileSimple data={data.socionics_summary} />
+      {data.product === "self" && (
+        <ReportPdfActions
+          isDownloading={isDownloadingPdf}
+          onDownload={onDownloadPdf}
+        />
+      )}
       <TechnicalDetailsAccordion data={data} />
     </div>
   );
@@ -505,7 +523,7 @@ export default function ReportPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {!isLoading && data && currentReport && (
+      {!isLoading && data && currentReport && data.product === "career" && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
           <div>
             <div className="text-sm font-medium">{data.profile.name}</div>
@@ -541,7 +559,12 @@ export default function ReportPage() {
                 : "timeout"
           }
         >
-          <ReportContent data={data} profileId={profileId} />
+          <ReportContent
+            data={data}
+            isDownloadingPdf={isDownloadingPdf}
+            onDownloadPdf={handleDownloadPdf}
+            profileId={profileId}
+          />
         </DeterministicReportFallback>
       )}
       {!isLoading &&
@@ -549,7 +572,12 @@ export default function ReportPage() {
         data &&
         !shouldShowProgress &&
         !shouldShowFallback && (
-          <ReportContent data={data} profileId={profileId} />
+          <ReportContent
+            data={data}
+            isDownloadingPdf={isDownloadingPdf}
+            onDownloadPdf={handleDownloadPdf}
+            profileId={profileId}
+          />
         )}
     </div>
   );

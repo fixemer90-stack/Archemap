@@ -3,6 +3,7 @@ import {
   NarrativeHero,
   NarrativeSection,
 } from "@/components/report/narrative-section";
+import { ReportPdfActions } from "@/components/report/report-pdf-actions";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TermHelp } from "@/components/glossary/term-help";
@@ -14,6 +15,8 @@ import {
 
 interface ReportNarrativePageProps {
   data: ReportViewModel;
+  isDownloadingPdf: boolean;
+  onDownloadPdf: () => void | Promise<void>;
   profileId: string;
 }
 
@@ -70,6 +73,8 @@ function GlossaryHelpStrip() {
 
 export function ReportNarrativePage({
   data,
+  isDownloadingPdf,
+  onDownloadPdf,
   profileId,
 }: ReportNarrativePageProps) {
   const narrative = data.narrative;
@@ -96,6 +101,10 @@ export function ReportNarrativePage({
         <CareerCTA cta={narrative.career_cta} profileId={profileId} />
       )}
       <FinalSummary text={narrative.final_summary} />
+      <ReportPdfActions
+        isDownloading={isDownloadingPdf}
+        onDownload={onDownloadPdf}
+      />
       <TechnicalDetailsAccordion data={data} />
       <span className="sr-only">{allowedSelfSectionIds.join(",")}</span>
     </div>

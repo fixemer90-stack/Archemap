@@ -106,11 +106,16 @@ export async function fetchReportApiData(
     ),
   ]);
 
+  const latestReport = pickLatestReport(reportList.items ?? [], profileId);
+  const generatedReport = latestReport
+    ? await fetchReportById(latestReport.id, token)
+    : undefined;
+
   return {
     profile,
     chartSnapshot,
     requestedProduct: product,
-    generatedReport: pickLatestReport(reportList.items ?? [], profileId),
+    generatedReport,
   };
 }
 

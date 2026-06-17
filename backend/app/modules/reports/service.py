@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chart_engine.features import extract_features
 from app.core.exceptions import NotFoundError
+from app.modules.charts.models import ChartSnapshot
 from app.modules.charts.service import ChartService
 from app.modules.reports.models import Report, ReportVersion
 from app.modules.rules.engine import interpret
@@ -93,6 +94,10 @@ class ReportService:
             # Build full report data
             report_data = {
                 "product": product,
+                "source_chart": {
+                    "snapshot_id": str(snapshot.id),
+                    "engine_version": snapshot.engine_version,
+                },
                 "archetype": {
                     "primary": interpretation.primary_archetype,
                     "score": interpretation.primary_score,
@@ -175,6 +180,20 @@ class ReportService:
         report = result.scalar_one_or_none()
         if report is None:
             raise NotFoundError("Report not found")
+        if await self._report_requires_refresh(report, user_id):
+            logger.info(
+                "report_refresh_required",
+                report_id=str(report.id),
+                profile_id=str(report.profile_id),
+                product=report.product,
+                version=report.version,
+            )
+            return await self.generate_report(
+                profile_id=report.profile_id,
+                user_id=user_id,
+                product=report.product,
+                mode=report.mode,
+            )
         return report
 
     async def list_reports(
@@ -253,6 +272,18 @@ class ReportService:
         self.db.add(version)
         await self.db.flush()
 
+    async def _report_requires_refresh(self, report: Report, user_id: UUID) -> bool:
+        if report.product != "self":
+            return False
+        if report.status not in {"ready", "narrative_failed", "deterministic_ready"}:
+            return False
+        if not report.report_data:
+            return True
+
+        chart_service = ChartService(self.db)
+        snapshot = await chart_service.get_or_compute(report.profile_id, user_id)
+        return not _report_matches_snapshot(report.report_data, snapshot)
+
 
 def _dict_to_chart(data: dict[str, Any]) -> Any:
     """Convert a chart dict back to ChartData for feature extraction."""
@@ -315,6 +346,27 @@ def _dict_to_chart(data: dict[str, Any]) -> Any:
         planets=planets,
         houses=houses,
         aspects=aspects,
+    )
+
+
+def _report_matches_snapshot(report_data: dict[str, Any], snapshot: ChartSnapshot) -> bool:
+    """Return True when stored report data already reflects the latest chart snapshot."""
+
+    source_chart = report_data.get("source_chart")
+    if isinstance(source_chart, dict):
+        snapshot_id = source_chart.get("snapshot_id")
+        engine_version = source_chart.get("engine_version")
+        if snapshot_id == str(snapshot.id) and engine_version == snapshot.engine_version:
+            return True
+
+    chart = report_data.get("chart")
+    if not isinstance(chart, dict):
+        return False
+
+    return (
+        chart.get("planets") == snapshot.chart_data.get("planets")
+        and chart.get("houses") == snapshot.chart_data.get("houses")
+        and chart.get("aspects") == snapshot.chart_data.get("aspects")
     )
 
 

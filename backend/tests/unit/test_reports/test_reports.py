@@ -9,9 +9,10 @@ from uuid import UUID, uuid4
 import pytest
 
 import app.modules.reports.router as reports_router
+from app.modules.charts.models import ChartSnapshot
 from app.modules.reports.models import Report, ReportVersion
 from app.modules.reports.schemas import GenerateReportRequest, ReportResponse, ReportVersionResponse
-from app.modules.reports.service import ReportService, _build_chart_summary
+from app.modules.reports.service import ReportService, _build_chart_summary, _report_matches_snapshot
 from app.modules.reports.tasks import _run_async as _run_async_pdf_task
 
 # ── Fixtures ─────────────────────────────────────────────────────────
@@ -165,6 +166,88 @@ class TestBuildChartSummary:
         assert summary["modalities"]["cardinal"] == 0
 
 
+class TestReportMatchesSnapshot:
+    def test_accepts_matching_source_chart_metadata(self) -> None:
+        snapshot = ChartSnapshot(
+            id=uuid4(),
+            profile_id=uuid4(),
+            user_id=uuid4(),
+            engine_version="0.1.4",
+            birth_data={},
+            chart_data=make_chart_data(),
+            features={},
+            function_strengths={},
+            socionics={},
+        )
+
+        report_data = {
+            "source_chart": {
+                "snapshot_id": str(snapshot.id),
+                "engine_version": snapshot.engine_version,
+            },
+            "chart": {
+                "planets": [{"name": "Sun", "house": 7}],
+                "houses": [{"number": 1, "sign": "Leo", "longitude": 100}],
+                "aspects": [],
+            },
+        }
+
+        assert _report_matches_snapshot(report_data, snapshot) is True
+
+    def test_accepts_legacy_report_when_chart_payload_matches(self) -> None:
+        chart_data = make_chart_data()
+        snapshot = ChartSnapshot(
+            id=uuid4(),
+            profile_id=uuid4(),
+            user_id=uuid4(),
+            engine_version="0.1.4",
+            birth_data={},
+            chart_data=chart_data,
+            features={},
+            function_strengths={},
+            socionics={},
+        )
+
+        report_data = {
+            "chart": {
+                "planets": chart_data["planets"],
+                "houses": chart_data["houses"],
+                "aspects": chart_data["aspects"],
+            }
+        }
+
+        assert _report_matches_snapshot(report_data, snapshot) is True
+
+    def test_detects_stale_chart_payload(self) -> None:
+        chart_data = make_chart_data()
+        snapshot = ChartSnapshot(
+            id=uuid4(),
+            profile_id=uuid4(),
+            user_id=uuid4(),
+            engine_version="0.1.4",
+            birth_data={},
+            chart_data=chart_data,
+            features={},
+            function_strengths={},
+            socionics={},
+        )
+
+        stale_report_data = {
+            "chart": {
+                "planets": [
+                    {
+                        **cast(dict[str, Any], chart_data["planets"][0]),
+                        "house": 7,
+                    }
+                ],
+                "houses": chart_data["houses"],
+                "aspects": chart_data["aspects"],
+            }
+        }
+
+        assert _report_matches_snapshot(stale_report_data, snapshot) is False
+
+
 # ── Report model tests ───────────────────────────────────────────────
 
 
@@ -282,6 +365,51 @@ class TestReportSchemas:
 
         assert response.id == version.id
         assert response.report_id == version.report_id
+
+
+@pytest.mark.asyncio
+async def test_get_report_regenerates_stale_self_report(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_report = make_report(status="ready")
+    refreshed_report = make_report(
+        user_id=original_report.user_id,
+        profile_id=original_report.profile_id,
+        status="deterministic_ready",
+        version=original_report.version + 1,
+    )
+
+    class FakeResult:
+        def scalar_one_or_none(self) -> Report:
+            return original_report
+
+    class FakeDB:
+        async def execute(self, *_args: Any, **_kwargs: Any) -> FakeResult:
+            return FakeResult()
+
+    service = ReportService(cast(Any, FakeDB()))
+
+    async def fake_report_requires_refresh(report: Report, user_id: UUID) -> bool:
+        assert report is original_report
+        assert user_id == original_report.user_id
+        return True
+
+    async def fake_generate_report(
+        profile_id: UUID,
+        user_id: UUID,
+        product: str = "self",
+        mode: str = "full",
+    ) -> Report:
+        assert profile_id == original_report.profile_id
+        assert user_id == original_report.user_id
+        assert product == original_report.product
+        assert mode == original_report.mode
+        return refreshed_report
+
+    monkeypatch.setattr(service, "_report_requires_refresh", fake_report_requires_refresh)
+    monkeypatch.setattr(service, "generate_report", fake_generate_report)
+
+    result = await service.get_report(original_report.id, original_report.user_id)
+
+    assert result is refreshed_report
 
 
 @pytest.mark.asyncio

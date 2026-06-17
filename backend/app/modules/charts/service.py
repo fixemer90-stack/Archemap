@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import structlog
 from sqlalchemy import select
@@ -20,7 +21,7 @@ from app.modules.profiles.models import PersonProfile
 
 logger = structlog.get_logger()
 
-ENGINE_VERSION = "0.1.3"
+ENGINE_VERSION = "0.1.4"
 
 
 class ChartService:
@@ -47,12 +48,14 @@ class ChartService:
         # Load profile
         profile = await self._get_profile(profile_id, user_id)
 
-        # Build chart
-        birth_dt = datetime.combine(profile.birth_date, profile.birth_time or datetime.min.time())
-        birth_dt = birth_dt.replace(tzinfo=UTC)
+        # Build chart from local birth time in the profile timezone, then convert to UTC.
+        birth_time = profile.birth_time or time(12, 0)
+        local_tz = ZoneInfo(profile.timezone)
+        birth_dt_local = datetime.combine(profile.birth_date, birth_time).replace(tzinfo=local_tz)
+        birth_dt_utc = birth_dt_local.astimezone(UTC)
 
         chart_data = build_chart(
-            birth_datetime=birth_dt,
+            birth_datetime=birth_dt_utc,
             latitude=profile.latitude,
             longitude=profile.longitude,
             timezone_name=profile.timezone,

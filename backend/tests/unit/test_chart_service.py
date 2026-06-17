@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -89,3 +90,47 @@ class TestGetOrCompute:
         await service.get_or_compute("profile-id", "user-id")  # type: ignore[arg-type]
         mock_db.add.assert_called_once()
         mock_db.flush.assert_awaited_once()
+
+    async def test_uses_profile_timezone_when_building_chart(self, service: ChartService, mock_db: AsyncMock, monkeypatch: pytest.MonkeyPatch) -> None:
+        mock_no_result = MagicMock()
+        mock_no_result.scalars.return_value.first.return_value = None
+
+        mock_profile = MagicMock()
+        mock_profile.birth_date = date(1990, 5, 15)
+        mock_profile.birth_time = time(15, 22)
+        mock_profile.latitude = 55.7558
+        mock_profile.longitude = 37.6173
+        mock_profile.timezone = "Europe/Moscow"
+        mock_profile_result = MagicMock()
+        mock_profile_result.scalar_one_or_none.return_value = mock_profile
+
+        mock_db.execute.side_effect = [mock_no_result, mock_profile_result]
+        mock_db.flush = AsyncMock()
+        mock_db.refresh = AsyncMock()
+
+        captured: dict[str, object] = {}
+
+        def fake_build_chart(*, birth_datetime: datetime, latitude: float, longitude: float, timezone_name: str) -> SimpleNamespace:
+            captured["birth_datetime"] = birth_datetime
+            captured["latitude"] = latitude
+            captured["longitude"] = longitude
+            captured["timezone_name"] = timezone_name
+            return SimpleNamespace(planets=[], houses=[], aspects=[], birth_datetime=birth_datetime, latitude=latitude, longitude=longitude, timezone=timezone_name, house_system="P")
+
+        monkeypatch.setattr("app.modules.charts.service.build_chart", fake_build_chart)
+        monkeypatch.setattr("app.modules.charts.service.extract_features", lambda _: SimpleNamespace())
+        monkeypatch.setattr(
+            "app.modules.charts.service.evaluate_socionics",
+            lambda *_: [SimpleNamespace(type_code="EIE", type_name="ЭИЭ", score=1.0, confidence=1.0, functions={}, breakdown={})],
+        )
+        monkeypatch.setattr(
+            "app.modules.charts.service._chart_to_dict",
+            lambda chart: {"birth_datetime": chart.birth_datetime.isoformat(), "timezone": chart.timezone},
+        )
+
+        await service.get_or_compute("profile-id", "user-id")  # type: ignore[arg-type]
+
+        assert captured["timezone_name"] == "Europe/Moscow"
+        assert captured["latitude"] == 55.7558
+        assert captured["longitude"] == 37.6173
+        assert captured["birth_datetime"] == datetime(1990, 5, 15, 11, 22, tzinfo=UTC)

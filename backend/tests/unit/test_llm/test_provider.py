@@ -8,6 +8,7 @@ import pytest
 from app.config import Settings
 from app.modules.llm.exceptions import LLMDisabledError, LLMProviderUnavailableError
 from app.modules.llm.provider import get_llm_provider
+from app.modules.llm.providers.deepseek import DeepSeekProvider
 from app.modules.llm.providers.openrouter import OpenRouterProvider
 from app.modules.report_narratives.schemas import NarrativeInput, SelfNarrative
 
@@ -177,6 +178,36 @@ class TestProviderFactory:
                     LLM_ENABLED=True,
                     LLM_PROVIDER="openrouter",
                     LLM_MODEL="openai/gpt-4.1-mini",
+                    LLM_API_KEY="",
+                    LLM_TIMEOUT_SECONDS=30,
+                    LLM_MAX_RETRIES=2,
+                )
+            )
+
+    def test_deepseek_factory_reads_timeout_retry_and_model_from_settings(self) -> None:
+        provider = get_llm_provider(
+            Settings(
+                LLM_ENABLED=True,
+                LLM_PROVIDER="deepseek",
+                LLM_MODEL="deepseek-v4-flash",
+                LLM_API_KEY="test-key",
+                LLM_TIMEOUT_SECONDS=19,
+                LLM_MAX_RETRIES=3,
+            )
+        )
+
+        assert isinstance(provider, DeepSeekProvider)
+        assert provider.model_name == "deepseek-v4-flash"
+        assert provider.timeout_seconds == 19
+        assert provider.max_retries == 3
+
+    def test_deepseek_requires_api_key(self) -> None:
+        with pytest.raises(LLMProviderUnavailableError, match="API key"):
+            get_llm_provider(
+                Settings(
+                    LLM_ENABLED=True,
+                    LLM_PROVIDER="deepseek",
+                    LLM_MODEL="deepseek-v4-flash",
                     LLM_API_KEY="",
                     LLM_TIMEOUT_SECONDS=30,
                     LLM_MAX_RETRIES=2,

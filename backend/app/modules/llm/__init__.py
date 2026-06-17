@@ -8,10 +8,12 @@ from app.modules.llm.exceptions import (
     LLMTimeoutError,
 )
 from app.modules.llm.provider import LLMProvider, get_llm_provider
+from app.modules.llm.providers.deepseek import DeepSeekProvider
 from app.modules.llm.providers.mock import MockLLMProvider
 from app.modules.llm.providers.openrouter import OpenRouterProvider
 
 __all__ = [
+    "DeepSeekProvider",
     "LLMDisabledError",
     "LLMError",
     "LLMInvalidResponseError",

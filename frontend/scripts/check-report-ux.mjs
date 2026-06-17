@@ -116,6 +116,25 @@ if (!page.includes("<ReportNarrativePage")) {
   throw new Error("Ready Self report must render through ReportNarrativePage");
 }
 
+for (const marker of [
+  'product === "self" &&',
+  "!loadedApiData.generatedReport",
+  "const autoGenerateStorageKey = `self-report-autogen:${autoGenerateKey}`",
+  "window.sessionStorage.getItem(autoGenerateStorageKey)",
+  "Date.now() - autoGenerateRequestedAt < 2 * 60 * 1000",
+  "window.sessionStorage.setItem(",
+  "String(Date.now())",
+  "window.sessionStorage.removeItem(autoGenerateStorageKey)",
+  "clearSelfReportAutoGenerateThrottle(",
+  "autoGenerateAttemptedRef.current.add(autoGenerateKey)",
+  "generateReportForProfile(",
+  'product !== "self" && !loadedApiData.generatedReport',
+]) {
+  if (!page.includes(marker)) {
+    throw new Error(`Missing self-report auto-generation marker: ${marker}`);
+  }
+}
+
 const narrativeOrder = [
   "<NarrativeHero",
   "main_formula",

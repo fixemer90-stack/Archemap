@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ArchetypeProfileSummary } from "@/components/report/archetype-profile-summary";
 import { AstrologyOverview } from "@/components/report/astrology-overview";
@@ -25,6 +25,7 @@ import { ApiError } from "@/lib/api-client";
 import {
   fetchReportApiData,
   fetchReportById,
+  generateReportForProfile,
   regenerateReportNarrative,
   type GeneratedReportApiResponse,
 } from "@/lib/api/report";
@@ -267,18 +268,37 @@ export default function ReportPage() {
   const [showFallback, setShowFallback] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const generationStartedAtRef = useRef<number | null>(null);
+  const autoGenerateAttemptedRef = useRef<Set<string>>(new Set());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  function applyReportUpdate(
-    baseData: ReportApiData,
-    report: GeneratedReportApiResponse | undefined,
-  ) {
-    const nextApiData = { ...baseData, generatedReport: report };
-    setApiData(nextApiData);
-    setCurrentReport(report ?? null);
-    setData(toReportViewModel(nextApiData));
-  }
+  const clearSelfReportAutoGenerateThrottle = useCallback(
+    (profileIdToClear: string, productToClear: string) => {
+      if (productToClear !== "self") {
+        return;
+      }
+      window.sessionStorage.removeItem(
+        `self-report-autogen:${profileIdToClear}:${productToClear}`,
+      );
+    },
+    [],
+  );
+
+  const applyReportUpdate = useCallback(
+    (
+      baseData: ReportApiData,
+      report: GeneratedReportApiResponse | undefined,
+    ) => {
+      if (report) {
+        clearSelfReportAutoGenerateThrottle(report.profile_id, report.product);
+      }
+      const nextApiData = { ...baseData, generatedReport: report };
+      setApiData(nextApiData);
+      setCurrentReport(report ?? null);
+      setData(toReportViewModel(nextApiData));
+    },
+    [clearSelfReportAutoGenerateThrottle],
+  );
 
   async function refreshCurrentReport() {
     if (!apiData || !currentReport) {
@@ -327,6 +347,43 @@ export default function ReportPage() {
           token || undefined,
           product,
         );
+        const autoGenerateKey = `${profileId}:${product}`;
+        const autoGenerateStorageKey = `self-report-autogen:${autoGenerateKey}`;
+        const autoGenerateRequestedAt = Number.parseInt(
+          window.sessionStorage.getItem(autoGenerateStorageKey) ?? "",
+          10,
+        );
+        const autoGenerateRecentlyRequested = Number.isFinite(
+          autoGenerateRequestedAt,
+        )
+          ? Date.now() - autoGenerateRequestedAt < 2 * 60 * 1000
+          : false;
+        const autoGenerateAlreadyRequested =
+          autoGenerateAttemptedRef.current.has(autoGenerateKey) ||
+          autoGenerateRecentlyRequested;
+        if (
+          product === "self" &&
+          !loadedApiData.generatedReport &&
+          !autoGenerateAlreadyRequested
+        ) {
+          autoGenerateAttemptedRef.current.add(autoGenerateKey);
+          window.sessionStorage.setItem(
+            autoGenerateStorageKey,
+            String(Date.now()),
+          );
+          try {
+            const generatedReport = await generateReportForProfile(
+              profileId,
+              token || undefined,
+              "self",
+            );
+            loadedApiData.generatedReport = generatedReport;
+          } catch (generateError) {
+            autoGenerateAttemptedRef.current.delete(autoGenerateKey);
+            window.sessionStorage.removeItem(autoGenerateStorageKey);
+            throw generateError;
+          }
+        }
         if (product !== "self" && !loadedApiData.generatedReport) {
           throw new Error(
             "Карьерный отчёт для этого профиля ещё не найден. " +
@@ -337,6 +394,12 @@ export default function ReportPage() {
           setApiData(loadedApiData);
           setCurrentReport(loadedApiData.generatedReport ?? null);
           setData(toReportViewModel(loadedApiData));
+          if (loadedApiData.generatedReport) {
+            clearSelfReportAutoGenerateThrottle(
+              loadedApiData.generatedReport.profile_id,
+              loadedApiData.generatedReport.product,
+            );
+          }
           if (
             loadedApiData.generatedReport?.status === "generating_narrative"
           ) {
@@ -364,7 +427,13 @@ export default function ReportPage() {
     return () => {
       isMounted = false;
     };
-  }, [profileId, product, token]);
+  }, [
+    applyReportUpdate,
+    clearSelfReportAutoGenerateThrottle,
+    profileId,
+    product,
+    token,
+  ]);
 
   useEffect(() => {
     if (currentReport?.status !== "generating_narrative" || !apiData) {
@@ -406,7 +475,7 @@ export default function ReportPage() {
       window.clearInterval(pollId);
       window.clearTimeout(timeoutId);
     };
-  }, [apiData, currentReport, token]);
+  }, [apiData, applyReportUpdate, currentReport, token]);
 
   const reportStatus = currentReport?.status;
   const shouldShowProgress =

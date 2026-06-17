@@ -144,6 +144,8 @@ def choose_narrative_recovery_action(
         return "fallback"
     if not errors:
         return "repair"
+    if any(error.code == "forbidden_language" for error in errors):
+        return "fallback"
     if all(error.recoverable for error in errors) and repair_attempts_used < 1:
         return "repair"
     if all(error.recoverable for error in errors):
@@ -213,7 +215,7 @@ def _validate_career_boundaries(narrative: SelfNarrative) -> list[NarrativeValid
                     code="career_boundary_violation",
                     message="Self narrative contains career deep-dive language outside career_cta.",
                     location=location,
-                    recoverable=False,
+                    recoverable=True,
                 )
             )
     return errors

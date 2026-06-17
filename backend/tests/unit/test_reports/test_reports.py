@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
+import app.modules.report_narratives.service as report_narrative_service
 import app.modules.reports.router as reports_router
 from app.modules.charts.models import ChartSnapshot
+from app.modules.report_narratives.exceptions import NarrativeValidationError
+from app.modules.report_narratives.models import ReportNarrative
+from app.modules.report_narratives.validators import choose_narrative_recovery_action
 from app.modules.reports.models import Report, ReportVersion
 from app.modules.reports.schemas import GenerateReportRequest, ReportResponse, ReportVersionResponse
 from app.modules.reports.service import ReportService, _build_chart_summary, _report_matches_snapshot
@@ -412,6 +418,144 @@ async def test_get_report_regenerates_stale_self_report(monkeypatch: pytest.Monk
     assert result is refreshed_report
 
 
+def test_choose_narrative_recovery_action_falls_back_after_recoverable_career_boundary_issue() -> None:
+    errors = [
+        NarrativeValidationError(
+            code="career_boundary_violation",
+            message="career copy leaked into self report",
+            location="sections[2].body",
+            recoverable=True,
+        )
+    ]
+
+    assert choose_narrative_recovery_action(errors, repair_attempts_used=0, llm_available=True) == "repair"
+    assert choose_narrative_recovery_action(errors, repair_attempts_used=1, llm_available=True) == "fallback"
+
+
+def test_choose_narrative_recovery_action_falls_back_on_forbidden_language() -> None:
+    errors = [
+        NarrativeValidationError(
+            code="forbidden_language",
+            message="unsafe language leaked into narrative",
+            location="sections[4].body",
+            recoverable=False,
+        )
+    ]
+
+    assert choose_narrative_recovery_action(errors, repair_attempts_used=0, llm_available=True) == "fallback"
+
+
+@pytest.mark.asyncio
+async def test_get_report_route_enqueues_narrative_for_current_deterministic_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = make_report(status="deterministic_ready")
+    report.created_at = report.updated_at = datetime.now(UTC)
+
+    class FakeDB:
+        def __init__(self) -> None:
+            self.flush_calls = 0
+            self.commit_calls = 0
+            self.refresh_calls = 0
+
+        async def flush(self) -> None:
+            self.flush_calls += 1
+
+        async def commit(self) -> None:
+            self.commit_calls += 1
+
+        async def refresh(self, _report: Report) -> None:
+            self.refresh_calls += 1
+
+    db = FakeDB()
+
+    async def fake_get_report(self: ReportService, report_id: UUID, user_id: UUID) -> Report:
+        assert report_id == report.id
+        assert user_id == report.user_id
+        return report
+
+    async def fake_get_latest_narrative_for_report(**_kwargs: Any) -> None:
+        return None
+
+    scheduled: list[dict[str, str]] = []
+
+    class DummyTask:
+        def delay(self, **kwargs: str) -> None:
+            scheduled.append(kwargs)
+
+    monkeypatch.setattr(ReportService, "get_report", fake_get_report)
+    monkeypatch.setattr(reports_router, "get_latest_narrative_for_report", fake_get_latest_narrative_for_report)
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "workers.tasks.reports",
+        SimpleNamespace(generate_report_narrative=DummyTask()),
+    )
+
+    response = await reports_router.get_report(report.id, cast(Any, db), report.user_id)
+
+    assert response.status == "generating_narrative"
+    assert scheduled == [{"report_id": str(report.id)}]
+    assert db.commit_calls == 1
+    assert db.refresh_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_narrative_record_recovers_from_insert_race(monkeypatch: pytest.MonkeyPatch) -> None:
+    report = make_report(status="deterministic_ready")
+    narrative = ReportNarrative(
+        id=uuid4(),
+        report_id=report.id,
+        product="self",
+        prompt_version="self_story_v1",
+        model_provider="deepseek",
+        model_name="deepseek-v4-flash",
+        status="narrative_failed",
+        content=None,
+        input_hash="hash-1",
+        generation_attempts=1,
+    )
+
+    class FakeDB:
+        def __init__(self) -> None:
+            self.flush_calls = 0
+            self.rollback_calls = 0
+
+        def add(self, _obj: object) -> None:
+            return None
+
+        async def flush(self) -> None:
+            self.flush_calls += 1
+            if self.flush_calls == 1:
+                raise IntegrityError("insert", {}, Exception("duplicate"))
+
+        async def rollback(self) -> None:
+            self.rollback_calls += 1
+
+    service = report_narrative_service.ReportNarrativeService(cast(Any, FakeDB()))
+
+    calls = {"count": 0}
+
+    async def fake_find_matching_narrative_record(**_kwargs: Any) -> ReportNarrative | None:
+        calls["count"] += 1
+        return narrative if calls["count"] >= 2 else None
+
+    monkeypatch.setattr(
+        report_narrative_service,
+        "_find_matching_narrative_record",
+        fake_find_matching_narrative_record,
+    )
+
+    result = await service._get_or_create_narrative_record(
+        report=report,
+        input_hash="hash-1",
+        model_name="deepseek-v4-flash",
+        force_new=False,
+    )
+
+    assert result is narrative
+    assert cast(Any, service.db).rollback_calls == 1
+
+
 @pytest.mark.asyncio
 async def test_generate_report_route_refreshes_report_before_serializing_after_enqueue_status_update(
     monkeypatch: pytest.MonkeyPatch,
@@ -475,8 +619,13 @@ async def test_generate_report_route_refreshes_report_before_serializing_after_e
         assert mode == "full"
         return report
 
-    async def fake_get_latest_narrative_for_report(*, db: FakeDB, report_id: UUID) -> None:
-        assert report_id == report.id
+    async def fake_get_latest_narrative_for_report(
+        *,
+        db: FakeDB,
+        report_id: UUID,
+        report: Report | None = None,
+    ) -> None:
+        assert report_id == cast(Report, report).id
         return None
 
     class DummyTask:
@@ -553,7 +702,12 @@ async def test_generate_report_route_commits_report_before_enqueuing_narrative_t
     ) -> FakeReport:
         return report
 
-    async def fake_get_latest_narrative_for_report(*, db: FakeDB, report_id: UUID) -> None:
+    async def fake_get_latest_narrative_for_report(
+        *,
+        db: FakeDB,
+        report_id: UUID,
+        report: Report | None = None,
+    ) -> None:
         return None
 
     class CommitCheckingTask:
@@ -600,8 +754,13 @@ async def test_get_report_pdf_renders_on_demand_from_report_json(
         captured["user_id"] = user_id
         return report
 
-    async def fake_get_latest_narrative_for_report(*, db: object, report_id: UUID) -> None:
-        captured["narrative_report_id"] = report_id
+    async def fake_get_latest_narrative_for_report(
+        *,
+        db: object,
+        report_id: UUID,
+        report: Report | None = None,
+    ) -> None:
+        assert report_id == cast(Report, report).id
         return None
 
     def fake_generate_report_pdf(
@@ -631,7 +790,6 @@ async def test_get_report_pdf_renders_on_demand_from_report_json(
     assert response.body == b"%PDF-on-demand"
     assert "attachment" in response.headers["content-disposition"]
     assert captured["report_data"] == report.report_data
-    assert captured["narrative_report_id"] == report.id
 
 
 @pytest.mark.asyncio

@@ -67,7 +67,7 @@ async def _generate_pdf_async(
             raise ValueError(f"Report {report_id} has no data")
 
         # Load latest saved narrative if present; PDF must never trigger a new LLM call.
-        narrative = await get_latest_narrative_for_report(db=db, report_id=report_id)
+        narrative = await get_latest_narrative_for_report(db=db, report_id=report_id, report=report)
 
         # Generate PDF from persisted JSON. Do not upload/store the artifact.
         pdf_bytes = generate_report_pdf(

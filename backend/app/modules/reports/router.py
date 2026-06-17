@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, cast
 from uuid import UUID
 
 import structlog
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.modules.report_narratives.service import get_latest_narrative_for_report
+from app.modules.reports.models import Report
 from app.modules.reports.pdf import generate_report_pdf
 from app.modules.reports.schemas import (
     GenerateReportRequest,
@@ -43,6 +44,38 @@ async def _commit_report_changes_if_persistent(db: AsyncSession, report: object)
     await db.flush()
     await db.commit()
     await db.refresh(report)
+
+
+async def _load_current_narrative(
+    db: AsyncSession,
+    report: Report,
+) -> Any | None:
+    return await get_latest_narrative_for_report(db=db, report_id=report.id, report=report)
+
+
+async def _ensure_self_narrative_generation(
+    db: AsyncSession,
+    report: Report,
+) -> Any | None:
+    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id, report=report)
+    if report.product != "self":
+        return narrative
+    if narrative is not None:
+        return narrative
+    if report.status != "deterministic_ready":
+        return None
+
+    try:
+        from workers.tasks.reports import generate_report_narrative
+
+        cast(Any, generate_report_narrative).delay(report_id=str(report.id))
+        report.status = "generating_narrative"
+        report.error_message = None
+        await _commit_report_changes_if_persistent(db, report)
+    except Exception as exc:
+        logger.warning("narrative_task_enqueue_failed", report_id=str(report.id), error=str(exc))
+
+    return await get_latest_narrative_for_report(db=db, report_id=report.id, report=report)
 
 
 @router.post("/generate", response_model=ReportResponse)
@@ -87,7 +120,7 @@ async def generate_report(
             await db.commit()
             await db.refresh(report)
 
-    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    narrative = await _ensure_self_narrative_generation(db, report)
     return build_report_response(report, narrative)
 
 
@@ -109,7 +142,7 @@ async def list_reports(
     )
     items: list[ReportResponse] = []
     for report in reports:
-        narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+        narrative = await _load_current_narrative(db, report)
         items.append(build_report_response(report, narrative))
     return ReportListResponse(items=items, total=total, limit=limit, offset=offset)
 
@@ -123,7 +156,7 @@ async def get_report(
     """Get a report by ID."""
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
-    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    narrative = await _ensure_self_narrative_generation(db, report)
     return build_report_response(report, narrative)
 
 
@@ -142,7 +175,7 @@ async def regenerate_report_narrative(
             detail="Narrative regeneration is supported only for self reports",
         )
 
-    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    narrative = await _load_current_narrative(db, report)
     if report.status != "generating_narrative":
         try:
             from workers.tasks.reports import generate_report_narrative
@@ -210,7 +243,7 @@ async def get_report_pdf(
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
 
-    narrative = await get_latest_narrative_for_report(db=db, report_id=report.id)
+    narrative = await _load_current_narrative(db, report)
     pdf_bytes = generate_report_pdf(
         report.report_data,
         narrative_content=narrative.content if narrative is not None else None,

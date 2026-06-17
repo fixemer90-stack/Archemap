@@ -10,6 +10,7 @@ from uuid import UUID
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, settings
@@ -298,18 +299,14 @@ class ReportNarrativeService:
         model_name: str,
         force_new: bool = False,
     ) -> ReportNarrative:
-        result = await self.db.execute(
-            select(ReportNarrative)
-            .where(
-                ReportNarrative.report_id == report.id,
-                ReportNarrative.product == report.product,
-                ReportNarrative.prompt_version == SELF_STORY_PROMPT_VERSION,
-                ReportNarrative.input_hash == input_hash,
-                ReportNarrative.model_name == model_name,
-            )
-            .order_by(ReportNarrative.created_at.desc())
+        existing = await _find_matching_narrative_record(
+            db=self.db,
+            report_id=report.id,
+            product=report.product,
+            prompt_version=SELF_STORY_PROMPT_VERSION,
+            input_hash=input_hash,
+            model_name=model_name,
         )
-        existing = result.scalars().first()
         if existing is not None:
             if force_new:
                 existing.status = "pending"
@@ -331,15 +328,96 @@ class ReportNarrativeService:
             input_hash=input_hash,
         )
         self.db.add(narrative)
-        await self.db.flush()
-        return narrative
+        try:
+            await self.db.flush()
+            return narrative
+        except IntegrityError:
+            await self.db.rollback()
+            existing = await _find_matching_narrative_record(
+                db=self.db,
+                report_id=report.id,
+                product=report.product,
+                prompt_version=SELF_STORY_PROMPT_VERSION,
+                input_hash=input_hash,
+                model_name=model_name,
+            )
+            if existing is None:
+                raise
+            if force_new:
+                existing.status = "pending"
+                existing.content = None
+                existing.error_message = None
+                existing.generation_started_at = None
+                existing.generation_finished_at = None
+                await self.db.flush()
+            logger.warning(
+                "report_narrative_insert_race_reused_existing",
+                report_id=str(report.id),
+                narrative_id=str(existing.id),
+                product=report.product,
+                prompt_version=SELF_STORY_PROMPT_VERSION,
+                model_name=model_name,
+            )
+            return existing
 
 
-async def get_latest_narrative_for_report(*, db: AsyncSession, report_id: UUID) -> ReportNarrative | None:
-    """Return the latest persisted narrative row for a report."""
+async def get_latest_narrative_for_report(
+    *,
+    db: AsyncSession,
+    report_id: UUID,
+    report: Report | None = None,
+) -> ReportNarrative | None:
+    """Return the latest persisted narrative row for a report.
+
+    When the current report payload is available, ignore narrative rows whose input
+    hash no longer matches the current deterministic report version.
+    """
+    if report is None:
+        result = await db.execute(
+            select(ReportNarrative)
+            .where(ReportNarrative.report_id == report_id)
+            .order_by(ReportNarrative.created_at.desc())
+        )
+        return result.scalars().first()
+
+    if report.product != "self":
+        result = await db.execute(
+            select(ReportNarrative)
+            .where(ReportNarrative.report_id == report_id)
+            .order_by(ReportNarrative.created_at.desc())
+        )
+        return result.scalars().first()
+
+    narrative_input = build_narrative_input(report)
+    input_hash = compute_input_hash(narrative_input)
+    return await _find_matching_narrative_record(
+        db=db,
+        report_id=report_id,
+        product=report.product,
+        prompt_version=SELF_STORY_PROMPT_VERSION,
+        input_hash=input_hash,
+        model_name=settings.LLM_MODEL,
+    )
+
+
+async def _find_matching_narrative_record(
+    *,
+    db: AsyncSession,
+    report_id: UUID,
+    product: str,
+    prompt_version: str,
+    input_hash: str,
+    model_name: str,
+) -> ReportNarrative | None:
     result = await db.execute(
         select(ReportNarrative)
-        .where(ReportNarrative.report_id == report_id)
+        .where(
+            ReportNarrative.report_id == report_id,
+            ReportNarrative.product == product,
+            ReportNarrative.prompt_version == prompt_version,
+            ReportNarrative.input_hash == input_hash,
+            ReportNarrative.model_name == model_name,
+        )
         .order_by(ReportNarrative.created_at.desc())
     )
     return result.scalars().first()

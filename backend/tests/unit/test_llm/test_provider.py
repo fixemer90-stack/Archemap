@@ -8,7 +8,7 @@ import pytest
 from app.config import Settings
 from app.modules.llm.exceptions import LLMDisabledError, LLMProviderUnavailableError
 from app.modules.llm.provider import get_llm_provider
-from app.modules.llm.providers.deepseek import DeepSeekProvider
+from app.modules.llm.providers.deepseek import DeepSeekProvider, _normalize_self_narrative_shape
 from app.modules.llm.providers.openrouter import OpenRouterProvider
 from app.modules.report_narratives.schemas import NarrativeInput, SelfNarrative
 
@@ -132,6 +132,33 @@ class TestMockProvider:
         assert result.hero.id == "hero"
         assert result.sections[0].id == "main_formula"
         assert result.career_cta.button_label == "Открыть Career"
+
+
+class TestDeepSeekNormalization:
+    def test_fills_missing_career_cta_body_with_safe_default(self) -> None:
+        normalized = _normalize_self_narrative_shape(
+            {
+                "title": "Ваш разбор",
+                "hero": {"id": "hero", "title": "Hero", "body": "Text"},
+                "sections": [
+                    {
+                        "id": "main_formula",
+                        "title": "Главная формула",
+                        "body": ["Body line 1", "Body line 2"],
+                    }
+                ],
+                "career_cta": {
+                    "title": "Career",
+                    "body": "",
+                    "button_label": "",
+                },
+                "final_summary": "Итог",
+            }
+        )
+
+        assert normalized["sections"][0]["body"] == "Body line 1\n\nBody line 2"
+        assert normalized["career_cta"]["body"]
+        assert normalized["career_cta"]["button_label"] == "Перейти в Career"
 
 
 class TestProviderFactory:

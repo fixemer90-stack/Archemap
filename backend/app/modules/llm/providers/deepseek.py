@@ -127,10 +127,10 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
         hero_body_parts = [
             part
             for part in [
-                hero.get("body"),
-                hero.get("greeting"),
-                hero.get("summary"),
-                hero.get("resonance"),
+                _coerce_text(hero.get("body")),
+                _coerce_text(hero.get("greeting")),
+                _coerce_text(hero.get("summary")),
+                _coerce_text(hero.get("resonance")),
             ]
             if isinstance(part, str) and part.strip()
         ]
@@ -158,7 +158,7 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
         normalized_section = {
             "id": section_id,
             "title": section.get("title") or _SECTION_TITLES.get(str(section_id), str(section_id or "Раздел")),
-            "body": section.get("body") or section.get("content") or "",
+            "body": _coerce_text(section.get("body") or section.get("content")),
             "bullets": section.get("bullets", []),
             "evidence_notes": [
                 {
@@ -173,10 +173,19 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
 
     career_cta = payload.get("career_cta")
     normalized_career_cta = career_cta
-    if isinstance(career_cta, dict) and "button_label" not in career_cta:
+    if not isinstance(career_cta, dict):
+        normalized_career_cta = {
+            "title": "Развернуть это в Career",
+            "body": "В Career-отчёте можно перевести этот личный паттерн в рабочие роли, стиль задач и профессиональные сценарии.",
+            "bullets": [],
+            "button_label": "Перейти в Career",
+        }
+    else:
+        body = _coerce_text(career_cta.get("body") or career_cta.get("text"))
         normalized_career_cta = {
             "title": career_cta.get("title") or "Развернуть это в Career",
-            "body": career_cta.get("body") or career_cta.get("text") or "",
+            "body": body
+            or "В Career-отчёте можно перевести этот личный паттерн в рабочие роли, стиль задач и профессиональные сценарии.",
             "bullets": career_cta.get("bullets", []),
             "button_label": career_cta.get("button_label") or "Перейти в Career",
         }
@@ -186,3 +195,11 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
     normalized_payload["sections"] = normalized_sections
     normalized_payload["career_cta"] = normalized_career_cta
     return normalized_payload
+
+
+def _coerce_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n\n".join(str(item).strip() for item in value if str(item).strip())
+    return "" if value is None else str(value)

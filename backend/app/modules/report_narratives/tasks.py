@@ -54,7 +54,7 @@ async def _generate_report_narrative_async(report_id: UUID, *, force: bool = Fal
             await db.commit()
             return narrative
         except Exception:
-            await db.commit()
+            await db.rollback()
             raise
 
 

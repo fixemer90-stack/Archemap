@@ -310,7 +310,14 @@ class ReportNarrativeService:
             .order_by(ReportNarrative.created_at.desc())
         )
         existing = result.scalars().first()
-        if existing is not None and not force_new:
+        if existing is not None:
+            if force_new:
+                existing.status = "pending"
+                existing.content = None
+                existing.error_message = None
+                existing.generation_started_at = None
+                existing.generation_finished_at = None
+                await self.db.flush()
             return existing
 
         narrative = ReportNarrative(

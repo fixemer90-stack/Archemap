@@ -25,6 +25,7 @@ from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.schemas import NarrativeInput
 from app.modules.report_narratives.service import ReportNarrativeService
 from app.modules.report_narratives.tasks import (
+    _generate_report_narrative_async,
     _run_async,
     finalize_narrative_task_failure,
     generate_report_narrative_task,
@@ -408,6 +409,39 @@ class TestReportNarrativeService:
         assert report_fixture.status == "narrative_failed"
         assert report_fixture.error_message is not None
 
+    @pytest.mark.asyncio
+    async def test_force_regenerate_reuses_existing_cache_key_record(
+        self,
+        report_fixture: Report,
+    ) -> None:
+        db = AsyncMock()
+        service = ReportNarrativeService(db=db, llm_provider=ReadyProvider())
+        existing = make_narrative_record(report_fixture)
+        existing.status = "narrative_failed"
+        existing.content = {"stale": True}
+        existing.error_message = "previous failure"
+        existing.generation_started_at = None
+        existing.generation_finished_at = None
+
+        query_result = SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: existing))
+        db.execute = AsyncMock(return_value=query_result)
+
+        result = await service._get_or_create_narrative_record(
+            report=report_fixture,
+            input_hash="hash123",
+            model_name="mock-self-v1",
+            force_new=True,
+        )
+
+        assert result is existing
+        assert existing.status == "pending"
+        assert existing.content is None
+        assert existing.error_message is None
+        assert existing.generation_started_at is None
+        assert existing.generation_finished_at is None
+        db.add.assert_not_called()
+        db.flush.assert_awaited_once()
+
 
 class TestNarrativeTasks:
     def test_classifies_retryable_task_errors(self) -> None:
@@ -440,6 +474,27 @@ class TestNarrativeTasks:
             "narrative_id": str(narrative_id),
             "status": "ready",
         }
+
+    @pytest.mark.asyncio
+    async def test_async_task_rolls_back_on_generation_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        report_id = uuid4()
+        db = AsyncMock()
+
+        monkeypatch.setattr(
+            "app.modules.report_narratives.tasks.async_session_factory",
+            lambda: _AsyncSessionContext(db),
+        )
+        monkeypatch.setattr(
+            ReportNarrativeService,
+            "generate_for_report",
+            AsyncMock(side_effect=RuntimeError("boom")),
+        )
+
+        with pytest.raises(RuntimeError, match="boom"):
+            await _generate_report_narrative_async(report_id)
+
+        db.rollback.assert_awaited_once()
+        db.commit.assert_not_awaited()
 
     def test_finalize_failure_marks_report_and_narrative_failed(
         self,

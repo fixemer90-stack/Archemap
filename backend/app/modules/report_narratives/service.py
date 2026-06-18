@@ -154,22 +154,27 @@ class ReportNarrativeService:
                 recovery_action="deterministic_fallback",
             )
         except LLMInvalidResponseError as exc:
-            logger.error(
-                "report_narrative_generation_failed",
+            logger.warning(
+                "report_narrative_generation_degraded",
                 report_id=str(report.id),
                 narrative_id=str(narrative.id),
                 product=report.product,
                 failure_kind="invalid_response",
+                recovery_action="deterministic_fallback",
                 duration_ms=_duration_ms(started_at),
                 error_type=type(exc).__name__,
                 error_message=str(exc),
             )
-            return await self._save_failed_narrative(
+            return await self._save_ready_narrative(
                 report=report,
                 narrative=narrative,
-                reason=str(exc),
+                payload=build_deterministic_self_fallback(
+                    narrative_input,
+                    reason="Текстовая версия временно недоступна, поэтому показано безопасное резервное резюме.",
+                ),
+                reason="invalid_response_fallback",
                 duration_ms=_duration_ms(started_at),
-                failure_kind="invalid_response",
+                recovery_action="deterministic_fallback",
             )
 
         errors = validate_self_narrative(candidate, narrative_input)

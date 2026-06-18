@@ -17,6 +17,7 @@ from tests.unit.test_report_narratives.test_schemas import make_narrative_input_
 from app.core.exceptions import NotFoundError
 from app.modules.llm.exceptions import (
     LLMDisabledError,
+    LLMInvalidResponseError,
     LLMProviderUnavailableError,
     LLMTimeoutError,
 )
@@ -111,6 +112,25 @@ class NeverCalledProvider:
         del narrative_input
         del schema
         raise AssertionError("Provider must not be called when cache hit exists")
+
+
+class SchemaInvalidProvider:
+    model_name = "mock-self-v1"
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[StructuredSchemaT],
+    ) -> StructuredSchemaT:
+        del prompt
+        del narrative_input
+        del schema
+        raise LLMInvalidResponseError(
+            "LLM provider returned JSON that does not match schema",
+            code="llm_invalid_response",
+        )
 
 
 def test_report_tasks_import_registers_profile_table_in_metadata() -> None:
@@ -339,6 +359,29 @@ class TestReportNarrativeService:
             assert "api_key" not in payload
             for value in payload.values():
                 assert "super-secret-key" not in str(value)
+
+    @pytest.mark.asyncio
+    async def test_invalid_provider_response_falls_back_to_ready_deterministic_narrative(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        service = ReportNarrativeService(db=db, llm_provider=SchemaInvalidProvider())
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "ready"
+        assert result.content is not None
+        assert result.error_message == "invalid_response_fallback"
+        assert report_fixture.status == "ready"
+        assert report_fixture.error_message is None
+        assert "Сейчас текстовая версия недоступна" in result.content["hero"]["body"]
 
     @pytest.mark.asyncio
     async def test_logs_validation_failure_kind_for_terminal_failure(

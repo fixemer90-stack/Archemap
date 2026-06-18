@@ -11,7 +11,9 @@ function buildRefreshPayload() {
   };
 }
 
-export function getPreferredAccessToken(token?: string | null): string | undefined {
+export function getPreferredAccessToken(
+  token?: string | null,
+): string | undefined {
   return getAccessToken() ?? token ?? undefined;
 }
 
@@ -44,7 +46,9 @@ export async function refreshAccessToken(): Promise<string | null> {
         access_token: string;
         refresh_token: string;
       };
-      useAuthStore.getState().setTokens(tokens.access_token, tokens.refresh_token);
+      useAuthStore
+        .getState()
+        .setTokens(tokens.access_token, tokens.refresh_token);
       return tokens.access_token;
     } catch {
       useAuthStore.getState().logout();

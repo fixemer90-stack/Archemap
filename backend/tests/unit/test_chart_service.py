@@ -91,7 +91,12 @@ class TestGetOrCompute:
         mock_db.add.assert_called_once()
         mock_db.flush.assert_awaited_once()
 
-    async def test_uses_profile_timezone_when_building_chart(self, service: ChartService, mock_db: AsyncMock, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_uses_profile_timezone_when_building_chart(
+        self,
+        service: ChartService,
+        mock_db: AsyncMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         mock_no_result = MagicMock()
         mock_no_result.scalars.return_value.first.return_value = None
 
@@ -110,18 +115,31 @@ class TestGetOrCompute:
 
         captured: dict[str, object] = {}
 
-        def fake_build_chart(*, birth_datetime: datetime, latitude: float, longitude: float, timezone_name: str) -> SimpleNamespace:
+        def fake_build_chart(
+            *, birth_datetime: datetime, latitude: float, longitude: float, timezone_name: str
+        ) -> SimpleNamespace:
             captured["birth_datetime"] = birth_datetime
             captured["latitude"] = latitude
             captured["longitude"] = longitude
             captured["timezone_name"] = timezone_name
-            return SimpleNamespace(planets=[], houses=[], aspects=[], birth_datetime=birth_datetime, latitude=latitude, longitude=longitude, timezone=timezone_name, house_system="P")
+            return SimpleNamespace(
+                planets=[],
+                houses=[],
+                aspects=[],
+                birth_datetime=birth_datetime,
+                latitude=latitude,
+                longitude=longitude,
+                timezone=timezone_name,
+                house_system="P",
+            )
 
         monkeypatch.setattr("app.modules.charts.service.build_chart", fake_build_chart)
         monkeypatch.setattr("app.modules.charts.service.extract_features", lambda _: SimpleNamespace())
         monkeypatch.setattr(
             "app.modules.charts.service.evaluate_socionics",
-            lambda *_: [SimpleNamespace(type_code="EIE", type_name="ЭИЭ", score=1.0, confidence=1.0, functions={}, breakdown={})],
+            lambda *_: [
+                SimpleNamespace(type_code="EIE", type_name="ЭИЭ", score=1.0, confidence=1.0, functions={}, breakdown={})
+            ],
         )
         monkeypatch.setattr(
             "app.modules.charts.service._chart_to_dict",

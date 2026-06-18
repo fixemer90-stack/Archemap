@@ -173,10 +173,15 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
 
     career_cta = payload.get("career_cta")
     normalized_career_cta = career_cta
+    fallback_career_body = (
+        "В Career-отчёте можно перевести этот личный паттерн "  # noqa: RUF001
+        "в рабочие роли, стиль задач и профессиональные сценарии."
+    )
+
     if not isinstance(career_cta, dict):
         normalized_career_cta = {
             "title": "Развернуть это в Career",
-            "body": "В Career-отчёте можно перевести этот личный паттерн в рабочие роли, стиль задач и профессиональные сценарии.",
+            "body": fallback_career_body,
             "bullets": [],
             "button_label": "Перейти в Career",
         }
@@ -184,8 +189,7 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
         body = _coerce_text(career_cta.get("body") or career_cta.get("text"))
         normalized_career_cta = {
             "title": career_cta.get("title") or "Развернуть это в Career",
-            "body": body
-            or "В Career-отчёте можно перевести этот личный паттерн в рабочие роли, стиль задач и профессиональные сценарии.",
+            "body": body or fallback_career_body,
             "bullets": career_cta.get("bullets", []),
             "button_label": career_cta.get("button_label") or "Перейти в Career",
         }

@@ -1,4 +1,7 @@
-import { getPreferredAccessToken, refreshAccessToken } from "@/lib/auth-session";
+import {
+  getPreferredAccessToken,
+  refreshAccessToken,
+} from "@/lib/auth-session";
 
 type RequestOptions = {
   method?: string;
@@ -27,7 +30,9 @@ function buildRequestInit(
   tokenOverride?: string,
 ): RequestInit {
   const { method = "GET", body, headers = {} } = options;
-  const effectiveToken = getPreferredAccessToken(tokenOverride ?? options.token);
+  const effectiveToken = getPreferredAccessToken(
+    tokenOverride ?? options.token,
+  );
 
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
@@ -51,7 +56,10 @@ async function fetchWithAuthRetry(
   options: RequestOptions = {},
 ): Promise<Response> {
   const firstAttemptToken = getPreferredAccessToken(options.token);
-  let response = await fetch(endpoint, buildRequestInit(options, firstAttemptToken));
+  let response = await fetch(
+    endpoint,
+    buildRequestInit(options, firstAttemptToken),
+  );
 
   if (response.status !== 401 || isAuthEndpoint(endpoint)) {
     return response;

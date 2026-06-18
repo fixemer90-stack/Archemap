@@ -173,6 +173,7 @@ def _chart_to_dict(chart: ChartData) -> dict[str, Any]:
         "longitude": chart.longitude,
         "timezone": chart.timezone,
         "house_system": chart.house_system,
+        "ayanamsa": chart.ayanamsa,
         "planets": [
             {
                 "name": p.name,

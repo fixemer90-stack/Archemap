@@ -19,6 +19,9 @@ const narrativeSectionPath = resolve(
   "src/components/report/narrative-section.tsx",
 );
 const careerCtaPath = resolve("src/components/report/career-cta.tsx");
+const calculationParametersPath = resolve(
+  "src/components/report/calculation-parameters.tsx",
+);
 const evidenceNotesPath = resolve("src/components/report/evidence-notes.tsx");
 const narrativePage = existsSync(narrativePagePath)
   ? readFileSync(narrativePagePath, "utf8")
@@ -28,6 +31,9 @@ const narrativeSection = existsSync(narrativeSectionPath)
   : "";
 const careerCta = existsSync(careerCtaPath)
   ? readFileSync(careerCtaPath, "utf8")
+  : "";
+const calculationParameters = existsSync(calculationParametersPath)
+  ? readFileSync(calculationParametersPath, "utf8")
   : "";
 const evidenceNotes = existsSync(evidenceNotesPath)
   ? readFileSync(evidenceNotesPath, "utf8")
@@ -68,6 +74,7 @@ const requiredFiles = [
   "src/components/report/deterministic-report-fallback.tsx",
   "src/components/report/report-narrative-page.tsx",
   "src/components/report/report-pdf-actions.tsx",
+  "src/components/report/calculation-parameters.tsx",
   "src/components/report/narrative-section.tsx",
   "src/components/report/career-cta.tsx",
   "src/components/report/evidence-notes.tsx",
@@ -109,7 +116,7 @@ const componentSources = requiredFiles
   .filter((file) => file.endsWith(".tsx"))
   .map((file) => readFileSync(resolve(file), "utf8"))
   .join("\n");
-const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${careerCta}\n${evidenceNotes}`;
+const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${careerCta}\n${calculationParameters}\n${evidenceNotes}`;
 const allUiSource = `${page}\n${componentSources}`;
 const adapter = readFileSync(resolve("src/lib/report/view-model.ts"), "utf8");
 
@@ -148,6 +155,8 @@ const narrativeOrder = [
   "development",
   "<CareerCTA",
   "<FinalSummary",
+  "<ReportPdfActions",
+  "<CalculationParameters",
   "<TechnicalDetailsAccordion",
 ];
 let previousNarrativeIndex = -1;
@@ -248,6 +257,7 @@ for (const heading of [
   "Архетипический профиль",
   "Соционический профиль",
   "Технические детали расчёта",
+  "Расчётные параметры",
 ]) {
   if (!allUiSource.includes(heading)) {
     throw new Error(`Missing report section heading: ${heading}`);
@@ -485,6 +495,32 @@ for (const requiredFallbackText of [
       `Missing deterministic fallback UI text: ${requiredFallbackText}`,
     );
   }
+}
+
+for (const requiredCalculationText of [
+  "Дата и время рождения",
+  "Часовой пояс",
+  "UTC-время расчёта",
+  "Система домов",
+  "Зодиак",
+]) {
+  if (!calculationParameters.includes(requiredCalculationText)) {
+    throw new Error(
+      `Missing calculation parameters UI text: ${requiredCalculationText}`,
+    );
+  }
+}
+
+for (const requiredCalculationValue of ["Placidus", "тропический"]) {
+  if (!adapter.includes(requiredCalculationValue)) {
+    throw new Error(
+      `Missing calculation parameters adapter value: ${requiredCalculationValue}`,
+    );
+  }
+}
+
+if (!adapter.includes("utcCalculationTime")) {
+  throw new Error("Report adapter must expose UTC calculation time");
 }
 
 if (/generating_narrative[\s\S]{0,160}<ReportContent/.test(page)) {

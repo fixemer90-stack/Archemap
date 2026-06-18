@@ -13,6 +13,7 @@ from app.chart_engine.features import extract_features
 from app.core.exceptions import NotFoundError
 from app.modules.charts.models import ChartSnapshot
 from app.modules.charts.service import ChartService
+from app.modules.profiles.models import PersonProfile
 from app.modules.reports.models import Report, ReportVersion
 from app.modules.rules.engine import interpret
 from app.modules.rules.loader import load_ruleset
@@ -71,6 +72,7 @@ class ReportService:
             # Get chart snapshot
             chart_service = ChartService(self.db)
             snapshot = await chart_service.get_or_compute(profile_id, user_id)
+            profile = await self._get_profile(profile_id, user_id)
 
             # Parse chart data
             chart_data = _dict_to_chart(snapshot.chart_data)
@@ -97,6 +99,14 @@ class ReportService:
                 "source_chart": {
                     "snapshot_id": str(snapshot.id),
                     "engine_version": snapshot.engine_version,
+                },
+                "profile": {
+                    "name": profile.name,
+                    "birth_date": profile.birth_date.isoformat(),
+                    "birth_time": profile.birth_time.strftime("%H:%M") if profile.birth_time else None,
+                    "birth_time_accuracy": profile.birth_time_accuracy,
+                    "birth_place": profile.birth_place,
+                    "timezone": profile.timezone,
                 },
                 "archetype": {
                     "primary": interpretation.primary_archetype,
@@ -247,6 +257,18 @@ class ReportService:
             raise NotFoundError("Report version not found")
         return rv
 
+    async def _get_profile(self, profile_id: UUID, user_id: UUID) -> PersonProfile:
+        result = await self.db.execute(
+            select(PersonProfile).where(
+                PersonProfile.id == profile_id,
+                PersonProfile.user_id == user_id,
+            )
+        )
+        profile = result.scalar_one_or_none()
+        if profile is None:
+            raise NotFoundError("Profile not found")
+        return profile
+
     async def _find_existing(self, profile_id: UUID, user_id: UUID, product: str) -> Report | None:
         """Find existing report for profile + user + product."""
         result = await self.db.execute(
@@ -346,6 +368,8 @@ def _dict_to_chart(data: dict[str, Any]) -> Any:
         planets=planets,
         houses=houses,
         aspects=aspects,
+        house_system=data.get("house_system", "P"),
+        ayanamsa=data.get("ayanamsa", 0.0),
     )
 
 
@@ -373,6 +397,13 @@ def _report_matches_snapshot(report_data: dict[str, Any], snapshot: ChartSnapsho
 def _build_chart_summary(chart_data: dict[str, Any], features: dict[str, Any]) -> dict[str, Any]:
     """Build chart summary for report response."""
     return {
+        "birth_datetime": chart_data.get("birth_datetime"),
+        "latitude": chart_data.get("latitude"),
+        "longitude": chart_data.get("longitude"),
+        "timezone": chart_data.get("timezone"),
+        "house_system": chart_data.get("house_system", "P"),
+        "ayanamsa": chart_data.get("ayanamsa", 0.0),
+        "zodiac": "tropical" if not chart_data.get("ayanamsa") else "sidereal",
         "planets": chart_data.get("planets", []),
         "houses": chart_data.get("houses", []),
         "aspects": chart_data.get("aspects", []),

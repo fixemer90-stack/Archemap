@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { CalculationParameters } from "@/components/report/calculation-parameters";
 import { ArchetypeProfileSummary } from "@/components/report/archetype-profile-summary";
 import { AstrologyOverview } from "@/components/report/astrology-overview";
 import { DeterministicReportFallback } from "@/components/report/deterministic-report-fallback";
@@ -91,6 +92,7 @@ function ReportContent({
           onDownload={onDownloadPdf}
         />
       )}
+      <CalculationParameters params={data.calculation_params} />
       <TechnicalDetailsAccordion data={data} />
     </div>
   );
@@ -207,6 +209,7 @@ function CareerReportContent({ data }: { data: ReportData }) {
         </Card>
       )}
 
+      <CalculationParameters params={data.calculation_params} />
       <TechnicalDetailsAccordion data={data} />
     </div>
   );

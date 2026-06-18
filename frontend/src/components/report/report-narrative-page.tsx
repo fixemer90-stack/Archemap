@@ -1,3 +1,4 @@
+import { CalculationParameters } from "@/components/report/calculation-parameters";
 import { CareerCTA } from "@/components/report/career-cta";
 import {
   NarrativeHero,
@@ -32,6 +33,8 @@ const NARRATIVE_RENDER_ORDER = [
   "development",
   "<CareerCTA",
   "<FinalSummary",
+  "<ReportPdfActions",
+  "<CalculationParameters",
   "<TechnicalDetailsAccordion",
 ] as const;
 
@@ -105,6 +108,7 @@ export function ReportNarrativePage({
         isDownloading={isDownloadingPdf}
         onDownload={onDownloadPdf}
       />
+      <CalculationParameters params={data.calculation_params} />
       <TechnicalDetailsAccordion data={data} />
       <span className="sr-only">{allowedSelfSectionIds.join(",")}</span>
     </div>

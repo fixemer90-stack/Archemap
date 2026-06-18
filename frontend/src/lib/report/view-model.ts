@@ -96,6 +96,10 @@ interface RawAspect {
 }
 
 interface RawChartData {
+  birth_datetime?: string;
+  timezone?: string;
+  house_system?: string;
+  ayanamsa?: number;
   planets?: RawPlanet[];
   houses?: RawHouse[];
   aspects?: RawAspect[];
@@ -170,9 +174,19 @@ export interface ReportNarrativeViewModel {
   unknownSectionIds: string[];
 }
 
+export interface CalculationParametersViewModel {
+  birthDateTime: string;
+  birthPlace: string;
+  timezone: string;
+  utcCalculationTime: string;
+  houseSystem: string;
+  zodiac: string;
+}
+
 export interface ReportViewModel {
   product: string;
   narrative?: ReportNarrativeViewModel;
+  calculation_params: CalculationParametersViewModel;
   generated_report?: {
     id: string;
     archetype: string;
@@ -647,6 +661,58 @@ function normalizeNarrative(
   };
 }
 
+function formatBirthDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) {
+    return value || "не указана";
+  }
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+function formatBirthDateTime(profile: ProfileApiResponse): string {
+  const date = formatBirthDate(profile.birth_date);
+  if (profile.birth_time) {
+    return `${date} ${profile.birth_time.slice(0, 5)}`;
+  }
+  return `${date}, время не указано`;
+}
+
+function formatUtcCalculationTime(value: string | undefined): string {
+  if (!value) {
+    return "не найдено в snapshot";
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(value);
+  if (!match) {
+    return value;
+  }
+  return `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}`;
+}
+
+function houseSystemLabel(value: string | undefined): string {
+  if (value === "P") {
+    return "Placidus";
+  }
+  return value || "не указана";
+}
+
+function zodiacLabel(ayanamsa: number | undefined): string {
+  return ayanamsa && ayanamsa !== 0 ? "сидерический" : "тропический";
+}
+
+function buildCalculationParameters(
+  data: ReportApiData,
+): CalculationParametersViewModel {
+  const chartData = data.chartSnapshot.chart_data;
+  return {
+    birthDateTime: formatBirthDateTime(data.profile),
+    birthPlace: data.profile.birth_place || "не указано",
+    timezone: data.profile.timezone || chartData.timezone || "не указан",
+    utcCalculationTime: formatUtcCalculationTime(chartData.birth_datetime),
+    houseSystem: houseSystemLabel(chartData.house_system),
+    zodiac: zodiacLabel(chartData.ayanamsa),
+  };
+}
+
 export function toReportViewModel(data: ReportApiData): ReportViewModel {
   const chart: ReportChartData = {
     planets: normalizePlanets(data.chartSnapshot.chart_data.planets),
@@ -690,6 +756,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       : "self",
     generated_report: generatedReport,
     narrative: normalizeNarrative(data.generatedReport),
+    calculation_params: buildCalculationParameters(data),
     chart,
     socionics,
     profile: {

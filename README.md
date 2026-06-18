@@ -295,6 +295,8 @@ Astrotype/
 | [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                               | Narrative‑first UX отчёта       |
 | [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                   | Сторителлинг Self‑отчёта        |
 | [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md) | Архитектура LLM narrative layer |
+| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md) | Улучшение глубины Self report |
+| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md) | SRS для E13 depth-layer отчёта |
 | [`docs/features/`](docs/features/)                                                                     | Feature/story документация      |
 | [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                     | REST API contract               |
 | [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                   | Async/event contract            |

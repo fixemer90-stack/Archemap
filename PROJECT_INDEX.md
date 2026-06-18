@@ -13,7 +13,9 @@ Astrotype — full-stack narrative-first платформа для астрол�
 - AsyncAPI: `contracts/asyncapi.yaml`
 - LLM design: `docs/design/llm-report-narrative-architecture.md`
 - E11 feature pack: `docs/features/E11-llm-report-narrative/FEATURE.md`
+- E13 report depth improvements: `docs/features/E13-report-depth-improvements/FEATURE.md`
 - SRS E11: `docs/SRS/SRS-E11-llm-report-narrative.md`
+- SRS E13: `docs/SRS/SRS-E13-report-depth-improvements.md`
 
 ## Tech stack
 
@@ -184,7 +186,9 @@ docker compose up -d --build
 - `docs/design/self-report-storytelling.md`
 - `docs/design/llm-report-narrative-architecture.md`
 - `docs/features/E11-llm-report-narrative/FEATURE.md`
+- `docs/features/E13-report-depth-improvements/FEATURE.md`
 - `docs/SRS/SRS-E11-llm-report-narrative.md`
+- `docs/SRS/SRS-E13-report-depth-improvements.md`
 
 ## Current known gotchas
 

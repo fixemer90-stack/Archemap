@@ -34,6 +34,7 @@
 | E10 | Report UX Redesign | ✅ Готово |
 | E11 | LLM Report Narrative | ✅ Готово |
 | E12 | LLM Report Runtime Readiness | ✅ Готово (PDF delivery без обязательного object storage) |
+| E13 | Report Depth Improvements | ⬜ Не начато |
 
 ---
 
@@ -216,6 +217,34 @@
 
 ---
 
+## Epic 13: Report Depth Improvements
+
+**Статус:** ⬜ Не начато
+**Оценка:** 2–3 недели
+**Зависимости:** E3 ✅, E4 ✅, E10 ✅, E11 ✅, E12 ✅
+
+Цель E13 — поднять Self report с уровня “технически корректный расширенный гороскоп” до продукта Astrotype: добавить слой между фактами карты и narrative-выводами.
+
+Ключевая формула:
+
+```text
+астрологический факт → психологический механизм → жизненный сценарий → риск → зрелая форма → проверочный вопрос
+```
+
+| # | Фича | Описание | Документы | Статус |
+|---|------|----------|-----------|--------|
+| 13.1 | Dominants + mechanism | Ключевые доминанты карты и внутренний механизм личности | `docs/features/E13-report-depth-improvements/S01-dominants-inner-mechanism.md` | ⬜ |
+| 13.2 | House scenarios | Дома как жизненные сценарии, а не короткие ярлыки | `docs/features/E13-report-depth-improvements/S02-house-scenarios.md` | ⬜ |
+| 13.3 | Evidence tracing | Связка вывода с основаниями в web/PDF | `docs/features/E13-report-depth-improvements/S03-evidence-tracing.md` | ⬜ |
+| 13.4 | Contradictions/failures/maturity | Центральные противоречия, сбои системы, уровни зрелости | `docs/features/E13-report-depth-improvements/S04-contradictions-failures-maturity.md` | ⬜ |
+| 13.5 | Calibration questions | Проверочные вопросы для подтверждения/будущей коррекции модели | `docs/features/E13-report-depth-improvements/S05-calibration-questions.md` | ⬜ |
+| 13.6 | Career teaser | Содержательный Self→Career teaser без замены Career report | `docs/features/E13-report-depth-improvements/S06-career-teaser.md` | ⬜ |
+| 13.7 | Rendering + quality gates | `self_story_v2`, UI/PDF rendering, validators, regression checks | `docs/features/E13-report-depth-improvements/S07-rendering-prompt-quality-gates.md` | ⬜ |
+
+Полный контракт: `docs/SRS/SRS-E13-report-depth-improvements.md`.
+
+---
+
 ## Зависимости между эпиками
 
 ```
@@ -227,7 +256,7 @@ E1 (Foundation) ✅
                           ├─► E6 (Billing & Subscriptions)
                           │     └─► E7 (Notifications & Admin) ──► E8 (Production & Scale)
                           ├─► E7 (Notifications & Admin)
-                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative) ✅ ──► E12 (LLM Report Runtime Readiness)
+                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative) ✅ ──► E12 (LLM Report Runtime Readiness) ✅ ──► E13 (Report Depth Improvements)
 ```
 
 **Критический путь:** E2 → E3 → E4 → E5 → E6 → E7 → E8

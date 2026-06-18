@@ -432,7 +432,7 @@ def test_choose_narrative_recovery_action_falls_back_after_recoverable_career_bo
     assert choose_narrative_recovery_action(errors, repair_attempts_used=1, llm_available=True) == "fallback"
 
 
-def test_choose_narrative_recovery_action_falls_back_on_forbidden_language() -> None:
+def test_choose_narrative_recovery_action_marks_forbidden_language_as_failed() -> None:
     errors = [
         NarrativeValidationError(
             code="forbidden_language",
@@ -442,7 +442,7 @@ def test_choose_narrative_recovery_action_falls_back_on_forbidden_language() -> 
         )
     ]
 
-    assert choose_narrative_recovery_action(errors, repair_attempts_used=0, llm_available=True) == "fallback"
+    assert choose_narrative_recovery_action(errors, repair_attempts_used=0, llm_available=True) == "narrative_failed"
 
 
 @pytest.mark.asyncio

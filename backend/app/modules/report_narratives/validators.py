@@ -144,8 +144,8 @@ def choose_narrative_recovery_action(
         return "fallback"
     if not errors:
         return "repair"
-    if any(error.code == "forbidden_language" for error in errors):
-        return "fallback"
+    if any(not error.recoverable for error in errors):
+        return "narrative_failed"
     if all(error.recoverable for error in errors) and repair_attempts_used < 1:
         return "repair"
     if all(error.recoverable for error in errors):

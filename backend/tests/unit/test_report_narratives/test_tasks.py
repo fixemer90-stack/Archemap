@@ -93,7 +93,7 @@ class NonRecoverableInvalidProvider:
     ) -> StructuredSchemaT:
         del prompt
         narrative = build_deterministic_self_fallback(narrative_input)
-        narrative.sections[0].body = "Вам нужна денежная стратегия и список профессий."
+        narrative.sections[0].body = "Этот текст звучит как диагноз и потому должен быть отклонён."
         return schema.model_validate(narrative)
 
 

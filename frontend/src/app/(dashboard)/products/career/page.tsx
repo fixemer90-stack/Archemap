@@ -4,12 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Briefcase, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getPreferredAccessToken } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 
 const GENERATE_TIMEOUT_MS = 30_000;
 
 function authHeaders(token: string | null): HeadersInit | undefined {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+  const effectiveToken = getPreferredAccessToken(token);
+  return effectiveToken
+    ? { Authorization: `Bearer ${effectiveToken}` }
+    : undefined;
 }
 
 function getErrorMessage(error: unknown): string {

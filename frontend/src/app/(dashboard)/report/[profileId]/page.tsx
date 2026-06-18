@@ -22,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ApiError } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import {
   fetchReportApiData,
   fetchReportById,
@@ -225,6 +225,9 @@ function ReportError({ message }: { message: string }) {
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return "Сессия истекла. Войдите снова.";
+    }
     return error.message;
   }
   if (error instanceof Error) {
@@ -242,10 +245,10 @@ async function downloadReportPdf(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`/api/v1/reports/${reportId}/pdf`, {
+  const response = await apiFetch(`/api/v1/reports/${reportId}/pdf`, {
     method: "GET",
     headers,
-    credentials: "include",
+    token,
   });
 
   if (!response.ok) {
@@ -481,6 +484,14 @@ export default function ReportPage() {
           }
         })
         .catch((pollError: unknown) => {
+          if (pollError instanceof ApiError && pollError.status === 401) {
+            setApiData(null);
+            setCurrentReport(null);
+            setData(null);
+            generationStartedAtRef.current = null;
+            setShowFallback(false);
+            setIsTimedOut(false);
+          }
           setError(getErrorMessage(pollError));
         });
     }, POLL_INTERVAL_MS);

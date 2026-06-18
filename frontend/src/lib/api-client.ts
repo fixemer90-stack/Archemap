@@ -1,3 +1,5 @@
+import { getPreferredAccessToken, refreshAccessToken } from "@/lib/auth-session";
+
 type RequestOptions = {
   method?: string;
   body?: unknown;
@@ -16,28 +18,74 @@ export class ApiError extends Error {
   }
 }
 
-// Always use relative paths — Next.js rewrites proxy to backend
-export async function apiClient<T>(
-  endpoint: string,
-  options: RequestOptions = {},
-): Promise<T> {
-  const { method = "GET", body, headers = {}, token } = options;
+function isAuthEndpoint(endpoint: string): boolean {
+  return endpoint.startsWith("/api/v1/auth/");
+}
+
+function buildRequestInit(
+  options: RequestOptions,
+  tokenOverride?: string,
+): RequestInit {
+  const { method = "GET", body, headers = {} } = options;
+  const effectiveToken = getPreferredAccessToken(tokenOverride ?? options.token);
 
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
 
-  if (token) {
-    requestHeaders["Authorization"] = `Bearer ${token}`;
+  if (effectiveToken) {
+    requestHeaders.Authorization = `Bearer ${effectiveToken}`;
   }
 
-  const response = await fetch(endpoint, {
+  return {
     method,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
-  });
+  };
+}
+
+async function fetchWithAuthRetry(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<Response> {
+  const firstAttemptToken = getPreferredAccessToken(options.token);
+  let response = await fetch(endpoint, buildRequestInit(options, firstAttemptToken));
+
+  if (response.status !== 401 || isAuthEndpoint(endpoint)) {
+    return response;
+  }
+
+  const latestToken = getPreferredAccessToken();
+  if (latestToken && latestToken !== firstAttemptToken) {
+    response = await fetch(endpoint, buildRequestInit(options, latestToken));
+    if (response.status !== 401) {
+      return response;
+    }
+  }
+
+  const refreshedToken = await refreshAccessToken();
+  if (!refreshedToken) {
+    return response;
+  }
+
+  return fetch(endpoint, buildRequestInit(options, refreshedToken));
+}
+
+// Always use relative paths — Next.js rewrites proxy to backend
+export async function apiFetch(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<Response> {
+  return fetchWithAuthRetry(endpoint, options);
+}
+
+export async function apiClient<T>(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await apiFetch(endpoint, options);
 
   if (!response.ok) {
     let data: unknown;

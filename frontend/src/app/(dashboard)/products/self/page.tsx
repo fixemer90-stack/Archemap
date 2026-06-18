@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getPreferredAccessToken } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 
 function authHeaders(token: string | null): HeadersInit | undefined {
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+  const effectiveToken = getPreferredAccessToken(token);
+  return effectiveToken
+    ? { Authorization: `Bearer ${effectiveToken}` }
+    : undefined;
 }
 
 interface Profile {

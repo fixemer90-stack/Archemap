@@ -262,7 +262,18 @@ async function downloadReportPdf(
     throw new ApiError(response.status, detail);
   }
 
+  const contentType = response.headers.get("content-type") || "";
   const blob = await response.blob();
+
+  if (blob.size === 0) {
+    throw new Error("PDF пришёл пустым. Попробуйте ещё раз.");
+  }
+
+  if (!contentType.includes("application/pdf")) {
+    const text = await blob.text();
+    throw new Error(text || "Сервер вернул не PDF-файл.");
+  }
+
   const objectUrl = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = objectUrl;
@@ -270,7 +281,10 @@ async function downloadReportPdf(
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.URL.revokeObjectURL(objectUrl);
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(objectUrl);
+  }, 30_000);
 }
 
 export default function ReportPage() {

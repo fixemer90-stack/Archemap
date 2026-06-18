@@ -37,6 +37,8 @@ _OPERATORS = {
     ConditionOp.NEQ: operator.ne,
 }
 
+RULE_ENGINE_VERSION = "0.1.1"
+
 
 def interpret(
     features: FeatureVector,
@@ -69,7 +71,10 @@ def interpret(
             primary_score=0.0,
             primary_confidence=_zero_confidence(),
             quality_warning=_quality_warning(features),
-            provenance={"ruleset_version": f"{ruleset.product}-{ruleset.version}", "engine_version": "0.1.0"},
+            provenance={
+                "ruleset_version": f"{ruleset.product}-{ruleset.version}",
+                "engine_version": RULE_ENGINE_VERSION,
+            },
         )
 
     primary_id = max(archetype_scores, key=archetype_scores.get)  # type: ignore[arg-type]
@@ -138,7 +143,10 @@ def interpret(
         claims=claims,
         all_archetype_scores={k: round(v, 3) for k, v in sorted(archetype_scores.items(), key=lambda x: -x[1])},
         quality_warning=_quality_warning(features),
-        provenance={"ruleset_version": f"{ruleset.product}-{ruleset.version}", "engine_version": "0.1.0"},
+        provenance={
+            "ruleset_version": f"{ruleset.product}-{ruleset.version}",
+            "engine_version": RULE_ENGINE_VERSION,
+        },
     )
 
 
@@ -218,7 +226,7 @@ def _evaluate_conditions(
                 results.append(0.0)
                 unmatched.append((cond.fact, cond.value, None))
             elif _check_condition(cond, facts):
-                results.append(1.0)
+                results.append(_condition_match_score(cond, actual))
                 matched.append((cond.fact, cond.value, actual))
             else:
                 results.append(0.0)
@@ -249,6 +257,44 @@ def _check_condition(condition: Condition, facts: dict[str, Any]) -> bool:
     if condition.op == ConditionOp.BETWEEN:
         return bool(condition.value <= actual <= (condition.value_upper or condition.value))
     return False
+
+
+def _condition_match_score(condition: Condition, actual: Any) -> float:
+    """Return a graded 0..1 match strength for an already matched condition.
+
+    Threshold checks still decide whether a rule activates. Once activated, the
+    contribution should reflect the strength of the underlying normalized fact;
+    otherwise every matched archetype keeps the YAML effect weight unchanged
+    (for example 0.25), which makes the typage/rating look like flat 25% rows.
+    """
+    if condition.op in {ConditionOp.EQ, ConditionOp.NEQ, ConditionOp.IN, ConditionOp.NOT_IN}:
+        return 1.0
+
+    try:
+        actual_float = float(actual)
+    except (TypeError, ValueError):
+        return 1.0
+
+    actual_float = max(0.0, min(1.0, actual_float))
+
+    if condition.op in {ConditionOp.GTE, ConditionOp.GT}:
+        return actual_float
+    if condition.op in {ConditionOp.LTE, ConditionOp.LT}:
+        return 1.0 - actual_float
+    if condition.op == ConditionOp.BETWEEN:
+        try:
+            lower = float(condition.value)
+            upper = float(condition.value_upper if condition.value_upper is not None else condition.value)
+        except (TypeError, ValueError):
+            return actual_float
+        if upper <= lower:
+            return actual_float
+        midpoint = (lower + upper) / 2
+        half_width = (upper - lower) / 2
+        distance = abs(actual_float - midpoint)
+        return max(0.0, min(1.0, 1.0 - distance / half_width))
+
+    return 1.0
 
 
 def _aggregate_scores(evaluations: list[RuleEvaluation], ruleset: RuleSet) -> dict[str, float]:

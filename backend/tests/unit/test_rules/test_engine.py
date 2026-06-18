@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.chart_engine.features import FeatureVector
-from app.modules.rules.engine import _build_facts, _check_condition, interpret
+from app.modules.rules.engine import _build_facts, _check_condition, _condition_match_score, interpret
 from app.modules.rules.loader import load_ruleset
 from app.modules.rules.types import Condition, ConditionOp
 
@@ -68,6 +68,10 @@ class TestConditionEvaluation:
         cond = Condition(fact="feature.fire", op=ConditionOp.EQ, value=0.25)
         assert _check_condition(cond, facts) is True
 
+    def test_gte_match_score_uses_actual_strength(self) -> None:
+        cond = Condition(fact="feature.earth", op=ConditionOp.GTE, value=0.35)
+        assert _condition_match_score(cond, 0.45) == 0.45
+
 
 # ── Fact building tests ──────────────────────────────────────────────
 
@@ -120,6 +124,24 @@ class TestRuleEngine:
         result = interpret(features, ruleset)
 
         assert result.primary_score > 0.0
+
+    def test_active_archetype_scores_are_not_flat_yaml_weights(self) -> None:
+        """Two activated archetypes with different feature strengths should not both show 0.25."""
+        features = make_features(
+            fire=0.40,
+            mutable=0.35,
+            air=0.31,
+            cardinal=0.26,
+            earth=0.15,
+            water=0.10,
+        )
+        ruleset = load_ruleset("self", "v1")
+        result = interpret(features, ruleset)
+
+        assert result.all_archetype_scores["creator"] == pytest.approx(0.087)
+        assert result.all_archetype_scores["diplomat"] == pytest.approx(0.045)
+        assert len(set(result.all_archetype_scores.values())) > 1
+        assert 0.25 not in result.all_archetype_scores.values()
 
     def test_no_archetype_low_values(self) -> None:
         """Balanced features → no archetype should dominate."""

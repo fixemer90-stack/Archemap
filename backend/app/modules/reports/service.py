@@ -15,7 +15,7 @@ from app.modules.charts.models import ChartSnapshot
 from app.modules.charts.service import ChartService
 from app.modules.profiles.models import PersonProfile
 from app.modules.reports.models import Report, ReportVersion
-from app.modules.rules.engine import interpret
+from app.modules.rules.engine import RULE_ENGINE_VERSION, interpret
 from app.modules.rules.loader import load_ruleset
 from app.modules.rules.resolver import render_full_report
 
@@ -295,12 +295,17 @@ class ReportService:
         await self.db.flush()
 
     async def _report_requires_refresh(self, report: Report, user_id: UUID) -> bool:
-        if report.product != "self":
-            return False
         if report.status not in {"ready", "narrative_failed", "deterministic_ready"}:
             return False
         if not report.report_data:
             return True
+
+        provenance = report.report_data.get("provenance", {})
+        if provenance.get("engine_version") != RULE_ENGINE_VERSION:
+            return True
+
+        if report.product != "self":
+            return False
 
         chart_service = ChartService(self.db)
         snapshot = await chart_service.get_or_compute(report.profile_id, user_id)

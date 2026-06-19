@@ -85,7 +85,7 @@
 | Story | Название | Статус | Документ |
 |---|---|---|---|
 | S01 | Dominants and inner mechanism contract | ✅ Готово | `S01-dominants-inner-mechanism.md` |
-| S02 | House scenario interpreter | ⬜ Не начато | `S02-house-scenarios.md` |
+| S02 | House scenario interpreter | ✅ Готово | `S02-house-scenarios.md` |
 | S03 | Evidence tracing in narrative and PDF | ⬜ Не начато | `S03-evidence-tracing.md` |
 | S04 | Contradictions, failures, maturity levels | ⬜ Не начато | `S04-contradictions-failures-maturity.md` |
 | S05 | Calibration questions and feedback loop | ⬜ Не начато | `S05-calibration-questions.md` |
@@ -97,7 +97,7 @@
 - [ ] Self report has a structured “Ключевые доминанты карты” block based on normalized chart features and important placements.
 - [ ] Self report explains an “internal mechanism” as a step-by-step behavioral model, not only as traits.
 - [ ] At least 3 central contradictions are generated from chart evidence and rendered in narrative/PDF.
-- [ ] House interpretations are scenario-based and include manifestation + shadow/risk.
+- [x] House interpretations are scenario-based and include manifestation + shadow/risk.
 - [ ] Major claims can expose bases: astrological fact, psychological mechanism, limitation/counter-evidence.
 - [ ] Vulnerability section includes concrete failure modes, not only soft generic advice.
 - [ ] Self report includes “Как это видно в жизни” with practical recognisable patterns.

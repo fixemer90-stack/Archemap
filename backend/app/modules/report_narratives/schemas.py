@@ -109,6 +109,19 @@ class InnerMechanism(BaseModel):
     steps: list[MechanismStep] = Field(..., min_length=3, max_length=5)
 
 
+class HouseScenario(BaseModel):
+    """Life-scenario interpretation of an important house placement."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    placement: str = Field(..., min_length=1, max_length=300)
+    need: str = Field(..., min_length=1, max_length=1000)
+    manifestation: str = Field(..., min_length=1, max_length=1500)
+    shadow: str = Field(..., min_length=1, max_length=1500)
+    mature_expression: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+
+
 class ProductBoundaries(BaseModel):
     """Product-level storytelling boundaries passed into the prompt."""
 
@@ -127,6 +140,7 @@ class NarrativeInput(BaseModel):
     key_aspects: list[AspectFact]
     dominants: list[DominantInsight] = Field(..., min_length=1)
     inner_mechanism: InnerMechanism
+    house_scenarios: list[HouseScenario] = Field(default_factory=list)
     socionics: SocionicsSummary
     archetype: ArchetypeSummary
     strengths: list[EvidenceBackedClaim]
@@ -180,6 +194,7 @@ class SelfNarrative(BaseModel):
     hero: HeroSection
     dominants: list[DominantInsight] = Field(..., min_length=1)
     inner_mechanism: InnerMechanism
+    house_scenarios: list[HouseScenario] = Field(..., min_length=1)
     sections: list[NarrativeSection] = Field(..., min_length=1)
     career_cta: CareerCTA
     final_summary: str = Field(..., min_length=1, max_length=2000)

@@ -89,6 +89,8 @@ def test_render_report_html_prefers_saved_narrative_before_technical_appendix() 
     assert "Главное о вас" in html
     assert "Открыть Career" in html
     assert "Финальное резюме" in html
+    assert "Жизненные сценарии домов" in html
+    assert "Тень / риск" in html
     assert "Техническое приложение" in html
     assert html.index("Главное о вас") < html.index("Техническое приложение")
     assert html.index("Главное о вас") < html.index("Планеты")

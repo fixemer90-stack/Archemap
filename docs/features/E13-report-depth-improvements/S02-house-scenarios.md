@@ -1,6 +1,6 @@
 # S02 — House Scenario Interpreter
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -45,17 +45,37 @@
 
 ## Критерии приёмки
 
-- [ ] В отчёте есть сценарные описания ключевых домов/положений.
-- [ ] Каждый сценарий содержит manifestation и shadow/risk.
-- [ ] Сценарии основаны на реальных placements из chart snapshot.
-- [ ] Нет raw enum leak (`Sun`, `Virgo`, `conjunction`) в пользовательском тексте.
-- [ ] PDF содержит тот же блок.
-- [ ] Regression check ловит отсутствие house scenarios.
+- [x] В отчёте есть сценарные описания ключевых домов/положений.
+- [x] Каждый сценарий содержит manifestation и shadow/risk.
+- [x] Сценарии основаны на реальных placements из chart snapshot.
+- [x] Нет raw enum leak (`Sun`, `Virgo`, `conjunction`) в пользовательском тексте.
+- [x] PDF содержит тот же блок.
+- [x] Regression check ловит отсутствие house scenarios.
+
+## Реализация
+
+- Добавлен `HouseScenario` и обязательный `SelfNarrative.house_scenarios`.
+- `NarrativeInput.house_scenarios` строится из реальных `chart.planets` placements: планета + знак + дом + evidence id.
+- В `input_builder.py` добавлены house scenario templates для 1–12 домов и приоритет Sun → Moon → Mercury → Venus → Mars → outer planets.
+- Fallback и mock provider возвращают тот же блок, чтобы degraded mode не терял semantic layer.
+- Validator проверяет наличие scenarios, `manifestation`, `shadow` и evidence refs.
+- API response, frontend view-model, `HouseScenariosSection`, PDF template и `check-report-ux.mjs` расширены под web/PDF parity.
+- Prompt contract поднят до `self_story_v3`.
 
 ## Проверка
 
 ```bash
-cd frontend
+# Backend container
+python -m ruff check app/modules/report_narratives app/modules/llm/providers/mock.py app/modules/reports tests/unit/test_report_narratives tests/unit/test_reports
+python -m ruff format --check app/modules/report_narratives app/modules/llm/providers/mock.py app/modules/reports tests/unit/test_report_narratives tests/unit/test_reports
+python -m mypy app/modules/report_narratives app/modules/llm/providers/mock.py app/modules/reports
+python -m pytest tests/unit/test_report_narratives tests/unit/test_reports -q
+python -m pytest tests/unit -q
+
+# Frontend
 node scripts/check-report-ux.mjs
+npm test
 npx tsc --noEmit --pretty false
+npx prettier --check .
+npx eslint .
 ```

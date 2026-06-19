@@ -25,7 +25,6 @@ class MockLLMProvider:
         schema: type[StructuredSchemaT],
     ) -> StructuredSchemaT:
         del prompt
-        del narrative_input
 
         payload = {
             "title": "Ваш внутренний портрет",
@@ -81,6 +80,19 @@ class MockLLMProvider:
                     },
                 ],
             },
+            "house_scenarios": [item.model_dump(mode="json") for item in narrative_input.house_scenarios]
+            or [
+                {
+                    "id": "house_scenario_mock",
+                    "title": "Сценарий дома",
+                    "placement": "Солнце в 9 доме",
+                    "need": "Иметь собственную систему смысла.",
+                    "manifestation": "Вы ищете объяснение, которое собирает опыт в понятную картину.",
+                    "shadow": "Можно откладывать действие ради идеальной системы.",
+                    "mature_expression": "Зрелая форма — применять знание в выборе.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                }
+            ],
             "sections": [
                 {
                     "id": "main_formula",

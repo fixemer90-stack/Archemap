@@ -165,6 +165,15 @@ class TestNarrativeInputBuilder:
         assert result.dominants[0].evidence_ids
         assert len(result.inner_mechanism.steps) == 3
         assert result.inner_mechanism.steps[0].evidence_ids
+        assert result.house_scenarios[0].id == "house_scenario_sun_9"
+        assert result.house_scenarios[0].placement == "Солнце в Деве в 9 доме"
+        assert "систем" in result.house_scenarios[0].need.lower()
+        assert result.house_scenarios[0].manifestation
+        assert result.house_scenarios[0].shadow
+        assert result.house_scenarios[0].mature_expression
+        assert result.house_scenarios[0].evidence_ids == ["sun_virgo_house_9"]
+        assert "Virgo" not in result.house_scenarios[0].placement
+        assert "Sun" not in result.house_scenarios[0].placement
         assert "Virgo" not in result.key_facts[0].label
         assert "Sun" not in result.key_facts[0].label
         assert "trine" not in result.key_aspects[0].label
@@ -183,6 +192,7 @@ class TestNarrativeInputBuilder:
         assert result.calculation_quality.warning == "Время рождения неизвестно"
         assert result.key_facts == []
         assert result.key_aspects == []
+        assert result.house_scenarios == []
         assert result.socionics.type == "unknown"
         assert result.socionics.type_ru == "Не определено"
 

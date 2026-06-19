@@ -128,6 +128,7 @@ def validate_self_narrative(
     errors.extend(_validate_required_sections(candidate, validated_input))
     errors.extend(_validate_dominants(candidate))
     errors.extend(_validate_inner_mechanism(candidate))
+    errors.extend(_validate_house_scenarios(candidate))
     errors.extend(_validate_career_cta(candidate))
     errors.extend(_validate_evidence_refs(candidate, validated_input))
     errors.extend(_validate_career_boundaries(candidate))
@@ -220,6 +221,50 @@ def _validate_inner_mechanism(narrative: SelfNarrative) -> list[NarrativeValidat
                     code="mechanism_step_missing_evidence",
                     message="Every inner mechanism step must reference deterministic evidence ids.",
                     location=f"inner_mechanism.steps[{index}].evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_house_scenarios(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    scenarios = getattr(narrative, "house_scenarios", None)
+    if not scenarios:
+        return [
+            NarrativeValidationError(
+                code="missing_house_scenarios",
+                message="Self narrative must include house scenario interpretations.",
+                location="house_scenarios",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for index, scenario in enumerate(scenarios):
+        if not getattr(scenario, "manifestation", "").strip():
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_house_scenario",
+                    message="Every house scenario must include a manifestation.",
+                    location=f"house_scenarios[{index}].manifestation",
+                    recoverable=True,
+                )
+            )
+        if not getattr(scenario, "shadow", "").strip():
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_house_scenario",
+                    message="Every house scenario must include a shadow/risk.",
+                    location=f"house_scenarios[{index}].shadow",
+                    recoverable=True,
+                )
+            )
+        if not getattr(scenario, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_house_scenario",
+                    message="Every house scenario must reference deterministic evidence ids.",
+                    location=f"house_scenarios[{index}].evidence_ids",
                     recoverable=True,
                 )
             )
@@ -326,6 +371,8 @@ def _allowed_fact_ids(narrative_input: NarrativeInput) -> set[str]:
         allowed.update(dominant.evidence_ids)
     for step in narrative_input.inner_mechanism.steps:
         allowed.update(step.evidence_ids)
+    for scenario in narrative_input.house_scenarios:
+        allowed.update(scenario.evidence_ids)
     for claim in _iter_claim_groups(narrative_input):
         allowed.update(claim.evidence_ids)
     return allowed
@@ -375,6 +422,13 @@ def _iter_evidence_notes(narrative: SelfNarrative) -> Iterable[tuple[str, Eviden
                 f"inner_mechanism.steps[{index}]",
                 EvidenceNote(claim=getattr(step, "body", ""), fact_ids=fact_ids),
             )
+    for index, scenario in enumerate(getattr(narrative, "house_scenarios", []) or []):
+        fact_ids = list(getattr(scenario, "evidence_ids", []) or [])
+        if fact_ids:
+            yield (
+                f"house_scenarios[{index}]",
+                EvidenceNote(claim=getattr(scenario, "manifestation", ""), fact_ids=fact_ids),
+            )
     for index, note in enumerate(narrative.hero.evidence_notes):
         yield (f"hero.evidence_notes[{index}]", note)
     for section_index, section in enumerate(narrative.sections):
@@ -396,6 +450,13 @@ def _iter_non_cta_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str]]:
         for step_index, step in enumerate(inner_mechanism.steps):
             yield (f"inner_mechanism.steps[{step_index}].title", step.title)
             yield (f"inner_mechanism.steps[{step_index}].body", step.body)
+    for scenario_index, scenario in enumerate(getattr(narrative, "house_scenarios", []) or []):
+        yield (f"house_scenarios[{scenario_index}].title", scenario.title)
+        yield (f"house_scenarios[{scenario_index}].placement", scenario.placement)
+        yield (f"house_scenarios[{scenario_index}].need", scenario.need)
+        yield (f"house_scenarios[{scenario_index}].manifestation", scenario.manifestation)
+        yield (f"house_scenarios[{scenario_index}].shadow", scenario.shadow)
+        yield (f"house_scenarios[{scenario_index}].mature_expression", scenario.mature_expression)
     yield ("final_summary", narrative.final_summary)
     for section_index, section in enumerate(narrative.sections):
         yield (f"sections[{section_index}].title", section.title)

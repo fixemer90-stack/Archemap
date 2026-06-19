@@ -93,6 +93,9 @@ class NarrativeResponse(BaseModel):
     status: str
     title: str | None = None
     hero: dict[str, Any] | None = None
+    dominants: list[dict[str, Any]] = Field(default_factory=list)
+    inner_mechanism: dict[str, Any] | None = None
+    house_scenarios: list[dict[str, Any]] = Field(default_factory=list)
     sections: list[dict[str, Any]] = Field(default_factory=list)
     career_cta: dict[str, Any] | None = None
     content: dict[str, Any] | None = None
@@ -171,6 +174,9 @@ def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
         status=narrative.status,
         title=content.get("title"),
         hero=content.get("hero"),
+        dominants=content.get("dominants", []),
+        inner_mechanism=content.get("inner_mechanism"),
+        house_scenarios=content.get("house_scenarios", []),
         sections=content.get("sections", []),
         career_cta=content.get("career_cta"),
         content=content or None,

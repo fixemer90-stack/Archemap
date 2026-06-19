@@ -165,9 +165,43 @@ export interface CareerCTAViewModel {
   button_label: string;
 }
 
+export interface DominantInsightViewModel {
+  id: string;
+  title: string;
+  body: string;
+  evidence_ids: string[];
+}
+
+export interface MechanismStepViewModel {
+  id: string;
+  title: string;
+  body: string;
+  evidence_ids: string[];
+}
+
+export interface InnerMechanismViewModel {
+  title: string;
+  summary: string;
+  steps: MechanismStepViewModel[];
+}
+
+export interface HouseScenarioViewModel {
+  id: string;
+  title: string;
+  placement: string;
+  need: string;
+  manifestation: string;
+  shadow: string;
+  mature_expression: string;
+  evidence_ids: string[];
+}
+
 export interface ReportNarrativeViewModel {
   title: string;
   hero: NarrativeHeroViewModel;
+  dominants: DominantInsightViewModel[];
+  inner_mechanism: InnerMechanismViewModel | null;
+  house_scenarios: HouseScenarioViewModel[];
   sections: NarrativeSectionViewModel[];
   career_cta: CareerCTAViewModel | null;
   final_summary: string;
@@ -597,6 +631,97 @@ function normalizeNarrativeSection(
   };
 }
 
+function normalizeDominants(value: unknown): DominantInsightViewModel[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const id = toStringValue(item.id).trim();
+    const title = toStringValue(item.title).trim();
+    const body = toStringValue(item.body).trim();
+    const evidenceIds = toStringArray(item.evidence_ids).filter(Boolean);
+    if (!id || !title || !body || evidenceIds.length === 0) {
+      return [];
+    }
+    return [{ id, title, body, evidence_ids: evidenceIds }];
+  });
+}
+
+function normalizeInnerMechanism(
+  value: unknown,
+): InnerMechanismViewModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const title = toStringValue(value.title).trim();
+  const summary = toStringValue(value.summary).trim();
+  const steps = Array.isArray(value.steps)
+    ? value.steps.flatMap((item) => {
+        if (!isRecord(item)) {
+          return [];
+        }
+        const id = toStringValue(item.id).trim();
+        const stepTitle = toStringValue(item.title).trim();
+        const body = toStringValue(item.body).trim();
+        const evidenceIds = toStringArray(item.evidence_ids).filter(Boolean);
+        if (!id || !stepTitle || !body || evidenceIds.length === 0) {
+          return [];
+        }
+        return [{ id, title: stepTitle, body, evidence_ids: evidenceIds }];
+      })
+    : [];
+  if (!title || !summary || steps.length === 0) {
+    return null;
+  }
+  return { title, summary, steps };
+}
+
+function normalizeHouseScenarios(value: unknown): HouseScenarioViewModel[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const id = toStringValue(item.id).trim();
+    const title = toStringValue(item.title).trim();
+    const placement = toStringValue(item.placement).trim();
+    const need = toStringValue(item.need).trim();
+    const manifestation = toStringValue(item.manifestation).trim();
+    const shadow = toStringValue(item.shadow).trim();
+    const matureExpression = toStringValue(item.mature_expression).trim();
+    const evidenceIds = toStringArray(item.evidence_ids).filter(Boolean);
+    if (
+      !id ||
+      !title ||
+      !placement ||
+      !need ||
+      !manifestation ||
+      !shadow ||
+      !matureExpression ||
+      evidenceIds.length === 0
+    ) {
+      return [];
+    }
+    return [
+      {
+        id,
+        title,
+        placement,
+        need,
+        manifestation,
+        shadow,
+        mature_expression: matureExpression,
+        evidence_ids: evidenceIds,
+      },
+    ];
+  });
+}
+
 function normalizeCareerCTA(value: unknown): CareerCTAViewModel | null {
   if (!isRecord(value)) {
     return null;
@@ -650,10 +775,22 @@ function normalizeNarrative(
 
   const content = isRecord(narrative.content) ? narrative.content : {};
   const finalSummary = toStringValue(content.final_summary).trim();
+  const dominants = normalizeDominants(
+    narrative.dominants ?? content.dominants,
+  );
+  const innerMechanism = normalizeInnerMechanism(
+    narrative.inner_mechanism ?? content.inner_mechanism,
+  );
+  const houseScenarios = normalizeHouseScenarios(
+    narrative.house_scenarios ?? content.house_scenarios,
+  );
 
   return {
     title: narrative.title ?? toStringValue(content.title, "Ваш личный отчёт"),
     hero,
+    dominants,
+    inner_mechanism: innerMechanism,
+    house_scenarios: houseScenarios,
     sections,
     career_cta: normalizeCareerCTA(narrative.career_cta),
     final_summary: finalSummary,

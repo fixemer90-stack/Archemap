@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from pydantic import ValidationError
 
-from app.modules.report_narratives.schemas import NarrativeInput, SelfNarrative
+from app.modules.report_narratives.schemas import HouseScenario, NarrativeInput, SelfNarrative
 
 
 def make_narrative_input_payload() -> dict[str, object]:
@@ -30,7 +30,12 @@ def make_narrative_input_payload() -> dict[str, object]:
                 "id": "mercury_venus_jupiter_leo_8",
                 "label": "Меркурий, Венера и Юпитер во Льве в 8 доме",
                 "meaning": "Выразительное мышление и эмоциональное влияние.",
-            }
+            },
+            {
+                "id": "sun_virgo_house_9",
+                "label": "Солнце в Деве в 9 доме",
+                "meaning": "Сценарий мировоззрения и личного авторитета.",
+            },
         ],
         "key_aspects": [
             {
@@ -74,6 +79,18 @@ def make_narrative_input_payload() -> dict[str, object]:
                 },
             ],
         },
+        "house_scenarios": [
+            {
+                "id": "house_scenario_sun_9",
+                "title": "Солнце в 9 доме",
+                "placement": "Солнце в Деве в 9 доме",
+                "need": "Иметь собственную систему смысла, а не набор разрозненных фактов.",
+                "manifestation": "Вы ищете методологии, объяснения и язык, который собирает картину мира.",
+                "shadow": "Можно застревать в поиске идеальной системы и откладывать действие.",
+                "mature_expression": "Зрелая форма — превращать знание в понятную позицию и практический выбор.",
+                "evidence_ids": ["sun_virgo_house_9"],
+            }
+        ],
         "socionics": {
             "type": "EIE",
             "type_ru": "ЭИЭ",
@@ -191,6 +208,18 @@ def make_self_narrative_payload() -> dict[str, object]:
                 },
             ],
         },
+        "house_scenarios": [
+            {
+                "id": "house_scenario_sun_9",
+                "title": "Солнце в 9 доме",
+                "placement": "Солнце в Деве в 9 доме",
+                "need": "Иметь собственную систему смысла, а не набор разрозненных фактов.",
+                "manifestation": "Вы ищете методологии, объяснения и язык, который собирает картину мира.",
+                "shadow": "Можно застревать в поиске идеальной системы и откладывать действие.",
+                "mature_expression": "Зрелая форма — превращать знание в понятную позицию и практический выбор.",
+                "evidence_ids": ["sun_virgo_house_9"],
+            }
+        ],
         "sections": [
             {
                 "id": "main_formula",
@@ -240,6 +269,7 @@ class TestNarrativeInputSchema:
         assert result.strengths[0].evidence_ids == ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"]
         assert result.dominants[0].evidence_ids == ["mercury_venus_jupiter_leo_8"]
         assert len(result.inner_mechanism.steps) == 3
+        assert result.house_scenarios[0].manifestation.startswith("Вы ищете методологии")
 
     def test_rejects_unsupported_product(self) -> None:
         payload = make_narrative_input_payload()
@@ -282,6 +312,25 @@ class TestSelfNarrativeSchema:
             assert "inner_mechanism.steps" in str(exc)
         else:
             raise AssertionError("SelfNarrative unexpectedly accepted too-short inner_mechanism")
+
+    def test_house_scenario_requires_manifestation_shadow_and_evidence(self) -> None:
+        try:
+            HouseScenario.model_validate(
+                {
+                    "id": "house_scenario_sun_9",
+                    "title": "Солнце в 9 доме",
+                    "placement": "Солнце в Деве в 9 доме",
+                    "need": "Иметь мировоззрение.",
+                    "manifestation": "Вы ищете систему объяснения.",
+                    "shadow": "Можно откладывать действие.",
+                    "mature_expression": "Зрелая форма — применять знание.",
+                    "evidence_ids": [],
+                }
+            )
+        except ValidationError as exc:
+            assert "evidence_ids" in str(exc)
+        else:
+            raise AssertionError("HouseScenario unexpectedly accepted missing evidence ids")
 
     def test_rejects_unknown_section_id(self) -> None:
         payload = make_self_narrative_payload()

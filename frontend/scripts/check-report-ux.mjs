@@ -18,6 +18,9 @@ const narrativePagePath = resolve(
 const narrativeSectionPath = resolve(
   "src/components/report/narrative-section.tsx",
 );
+const houseScenariosPath = resolve(
+  "src/components/report/house-scenarios-section.tsx",
+);
 const careerCtaPath = resolve("src/components/report/career-cta.tsx");
 const calculationParametersPath = resolve(
   "src/components/report/calculation-parameters.tsx",
@@ -28,6 +31,9 @@ const narrativePage = existsSync(narrativePagePath)
   : "";
 const narrativeSection = existsSync(narrativeSectionPath)
   ? readFileSync(narrativeSectionPath, "utf8")
+  : "";
+const houseScenarios = existsSync(houseScenariosPath)
+  ? readFileSync(houseScenariosPath, "utf8")
   : "";
 const careerCta = existsSync(careerCtaPath)
   ? readFileSync(careerCtaPath, "utf8")
@@ -77,6 +83,7 @@ const requiredFiles = [
   "src/components/report/calculation-parameters.tsx",
   "src/components/report/narrative-section.tsx",
   "src/components/report/career-cta.tsx",
+  "src/components/report/house-scenarios-section.tsx",
   "src/components/report/evidence-notes.tsx",
   "src/lib/glossary/report-glossary.ts",
   "src/lib/report/score-labels.ts",
@@ -116,7 +123,7 @@ const componentSources = requiredFiles
   .filter((file) => file.endsWith(".tsx"))
   .map((file) => readFileSync(resolve(file), "utf8"))
   .join("\n");
-const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${careerCta}\n${calculationParameters}\n${evidenceNotes}`;
+const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${houseScenarios}\n${careerCta}\n${calculationParameters}\n${evidenceNotes}`;
 const allUiSource = `${page}\n${componentSources}`;
 const adapter = readFileSync(resolve("src/lib/report/view-model.ts"), "utf8");
 
@@ -145,6 +152,7 @@ for (const marker of [
 
 const narrativeOrder = [
   "<NarrativeHero",
+  "<HouseScenariosSection",
   "main_formula",
   "world_perception",
   "emotions_and_communication",
@@ -178,6 +186,7 @@ for (const marker of [
   "narrative.hero",
   "narrative.sections",
   "narrative.final_summary",
+  "house_scenarios",
 ]) {
   if (!adapter.includes(marker) && !reportNarrativeSource.includes(marker)) {
     throw new Error(`Missing narrative normalizer/rendering marker: ${marker}`);
@@ -232,6 +241,9 @@ for (const requiredNarrativeText of [
   "Карьерный отчёт",
   "Почему так видно",
   "Финальное резюме",
+  "Жизненные сценарии домов",
+  "Тень / риск",
+  "Зрелая форма",
   "Сохранить этот разбор",
 ]) {
   if (!allUiSource.includes(requiredNarrativeText)) {

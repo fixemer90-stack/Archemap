@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, E501
 """NarrativeInput builder for deterministic reports."""
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from app.modules.report_narratives.schemas import (
     CalculationQuality,
     DominantInsight,
     EvidenceBackedClaim,
+    HouseScenario,
     InnerMechanism,
     MechanismStep,
     NarrativeInput,
@@ -116,6 +117,94 @@ ASPECT_RU = {
     "quincunx": "квинконс",
 }
 
+HOUSE_SCENARIO_TEMPLATES: dict[int, dict[str, str]] = {
+    1: {
+        "need": "Почувствовать право быть видимым и действовать от первого лица.",
+        "manifestation": "Жизненный сценарий часто начинается с темы самопрезентации, первого импульса и личной инициативы.",
+        "shadow": "Можно слишком быстро отождествляться с первым впечатлением и реагировать раньше, чем ситуация понята.",
+        "mature_expression": "Зрелая форма — выбирать ясную позицию и проявляться без необходимости всё время доказывать своё право на место.",
+    },
+    2: {
+        "need": "Иметь устойчивую опору: ценности, ресурсы, телесный ритм и чувство собственной достаточности.",
+        "manifestation": "Паттерн проявляется через отношение к стабильности, накоплению сил и тому, что действительно ценно.",
+        "shadow": "Можно застревать в контроле безопасности или измерять себя только через полезность и ресурс.",
+        "mature_expression": "Зрелая форма — строить устойчивость без внутреннего сжатия и признавать ценность до внешнего подтверждения.",
+    },
+    3: {
+        "need": "Понимать происходящее через обмен, обучение, наблюдение и точную формулировку.",
+        "manifestation": "Жизненный сценарий разворачивается через разговоры, короткие связи, обучение и сбор живой информации.",
+        "shadow": "Можно дробить внимание, объяснять вместо чувствовать или оставаться в бесконечном анализе деталей.",
+        "mature_expression": "Зрелая форма — превращать поток впечатлений в ясный язык и своевременное действие.",
+    },
+    4: {
+        "need": "Иметь внутренний дом: эмоциональную базу, память, корни и безопасное место возвращения.",
+        "manifestation": "Сильные переживания часто связываются с семьёй, приватностью, близким кругом и ощущением принадлежности.",
+        "shadow": "Можно уходить в защиту, прошлое или зависимость от привычной эмоциональной среды.",
+        "mature_expression": "Зрелая форма — создавать устойчивую внутреннюю опору, не замыкаясь в старом сценарии.",
+    },
+    5: {
+        "need": "Выражать себя творчески, играть, любить и оставлять личный след.",
+        "manifestation": "Сценарий заметен в желании быть живым автором происходящего, а не только исполнителем чужой формы.",
+        "shadow": "Можно зависеть от реакции аудитории или драматизировать там, где нужна простая честность.",
+        "mature_expression": "Зрелая форма — создавать и любить без постоянной проверки собственной яркости.",
+    },
+    6: {
+        "need": "Собрать жизнь в рабочий порядок: режим, навык, заботу о теле и полезность действий.",
+        "manifestation": "Паттерн проявляется через качество ежедневных процессов, внимание к деталям и способность улучшать систему.",
+        "shadow": "Можно перегружаться исправлением несовершенств и превращать заботу в контроль.",
+        "mature_expression": "Зрелая форма — поддерживать порядок как ресурс, а не как бесконечный экзамен на правильность.",
+    },
+    7: {
+        "need": "Видеть себя через встречу с другим: партнёрство, диалог, выбор дистанции и договорённость.",
+        "manifestation": "Ключевые ситуации часто запускаются через отношения, союзников, оппонентов и необходимость учитывать вторую сторону.",
+        "shadow": "Можно слишком подстраиваться под отражение другого или ожидать, что контакт сам задаст личную позицию.",
+        "mature_expression": "Зрелая форма — быть в близком диалоге, не теряя собственного центра.",
+    },
+    8: {
+        "need": "Понимать глубину переживаний, доверие, кризисы, границы и обмен силой.",
+        "manifestation": "Жизненный сценарий часто связан с интенсивностью, тайными мотивами, близостью и способностью проходить трансформации.",
+        "shadow": "Можно застревать в подозрительности, эмоциональном контроле или драматизации риска.",
+        "mature_expression": "Зрелая форма — выдерживать интенсивность без разрушения доверия и превращать кризис в ясность.",
+    },
+    9: {
+        "need": "Иметь собственную систему мировоззрения, а не просто набор фактов.",
+        "manifestation": "Вы ищете методологии, объяснения, образование и язык, который собирает картину мира.",
+        "shadow": "Можно застревать в поиске правильной системы и откладывать действие.",
+        "mature_expression": "Зрелая форма — превращать знание в понятную позицию и практический выбор.",
+    },
+    10: {
+        "need": "Видеть направление, ответственность, социальную роль и форму результата.",
+        "manifestation": "Паттерн проявляется через отношение к признанию, ответственности, статусу и долгосрочной траектории.",
+        "shadow": "Можно превращать жизнь в проект достижений или слишком зависеть от внешней оценки результата.",
+        "mature_expression": "Зрелая форма — строить заметный результат без потери человеческого масштаба и внутренней честности.",
+    },
+    11: {
+        "need": "Найти своё место среди людей, идей, сообществ и будущих возможностей.",
+        "manifestation": "Сценарий разворачивается через друзей, группы, проекты, сети и чувство общей перспективы.",
+        "shadow": "Можно растворяться в группе, жить ожиданием будущего или путать мечту с конкретным шагом.",
+        "mature_expression": "Зрелая форма — соединять личную уникальность с вкладом в общую систему.",
+    },
+    12: {
+        "need": "Слышать скрытый внутренний слой: тишину, бессознательные мотивы, одиночество и тонкую эмпатию.",
+        "manifestation": "Паттерн часто проявляется через глубокую чувствительность, приватные переживания и потребность периодически уходить внутрь.",
+        "shadow": "Можно исчезать из прямого действия, копить невыраженное напряжение или спасать других ценой себя.",
+        "mature_expression": "Зрелая форма — сохранять тонкость восприятия и при этом оставаться в ясных границах реальной жизни.",
+    },
+}
+
+SCENARIO_PLANET_PRIORITY = {
+    "Sun": 0,
+    "Moon": 1,
+    "Mercury": 2,
+    "Venus": 3,
+    "Mars": 4,
+    "Jupiter": 5,
+    "Saturn": 6,
+    "Uranus": 7,
+    "Neptune": 8,
+    "Pluto": 9,
+}
+
 SELF_ALLOWED_SECTIONS = [
     "main_formula",
     "world_perception",
@@ -168,6 +257,7 @@ def build_narrative_input(report: Any) -> NarrativeInput:
     if not dominants:
         dominants = _fallback_dominants_from_claims(grouped_claims)
     inner_mechanism = _build_inner_mechanism(dominants)
+    house_scenarios = _build_house_scenarios(chart, key_facts)
 
     socionics_data = report_data.get("socionics") or {}
     socionics = SocionicsSummary(
@@ -202,6 +292,7 @@ def build_narrative_input(report: Any) -> NarrativeInput:
         key_aspects=key_aspects,
         dominants=dominants,
         inner_mechanism=inner_mechanism,
+        house_scenarios=house_scenarios,
         socionics=socionics,
         archetype=archetype,
         strengths=grouped_claims["strengths"],
@@ -258,6 +349,67 @@ def _aspect_fact(aspect: dict[str, Any]) -> AspectFact:
     orb = f"{orb_value:.2f}°" if isinstance(orb_value, int | float) else str(orb_value)
     meaning = f"Аспект {left.lower()} и {right.lower()} показывает связь между двумя психологическими акцентами."
     return AspectFact(id=fact_id, label=f"{left} {aspect_name} {right}", orb=orb, meaning=meaning)
+
+
+def _build_house_scenarios(chart: dict[str, Any], key_facts: list[AstroFact]) -> list[HouseScenario]:
+    planets = [planet for planet in chart.get("planets", []) if planet.get("name") and planet.get("sign")]
+    fact_ids_by_planet = _fact_ids_by_planet(key_facts)
+    scenario_planets = sorted(
+        planets,
+        key=lambda planet: (
+            SCENARIO_PLANET_PRIORITY.get(str(planet.get("name")), 99),
+            int(planet.get("house", 99)) if isinstance(planet.get("house"), int) else 99,
+        ),
+    )
+    scenarios: list[HouseScenario] = []
+    seen: set[str] = set()
+    for planet in scenario_planets:
+        scenario = _house_scenario_for_planet(planet, fact_ids_by_planet)
+        if scenario is None or scenario.id in seen:
+            continue
+        seen.add(scenario.id)
+        scenarios.append(scenario)
+        if len(scenarios) >= 5:
+            break
+    return scenarios
+
+
+def _house_scenario_for_planet(
+    planet: dict[str, Any],
+    fact_ids_by_planet: dict[str, str],
+) -> HouseScenario | None:
+    planet_name_raw = str(planet.get("name"))
+    sign_raw = str(planet.get("sign"))
+    house = planet.get("house")
+    if not isinstance(house, int) or house not in HOUSE_SCENARIO_TEMPLATES:
+        return None
+    fact_id = fact_ids_by_planet.get(planet_name_raw)
+    if not fact_id:
+        return None
+    planet_name = PLANET_RU.get(planet_name_raw, planet_name_raw)
+    sign_name = SIGN_RU.get(sign_raw, sign_raw)
+    template = HOUSE_SCENARIO_TEMPLATES[house]
+    return HouseScenario(
+        id=f"house_scenario_{planet_name_raw.lower()}_{house}",
+        title=f"{planet_name} в {house} доме",
+        placement=f"{planet_name} в {sign_name} в {house} доме",
+        need=template["need"],
+        manifestation=_planet_contextualize(planet_name, template["manifestation"]),
+        shadow=template["shadow"],
+        mature_expression=template["mature_expression"],
+        evidence_ids=[fact_id],
+    )
+
+
+def _planet_contextualize(planet_name: str, manifestation: str) -> str:
+    planet_context = {
+        "Солнце": "Для Солнца это становится способом строить личный авторитет и чувство направления. ",
+        "Луна": "Для Луны это окрашивает эмоциональную безопасность, привычные реакции и способ восстановления. ",
+        "Меркурий": "Для Меркурия это проявляется в мышлении, речи, обучении и выборе языка описания. ",
+        "Венера": "Для Венеры это влияет на вкус, близость, симпатию и способ выбирать ценное. ",
+        "Марс": "Для Марса это задаёт стиль действия, напора, защиты границ и прямой реакции. ",
+    }
+    return f"{planet_context.get(planet_name, '')}{manifestation}"
 
 
 def _build_dominants(

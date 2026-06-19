@@ -62,6 +62,7 @@ def build_deterministic_self_fallback(
         ),
         dominants=narrative_input.dominants,
         inner_mechanism=narrative_input.inner_mechanism,
+        house_scenarios=narrative_input.house_scenarios,
         sections=sections,
         career_cta=CareerCTA(
             title="Отдельный отчёт Career",

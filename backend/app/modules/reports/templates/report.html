@@ -195,6 +195,23 @@
       {% endif %}
     </div>
 
+    {% if narrative.house_scenarios %}
+    <div class="card">
+      <h2>Жизненные сценарии домов</h2>
+      {% for scenario in narrative.house_scenarios %}
+      <div class="claim">
+        <h3>{{ scenario.title }}</h3>
+        <p class="muted">{{ scenario.placement }}</p>
+        <p><strong>Потребность:</strong> {{ scenario.need }}</p>
+        <p><strong>Как это видно в жизни:</strong> {{ scenario.manifestation }}</p>
+        <p><strong>Тень / риск:</strong> {{ scenario.shadow }}</p>
+        <p><strong>Зрелая форма:</strong> {{ scenario.mature_expression }}</p>
+        <div class="evidence">Основания: {{ scenario.evidence_ids|join(', ') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     {% for section in narrative.sections %}
     <div class="card">
       <h2>{{ section.title }}</h2>

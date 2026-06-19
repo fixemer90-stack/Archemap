@@ -78,6 +78,18 @@ def make_narrative_input() -> NarrativeInput:
                     },
                 ],
             },
+            "house_scenarios": [
+                {
+                    "id": "house_scenario_sun_9",
+                    "title": "Солнце в 9 доме",
+                    "placement": "Солнце в Деве в 9 доме",
+                    "need": "Иметь собственную систему смысла.",
+                    "manifestation": "Вы ищете методологии и объяснения.",
+                    "shadow": "Можно откладывать действие ради идеальной системы.",
+                    "mature_expression": "Зрелая форма — применять знание в выборе.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                }
+            ],
             "socionics": {
                 "type": "EIE",
                 "type_ru": "ЭИЭ",
@@ -143,7 +155,7 @@ def make_narrative_input() -> NarrativeInput:
 
 class TestPromptTemplate:
     def test_version_constant_is_stable(self) -> None:
-        assert SELF_STORY_PROMPT_VERSION == "self_story_v2"
+        assert SELF_STORY_PROMPT_VERSION == "self_story_v3"
 
     def test_template_contains_required_guardrails(self) -> None:
         template = load_prompt_template(SELF_STORY_PROMPT_VERSION)
@@ -156,7 +168,9 @@ class TestPromptTemplate:
         assert "не давай список профессий" in template
         assert "не описывай сексуальность графично" in template
         assert "только для взрослых пользователей" in template
-        assert "self_story_v2" in template
+        assert "house_scenarios" in template
+        assert "потребность, жизненное проявление, тень/риск и зрелую форму" in template
+        assert "self_story_v3" in template
 
 
 class TestBuildSelfStoryPrompt:
@@ -166,6 +180,7 @@ class TestBuildSelfStoryPrompt:
         assert '"product": "self"' in prompt
         assert '"name": "Алексей"' in prompt
         assert '"career_policy": "В Self-отчёте карьеру затрагивать кратко и завершать CTA на Career."' in prompt
+        assert '"house_scenarios": [' in prompt
 
     def test_builder_keeps_required_output_and_safety_rules(self) -> None:
         prompt = build_self_story_prompt(make_narrative_input())

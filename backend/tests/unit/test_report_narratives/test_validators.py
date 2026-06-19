@@ -86,6 +86,24 @@ class TestValidateSelfNarrative:
 
         assert any(error.code == "invalid_inner_mechanism" for error in errors)
 
+    def test_rejects_house_scenario_without_manifestation_shadow_or_evidence(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.house_scenarios[0].manifestation = ""
+        narrative.house_scenarios[0].shadow = ""
+        narrative.house_scenarios[0].evidence_ids = []
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "invalid_house_scenario" for error in errors)
+
+    def test_rejects_house_scenario_unknown_evidence_ref(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.house_scenarios[0].evidence_ids = ["unknown_house_fact"]
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "unknown_evidence_ref" for error in errors)
+
     def test_rejects_missing_career_cta(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
         invalid_narrative = narrative.model_copy(update={"career_cta": None})

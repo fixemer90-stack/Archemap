@@ -23,6 +23,9 @@ export interface NarrativeApiResponse {
   status: string;
   title: string | null;
   hero: Record<string, unknown> | null;
+  dominants: Array<Record<string, unknown>>;
+  inner_mechanism: Record<string, unknown> | null;
+  house_scenarios: Array<Record<string, unknown>>;
   sections: Array<Record<string, unknown>>;
   career_cta: Record<string, unknown> | null;
   content: Record<string, unknown> | null;

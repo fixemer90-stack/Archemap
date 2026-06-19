@@ -1,5 +1,6 @@
 import { CalculationParameters } from "@/components/report/calculation-parameters";
 import { CareerCTA } from "@/components/report/career-cta";
+import { HouseScenariosSection } from "@/components/report/house-scenarios-section";
 import {
   NarrativeHero,
   NarrativeSection,
@@ -23,6 +24,7 @@ interface ReportNarrativePageProps {
 
 const NARRATIVE_RENDER_ORDER = [
   "<NarrativeHero",
+  "<HouseScenariosSection",
   "main_formula",
   "world_perception",
   "emotions_and_communication",
@@ -97,6 +99,7 @@ export function ReportNarrativePage({
     <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6">
       <NarrativeHero hero={narrative.hero} />
       <GlossaryHelpStrip />
+      <HouseScenariosSection scenarios={narrative.house_scenarios} />
       {orderedSections.map((section) => (
         <NarrativeSection key={section.id} section={section} />
       ))}

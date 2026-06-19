@@ -133,6 +133,22 @@ class SchemaInvalidProvider:
         )
 
 
+class TimeoutProvider:
+    model_name = "deepseek-v4-pro"
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[StructuredSchemaT],
+    ) -> StructuredSchemaT:
+        del prompt
+        del narrative_input
+        del schema
+        raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout")
+
+
 def test_report_tasks_import_registers_profile_table_in_metadata() -> None:
     output = subprocess.check_output(
         [
@@ -379,6 +395,29 @@ class TestReportNarrativeService:
         assert result.status == "ready"
         assert result.content is not None
         assert result.error_message == "invalid_response_fallback"
+        assert report_fixture.status == "ready"
+        assert report_fixture.error_message is None
+        assert "Сейчас текстовая версия недоступна" in result.content["hero"]["body"]
+
+    @pytest.mark.asyncio
+    async def test_timeout_provider_response_falls_back_to_ready_deterministic_narrative(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        service = ReportNarrativeService(db=db, llm_provider=TimeoutProvider())
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "ready"
+        assert result.content is not None
+        assert result.error_message == "provider_timeout_fallback"
         assert report_fixture.status == "ready"
         assert report_fixture.error_message is None
         assert "Сейчас текстовая версия недоступна" in result.content["hero"]["body"]

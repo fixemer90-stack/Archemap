@@ -15,7 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, settings
 from app.core.exceptions import NotFoundError
-from app.modules.llm.exceptions import LLMDisabledError, LLMInvalidResponseError
+from app.modules.llm.exceptions import (
+    LLMDisabledError,
+    LLMInvalidResponseError,
+    LLMProviderUnavailableError,
+    LLMTimeoutError,
+)
 from app.modules.llm.provider import LLMProvider, get_llm_provider
 from app.modules.report_narratives.fallback import build_deterministic_self_fallback
 from app.modules.report_narratives.hash import compute_input_hash
@@ -173,6 +178,33 @@ class ReportNarrativeService:
                     reason="Текстовая версия временно недоступна, поэтому показано безопасное резервное резюме.",
                 ),
                 reason="invalid_response_fallback",
+                duration_ms=_duration_ms(started_at),
+                recovery_action="deterministic_fallback",
+            )
+        except (LLMTimeoutError, LLMProviderUnavailableError) as exc:
+            logger.warning(
+                "report_narrative_generation_degraded",
+                report_id=str(report.id),
+                narrative_id=str(narrative.id),
+                product=report.product,
+                failure_kind="provider_timeout" if isinstance(exc, LLMTimeoutError) else "provider_unavailable",
+                recovery_action="deterministic_fallback",
+                duration_ms=_duration_ms(started_at),
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+            if isinstance(exc, LLMTimeoutError):
+                reason = "provider_timeout_fallback"
+            else:
+                reason = "provider_unavailable_fallback"
+            return await self._save_ready_narrative(
+                report=report,
+                narrative=narrative,
+                payload=build_deterministic_self_fallback(
+                    narrative_input,
+                    reason="Текстовая версия временно недоступна, поэтому показано безопасное резервное резюме.",
+                ),
+                reason=reason,
                 duration_ms=_duration_ms(started_at),
                 recovery_action="deterministic_fallback",
             )

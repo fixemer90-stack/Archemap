@@ -302,7 +302,9 @@ class TestSelfNarrativeSchema:
             "mercury_venus_jupiter_leo_8",
             "moon_trine_mercury",
         ]
-        assert result.hero.evidence_notes[0].interpretation.startswith("Тригон показывает")
+        interpretation = result.hero.evidence_notes[0].interpretation
+        assert interpretation is not None
+        assert interpretation.startswith("Тригон показывает")
         assert result.hero.evidence_notes[0].limitation_fact_ids == ["moon_trine_mercury"]
         assert result.dominants[0].title == "Доминирующая стихия: Огонь"
         assert result.inner_mechanism.steps[0].id == "mechanism_notice"

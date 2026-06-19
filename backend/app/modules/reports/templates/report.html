@@ -190,6 +190,8 @@
         <strong>Почему так видно</strong><br>
         {% for note in narrative.hero.evidence_notes %}
         {{ note.claim }} — {{ note.fact_ids|join(', ') }}<br>
+        {% if note.interpretation %}<span>{{ note.interpretation }}</span><br>{% endif %}
+        {% if note.limitation %}<strong>Ограничение:</strong> {{ note.limitation }}{% if note.limitation_fact_ids %} — {{ note.limitation_fact_ids|join(', ') }}{% endif %}<br>{% endif %}
         {% endfor %}
       </div>
       {% endif %}
@@ -228,6 +230,8 @@
         <strong>Почему так видно</strong><br>
         {% for note in section.evidence_notes %}
         {{ note.claim }} — {{ note.fact_ids|join(', ') }}<br>
+        {% if note.interpretation %}<span>{{ note.interpretation }}</span><br>{% endif %}
+        {% if note.limitation %}<strong>Ограничение:</strong> {{ note.limitation }}{% if note.limitation_fact_ids %} — {{ note.limitation_fact_ids|join(', ') }}{% endif %}<br>{% endif %}
         {% endfor %}
       </div>
       {% endif %}

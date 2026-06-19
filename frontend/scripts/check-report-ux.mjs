@@ -200,6 +200,22 @@ if (
   throw new Error("Evidence notes must render as a collapsed disclosure");
 }
 
+for (const requiredEvidenceTrace of [
+  "interpretation",
+  "limitation",
+  "limitation_fact_ids",
+  "Ограничение",
+]) {
+  if (
+    !evidenceNotes.includes(requiredEvidenceTrace) &&
+    !adapter.includes(requiredEvidenceTrace)
+  ) {
+    throw new Error(
+      `Missing evidence trace UI/adapter marker: ${requiredEvidenceTrace}`,
+    );
+  }
+}
+
 if (!reportNarrativeSource.includes("grid-cols-1")) {
   throw new Error(
     "Narrative report must keep a mobile-first single-column layout",

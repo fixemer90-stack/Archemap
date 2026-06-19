@@ -129,6 +129,7 @@ def validate_self_narrative(
     errors.extend(_validate_dominants(candidate))
     errors.extend(_validate_inner_mechanism(candidate))
     errors.extend(_validate_house_scenarios(candidate))
+    errors.extend(_validate_key_section_evidence(candidate))
     errors.extend(_validate_career_cta(candidate))
     errors.extend(_validate_evidence_refs(candidate, validated_input))
     errors.extend(_validate_career_boundaries(candidate))
@@ -271,6 +272,23 @@ def _validate_house_scenarios(narrative: SelfNarrative) -> list[NarrativeValidat
     return errors
 
 
+def _validate_key_section_evidence(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    for section_index, section in enumerate(narrative.sections):
+        if section.id != "main_formula":
+            continue
+        if section.evidence_notes:
+            return []
+        return [
+            NarrativeValidationError(
+                code="missing_section_evidence",
+                message="Main narrative formula must include collapsed evidence notes.",
+                location=f"sections[{section_index}].evidence_notes",
+                recoverable=True,
+            )
+        ]
+    return []
+
+
 def _validate_career_cta(narrative: SelfNarrative) -> list[NarrativeValidationError]:
     career_cta = getattr(narrative, "career_cta", None)
     if career_cta is not None:
@@ -292,16 +310,21 @@ def _validate_evidence_refs(
     allowed_fact_ids = _allowed_fact_ids(narrative_input)
     errors: list[NarrativeValidationError] = []
     for location, note in _iter_evidence_notes(narrative):
-        unknown_fact_ids = [fact_id for fact_id in note.fact_ids if fact_id not in allowed_fact_ids]
-        if unknown_fact_ids:
-            errors.append(
-                NarrativeValidationError(
-                    code="unknown_evidence_ref",
-                    message=f"Narrative references unknown fact ids: {', '.join(unknown_fact_ids)}.",
-                    location=location,
-                    recoverable=True,
+        evidence_groups = [
+            ("fact_ids", note.fact_ids),
+            ("limitation_fact_ids", note.limitation_fact_ids),
+        ]
+        for field_name, fact_ids in evidence_groups:
+            unknown_fact_ids = [fact_id for fact_id in fact_ids if fact_id not in allowed_fact_ids]
+            if unknown_fact_ids:
+                errors.append(
+                    NarrativeValidationError(
+                        code="unknown_evidence_ref",
+                        message=f"Narrative references unknown fact ids: {', '.join(unknown_fact_ids)}.",
+                        location=f"{location}.{field_name}",
+                        recoverable=True,
+                    )
                 )
-            )
     return errors
 
 

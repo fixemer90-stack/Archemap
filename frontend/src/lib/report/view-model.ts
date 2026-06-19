@@ -140,6 +140,9 @@ export type SelfNarrativeSectionId = (typeof allowedSelfSectionIds)[number];
 export interface NarrativeEvidenceNote {
   claim: string;
   fact_ids: string[];
+  interpretation: string | null;
+  limitation: string | null;
+  limitation_fact_ids: string[];
 }
 
 export interface NarrativeHeroViewModel {
@@ -582,7 +585,17 @@ function normalizeEvidenceNotes(value: unknown): NarrativeEvidenceNote[] {
     if (!claim || factIds.length === 0) {
       return [];
     }
-    return [{ claim, fact_ids: factIds }];
+    return [
+      {
+        claim,
+        fact_ids: factIds,
+        interpretation: toStringValue(item.interpretation).trim() || null,
+        limitation: toStringValue(item.limitation).trim() || null,
+        limitation_fact_ids: toStringArray(item.limitation_fact_ids).filter(
+          Boolean,
+        ),
+      },
+    ];
   });
 }
 

@@ -171,6 +171,9 @@ def make_self_narrative_payload() -> dict[str, object]:
                 {
                     "claim": "Эмоции и речь работают в связке.",
                     "fact_ids": ["moon_trine_mercury"],
+                    "interpretation": "Тригон показывает, что эмоции и речь легче соединяются в связное объяснение.",
+                    "limitation": "Это не отменяет перегрузку речи в напряжённых ситуациях.",
+                    "limitation_fact_ids": ["moon_trine_mercury"],
                 }
             ],
         },
@@ -299,6 +302,8 @@ class TestSelfNarrativeSchema:
             "mercury_venus_jupiter_leo_8",
             "moon_trine_mercury",
         ]
+        assert result.hero.evidence_notes[0].interpretation.startswith("Тригон показывает")
+        assert result.hero.evidence_notes[0].limitation_fact_ids == ["moon_trine_mercury"]
         assert result.dominants[0].title == "Доминирующая стихия: Огонь"
         assert result.inner_mechanism.steps[0].id == "mechanism_notice"
 

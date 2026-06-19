@@ -91,6 +91,9 @@ def test_render_report_html_prefers_saved_narrative_before_technical_appendix() 
     assert "Финальное резюме" in html
     assert "Жизненные сценарии домов" in html
     assert "Тень / риск" in html
+    assert "Ограничение" in html
+    assert "Это не отменяет перегрузку речи" in html
+    assert "moon_trine_mercury" in html
     assert "Техническое приложение" in html
     assert html.index("Главное о вас") < html.index("Техническое приложение")
     assert html.index("Главное о вас") < html.index("Планеты")

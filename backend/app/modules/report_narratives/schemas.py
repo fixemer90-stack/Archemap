@@ -152,10 +152,13 @@ class NarrativeInput(BaseModel):
 
 
 class EvidenceNote(BaseModel):
-    """Visible narrative claim with evidence references."""
+    """Visible narrative claim with evidence references and optional limitation."""
 
     claim: str = Field(..., min_length=1, max_length=1500)
     fact_ids: list[str] = Field(..., min_length=1)
+    interpretation: str | None = Field(default=None, max_length=1500)
+    limitation: str | None = Field(default=None, max_length=1500)
+    limitation_fact_ids: list[str] = Field(default_factory=list)
 
 
 class HeroSection(BaseModel):

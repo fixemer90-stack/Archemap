@@ -20,6 +20,9 @@ def test_builds_deterministic_fallback_with_explicit_degraded_message() -> None:
     assert "текстовая версия" in fallback.hero.body.lower()
     assert "недоступ" in fallback.hero.body.lower()
     assert fallback.sections[0].id == "main_formula"
+    assert fallback.dominants
+    assert fallback.dominants[0].evidence_ids
+    assert len(fallback.inner_mechanism.steps) == 3
     assert [section.id for section in fallback.sections] == narrative_input.product_boundaries.allowed_sections
     assert fallback.career_cta.button_label == "Открыть Career"
     assert fallback.final_summary

@@ -46,6 +46,40 @@ def make_narrative_input() -> NarrativeInput:
                     "meaning": "Связь эмоций и речи.",
                 }
             ],
+            "dominants": [
+                {
+                    "id": "dominant_fire",
+                    "title": "Доминирующая стихия: Огонь",
+                    "body": "Огонь задаёт способ быстро включаться через инициативу и выразительность.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                }
+            ],
+            "inner_mechanism": {
+                "title": "Внутренний механизм личности",
+                "summary": "Паттерн разворачивается от импульса к выражению и затем к осмыслению реакции среды.",
+                "steps": [
+                    {
+                        "id": "mechanism_notice",
+                        "title": "Сначала вы считываете эмоциональный фон",
+                        "body": "Вы быстро замечаете настроение и скрытый смысл ситуации.",
+                        "evidence_ids": ["moon_trine_mercury"],
+                    },
+                    {
+                        "id": "mechanism_express",
+                        "title": "Затем формулируете образно и заразительно",
+                        "body": "Смысл становится заметным через речь, интонацию и образ.",
+                        "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    },
+                    {
+                        "id": "mechanism_integrate",
+                        "title": "После этого ищете форму для переживания",
+                        "body": (
+                            "Внутреннее напряжение легче выдерживать, когда оно названо и собрано в понятную историю."
+                        ),
+                        "evidence_ids": ["moon_trine_mercury"],
+                    },
+                ],
+            },
             "socionics": {
                 "type": "EIE",
                 "type_ru": "ЭИЭ",

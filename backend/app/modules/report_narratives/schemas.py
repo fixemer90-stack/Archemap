@@ -83,6 +83,32 @@ class EvidenceBackedClaim(BaseModel):
     evidence_ids: list[str] = Field(..., min_length=1)
 
 
+class DominantInsight(BaseModel):
+    """Top-level chart/narrative dominant backed by deterministic evidence."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+
+
+class MechanismStep(BaseModel):
+    """One step in the user's inner psychological mechanism."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+
+
+class InnerMechanism(BaseModel):
+    """Step-by-step behavioral mechanism inferred from deterministic evidence."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    summary: str = Field(..., min_length=1, max_length=1500)
+    steps: list[MechanismStep] = Field(..., min_length=3, max_length=5)
+
+
 class ProductBoundaries(BaseModel):
     """Product-level storytelling boundaries passed into the prompt."""
 
@@ -99,6 +125,8 @@ class NarrativeInput(BaseModel):
     calculation_quality: CalculationQuality
     key_facts: list[AstroFact]
     key_aspects: list[AspectFact]
+    dominants: list[DominantInsight] = Field(..., min_length=1)
+    inner_mechanism: InnerMechanism
     socionics: SocionicsSummary
     archetype: ArchetypeSummary
     strengths: list[EvidenceBackedClaim]
@@ -150,6 +178,8 @@ class SelfNarrative(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=200)
     hero: HeroSection
+    dominants: list[DominantInsight] = Field(..., min_length=1)
+    inner_mechanism: InnerMechanism
     sections: list[NarrativeSection] = Field(..., min_length=1)
     career_cta: CareerCTA
     final_summary: str = Field(..., min_length=1, max_length=2000)

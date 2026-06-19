@@ -70,6 +70,22 @@ class TestValidateSelfNarrative:
 
         assert any(error.code == "unknown_evidence_ref" for error in errors)
 
+    def test_rejects_dominant_without_evidence_refs(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.dominants[0].evidence_ids = []
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "dominant_missing_evidence" for error in errors)
+
+    def test_rejects_inner_mechanism_outside_three_to_five_steps(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.inner_mechanism.steps = narrative.inner_mechanism.steps[:2]
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "invalid_inner_mechanism" for error in errors)
+
     def test_rejects_missing_career_cta(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
         invalid_narrative = narrative.model_copy(update={"career_cta": None})

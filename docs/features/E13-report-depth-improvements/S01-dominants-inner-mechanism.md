@@ -1,6 +1,6 @@
 # S01 — Dominants and Inner Mechanism Contract
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -49,13 +49,13 @@
 
 ## Критерии приёмки
 
-- [ ] В `NarrativeInput` есть достаточные данные для доминант и внутреннего механизма.
-- [ ] Self narrative содержит обязательный блок `dominants`.
-- [ ] Self narrative содержит обязательный блок `inner_mechanism` с 3–5 шагами.
-- [ ] Каждый пункт доминант ссылается на известные evidence ids.
-- [ ] Validator отклоняет доминанту без evidence refs.
-- [ ] Fallback narrative не подставляет выдуманные факты.
-- [ ] Tests проходят в Docker backend.
+- [x] В `NarrativeInput` есть достаточные данные для доминант и внутреннего механизма.
+- [x] Self narrative содержит обязательный блок `dominants`.
+- [x] Self narrative содержит обязательный блок `inner_mechanism` с 3–5 шагами.
+- [x] Каждый пункт доминант ссылается на известные evidence ids.
+- [x] Validator отклоняет доминанту без evidence refs.
+- [x] Fallback narrative не подставляет выдуманные факты.
+- [x] Tests проходят в Docker backend.
 
 ## Проверка
 

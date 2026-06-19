@@ -11,7 +11,10 @@ from app.modules.report_narratives.schemas import (
     AspectFact,
     AstroFact,
     CalculationQuality,
+    DominantInsight,
     EvidenceBackedClaim,
+    InnerMechanism,
+    MechanismStep,
     NarrativeInput,
     NarrativeProfile,
     ProductBoundaries,
@@ -44,6 +47,64 @@ SIGN_RU = {
     "Capricorn": "Козероге",
     "Aquarius": "Водолее",
     "Pisces": "Рыбах",
+}
+
+SIGN_RU_NOMINATIVE = {
+    "Aries": "Овен",
+    "Taurus": "Телец",
+    "Gemini": "Близнецы",
+    "Cancer": "Рак",
+    "Leo": "Лев",
+    "Virgo": "Дева",
+    "Libra": "Весы",
+    "Scorpio": "Скорпион",
+    "Sagittarius": "Стрелец",
+    "Capricorn": "Козерог",
+    "Aquarius": "Водолей",
+    "Pisces": "Рыбы",
+}
+
+ELEMENT_RU = {
+    "fire": "Огонь",
+    "earth": "Земля",
+    "air": "Воздух",
+    "water": "Вода",
+}
+
+MODALITY_RU = {
+    "cardinal": "кардинальность",
+    "fixed": "фиксированность",
+    "mutable": "мутабельность",
+}
+
+SIGN_ELEMENT = {
+    "Aries": "fire",
+    "Leo": "fire",
+    "Sagittarius": "fire",
+    "Taurus": "earth",
+    "Virgo": "earth",
+    "Capricorn": "earth",
+    "Gemini": "air",
+    "Libra": "air",
+    "Aquarius": "air",
+    "Cancer": "water",
+    "Scorpio": "water",
+    "Pisces": "water",
+}
+
+SIGN_MODALITY = {
+    "Aries": "cardinal",
+    "Cancer": "cardinal",
+    "Libra": "cardinal",
+    "Capricorn": "cardinal",
+    "Taurus": "fixed",
+    "Leo": "fixed",
+    "Scorpio": "fixed",
+    "Aquarius": "fixed",
+    "Gemini": "mutable",
+    "Virgo": "mutable",
+    "Sagittarius": "mutable",
+    "Pisces": "mutable",
 }
 
 ASPECT_RU = {
@@ -102,8 +163,11 @@ def build_narrative_input(report: Any) -> NarrativeInput:
     key_aspects = [
         _aspect_fact(aspect) for aspect in chart.get("aspects", []) if aspect.get("planet_a") and aspect.get("planet_b")
     ]
-
     grouped_claims = _group_claims(claims)
+    dominants = _build_dominants(chart, key_facts, key_aspects)
+    if not dominants:
+        dominants = _fallback_dominants_from_claims(grouped_claims)
+    inner_mechanism = _build_inner_mechanism(dominants)
 
     socionics_data = report_data.get("socionics") or {}
     socionics = SocionicsSummary(
@@ -136,6 +200,8 @@ def build_narrative_input(report: Any) -> NarrativeInput:
         calculation_quality=calculation_quality,
         key_facts=key_facts,
         key_aspects=key_aspects,
+        dominants=dominants,
+        inner_mechanism=inner_mechanism,
         socionics=socionics,
         archetype=archetype,
         strengths=grouped_claims["strengths"],
@@ -192,6 +258,256 @@ def _aspect_fact(aspect: dict[str, Any]) -> AspectFact:
     orb = f"{orb_value:.2f}°" if isinstance(orb_value, int | float) else str(orb_value)
     meaning = f"Аспект {left.lower()} и {right.lower()} показывает связь между двумя психологическими акцентами."
     return AspectFact(id=fact_id, label=f"{left} {aspect_name} {right}", orb=orb, meaning=meaning)
+
+
+def _build_dominants(
+    chart: dict[str, Any],
+    key_facts: list[AstroFact],
+    key_aspects: list[AspectFact],
+) -> list[DominantInsight]:
+    planets = [planet for planet in chart.get("planets", []) if planet.get("name") and planet.get("sign")]
+    fact_ids_by_planet = _fact_ids_by_planet(key_facts)
+    dominants: list[DominantInsight] = []
+
+    element = _top_weighted_key(chart.get("elements", {}), ELEMENT_RU)
+    if element is not None:
+        evidence_ids = _evidence_for_sign_attribute(planets, fact_ids_by_planet, SIGN_ELEMENT, element)
+        if evidence_ids:
+            dominants.append(
+                DominantInsight(
+                    id=f"dominant_element_{element}",
+                    title=f"Доминирующая стихия: {ELEMENT_RU[element]}",
+                    body=(
+                        f"{ELEMENT_RU[element]} задаёт базовый способ адаптации: через повторяющийся "
+                        "паттерн восприятия, реакции и выбора опоры."
+                    ),
+                    evidence_ids=evidence_ids,
+                )
+            )
+
+    modality = _top_weighted_key(chart.get("modalities", {}), MODALITY_RU)
+    if modality is not None:
+        evidence_ids = _evidence_for_sign_attribute(planets, fact_ids_by_planet, SIGN_MODALITY, modality)
+        if evidence_ids:
+            dominants.append(
+                DominantInsight(
+                    id=f"dominant_modality_{modality}",
+                    title=f"Ведущая модальность: {MODALITY_RU[modality]}",
+                    body=(
+                        f"{MODALITY_RU[modality].capitalize()} показывает, как энергия карты переходит "
+                        "от внутреннего импульса к действию и устойчивому поведению."
+                    ),
+                    evidence_ids=evidence_ids,
+                )
+            )
+
+    house, house_evidence = _top_house_cluster(planets, fact_ids_by_planet)
+    if house is not None and house_evidence:
+        dominants.append(
+            DominantInsight(
+                id=f"dominant_house_{house}",
+                title=f"Сильный акцент {house} дома",
+                body=(
+                    f"Повторяющиеся положения в {house} доме показывают жизненную сцену, "
+                    "где личный паттерн проявляется особенно заметно."
+                ),
+                evidence_ids=house_evidence,
+            )
+        )
+
+    sign, sign_evidence = _top_sign_cluster(planets, fact_ids_by_planet)
+    if sign is not None and sign_evidence:
+        sign_label = SIGN_RU_NOMINATIVE.get(sign, sign)
+        dominants.append(
+            DominantInsight(
+                id=f"dominant_sign_{sign.lower()}",
+                title=f"Повторяющийся знак: {sign_label}",
+                body=(
+                    f"Акцент знака {sign_label} повторяет один и тот же психологический мотив "
+                    "в нескольких частях карты."
+                ),
+                evidence_ids=sign_evidence,
+            )
+        )
+
+    tension = _first_tension_aspect(key_aspects)
+    if tension is not None:
+        dominants.append(
+            DominantInsight(
+                id=f"dominant_tension_{tension.id}",
+                title="Ключевое напряжение карты",
+                body=(
+                    f"{tension.label} добавляет внутренний контраст: не только сильную сторону, "
+                    "но и сценарий напряжения, который важно осознанно регулировать."
+                ),
+                evidence_ids=[tension.id],
+            )
+        )
+
+    if not dominants and key_facts:
+        first_fact = key_facts[0]
+        dominants.append(
+            DominantInsight(
+                id="dominant_primary_fact",
+                title="Главный доступный акцент карты",
+                body=f"{first_fact.label} — первый устойчивый факт, на который можно опереться в Self-разборе.",
+                evidence_ids=[first_fact.id],
+            )
+        )
+    if not dominants and key_aspects:
+        first_aspect = key_aspects[0]
+        dominants.append(
+            DominantInsight(
+                id="dominant_primary_aspect",
+                title="Главная доступная связка карты",
+                body=f"{first_aspect.label} — первый устойчивый аспект, на который можно опереться в Self-разборе.",
+                evidence_ids=[first_aspect.id],
+            )
+        )
+
+    return dominants[:5]
+
+
+def _fallback_dominants_from_claims(grouped_claims: dict[str, list[EvidenceBackedClaim]]) -> list[DominantInsight]:
+    for group in grouped_claims.values():
+        if not group:
+            continue
+        claim = group[0]
+        if claim.evidence_ids:
+            return [
+                DominantInsight(
+                    id="dominant_primary_claim",
+                    title="Главный доступный смысловой акцент",
+                    body=claim.claim,
+                    evidence_ids=list(claim.evidence_ids),
+                )
+            ]
+    return []
+
+
+def _build_inner_mechanism(dominants: list[DominantInsight]) -> InnerMechanism:
+    source = dominants or [
+        DominantInsight(
+            id="dominant_fallback",
+            title="Базовый акцент карты",
+            body="Доступные факты карты задают осторожный базовый Self-паттерн.",
+            evidence_ids=["dominant_fallback"],
+        )
+    ]
+    first = source[0]
+    second = source[1] if len(source) > 1 else source[0]
+    third = source[2] if len(source) > 2 else source[-1]
+    return InnerMechanism(
+        title="Внутренний механизм личности",
+        summary=(
+            "Эти доминанты описывают не набор отдельных качеств, а последовательность: "
+            "как вы считываете ситуацию, собираете опору и переводите внутренний импульс в действие."
+        ),
+        steps=[
+            MechanismStep(
+                id="mechanism_read_context",
+                title="Сначала вы считываете, что в ситуации главное",
+                body=f"На первом шаге включается «{first.title}»: он задаёт первичный фильтр восприятия.",
+                evidence_ids=list(first.evidence_ids),
+            ),
+            MechanismStep(
+                id="mechanism_build_support",
+                title="Затем ищете рабочую внутреннюю опору",
+                body=f"После первичного считывания «{second.title}» помогает собрать устойчивую форму реакции.",
+                evidence_ids=list(second.evidence_ids),
+            ),
+            MechanismStep(
+                id="mechanism_express_pattern",
+                title="После этого проявляете паттерн вовне",
+                body=(
+                    f"Внешнее действие окрашивается темой «{third.title}»: так внутренний вывод становится поведением."
+                ),
+                evidence_ids=list(third.evidence_ids),
+            ),
+        ],
+    )
+
+
+def _top_weighted_key(values: Any, labels: dict[str, str]) -> str | None:
+    if not isinstance(values, dict):
+        return None
+    numeric_values = {
+        str(key): float(value)
+        for key, value in values.items()
+        if key in labels and isinstance(value, int | float) and float(value) > 0
+    }
+    if not numeric_values:
+        return None
+    return max(numeric_values.items(), key=lambda item: item[1])[0]
+
+
+def _fact_ids_by_planet(key_facts: list[AstroFact]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for fact in key_facts:
+        planet = fact.id.split("_", 1)[0]
+        if planet:
+            result[planet.title()] = fact.id
+    return result
+
+
+def _evidence_for_sign_attribute(
+    planets: list[dict[str, Any]],
+    fact_ids_by_planet: dict[str, str],
+    sign_map: dict[str, str],
+    target: str,
+) -> list[str]:
+    evidence_ids: list[str] = []
+    for planet in planets:
+        if sign_map.get(str(planet.get("sign"))) != target:
+            continue
+        fact_id = fact_ids_by_planet.get(str(planet.get("name")))
+        if fact_id and fact_id not in evidence_ids:
+            evidence_ids.append(fact_id)
+    return evidence_ids
+
+
+def _top_house_cluster(
+    planets: list[dict[str, Any]],
+    fact_ids_by_planet: dict[str, str],
+) -> tuple[int | None, list[str]]:
+    house_counts: dict[int, list[str]] = {}
+    for planet in planets:
+        house = planet.get("house")
+        if not isinstance(house, int):
+            continue
+        fact_id = fact_ids_by_planet.get(str(planet.get("name")))
+        if fact_id:
+            house_counts.setdefault(house, []).append(fact_id)
+    if not house_counts:
+        return None, []
+    house = max(house_counts, key=lambda item: (len(house_counts[item]), -item))
+    return house, house_counts[house]
+
+
+def _top_sign_cluster(
+    planets: list[dict[str, Any]],
+    fact_ids_by_planet: dict[str, str],
+) -> tuple[str | None, list[str]]:
+    sign_counts: dict[str, list[str]] = {}
+    for planet in planets:
+        sign = planet.get("sign")
+        if not isinstance(sign, str):
+            continue
+        fact_id = fact_ids_by_planet.get(str(planet.get("name")))
+        if fact_id:
+            sign_counts.setdefault(sign, []).append(fact_id)
+    if not sign_counts:
+        return None, []
+    sign = max(sign_counts, key=lambda item: (len(sign_counts[item]), item))
+    return sign, sign_counts[sign]
+
+
+def _first_tension_aspect(key_aspects: list[AspectFact]) -> AspectFact | None:
+    for aspect in key_aspects:
+        label = aspect.label.lower()
+        if "квадрат" in label or "оппозиция" in label:
+            return aspect
+    return None
 
 
 def _group_claims(claims: list[dict[str, Any]]) -> dict[str, list[EvidenceBackedClaim]]:

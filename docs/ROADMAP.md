@@ -233,7 +233,7 @@
 
 | # | Фича | Описание | Документы | Статус |
 |---|------|----------|-----------|--------|
-| 13.1 | Dominants + mechanism | Ключевые доминанты карты и внутренний механизм личности | `docs/features/E13-report-depth-improvements/S01-dominants-inner-mechanism.md` | ⬜ |
+| 13.1 | Dominants + mechanism | Ключевые доминанты карты и внутренний механизм личности | `docs/features/E13-report-depth-improvements/S01-dominants-inner-mechanism.md` | ✅ |
 | 13.2 | House scenarios | Дома как жизненные сценарии, а не короткие ярлыки | `docs/features/E13-report-depth-improvements/S02-house-scenarios.md` | ⬜ |
 | 13.3 | Evidence tracing | Связка вывода с основаниями в web/PDF | `docs/features/E13-report-depth-improvements/S03-evidence-tracing.md` | ⬜ |
 | 13.4 | Contradictions/failures/maturity | Центральные противоречия, сбои системы, уровни зрелости | `docs/features/E13-report-depth-improvements/S04-contradictions-failures-maturity.md` | ⬜ |

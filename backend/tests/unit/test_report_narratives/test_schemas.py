@@ -40,6 +40,40 @@ def make_narrative_input_payload() -> dict[str, object]:
                 "meaning": "Связь эмоций и речи.",
             }
         ],
+        "dominants": [
+            {
+                "id": "dominant_fire",
+                "title": "Доминирующая стихия: Огонь",
+                "body": "Огонь задаёт способ быстро включаться через инициативу и выразительность.",
+                "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+            }
+        ],
+        "inner_mechanism": {
+            "title": "Внутренний механизм личности",
+            "summary": "Паттерн разворачивается от импульса к выражению и затем к осмыслению реакции среды.",
+            "steps": [
+                {
+                    "id": "mechanism_notice",
+                    "title": "Сначала вы считываете эмоциональный фон",
+                    "body": "Вы быстро замечаете настроение и скрытый смысл ситуации.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                },
+                {
+                    "id": "mechanism_express",
+                    "title": "Затем формулируете образно и заразительно",
+                    "body": "Смысл становится заметным через речь, интонацию и образ.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                },
+                {
+                    "id": "mechanism_integrate",
+                    "title": "После этого ищете форму для переживания",
+                    "body": (
+                        "Внутреннее напряжение легче выдерживать, когда оно названо и собрано в понятную историю."
+                    ),
+                    "evidence_ids": ["moon_trine_mercury"],
+                },
+            ],
+        },
         "socionics": {
             "type": "EIE",
             "type_ru": "ЭИЭ",
@@ -123,6 +157,40 @@ def make_self_narrative_payload() -> dict[str, object]:
                 }
             ],
         },
+        "dominants": [
+            {
+                "id": "dominant_fire",
+                "title": "Доминирующая стихия: Огонь",
+                "body": "Огонь задаёт способ быстро включаться через инициативу и выразительность.",
+                "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+            }
+        ],
+        "inner_mechanism": {
+            "title": "Внутренний механизм личности",
+            "summary": "Паттерн разворачивается от импульса к выражению и затем к осмыслению реакции среды.",
+            "steps": [
+                {
+                    "id": "mechanism_notice",
+                    "title": "Сначала вы считываете эмоциональный фон",
+                    "body": "Вы быстро замечаете настроение и скрытый смысл ситуации.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                },
+                {
+                    "id": "mechanism_express",
+                    "title": "Затем формулируете образно и заразительно",
+                    "body": "Смысл становится заметным через речь, интонацию и образ.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                },
+                {
+                    "id": "mechanism_integrate",
+                    "title": "После этого ищете форму для переживания",
+                    "body": (
+                        "Внутреннее напряжение легче выдерживать, когда оно названо и собрано в понятную историю."
+                    ),
+                    "evidence_ids": ["moon_trine_mercury"],
+                },
+            ],
+        },
         "sections": [
             {
                 "id": "main_formula",
@@ -170,6 +238,8 @@ class TestNarrativeInputSchema:
         assert result.profile.name == "Алексей"
         assert result.product_boundaries.allowed_sections[0] == "main_formula"
         assert result.strengths[0].evidence_ids == ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"]
+        assert result.dominants[0].evidence_ids == ["mercury_venus_jupiter_leo_8"]
+        assert len(result.inner_mechanism.steps) == 3
 
     def test_rejects_unsupported_product(self) -> None:
         payload = make_narrative_input_payload()
@@ -199,6 +269,19 @@ class TestSelfNarrativeSchema:
             "mercury_venus_jupiter_leo_8",
             "moon_trine_mercury",
         ]
+        assert result.dominants[0].title == "Доминирующая стихия: Огонь"
+        assert result.inner_mechanism.steps[0].id == "mechanism_notice"
+
+    def test_requires_inner_mechanism_with_three_to_five_steps(self) -> None:
+        payload = make_self_narrative_payload()
+        payload["inner_mechanism"]["steps"] = payload["inner_mechanism"]["steps"][:2]  # type: ignore[index]
+
+        try:
+            SelfNarrative.model_validate(payload)
+        except ValidationError as exc:
+            assert "inner_mechanism.steps" in str(exc)
+        else:
+            raise AssertionError("SelfNarrative unexpectedly accepted too-short inner_mechanism")
 
     def test_rejects_unknown_section_id(self) -> None:
         payload = make_self_narrative_payload()

@@ -126,6 +126,8 @@ def validate_self_narrative(
 
     errors: list[NarrativeValidationError] = []
     errors.extend(_validate_required_sections(candidate, validated_input))
+    errors.extend(_validate_dominants(candidate))
+    errors.extend(_validate_inner_mechanism(candidate))
     errors.extend(_validate_career_cta(candidate))
     errors.extend(_validate_evidence_refs(candidate, validated_input))
     errors.extend(_validate_career_boundaries(candidate))
@@ -169,6 +171,59 @@ def _validate_required_sections(
             recoverable=True,
         )
     ]
+
+
+def _validate_dominants(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    dominants = getattr(narrative, "dominants", None)
+    if not dominants:
+        return [
+            NarrativeValidationError(
+                code="missing_dominants",
+                message="Self narrative must include evidence-backed dominants.",
+                location="dominants",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for index, dominant in enumerate(dominants):
+        if not getattr(dominant, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="dominant_missing_evidence",
+                    message="Every dominant must reference deterministic evidence ids.",
+                    location=f"dominants[{index}].evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_inner_mechanism(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    inner_mechanism = getattr(narrative, "inner_mechanism", None)
+    steps = getattr(inner_mechanism, "steps", None) if inner_mechanism is not None else None
+    if steps is None or not 3 <= len(steps) <= 5:
+        return [
+            NarrativeValidationError(
+                code="invalid_inner_mechanism",
+                message="Self narrative inner_mechanism must contain 3-5 steps.",
+                location="inner_mechanism.steps",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for index, step in enumerate(steps):
+        if not getattr(step, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="mechanism_step_missing_evidence",
+                    message="Every inner mechanism step must reference deterministic evidence ids.",
+                    location=f"inner_mechanism.steps[{index}].evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
 
 
 def _validate_career_cta(narrative: SelfNarrative) -> list[NarrativeValidationError]:
@@ -267,6 +322,10 @@ def _validate_domain_terms(
 def _allowed_fact_ids(narrative_input: NarrativeInput) -> set[str]:
     allowed = {fact.id for fact in narrative_input.key_facts}
     allowed.update(fact.id for fact in narrative_input.key_aspects)
+    for dominant in narrative_input.dominants:
+        allowed.update(dominant.evidence_ids)
+    for step in narrative_input.inner_mechanism.steps:
+        allowed.update(step.evidence_ids)
     for claim in _iter_claim_groups(narrative_input):
         allowed.update(claim.evidence_ids)
     return allowed
@@ -301,6 +360,21 @@ def _iter_claim_groups(narrative_input: NarrativeInput) -> Iterable[EvidenceBack
 
 
 def _iter_evidence_notes(narrative: SelfNarrative) -> Iterable[tuple[str, EvidenceNote]]:
+    for index, dominant in enumerate(getattr(narrative, "dominants", []) or []):
+        fact_ids = list(getattr(dominant, "evidence_ids", []) or [])
+        if fact_ids:
+            yield (
+                f"dominants[{index}]",
+                EvidenceNote(claim=getattr(dominant, "body", ""), fact_ids=fact_ids),
+            )
+    inner_mechanism = getattr(narrative, "inner_mechanism", None)
+    for index, step in enumerate(getattr(inner_mechanism, "steps", []) or []):
+        fact_ids = list(getattr(step, "evidence_ids", []) or [])
+        if fact_ids:
+            yield (
+                f"inner_mechanism.steps[{index}]",
+                EvidenceNote(claim=getattr(step, "body", ""), fact_ids=fact_ids),
+            )
     for index, note in enumerate(narrative.hero.evidence_notes):
         yield (f"hero.evidence_notes[{index}]", note)
     for section_index, section in enumerate(narrative.sections):
@@ -312,6 +386,16 @@ def _iter_non_cta_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str]]:
     yield ("title", narrative.title)
     yield ("hero.title", narrative.hero.title)
     yield ("hero.body", narrative.hero.body)
+    for dominant_index, dominant in enumerate(getattr(narrative, "dominants", []) or []):
+        yield (f"dominants[{dominant_index}].title", dominant.title)
+        yield (f"dominants[{dominant_index}].body", dominant.body)
+    inner_mechanism = getattr(narrative, "inner_mechanism", None)
+    if inner_mechanism is not None:
+        yield ("inner_mechanism.title", inner_mechanism.title)
+        yield ("inner_mechanism.summary", inner_mechanism.summary)
+        for step_index, step in enumerate(inner_mechanism.steps):
+            yield (f"inner_mechanism.steps[{step_index}].title", step.title)
+            yield (f"inner_mechanism.steps[{step_index}].body", step.body)
     yield ("final_summary", narrative.final_summary)
     for section_index, section in enumerate(narrative.sections):
         yield (f"sections[{section_index}].title", section.title)

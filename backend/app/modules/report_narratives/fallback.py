@@ -60,6 +60,8 @@ def build_deterministic_self_fallback(
             ],
             evidence_notes=[hero_note] if hero_note is not None else [],
         ),
+        dominants=narrative_input.dominants,
+        inner_mechanism=narrative_input.inner_mechanism,
         sections=sections,
         career_cta=CareerCTA(
             title="Отдельный отчёт Career",

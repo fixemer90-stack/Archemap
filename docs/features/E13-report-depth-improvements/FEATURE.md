@@ -84,7 +84,7 @@
 
 | Story | Название | Статус | Документ |
 |---|---|---|---|
-| S01 | Dominants and inner mechanism contract | ⬜ Не начато | `S01-dominants-inner-mechanism.md` |
+| S01 | Dominants and inner mechanism contract | ✅ Готово | `S01-dominants-inner-mechanism.md` |
 | S02 | House scenario interpreter | ⬜ Не начато | `S02-house-scenarios.md` |
 | S03 | Evidence tracing in narrative and PDF | ⬜ Не начато | `S03-evidence-tracing.md` |
 | S04 | Contradictions, failures, maturity levels | ⬜ Не начато | `S04-contradictions-failures-maturity.md` |

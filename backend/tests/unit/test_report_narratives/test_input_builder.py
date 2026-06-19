@@ -40,6 +40,17 @@ def report_fixture() -> SimpleNamespace:
                 "explanation": "Этико-интуитивная выразительность.",
             },
             "chart": {
+                "elements": {
+                    "fire": 0.35,
+                    "earth": 0.25,
+                    "air": 0.20,
+                    "water": 0.20,
+                },
+                "modalities": {
+                    "cardinal": 0.20,
+                    "fixed": 0.45,
+                    "mutable": 0.35,
+                },
                 "planets": [
                     {
                         "name": "Sun",
@@ -150,6 +161,10 @@ class TestNarrativeInputBuilder:
         assert result.strengths[0].evidence_ids == ["sun_virgo_house_9"]
         assert result.relationship_patterns[0].evidence_ids == ["moon_leo_house_8"]
         assert result.product_boundaries.allowed_sections[-1] == "development"
+        assert result.dominants[0].id == "dominant_element_fire"
+        assert result.dominants[0].evidence_ids
+        assert len(result.inner_mechanism.steps) == 3
+        assert result.inner_mechanism.steps[0].evidence_ids
         assert "Virgo" not in result.key_facts[0].label
         assert "Sun" not in result.key_facts[0].label
         assert "trine" not in result.key_aspects[0].label

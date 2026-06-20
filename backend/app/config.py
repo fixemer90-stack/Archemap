@@ -82,11 +82,11 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
     # ── Rate Limiting ────────────────────────────────────────────────
-    RATE_LIMIT_GLOBAL_PER_MINUTE: int = 100
-    RATE_LIMIT_ANONYMOUS_PER_MINUTE: int = 20
-    RATE_LIMIT_LOGIN_MAX_ATTEMPTS: int = 5
+    RATE_LIMIT_GLOBAL_PER_MINUTE: int = 300
+    RATE_LIMIT_ANONYMOUS_PER_MINUTE: int = 60
+    RATE_LIMIT_LOGIN_MAX_ATTEMPTS: int = 15
     RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 900  # 15 minutes
-    RATE_LIMIT_GEOCODE_PER_MINUTE: int = 30
+    RATE_LIMIT_GEOCODE_PER_MINUTE: int = 90
 
     # ── Logging ───────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"

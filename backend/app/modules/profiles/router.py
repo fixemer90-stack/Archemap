@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_current_user, get_db
 from app.infrastructure.geocoding import NominatimGeocoder
 from app.infrastructure.redis import get_redis_client
@@ -39,12 +40,12 @@ async def geocode_search(
     if len(q) > 200:
         q = q[:200]
 
-    # Rate limit per IP: 30 requests per minute
+    # Rate limit per IP.
     redis = get_redis_client()
     client_ip = request.client.host if request.client else "unknown"
     rate_key = f"rate:geocode:{client_ip}"
     current = await redis.get(rate_key)
-    if current and int(current) >= 30:
+    if current and int(current) >= settings.RATE_LIMIT_GEOCODE_PER_MINUTE:
         from fastapi.responses import JSONResponse
 
         return JSONResponse(

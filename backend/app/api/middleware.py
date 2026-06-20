@@ -18,10 +18,19 @@ logger = structlog.get_logger()
 # ── Rate limit config ────────────────────────────────────────────────
 RATE_LIMITS: dict[str, tuple[int, int]] = {
     # path_prefix: (max_requests, window_seconds)
-    "/api/v1/auth/login": (5, 900),
-    "/api/v1/auth/register": (5, 900),
-    "/api/v1/auth/password-reset": (5, 900),
-    "/api/v1/profiles/geocode": (30, 60),
+    "/api/v1/auth/login": (
+        settings.RATE_LIMIT_LOGIN_MAX_ATTEMPTS,
+        settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+    ),
+    "/api/v1/auth/register": (
+        settings.RATE_LIMIT_LOGIN_MAX_ATTEMPTS,
+        settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+    ),
+    "/api/v1/auth/password-reset": (
+        settings.RATE_LIMIT_LOGIN_MAX_ATTEMPTS,
+        settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+    ),
+    "/api/v1/profiles/geocode": (settings.RATE_LIMIT_GEOCODE_PER_MINUTE, 60),
 }
 
 

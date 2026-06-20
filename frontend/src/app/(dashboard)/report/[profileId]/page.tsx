@@ -225,6 +225,21 @@ function ReportError({ message }: { message: string }) {
   );
 }
 
+function ReportNotGeneratedYet() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Отчёт ещё создаётся</CardTitle>
+        <CardDescription>
+          Профиль и карта уже сохранены, но полноценный отчёт ещё не найден.
+          Обновите страницу через несколько секунд — страница не должна
+          показывать черновой отчёт без записи отчёта в базе.
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) {
@@ -557,6 +572,9 @@ export default function ReportPage() {
         </div>
       )}
       {!isLoading && error && !data && <ReportError message={error} />}
+      {!isLoading && !error && data && !currentReport && (
+        <ReportNotGeneratedYet />
+      )}
       {!isLoading && !error && shouldShowProgress && (
         <ReportGenerationProgress
           elapsedSeconds={elapsedSeconds}
@@ -586,14 +604,18 @@ export default function ReportPage() {
           />
         </DeterministicReportFallback>
       )}
-      {!isLoading && data && !shouldShowProgress && !shouldShowFallback && (
-        <ReportContent
-          data={data}
-          isDownloadingPdf={isDownloadingPdf}
-          onDownloadPdf={handleDownloadPdf}
-          profileId={profileId}
-        />
-      )}
+      {!isLoading &&
+        data &&
+        currentReport &&
+        !shouldShowProgress &&
+        !shouldShowFallback && (
+          <ReportContent
+            data={data}
+            isDownloadingPdf={isDownloadingPdf}
+            onDownloadPdf={handleDownloadPdf}
+            profileId={profileId}
+          />
+        )}
     </div>
   );
 }

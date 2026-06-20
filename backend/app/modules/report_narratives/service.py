@@ -427,13 +427,18 @@ async def get_latest_narrative_for_report(
 
     narrative_input = build_narrative_input(report)
     input_hash = compute_input_hash(narrative_input)
+    # Reading the current narrative for display must not depend on the currently
+    # configured model name. Backend and worker env can temporarily diverge during
+    # local/runtime deploys; if the prompt version and deterministic input hash
+    # match, the row is the correct narrative for this report. Cache lookup during
+    # generation remains model-specific via find_cached_narrative().
     return await _find_matching_narrative_record(
         db=db,
         report_id=report_id,
         product=report.product,
         prompt_version=SELF_STORY_PROMPT_VERSION,
         input_hash=input_hash,
-        model_name=settings.LLM_MODEL,
+        model_name=None,
     )
 
 
@@ -444,19 +449,18 @@ async def _find_matching_narrative_record(
     product: str,
     prompt_version: str,
     input_hash: str,
-    model_name: str,
+    model_name: str | None,
 ) -> ReportNarrative | None:
-    result = await db.execute(
-        select(ReportNarrative)
-        .where(
-            ReportNarrative.report_id == report_id,
-            ReportNarrative.product == product,
-            ReportNarrative.prompt_version == prompt_version,
-            ReportNarrative.input_hash == input_hash,
-            ReportNarrative.model_name == model_name,
-        )
-        .order_by(ReportNarrative.created_at.desc())
-    )
+    conditions = [
+        ReportNarrative.report_id == report_id,
+        ReportNarrative.product == product,
+        ReportNarrative.prompt_version == prompt_version,
+        ReportNarrative.input_hash == input_hash,
+    ]
+    if model_name is not None:
+        conditions.append(ReportNarrative.model_name == model_name)
+
+    result = await db.execute(select(ReportNarrative).where(*conditions).order_by(ReportNarrative.created_at.desc()))
     return result.scalars().first()
 
 

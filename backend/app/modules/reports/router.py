@@ -189,7 +189,7 @@ async def regenerate_report_narrative(
             ) from exc
         report.status = "generating_narrative"
         report.error_message = None
-        await db.flush()
+        await _commit_report_changes_if_persistent(db, report)
 
     return build_report_response(report, narrative)
 

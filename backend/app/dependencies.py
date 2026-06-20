@@ -12,7 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, decode_refresh_token
 from app.core.token_blacklist import is_token_blacklisted
 from app.infrastructure.database import async_session_factory
 from app.infrastructure.redis import get_redis_client
@@ -75,6 +75,18 @@ async def _decode_valid_access_token(token: str) -> dict[str, Any] | None:
     return payload
 
 
+async def _decode_valid_refresh_token(token: str) -> dict[str, Any] | None:
+    payload = decode_refresh_token(token)
+    if payload is None:
+        return None
+
+    jti = payload.get("jti")
+    if jti and await is_token_blacklisted(jti):
+        return None
+
+    return payload
+
+
 # ── Current user ──────────────────────────────────────────────────────
 async def get_current_user(
     request: Request,
@@ -93,6 +105,11 @@ async def get_current_user(
         payload = await _decode_valid_access_token(token)
         if payload is not None:
             break
+
+    if payload is None:
+        refresh_token = request.cookies.get("refresh_token") or request.cookies.get("astrotype_refresh_token")
+        if refresh_token:
+            payload = await _decode_valid_refresh_token(refresh_token)
 
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")

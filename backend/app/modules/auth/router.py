@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,7 @@ from app.modules.auth.schemas import (
     PasswordResetConfirm,
     PasswordResetRequest,
     RateLimitErrorResponse,
+    RefreshRequest,
     RegisterRequest,
     ResendVerificationRequest,
     TokenResponse,
@@ -149,13 +150,44 @@ async def login(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    body: TokenResponse,
+    request: Request,
+    body: RefreshRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Get new tokens using refresh token."""
+    """Get new tokens using refresh token.
+
+    Supports both legacy JS-managed refresh tokens and the HttpOnly OAuth
+    refresh cookie. This prevents a stale Authorization header from forcing a
+    logout when the browser still has a valid cookie-backed session.
+    """
+    refresh_token = (
+        body.refresh_token
+        if body and body.refresh_token
+        else request.cookies.get("refresh_token") or request.cookies.get("astrotype_refresh_token")
+    )
+    if not refresh_token:
+        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Not authenticated"})
+
     service = AuthService(db)
-    tokens = await service.refresh_tokens(body.refresh_token)
-    return TokenResponse(**tokens)
+    tokens = await service.refresh_tokens(refresh_token)
+    response = JSONResponse(content=TokenResponse(**tokens).model_dump())
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=settings.APP_ENV == "production",
+        samesite="lax",
+        max_age=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=settings.APP_ENV == "production",
+        samesite="lax",
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+    )
+    return response
 
 
 @router.post("/logout", response_model=MessageResponse)

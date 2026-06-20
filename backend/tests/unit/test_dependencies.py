@@ -67,3 +67,37 @@ async def test_get_current_user_accepts_verified_user() -> None:
         )
 
     assert current_user_id == user_id
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_falls_back_to_cookie_when_authorization_header_is_stale() -> None:
+    user_id = uuid4()
+    request = MagicMock()
+    request.cookies = {"access_token": "fresh-cookie-token"}
+    credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer",
+        credentials="stale-header-token",
+    )
+
+    user = SimpleNamespace(is_active=True, is_verified=True)
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = user
+    db = AsyncMock()
+    db.execute.return_value = result
+
+    def decode_token(token: str) -> dict[str, str] | None:
+        if token == "fresh-cookie-token":
+            return {"sub": str(user_id), "jti": "fresh-jti"}
+        return None
+
+    with (
+        patch("app.dependencies.decode_access_token", side_effect=decode_token),
+        patch("app.dependencies.is_token_blacklisted", new=AsyncMock(return_value=False)),
+    ):
+        current_user_id = await get_current_user(
+            request=request,
+            credentials=credentials,
+            db=db,
+        )
+
+    assert current_user_id == user_id

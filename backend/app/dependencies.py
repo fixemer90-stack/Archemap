@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 import redis.asyncio as aioredis
@@ -41,6 +41,40 @@ async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
         await client.aclose()
 
 
+def _candidate_access_tokens(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> list[str]:
+    """Return access-token candidates from newest browser/session locations.
+
+    The frontend can hold a stale JS-managed Authorization token while a valid
+    HttpOnly OAuth cookie is also present. Treat tokens as candidates instead of
+    letting one bad header shadow a good cookie-backed session.
+    """
+    candidates: list[str] = []
+    if credentials:
+        candidates.append(credentials.credentials)
+
+    for cookie_name in ("access_token", "astrotype_token"):
+        cookie_token = request.cookies.get(cookie_name)
+        if cookie_token and cookie_token not in candidates:
+            candidates.append(cookie_token)
+
+    return candidates
+
+
+async def _decode_valid_access_token(token: str) -> dict[str, Any] | None:
+    payload = decode_access_token(token)
+    if payload is None:
+        return None
+
+    jti = payload.get("jti")
+    if jti and await is_token_blacklisted(jti):
+        return None
+
+    return payload
+
+
 # ── Current user ──────────────────────────────────────────────────────
 async def get_current_user(
     request: Request,
@@ -49,31 +83,19 @@ async def get_current_user(
 ) -> UUID:
     """Validate JWT and return the user's UUID.
 
-    Checks token from:
+    Checks token candidates from:
     1. Authorization header (Bearer token)
-    2. HttpOnly cookie (access_token)
+    2. HttpOnly OAuth cookie (access_token)
+    3. JS-managed app cookie (astrotype_token)
     """
-    token = None
+    payload = None
+    for token in _candidate_access_tokens(request, credentials):
+        payload = await _decode_valid_access_token(token)
+        if payload is not None:
+            break
 
-    # Try Authorization header first
-    if credentials:
-        token = credentials.credentials
-
-    # Fallback to HttpOnly cookie (CRIT-01)
-    if not token:
-        token = request.cookies.get("access_token")
-
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-
-    payload = decode_access_token(token)
     if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-
-    # Check if token is blacklisted (logged out)
-    jti = payload.get("jti")
-    if jti and await is_token_blacklisted(jti):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     user_id = payload.get("sub")
     if user_id is None:

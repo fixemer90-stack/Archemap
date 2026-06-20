@@ -54,6 +54,12 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class RefreshRequest(BaseModel):
+    access_token: str | None = None
+    refresh_token: str | None = None
+    token_type: str = "bearer"
+
+
 class UserResponse(BaseModel):
     id: str
     email: str

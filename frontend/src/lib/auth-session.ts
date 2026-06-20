@@ -18,12 +18,6 @@ export function getPreferredAccessToken(
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    useAuthStore.getState().logout();
-    return null;
-  }
-
   if (refreshPromise) {
     return refreshPromise;
   }

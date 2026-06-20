@@ -1,7 +1,7 @@
 # Astrotype — Дорожная карта
 
 > **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
-> **Обновлено:** 2026-06-15
+> **Обновлено:** 2026-06-20
 
 ---
 
@@ -60,6 +60,7 @@
 | 2.4 | Привязка аккаунтов | Linking OAuth-провайдеров к существующему аккаунту | `auth/linking.py`, `accounts/models.py` | Пользователь может привязать VK/Yandex к email-аккаунту из настроек |
 | 2.5 | Сброс пароля | Запрос сброса по email, токен, новый пароль | `auth/password_reset.py`, `accounts/views.py` | Письмо отправляется; токен истекает через 24ч; пароль меняется |
 | 2.6 | Rate-limiting входа | Защита от брутфорса (5 попыток / 15 мин) | `auth/throttling.py`, middleware | При превышении — HTTP 429; счётчик сбрасывается через 15 мин |
+| 2.7 | Cookie-first browser session | Единый browser auth через HttpOnly cookies; stale Bearer не ломает cookie-session; frontend хранит session/user, не JWT | `auth/router.py`, `dependencies.py`, `frontend/src/lib/api-client.ts`, `auth-store.ts` | 🟡 Hotfix готов; полный cookie-native login/logout/frontend cleanup описан в `docs/features/E2-identity/S10-cookie-first-session-auth.md` |
 
 ---
 

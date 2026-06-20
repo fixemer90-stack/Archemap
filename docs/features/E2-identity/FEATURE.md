@@ -19,6 +19,14 @@
 - [ ] Привязка OAuth к существующему аккаунту
 - [ ] Сброс пароля по email
 - [ ] Rate limiting: 5 попыток / 15 мин на login
+- [ ] Cookie-first browser session: login/refresh/logout через HttpOnly cookies, frontend не хранит JWT
+- [x] Hotfix: stale Authorization header не затеняет валидную cookie-backed session
+
+## Документы
+
+- Workflow: [WORKFLOW.md](WORKFLOW.md)
+- API contract: [API.md](API.md)
+- SRS: [SRS-E2-identity-auth.md](../../SRS/SRS-E2-identity-auth.md)
 
 ## Stories
 
@@ -33,3 +41,4 @@
 | S07 | [Привязка OAuth-провайдеров: link/unlink из настроек, IdentityLink model](S07-account-linking.md) | 🟡 В процессе |
 | S08 | [Сброс пароля: запрос по email, токен 24ч, новый пароль, anti-enumeration](S08-password-reset.md) | ✅ Готово |
 | S09 | [Rate limiting входа: Redis INCR+EXPIRE, 5 попыток/15 мин, HTTP 429](S09-rate-limiting.md) | ✅ Готово |
+| S10 | [Cookie-first session auth cleanup: HttpOnly cookies для browser flow, stale Bearer fallback, refresh/logout/session bootstrap, report-page 401 resilience](S10-cookie-first-session-auth.md) | 🟡 В процессе |

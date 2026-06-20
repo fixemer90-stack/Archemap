@@ -14,6 +14,8 @@ Astrotype — full-stack narrative-first платформа для астрол�
 - LLM design: `docs/design/llm-report-narrative-architecture.md`
 - E11 feature pack: `docs/features/E11-llm-report-narrative/FEATURE.md`
 - E13 report depth improvements: `docs/features/E13-report-depth-improvements/FEATURE.md`
+- E2 identity auth cleanup: `docs/features/E2-identity/S10-cookie-first-session-auth.md`
+- E2 auth workflow/API: `docs/features/E2-identity/WORKFLOW.md`, `docs/features/E2-identity/API.md`
 - SRS E11: `docs/SRS/SRS-E11-llm-report-narrative.md`
 - SRS E13: `docs/SRS/SRS-E13-report-depth-improvements.md`
 
@@ -53,7 +55,7 @@ docs/                    Design, SRS, feature stories, reviews
 
 ## Backend module index
 
-- `app/modules/auth/` — login, register, OAuth, password reset, account linking
+- `app/modules/auth/` — login, register, OAuth, password reset, account linking; target browser auth is cookie-first via HttpOnly `access_token`/`refresh_token`, with Bearer only as API-client fallback
 - `app/modules/users/` — `/users/me`, profile name update
 - `app/modules/profiles/` — person profiles, geocoding inputs
 - `app/modules/charts/` — chart snapshots and socionics computation
@@ -111,6 +113,12 @@ Narrative UI:
 ## API/route index
 
 Main REST prefix: `/api/v1`
+
+Important auth routes:
+- `POST /api/v1/auth/login` — email/password login; target browser flow sets HttpOnly cookies
+- `POST /api/v1/auth/refresh` — cookie-native refresh with legacy body fallback during migration
+- `POST /api/v1/auth/logout` — revoke tokens and clear auth cookies
+- `GET /api/v1/users/me` — session bootstrap from cookie-backed auth
 
 Important report routes:
 - `POST /api/v1/reports/generate`
@@ -187,6 +195,9 @@ docker compose up -d --build
 - `docs/design/llm-report-narrative-architecture.md`
 - `docs/features/E11-llm-report-narrative/FEATURE.md`
 - `docs/features/E13-report-depth-improvements/FEATURE.md`
+- `docs/features/E2-identity/FEATURE.md`
+- `docs/features/E2-identity/S10-cookie-first-session-auth.md`
+- `docs/SRS/SRS-E2-identity-auth.md`
 - `docs/SRS/SRS-E11-llm-report-narrative.md`
 - `docs/SRS/SRS-E13-report-depth-improvements.md`
 

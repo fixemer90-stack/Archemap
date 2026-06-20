@@ -8,7 +8,6 @@ import { useAuthStore } from "@/stores/auth-store";
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const token = useAuthStore((s) => s.token);
 
   // Profile form
   const [nameDraft, setNameDraft] = useState<string | null>(null);
@@ -37,8 +36,8 @@ export default function SettingsPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ name: name.trim() }),
       });
 
@@ -87,8 +86,8 @@ export default function SettingsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword,

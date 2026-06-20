@@ -36,7 +36,6 @@ import {
   type ReportApiData,
   type ReportViewModel as ReportData,
 } from "@/lib/report/view-model";
-import { useAuthStore } from "@/stores/auth-store";
 
 const NARRATIVE_TIMEOUT_MS = 90_000;
 const POLL_INTERVAL_MS = 5_000;
@@ -239,19 +238,9 @@ function getErrorMessage(error: unknown): string {
   return "Неизвестная ошибка загрузки";
 }
 
-async function downloadReportPdf(
-  reportId: string,
-  token?: string,
-): Promise<void> {
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
+async function downloadReportPdf(reportId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/reports/${reportId}/pdf`, {
     method: "GET",
-    headers,
-    token,
   });
 
   if (!response.ok) {
@@ -295,12 +284,14 @@ export default function ReportPage() {
   const searchParams = useSearchParams();
   const profileId = params.profileId as string;
   const product = searchParams.get("product") ?? "self";
-  const token = useAuthStore((state) => state.token);
   const [apiData, setApiData] = useState<ReportApiData | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
   const [currentReport, setCurrentReport] =
     useState<GeneratedReportApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState<
+    string | null
+  >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTimedOut, setIsTimedOut] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
@@ -342,7 +333,7 @@ export default function ReportPage() {
     if (!apiData || !currentReport) {
       return;
     }
-    const report = await fetchReportById(currentReport.id, token || undefined);
+    const report = await fetchReportById(currentReport.id);
     applyReportUpdate(apiData, report);
   }
 
@@ -353,10 +344,8 @@ export default function ReportPage() {
     try {
       setIsRetrying(true);
       setError(null);
-      const report = await regenerateReportNarrative(
-        currentReport.id,
-        token || undefined,
-      );
+      setSessionExpiredMessage(null);
+      const report = await regenerateReportNarrative(currentReport.id);
       setShowFallback(false);
       setIsTimedOut(false);
       generationStartedAtRef.current = Date.now();
@@ -380,11 +369,7 @@ export default function ReportPage() {
         setShowFallback(false);
         generationStartedAtRef.current = null;
         setElapsedSeconds(0);
-        const loadedApiData = await fetchReportApiData(
-          profileId,
-          token || undefined,
-          product,
-        );
+        const loadedApiData = await fetchReportApiData(profileId, product);
         const autoGenerateKey = `${profileId}:${product}`;
         const autoGenerateStorageKey = `self-report-autogen:${autoGenerateKey}`;
         const autoGenerateRequestedAt = Number.parseInt(
@@ -412,7 +397,6 @@ export default function ReportPage() {
           try {
             const generatedReport = await generateReportForProfile(
               profileId,
-              token || undefined,
               "self",
             );
             loadedApiData.generatedReport = generatedReport;
@@ -447,6 +431,7 @@ export default function ReportPage() {
       } catch (loadError) {
         if (isMounted) {
           setError(getErrorMessage(loadError));
+          setSessionExpiredMessage(null);
           setApiData(null);
           setCurrentReport(null);
           setData(null);
@@ -470,7 +455,6 @@ export default function ReportPage() {
     clearSelfReportAutoGenerateThrottle,
     profileId,
     product,
-    token,
   ]);
 
   useEffect(() => {
@@ -492,8 +476,9 @@ export default function ReportPage() {
     updateElapsed();
     const timerId = window.setInterval(updateElapsed, 1_000);
     const pollId = window.setInterval(() => {
-      fetchReportById(currentReport.id, token || undefined)
+      fetchReportById(currentReport.id)
         .then((report) => {
+          setSessionExpiredMessage(null);
           applyReportUpdate(apiData, report);
           if (report.status !== "generating_narrative") {
             generationStartedAtRef.current = null;
@@ -502,12 +487,13 @@ export default function ReportPage() {
         })
         .catch((pollError: unknown) => {
           if (pollError instanceof ApiError && pollError.status === 401) {
-            setApiData(null);
-            setCurrentReport(null);
-            setData(null);
             generationStartedAtRef.current = null;
             setShowFallback(false);
             setIsTimedOut(false);
+            setSessionExpiredMessage(
+              "Сессия истекла. Войдите снова, чтобы обновить отчёт.",
+            );
+            return;
           }
           setError(getErrorMessage(pollError));
         });
@@ -521,7 +507,7 @@ export default function ReportPage() {
       window.clearInterval(pollId);
       window.clearTimeout(timeoutId);
     };
-  }, [apiData, applyReportUpdate, currentReport, token]);
+  }, [apiData, applyReportUpdate, currentReport]);
 
   const reportStatus = currentReport?.status;
   const shouldShowProgress =
@@ -541,7 +527,7 @@ export default function ReportPage() {
     try {
       setIsDownloadingPdf(true);
       setError(null);
-      await downloadReportPdf(currentReport.id, token || undefined);
+      await downloadReportPdf(currentReport.id);
     } catch (downloadError) {
       setError(getErrorMessage(downloadError));
     } finally {
@@ -565,6 +551,11 @@ export default function ReportPage() {
         </div>
       )}
       {isLoading && <ReportSkeleton />}
+      {!isLoading && sessionExpiredMessage && data && (
+        <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          {sessionExpiredMessage}
+        </div>
+      )}
       {!isLoading && error && !data && <ReportError message={error} />}
       {!isLoading && !error && shouldShowProgress && (
         <ReportGenerationProgress
@@ -595,18 +586,14 @@ export default function ReportPage() {
           />
         </DeterministicReportFallback>
       )}
-      {!isLoading &&
-        !error &&
-        data &&
-        !shouldShowProgress &&
-        !shouldShowFallback && (
-          <ReportContent
-            data={data}
-            isDownloadingPdf={isDownloadingPdf}
-            onDownloadPdf={handleDownloadPdf}
-            profileId={profileId}
-          />
-        )}
+      {!isLoading && data && !shouldShowProgress && !shouldShowFallback && (
+        <ReportContent
+          data={data}
+          isDownloadingPdf={isDownloadingPdf}
+          onDownloadPdf={handleDownloadPdf}
+          profileId={profileId}
+        />
+      )}
     </div>
   );
 }

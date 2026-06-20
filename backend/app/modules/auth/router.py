@@ -35,6 +35,45 @@ from app.modules.auth.verification import VerificationService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _set_auth_cookies(response: JSONResponse, tokens: dict[str, str]) -> None:
+    """Attach browser-session HttpOnly cookies to an auth response."""
+    secure_cookie = settings.APP_ENV == "production"
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        max_age=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+        httponly=True,
+        secure=secure_cookie,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+        httponly=True,
+        secure=secure_cookie,
+        samesite="lax",
+    )
+
+
+def _delete_auth_cookies(response: JSONResponse) -> None:
+    """Clear current HttpOnly and legacy JS-readable auth cookies."""
+    for cookie_name in (
+        "access_token",
+        "refresh_token",
+        "astrotype_token",
+        "astrotype_refresh_token",
+    ):
+        response.delete_cookie(
+            key=cookie_name,
+            path="/",
+            secure=settings.APP_ENV == "production",
+            samesite="lax",
+        )
+
+
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def register(
     body: RegisterRequest,
@@ -145,7 +184,9 @@ async def login(
         raise
 
     await limiter.reset_rate_limit(rate_key)
-    return TokenResponse(**tokens)
+    response = JSONResponse(content=TokenResponse(**tokens).model_dump())
+    _set_auth_cookies(response, tokens)
+    return response
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -171,37 +212,32 @@ async def refresh(
     service = AuthService(db)
     tokens = await service.refresh_tokens(refresh_token)
     response = JSONResponse(content=TokenResponse(**tokens).model_dump())
-    response.set_cookie(
-        key="access_token",
-        value=tokens["access_token"],
-        httponly=True,
-        secure=settings.APP_ENV == "production",
-        samesite="lax",
-        max_age=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=tokens["refresh_token"],
-        httponly=True,
-        secure=settings.APP_ENV == "production",
-        samesite="lax",
-        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-    )
+    _set_auth_cookies(response, tokens)
     return response
 
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
+    request: Request,
     current_user_id: Annotated[UUID, Depends(get_current_user)],
-    authorization: str = Header(...),
+    authorization: str | None = Header(None),
     refresh_token: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """Log out by blacklisting current tokens."""
-    access_token = authorization.replace("Bearer ", "")
+    access_token = (
+        authorization.replace("Bearer ", "")
+        if authorization
+        else request.cookies.get("access_token") or request.cookies.get("astrotype_token") or ""
+    )
+    refresh_token = (
+        refresh_token or request.cookies.get("refresh_token") or request.cookies.get("astrotype_refresh_token")
+    )
     service = AuthService(db)
     await service.logout(access_token=access_token, refresh_token=refresh_token)
-    return MessageResponse(message="Logged out successfully.")
+    response = JSONResponse(content=MessageResponse(message="Logged out successfully.").model_dump())
+    _delete_auth_cookies(response)
+    return response
 
 
 @router.post("/password-reset/request", response_model=MessageResponse)

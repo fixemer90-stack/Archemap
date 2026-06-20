@@ -93,25 +93,22 @@ function pickLatestReport(
 
 export async function fetchReportApiData(
   profileId: string,
-  token?: string,
   product = "self",
 ): Promise<ReportApiData> {
   const [profile, chartSnapshot, reportList] = await Promise.all([
-    api.get<ProfileApiResponse>(`/api/v1/profiles/${profileId}`, token),
+    api.get<ProfileApiResponse>(`/api/v1/profiles/${profileId}`),
     api.post<ChartSnapshotApiResponse>(
       `/api/v1/profiles/${profileId}/chart`,
       {},
-      token,
     ),
     api.get<{ items: GeneratedReportApiResponse[] }>(
       `/api/v1/reports?product=${encodeURIComponent(product)}&limit=100`,
-      token,
     ),
   ]);
 
   const latestReport = pickLatestReport(reportList.items ?? [], profileId);
   const generatedReport = latestReport
-    ? await fetchReportById(latestReport.id, token)
+    ? await fetchReportById(latestReport.id)
     : undefined;
 
   return {
@@ -124,38 +121,27 @@ export async function fetchReportApiData(
 
 export async function generateReportForProfile(
   profileId: string,
-  token?: string,
   product = "self",
   mode = "full",
 ): Promise<GeneratedReportApiResponse> {
-  return api.post<GeneratedReportApiResponse>(
-    "/api/v1/reports/generate",
-    {
-      profile_id: profileId,
-      product,
-      mode,
-    },
-    token,
-  );
+  return api.post<GeneratedReportApiResponse>("/api/v1/reports/generate", {
+    profile_id: profileId,
+    product,
+    mode,
+  });
 }
 
 export async function fetchReportById(
   reportId: string,
-  token?: string,
 ): Promise<GeneratedReportApiResponse> {
-  return api.get<GeneratedReportApiResponse>(
-    `/api/v1/reports/${reportId}`,
-    token,
-  );
+  return api.get<GeneratedReportApiResponse>(`/api/v1/reports/${reportId}`);
 }
 
 export async function regenerateReportNarrative(
   reportId: string,
-  token?: string,
 ): Promise<GeneratedReportApiResponse> {
   return api.post<GeneratedReportApiResponse>(
     `/api/v1/reports/${reportId}/narrative/regenerate`,
     {},
-    token,
   );
 }

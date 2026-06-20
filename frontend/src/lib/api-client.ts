@@ -1,13 +1,8 @@
-import {
-  getPreferredAccessToken,
-  refreshAccessToken,
-} from "@/lib/auth-session";
-
 type RequestOptions = {
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
-  token?: string;
+  retryOnAuthFailure?: boolean;
 };
 
 export class ApiError extends Error {
@@ -25,23 +20,12 @@ function isAuthEndpoint(endpoint: string): boolean {
   return endpoint.startsWith("/api/v1/auth/");
 }
 
-function buildRequestInit(
-  options: RequestOptions,
-  tokenOverride?: string,
-): RequestInit {
+function buildRequestInit(options: RequestOptions): RequestInit {
   const { method = "GET", body, headers = {} } = options;
-  const effectiveToken = getPreferredAccessToken(
-    tokenOverride ?? options.token,
-  );
-
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
-
-  if (effectiveToken) {
-    requestHeaders.Authorization = `Bearer ${effectiveToken}`;
-  }
 
   return {
     method,
@@ -51,37 +35,45 @@ function buildRequestInit(
   };
 }
 
+async function tryCookieRefresh(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/v1/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+      credentials: "include",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function fetchWithAuthRetry(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<Response> {
-  const firstAttemptToken = getPreferredAccessToken(options.token);
-  let response = await fetch(
-    endpoint,
-    buildRequestInit(options, firstAttemptToken),
-  );
+  const response = await fetch(endpoint, buildRequestInit(options));
 
-  if (response.status !== 401 || isAuthEndpoint(endpoint)) {
+  if (
+    response.status !== 401 ||
+    isAuthEndpoint(endpoint) ||
+    options.retryOnAuthFailure === false
+  ) {
     return response;
   }
 
-  const latestToken = getPreferredAccessToken();
-  if (latestToken && latestToken !== firstAttemptToken) {
-    response = await fetch(endpoint, buildRequestInit(options, latestToken));
-    if (response.status !== 401) {
-      return response;
-    }
-  }
-
-  const refreshedToken = await refreshAccessToken();
-  if (!refreshedToken) {
+  const refreshed = await tryCookieRefresh();
+  if (!refreshed) {
     return response;
   }
 
-  return fetch(endpoint, buildRequestInit(options, refreshedToken));
+  return fetch(endpoint, buildRequestInit(options));
 }
 
-// Always use relative paths — Next.js rewrites proxy to backend
+// Always use relative paths — Next.js rewrites proxy to backend.
+// Browser auth is cookie-first: protected requests use credentials: "include"
+// and never attach Authorization by default.
 export async function apiFetch(
   endpoint: string,
   options: RequestOptions = {},
@@ -117,18 +109,16 @@ export async function apiClient<T>(
 }
 
 export const api = {
-  get: <T>(endpoint: string, token?: string) =>
-    apiClient<T>(endpoint, { token }),
+  get: <T>(endpoint: string) => apiClient<T>(endpoint),
 
-  post: <T>(endpoint: string, body: unknown, token?: string) =>
-    apiClient<T>(endpoint, { method: "POST", body, token }),
+  post: <T>(endpoint: string, body: unknown) =>
+    apiClient<T>(endpoint, { method: "POST", body }),
 
-  put: <T>(endpoint: string, body: unknown, token?: string) =>
-    apiClient<T>(endpoint, { method: "PUT", body, token }),
+  put: <T>(endpoint: string, body: unknown) =>
+    apiClient<T>(endpoint, { method: "PUT", body }),
 
-  patch: <T>(endpoint: string, body: unknown, token?: string) =>
-    apiClient<T>(endpoint, { method: "PATCH", body, token }),
+  patch: <T>(endpoint: string, body: unknown) =>
+    apiClient<T>(endpoint, { method: "PATCH", body }),
 
-  delete: <T>(endpoint: string, token?: string) =>
-    apiClient<T>(endpoint, { method: "DELETE", token }),
+  delete: <T>(endpoint: string) => apiClient<T>(endpoint, { method: "DELETE" }),
 };

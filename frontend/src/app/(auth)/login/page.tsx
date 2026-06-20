@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuthStore } from "@/stores/auth-store";
+import { bootstrapSession } from "@/lib/auth-session";
 
 export default function LoginPage() {
   const router = useRouter();
-  const setTokens = useAuthStore((s) => s.setTokens);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -30,6 +29,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -51,18 +51,7 @@ export default function LoginPage() {
         throw new Error(errorMsg);
       }
 
-      const tokens = await res.json();
-      setTokens(tokens.access_token, tokens.refresh_token);
-
-      // Fetch user profile
-      const userRes = await fetch("/api/v1/users/me", {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      if (userRes.ok) {
-        const user = await userRes.json();
-        useAuthStore.getState().setUser(user);
-      }
-
+      await bootstrapSession();
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Что-то пошло не так");

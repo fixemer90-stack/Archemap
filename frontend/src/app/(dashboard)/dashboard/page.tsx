@@ -4,15 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { User, Heart, Baby, Briefcase, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getPreferredAccessToken } from "@/lib/auth-session";
+import { bootstrapSession } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
-
-function authHeaders(token: string | null): HeadersInit | undefined {
-  const effectiveToken = getPreferredAccessToken(token);
-  return effectiveToken
-    ? { Authorization: `Bearer ${effectiveToken}` }
-    : undefined;
-}
 
 interface Profile {
   id: string;
@@ -71,7 +64,6 @@ const products = [
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const token = useAuthStore((s) => s.token);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,12 +72,8 @@ export default function DashboardPage() {
     async function fetchUser() {
       if (user) return;
       try {
-        const res = await fetch("/api/v1/users/me", {
-          headers: authHeaders(token),
-          credentials: "include",
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const data = await bootstrapSession();
+        if (data) {
           setUser(data);
         }
       } catch {
@@ -93,13 +81,12 @@ export default function DashboardPage() {
       }
     }
     fetchUser();
-  }, [token, user, setUser]);
+  }, [user, setUser]);
 
   useEffect(() => {
     async function fetchProfiles() {
       try {
         const res = await fetch("/api/v1/profiles", {
-          headers: authHeaders(token),
           credentials: "include",
         });
         if (res.ok) {
@@ -113,7 +100,7 @@ export default function DashboardPage() {
       }
     }
     fetchProfiles();
-  }, [token]);
+  }, []);
 
   return (
     <div className="space-y-8">

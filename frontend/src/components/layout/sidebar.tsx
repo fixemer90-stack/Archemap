@@ -16,7 +16,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
-import { getAccessToken } from "@/lib/cookies";
 
 const navItems = [
   {
@@ -79,16 +78,13 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
 
   async function handleLogout() {
-    const token = getAccessToken();
-    if (token) {
-      try {
-        await fetch("/api/v1/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {
-        // Proceed with local logout even if API fails
-      }
+    try {
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Proceed with local logout even if API fails
     }
     logout();
     router.push("/login");

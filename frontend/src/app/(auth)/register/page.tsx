@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuthStore } from "@/stores/auth-store";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface GeocodeResult {
@@ -206,14 +205,6 @@ function RegisterForm() {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-
-      // For OAuth, include the access token
-      if (isOAuthCompleteProfile) {
-        const token = useAuthStore.getState().token;
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-      }
 
       const res = await fetch(endpoint, {
         method: "POST",

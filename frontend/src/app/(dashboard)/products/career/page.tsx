@@ -4,17 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Briefcase, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getPreferredAccessToken } from "@/lib/auth-session";
-import { useAuthStore } from "@/stores/auth-store";
 
 const GENERATE_TIMEOUT_MS = 30_000;
-
-function authHeaders(token: string | null): HeadersInit | undefined {
-  const effectiveToken = getPreferredAccessToken(token);
-  return effectiveToken
-    ? { Authorization: `Bearer ${effectiveToken}` }
-    : undefined;
-}
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -31,7 +22,6 @@ interface Profile {
 }
 
 export default function CareerProductPage() {
-  const token = useAuthStore((s) => s.token);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
@@ -41,7 +31,7 @@ export default function CareerProductPage() {
     async function fetchProfiles() {
       try {
         const res = await fetch("/api/v1/profiles", {
-          headers: authHeaders(token),
+          credentials: "include",
         });
         if (res.ok) {
           const data = await res.json();
@@ -54,14 +44,9 @@ export default function CareerProductPage() {
       }
     }
     fetchProfiles();
-  }, [token]);
+  }, []);
 
   const generateReport = async (profileId: string) => {
-    if (!token) {
-      setError("Нужно войти в аккаунт, чтобы построить Career-отчёт.");
-      return;
-    }
-
     setGenerating(profileId);
     setError(null);
 
@@ -76,8 +61,8 @@ export default function CareerProductPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders(token),
         },
+        credentials: "include",
         body: JSON.stringify({
           profile_id: profileId,
           product: "career",

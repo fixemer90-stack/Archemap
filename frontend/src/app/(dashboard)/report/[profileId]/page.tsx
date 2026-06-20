@@ -225,21 +225,6 @@ function ReportError({ message }: { message: string }) {
   );
 }
 
-function ReportNotGeneratedYet() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Отчёт ещё создаётся</CardTitle>
-        <CardDescription>
-          Профиль и карта уже сохранены, но полноценный отчёт ещё не найден.
-          Обновите страницу через несколько секунд — страница не должна
-          показывать черновой отчёт без записи отчёта в базе.
-        </CardDescription>
-      </CardHeader>
-    </Card>
-  );
-}
-
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) {
@@ -526,7 +511,8 @@ export default function ReportPage() {
 
   const reportStatus = currentReport?.status;
   const shouldShowProgress =
-    reportStatus === "generating_narrative" && !showFallback;
+    (reportStatus === "generating_narrative" && !showFallback) ||
+    (Boolean(data) && !currentReport && !error);
   const shouldShowFallback = Boolean(
     data &&
     currentReport &&
@@ -572,9 +558,6 @@ export default function ReportPage() {
         </div>
       )}
       {!isLoading && error && !data && <ReportError message={error} />}
-      {!isLoading && !error && data && !currentReport && (
-        <ReportNotGeneratedYet />
-      )}
       {!isLoading && !error && shouldShowProgress && (
         <ReportGenerationProgress
           elapsedSeconds={elapsedSeconds}

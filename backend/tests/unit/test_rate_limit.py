@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from app.api.middleware import _get_client_ip, _get_rate_limit_key
+from app.config import settings
 
 
 class TestGetClientIp:
@@ -42,8 +43,8 @@ class TestGetRateLimitKey:
 
         key, max_req, window = _get_rate_limit_key(request)
         assert key == "rate_limit:/api/v1/auth/login:1.2.3.4"
-        assert max_req == 5
-        assert window == 900
+        assert max_req == settings.RATE_LIMIT_LOGIN_MAX_ATTEMPTS
+        assert window == settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS
 
     def test_geocode_endpoint(self) -> None:
         request = MagicMock()
@@ -54,7 +55,7 @@ class TestGetRateLimitKey:
 
         key, max_req, window = _get_rate_limit_key(request)
         assert key == "rate_limit:/api/v1/profiles/geocode:10.0.0.1"
-        assert max_req == 30
+        assert max_req == settings.RATE_LIMIT_GEOCODE_PER_MINUTE
         assert window == 60
 
     def test_authenticated_global(self) -> None:
@@ -66,7 +67,7 @@ class TestGetRateLimitKey:
 
         key, max_req, window = _get_rate_limit_key(request)
         assert key == "rate_limit:global:user:abcdef1234567890"
-        assert max_req == 100
+        assert max_req == settings.RATE_LIMIT_GLOBAL_PER_MINUTE
         assert window == 60
 
     def test_anonymous_global(self) -> None:
@@ -78,5 +79,5 @@ class TestGetRateLimitKey:
 
         key, max_req, window = _get_rate_limit_key(request)
         assert key == "rate_limit:global:ip:1.2.3.4"
-        assert max_req == 20
+        assert max_req == settings.RATE_LIMIT_ANONYMOUS_PER_MINUTE
         assert window == 60

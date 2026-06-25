@@ -95,9 +95,6 @@ _CAREER_MARKERS = (
 )
 _FORBIDDEN_LANGUAGE_MARKERS = (
     "диагноз",
-    "болезн",
-    "расстройств",
-    "депресси",
     "психопат",
     "шизофр",
     "неизбеж",
@@ -129,7 +126,6 @@ def validate_self_narrative(
     errors.extend(_validate_dominants(candidate))
     errors.extend(_validate_inner_mechanism(candidate))
     errors.extend(_validate_house_scenarios(candidate))
-    errors.extend(_validate_key_section_evidence(candidate))
     errors.extend(_validate_career_cta(candidate))
     errors.extend(_validate_evidence_refs(candidate, validated_input))
     errors.extend(_validate_career_boundaries(candidate))
@@ -272,23 +268,6 @@ def _validate_house_scenarios(narrative: SelfNarrative) -> list[NarrativeValidat
     return errors
 
 
-def _validate_key_section_evidence(narrative: SelfNarrative) -> list[NarrativeValidationError]:
-    for section_index, section in enumerate(narrative.sections):
-        if section.id != "main_formula":
-            continue
-        if section.evidence_notes:
-            return []
-        return [
-            NarrativeValidationError(
-                code="missing_section_evidence",
-                message="Main narrative formula must include collapsed evidence notes.",
-                location=f"sections[{section_index}].evidence_notes",
-                recoverable=True,
-            )
-        ]
-    return []
-
-
 def _validate_career_cta(narrative: SelfNarrative) -> list[NarrativeValidationError]:
     career_cta = getattr(narrative, "career_cta", None)
     if career_cta is not None:
@@ -354,7 +333,7 @@ def _validate_forbidden_language(narrative: SelfNarrative) -> list[NarrativeVali
                     code="forbidden_language",
                     message="Narrative contains forbidden fatalistic, medical, diagnostic, or graphic language.",
                     location=location,
-                    recoverable=False,
+                    recoverable=True,
                 )
             )
     return errors

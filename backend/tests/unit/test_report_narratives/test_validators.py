@@ -80,13 +80,13 @@ class TestValidateSelfNarrative:
         assert any(error.code == "unknown_evidence_ref" for error in errors)
         assert any("limitation_fact_ids" in error.location for error in errors)
 
-    def test_rejects_key_section_without_evidence_notes(self) -> None:
+    def test_accepts_key_section_without_collapsed_evidence_notes(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
         narrative.sections[0].evidence_notes = []
 
         errors = validate_self_narrative(narrative, narrative_input_payload)
 
-        assert any(error.code == "missing_section_evidence" for error in errors)
+        assert not any(error.code == "missing_section_evidence" for error in errors)
 
     def test_rejects_dominant_without_evidence_refs(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
@@ -138,13 +138,23 @@ class TestValidateSelfNarrative:
 
         assert any(error.code == "career_boundary_violation" for error in errors)
 
-    def test_rejects_forbidden_fatalistic_medical_and_graphic_language(self) -> None:
+    def test_treats_forbidden_language_as_recoverable_validation_error(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
         narrative.sections[-1].body = "У вас неизбежно будет диагноз, а близость сводится к половому акту."
 
         errors = validate_self_narrative(narrative, narrative_input_payload)
 
-        assert any(error.code == "forbidden_language" for error in errors)
+        forbidden_errors = [error for error in errors if error.code == "forbidden_language"]
+        assert forbidden_errors
+        assert all(error.recoverable for error in forbidden_errors)
+
+    def test_accepts_non_diagnostic_vulnerability_language(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.sections[4].body = "Иногда возможны депрессивные реакции и болезненная чувствительность к отказу."
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert not any(error.code == "forbidden_language" for error in errors)
 
     def test_rejects_unknown_astrology_or_socionics_terms(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
@@ -188,21 +198,21 @@ class TestNarrativeRecoveryPolicy:
 
         assert action == "fallback"
 
-    def test_marks_nonrecoverable_output_as_failed(self) -> None:
+    def test_repairs_forbidden_language_before_fallback(self) -> None:
         action = choose_narrative_recovery_action(
             errors=[
                 NarrativeValidationError(
                     code="forbidden_language",
                     message="Forbidden language detected.",
                     location="sections[7].body",
-                    recoverable=False,
+                    recoverable=True,
                 )
             ],
             repair_attempts_used=0,
             llm_available=True,
         )
 
-        assert action == "narrative_failed"
+        assert action == "repair"
 
     def test_falls_back_when_llm_is_unavailable(self) -> None:
         action = choose_narrative_recovery_action(

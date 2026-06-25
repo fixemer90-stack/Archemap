@@ -423,7 +423,7 @@ class TestReportNarrativeService:
         assert "Сейчас текстовая версия недоступна" in result.content["hero"]["body"]
 
     @pytest.mark.asyncio
-    async def test_logs_validation_failure_kind_for_terminal_failure(
+    async def test_logs_validation_fallback_for_invalid_output(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -440,12 +440,16 @@ class TestReportNarrativeService:
 
         await service.generate_for_report(report_fixture.id)
 
-        failure_events = [
-            payload for _, event, payload in fake_logger.events if event == "report_narrative_generation_failed"
+        validation_events = [
+            payload for _, event, payload in fake_logger.events if event == "report_narrative_validation_failed"
         ]
-        assert failure_events
-        assert any(payload.get("failure_kind") == "validation_failed" for payload in failure_events)
-        assert any("duration_ms" in payload for payload in failure_events)
+        success_events = [
+            payload for _, event, payload in fake_logger.events if event == "report_narrative_generation_succeeded"
+        ]
+        assert validation_events
+        assert any(payload.get("failure_kind") == "validation_failed" for payload in validation_events)
+        assert any(payload.get("recovery_action") == "fallback" for payload in validation_events)
+        assert any(payload.get("recovery_action") == "validation_fallback" for payload in success_events)
 
     @pytest.mark.asyncio
     async def test_recoverable_validation_failure_falls_back_after_single_repair_attempt(
@@ -471,7 +475,7 @@ class TestReportNarrativeService:
         assert report_fixture.status == "ready"
 
     @pytest.mark.asyncio
-    async def test_nonrecoverable_validation_failure_marks_report_and_narrative_failed(
+    async def test_validation_failure_falls_back_to_ready_narrative(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -486,10 +490,11 @@ class TestReportNarrativeService:
 
         result = await service.generate_for_report(report_fixture.id)
 
-        assert result.status == "narrative_failed"
-        assert result.error_message is not None
-        assert report_fixture.status == "narrative_failed"
-        assert report_fixture.error_message is not None
+        assert result.status == "ready"
+        assert result.error_message == "validation_fallback"
+        assert result.content is not None
+        assert report_fixture.status == "ready"
+        assert report_fixture.error_message is None
 
     @pytest.mark.asyncio
     async def test_force_regenerate_reuses_existing_cache_key_record(

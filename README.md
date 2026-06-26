@@ -6,7 +6,7 @@
     <a href="https://github.com/fixemer90-stack/Archemap/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/fixemer90-stack/Archemap/ci.yml?branch=main&label=CI&style=for-the-badge"></a>
     <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white">
     <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white">
-    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white">
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white">
     <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111111">
     <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">
   </p>
@@ -35,13 +35,13 @@ birth data → chart snapshot → normalized features → rules → claims + evi
 
 ## 🧭 Продукт
 
-| Вертикаль            | Что получает пользователь                                               | Статус                        |
-| -------------------- | ----------------------------------------------------------------------- | ----------------------------- |
-| **Astrotype Self**   | Натальная карта, личностный портрет, соционика, narrative‑first отчёт   | ✅ Реализовано                |
-| **Astrotype Career** | Сильные стороны, профессиональные роли, сценарии развития               | ✅ Реализовано                |
-| **Astrotype Love**   | Совместимость, паттерны отношений, триггеры конфликтов                  | 🧭 Запланировано              |
-| **Astrotype Child**  | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию     | 🧭 Запланировано              |
-| **LLM Narrative**    | Управляемый LLM‑слой для мягкого сторителлинга поверх rule‑based фактов | 🧪 Спроектировано, не runtime |
+| Вертикаль            | Что получает пользователь                                             | Статус                  |
+| -------------------- | --------------------------------------------------------------------- | ----------------------- |
+| **Astrotype Self**   | Натальная карта, личностный портрет, соционика, narrative‑first отчёт | ✅ Реализовано          |
+| **Astrotype Career** | Сильные стороны, профессиональные роли, сценарии развития             | ✅ Реализовано          |
+| **Astrotype Love**   | Совместимость, паттерны отношений, триггеры конфликтов                | 🧭 Запланировано        |
+| **Astrotype Child**  | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию   | 🧭 Запланировано        |
+| **LLM Narrative**    | Runtime‑слой structured JSON narrative поверх deterministic report    | ✅ Реализовано для Self |
 
 ### Почему это не «астро‑гадалка»
 
@@ -49,7 +49,7 @@ birth data → chart snapshot → normalized features → rules → claims + evi
 - Каждый вывод имеет `evidence trail`: факты → правила → claim.
 - Соционический профиль считается отдельным engine‑слоем, а не придумывается текстом.
 - Технические детали доступны, но спрятаны в progressive disclosure.
-- Для будущего LLM‑слоя зафиксирован принцип: LLM пишет narrative JSON, но не рассчитывает карту и не добавляет факты.
+- LLM‑слой пишет валидируемый narrative JSON поверх deterministic report, но не рассчитывает карту и не добавляет факты.
 
 ---
 
@@ -89,11 +89,12 @@ graph LR
     PROF --> CHART[Chart Engine]
     CHART --> RULES[Rules Engine]
     RULES --> REPORTS[Reports]
-    REPORTS --> PDF[PDF Worker]
-    REPORTS --> S3[MinIO / S3]
-    API --> PG[(PostgreSQL)]
+    REPORTS --> NARR[LLM Narrative Worker]
+    REPORTS --> PDF[PDF on demand]
+    REPORTS --> PG[(PostgreSQL)]
+    API --> PG
     API --> REDIS[(Redis)]
-    PDF --> REDIS
+    NARR --> REDIS
 ```
 
 ### Backend
@@ -104,13 +105,13 @@ graph LR
 - **Redis 7** for cache, rate limiting, Celery broker
 - **Swiss Ephemeris / Flatlib** for chart calculations
 - **Rule engine** for explainable interpretations
-- **Celery** for PDF and long‑running tasks
+- **Celery** for LLM narrative generation and long‑running tasks
 - **WeasyPrint + Jinja2** for PDF rendering
-- **MinIO / S3** for report artifacts
+- Report JSON and narrative JSON persisted in PostgreSQL; PDF renders on demand from stored JSON
 
 ### Frontend
 
-- **Next.js 15** + React 19
+- **Next.js 16** + React 19
 - **Tailwind CSS 4** + shadcn/ui‑style components
 - **TanStack Query** for server state
 - **Zustand** for client state
@@ -147,15 +148,14 @@ docker compose up -d --build
 
 Сервисы:
 
-| Сервис        | URL                                 |
-| ------------- | ----------------------------------- |
-| Frontend      | http://localhost:3000               |
-| Backend API   | http://localhost:8000               |
-| API health    | http://localhost:8000/api/v1/health |
-| MinIO Console | http://localhost:9001               |
-| PostgreSQL    | `localhost:5432`                    |
-| Redis         | `localhost:6379`                    |
-| OpenAPI       | http://localhost:8000/docs          |
+| Сервис      | URL                                 |
+| ----------- | ----------------------------------- |
+| Frontend    | http://localhost:3000               |
+| Backend API | http://localhost:8000               |
+| API health  | http://localhost:8000/api/v1/health |
+| PostgreSQL  | `localhost:5432`                    |
+| Redis       | `localhost:6379`                    |
+| OpenAPI     | http://localhost:8000/docs          |
 
 ### Полезные Docker-команды
 
@@ -245,7 +245,7 @@ Astrotype/
 │   │   ├── chart_engine/        # Ephemeris, houses, aspects, socionics
 │   │   ├── core/                # Shared kernel: settings, security, base models
 │   │   ├── infrastructure/      # DB, Redis, email, storage, geocoding
-│   │   └── modules/             # Auth, profiles, charts, reports, users, payments
+│   │   └── modules/             # Auth, profiles, charts, reports, narratives, billing, admin
 │   ├── alembic/                 # Database migrations
 │   ├── rules/                   # Rule sets for product verticals
 │   │   ├── self/
@@ -286,20 +286,20 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ                                                                                               | Назначение                      |
-| ------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                 | Индекс проекта: код, API, docs  |
-| [`docs/SPEC.md`](docs/SPEC.md)                                                                         | Полная спецификация продукта    |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                   | Дорожная карта                  |
-| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                       | Дизайн‑код и визуальная система |
-| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                               | Narrative‑first UX отчёта       |
-| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                   | Сторителлинг Self‑отчёта        |
-| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md) | Архитектура LLM narrative layer |
-| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md) | Улучшение глубины Self report |
-| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md) | SRS для E13 depth-layer отчёта |
-| [`docs/features/`](docs/features/)                                                                     | Feature/story документация      |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                     | REST API contract               |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                   | Async/event contract            |
+| Документ                                                                                                           | Назначение                      |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                             | Индекс проекта: код, API, docs  |
+| [`docs/SPEC.md`](docs/SPEC.md)                                                                                     | Полная спецификация продукта    |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                               | Дорожная карта                  |
+| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                                   | Дизайн‑код и визуальная система |
+| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                           | Narrative‑first UX отчёта       |
+| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                               | Сторителлинг Self‑отчёта        |
+| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)             | Архитектура LLM narrative layer |
+| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md) | Улучшение глубины Self report   |
+| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                   | SRS для E13 depth-layer отчёта  |
+| [`docs/features/`](docs/features/)                                                                                 | Feature/story документация      |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                 | REST API contract               |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                               | Async/event contract            |
 
 ---
 
@@ -313,12 +313,16 @@ GitHub Actions запускает:
 - frontend report UX regression and build;
 - OpenAPI / AsyncAPI validation;
 - Python and npm security audit;
-- Docker image build.
+- Docker image build in the image workflow.
 
-Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+Workflows:
+
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — lint, type checks, tests, contracts, security audit.
+- [`.github/workflows/build-push-deploy.yml`](.github/workflows/build-push-deploy.yml) — image build/push path.
+- [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — deploy path.
 
 ---
 
 ## 📄 Лицензия
 
-Proprietary — все права защищены.
+MIT для backend package metadata; отдельный корневой `LICENSE` файл пока не заведён.

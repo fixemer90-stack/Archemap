@@ -22,11 +22,11 @@ Astrotype — full-stack narrative-first платформа для астрол�
 ## Tech stack
 
 - Backend: FastAPI, SQLAlchemy 2 async, PostgreSQL, Redis
-- Frontend: Next.js 15, React 19, Tailwind 4, Zustand, TanStack Query
-- Workers: Celery-style async task bridge
-- PDF: WeasyPrint + Jinja2
-- Storage: MinIO / S3
-- CI: GitHub Actions (`.github/workflows/ci.yml`)
+- Frontend: Next.js 16, React 19, Tailwind 4, Zustand, TanStack Query
+- Workers: Celery async task bridge for LLM narrative generation and long-running tasks
+- PDF: WeasyPrint + Jinja2, rendered on demand from stored JSON
+- Storage: PostgreSQL stores deterministic report JSON and narrative JSON; no MinIO/S3 artifact dependency in local runtime
+- CI: GitHub Actions (`.github/workflows/ci.yml`, `build-push-deploy.yml`, `deploy.yml`)
 
 ## Repository map
 
@@ -60,14 +60,17 @@ docs/                    Design, SRS, feature stories, reviews
 - `app/modules/profiles/` — person profiles, geocoding inputs
 - `app/modules/charts/` — chart snapshots and socionics computation
 - `app/modules/rules/` — deterministic rules/resolver/interpretation
-- `app/modules/reports/` — report persistence, API, PDF, storage, tasks
+- `app/modules/reports/` — report persistence, API, on-demand PDF rendering from stored JSON
 - `app/modules/report_narratives/` — LLM narrative layer over deterministic reports
 - `app/modules/payments/` — YooKassa payment flow
-- `app/modules/llm/` — provider abstraction, mock/openrouter providers
+- `app/modules/billing/`, `app/modules/catalog/`, `app/modules/subscriptions/` — commercial catalog, billing and access lifecycle
+- `app/modules/admin/`, `app/modules/authorization/`, `app/modules/notifications/`, `app/modules/webhooks/`, `app/modules/reconciliation/` — admin, RBAC, notification/webhook and operational flows
+- `app/modules/llm/` — provider abstraction, mock/openrouter/deepseek providers
 
 ## LLM narrative implementation paths
 
 Core backend:
+
 - `backend/app/modules/report_narratives/schemas.py` — `NarrativeInput`, `SelfNarrative`
 - `backend/app/modules/report_narratives/input_builder.py` — deterministic DTO builder
 - `backend/app/modules/report_narratives/hash.py` — stable narrative input hash
@@ -79,11 +82,13 @@ Core backend:
 - `backend/app/modules/report_narratives/models.py` — `ReportNarrative` storage model
 
 LLM provider layer:
+
 - `backend/app/modules/llm/provider.py` — factory
 - `backend/app/modules/llm/providers/mock.py` — offline-safe test provider
 - `backend/app/modules/llm/providers/openrouter.py` — real network provider
 
 Report integration:
+
 - `backend/app/modules/reports/router.py` — report endpoints
 - `backend/app/modules/reports/schemas.py` — response contracts with narrative status/payload
 - `backend/app/modules/reports/tasks.py` — PDF task wiring reads saved narrative JSON
@@ -94,6 +99,7 @@ Report integration:
 ## Frontend route/component index
 
 Routes:
+
 - `frontend/src/app/(dashboard)/dashboard/page.tsx` — dashboard
 - `frontend/src/app/(dashboard)/products/self/page.tsx` — Self product
 - `frontend/src/app/(dashboard)/products/career/page.tsx` — Career product
@@ -101,6 +107,7 @@ Routes:
 - `frontend/src/app/(auth)/register/page.tsx` — registration + OAuth complete-profile
 
 Narrative UI:
+
 - `frontend/src/components/report/report-generation-progress.tsx` — generating state
 - `frontend/src/components/report/deterministic-report-fallback.tsx` — fallback after timeout/failure
 - `frontend/src/components/report/report-narrative-page.tsx` — ready narrative rendering root
@@ -115,12 +122,14 @@ Narrative UI:
 Main REST prefix: `/api/v1`
 
 Important auth routes:
+
 - `POST /api/v1/auth/login` — email/password login; target browser flow sets HttpOnly cookies
 - `POST /api/v1/auth/refresh` — cookie-native refresh with legacy body fallback during migration
 - `POST /api/v1/auth/logout` — revoke tokens and clear auth cookies
 - `GET /api/v1/users/me` — session bootstrap from cookie-backed auth
 
 Important report routes:
+
 - `POST /api/v1/reports/generate`
 - `GET /api/v1/reports/{report_id}`
 - `GET /api/v1/reports`
@@ -129,6 +138,7 @@ Important report routes:
 - `POST /api/v1/reports/{report_id}/pdf`
 
 Health:
+
 - `GET /api/v1/health`
 
 ## Rules/product verticals
@@ -140,6 +150,7 @@ Health:
 ## Quality gates
 
 Backend:
+
 ```bash
 cd backend
 ruff check .
@@ -150,6 +161,7 @@ pytest tests/integration -q
 ```
 
 Frontend:
+
 ```bash
 cd frontend
 npm test
@@ -160,11 +172,13 @@ npm run build
 ```
 
 Report narrative regression focus:
+
 - `backend/tests/unit/test_report_narratives/`
 - `backend/tests/unit/test_reports/test_pdf.py`
 - `frontend/scripts/check-report-ux.mjs`
 
 CI guardrails:
+
 - `.github/workflows/ci.yml` explicitly pins test env to `LLM_PROVIDER=mock` and `LLM_ENABLED=false`
 - Automated tests must not hit real LLM network providers
 
@@ -177,12 +191,14 @@ curl http://localhost:8000/api/v1/health
 ```
 
 Useful logs:
+
 ```bash
 docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
 If Postgres auth/volumes are broken:
+
 ```bash
 docker compose down -v
 docker compose up -d --build

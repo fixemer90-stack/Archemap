@@ -18,6 +18,21 @@ from app.modules.report_narratives.schemas import (
     SelfNarrative,
 )
 
+_GENERIC_HOROSCOPE_MARKERS = (
+    "как и многие люди с такой картой",
+    "как и многие люди",
+    "очень чувствительный человек",
+    "все люди с таким положением",
+    "типичный представитель",
+)
+_FATALISTIC_MARKERS = (
+    "неизбежно",
+    "обреч",
+    "все люди с таким положением",
+    "всегда будет",
+    "никогда не сможет",
+)
+
 _ALLOWED_PLANET_TOKENS = {
     "солнце",
     "луна",
@@ -135,6 +150,22 @@ def validate_self_narrative(
     errors.extend(_validate_career_boundaries(candidate))
     errors.extend(_validate_forbidden_language(candidate))
     errors.extend(_validate_domain_terms(candidate, validated_input))
+    return errors
+
+
+def validate_assembled_self_narrative(
+    narrative: SelfNarrative | dict[str, Any],
+    narrative_input: NarrativeInput | dict[str, Any],
+) -> list[NarrativeValidationError]:
+    """Validate final assembled Self narrative with anti-horoscope quality gates."""
+    validated_input = NarrativeInput.model_validate(narrative_input)
+    candidate = narrative if isinstance(narrative, SelfNarrative) else SelfNarrative.model_validate(narrative)
+
+    errors = validate_self_narrative(candidate, validated_input)
+    errors.extend(_validate_duplicate_paragraphs(candidate))
+    errors.extend(_validate_generic_horoscope_prose(candidate))
+    errors.extend(_validate_fatalistic_language(candidate))
+    errors.extend(_validate_mechanism_risk_mature_chain(candidate))
     return errors
 
 
@@ -643,6 +674,74 @@ def _iter_evidence_notes(narrative: SelfNarrative) -> Iterable[tuple[str, Eviden
     for section_index, section in enumerate(narrative.sections):
         for note_index, note in enumerate(section.evidence_notes):
             yield (f"sections[{section_index}].evidence_notes[{note_index}]", note)
+
+
+def _validate_duplicate_paragraphs(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    seen: dict[str, str] = {}
+    errors: list[NarrativeValidationError] = []
+    for section in narrative.sections:
+        normalized = " ".join(section.body.lower().split())
+        if normalized in seen:
+            errors.append(
+                NarrativeValidationError(
+                    code="duplicate_paragraph",
+                    message="Final assembled narrative contains repeated section prose.",
+                    location=f"sections[{section.id}]",
+                    recoverable=True,
+                )
+            )
+        else:
+            seen[normalized] = section.id
+    return errors
+
+
+def _validate_generic_horoscope_prose(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    errors: list[NarrativeValidationError] = []
+    for location, text in _iter_non_cta_texts(narrative):
+        lowered = text.lower()
+        if any(marker in lowered for marker in _GENERIC_HOROSCOPE_MARKERS):
+            errors.append(
+                NarrativeValidationError(
+                    code="generic_horoscope_prose",
+                    message="Final assembled narrative contains vague horoscope filler.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_fatalistic_language(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    errors: list[NarrativeValidationError] = []
+    for location, text in _iter_non_cta_texts(narrative):
+        lowered = text.lower()
+        if any(marker in lowered for marker in _FATALISTIC_MARKERS):
+            errors.append(
+                NarrativeValidationError(
+                    code="fatalistic_language",
+                    message="Final assembled narrative contains deterministic/fatalistic wording.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_mechanism_risk_mature_chain(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    development = next((section for section in narrative.sections if section.id == "development"), None)
+    if development is None:
+        return []
+    lowered = development.body.lower()
+    if all(marker in lowered for marker in ("механизм:", "риск:", "зрел")):
+        return []
+    return [
+        NarrativeValidationError(
+            code="missing_mechanism_risk_mature_chain",
+            message="Development section must preserve mechanism/risk/mature-expression chain.",
+            location="sections[development].body",
+            recoverable=True,
+        )
+    ]
 
 
 def _iter_non_cta_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str]]:

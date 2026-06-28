@@ -9,6 +9,7 @@
 - какие статусы должен уметь обрабатывать клиент.
 
 Документ основан на текущей backend-реализации в:
+
 - `backend/app/modules/reports/router.py`
 - `backend/app/modules/reports/schemas.py`
 - `docs/features/E11-llm-report-narrative/S08-report-api-narrative-endpoints.md`
@@ -24,7 +25,7 @@ API-поведение такое:
 3. backend ставит narrative generation в фон;
 4. клиент читает статус отчёта;
 5. когда narrative готов, тот же report endpoint начинает отдавать `narrative`;
-6. если narrative не удался, клиент использует deterministic fallback и может вызвать regenerate.
+6. если narrative не удался, клиент видит unavailable state и может вызвать regenerate.
 
 ## 2. Поддерживаемый продуктовый flow
 
@@ -35,6 +36,7 @@ API-поведение такое:
 Для `self` backend после генерации пытается автоматически поставить фоновую задачу narrative generation.
 
 Для других продуктов:
+
 - общий report API может существовать;
 - но narrative regenerate в E11 поддерживается только для `self`.
 
@@ -43,6 +45,7 @@ API-поведение такое:
 Все endpoints reports работают для текущего авторизованного пользователя.
 
 Практически это означает:
+
 - backend использует `get_current_user`;
 - пользователь не может читать чужой report;
 - пользователь не может регенерировать narrative чужого report.
@@ -81,7 +84,7 @@ API-поведение такое:
 - `status` — жизненный цикл отчёта и narrative-слоя
 - `report_data` — deterministic база, доступная даже без готового narrative
 - `narrative` — persisted narrative payload или `null`
-- `error_message` — причина сбоя enqueue/generation/fallback-visible состояния
+- `error_message` — причина сбоя enqueue/generation или unavailable-state
 
 ## 4.2 `NarrativeResponse`
 
@@ -135,42 +138,55 @@ API-поведение такое:
 - `deterministic_ready`
 
 ### `generating_narrative`
+
 Значение:
+
 - deterministic report уже создан или создаётся к моменту возврата;
 - narrative generation поставлена в фон;
 - клиент должен polling-ить detail endpoint.
 
 Ожидаемое поведение клиента:
+
 - показать progress state;
 - не висеть бесконечно;
-- после timeout дать fallback.
+- после timeout дать `Обновить` и `Повторить генерацию`, но не открывать технический fallback summary как основной результат.
 
 ### `ready`
+
 Значение:
+
 - narrative готов и сохранён;
 - клиент может рендерить narrative-first report.
 
 Ожидаемое поведение клиента:
+
 - использовать `narrative.sections`, `hero`, `career_cta`;
 - deterministic блоки уводить в technical details.
 
 ### `narrative_failed`
+
 Значение:
+
 - narrative-слой не удался;
-- deterministic report остаётся доступным.
+- deterministic report остаётся доступным на backend, но Self UI не должен маскировать это как готовый narrative-ответ.
 
 Ожидаемое поведение клиента:
-- показать fallback;
+
+- показать unavailable state;
 - показать warning;
 - дать `Повторить генерацию`.
 
 ### `deterministic_ready`
+
 Значение:
+
 - базовый deterministic report доступен;
 - narrative ещё не оказался в финальном usable `ready`.
 
 Ожидаемое поведение клиента:
-- можно читать техническую версию;
+
+- для Self оставаться в progress/ожидании полного текста;
+- не рендерить `DeterministicReportFallback` как нормальный ответ;
 - можно предложить regenerate narrative.
 
 ## 6. Endpoint: generate report
@@ -230,10 +246,11 @@ Body:
 ```
 
 Важно:
+
 - generate endpoint не ждёт, пока LLM закончит;
 - успешный ответ здесь обычно означает "generation started", а не "narrative already ready".
 
-## 6.4 Fallback-friendly response
+## 6.4 Degraded-but-not-user-ready response
 
 Если не удалось даже поставить narrative-задачу в очередь:
 
@@ -250,9 +267,11 @@ Body:
 }
 ```
 
-Это не означает провал всего отчёта. Это означает:
-- deterministic результат уже можно показывать;
-- narrative-слой пока не запущен или не стартовал.
+Это не означает провал всего deterministic расчёта. Это означает:
+
+- deterministic результат уже сохранён;
+- narrative-слой пока не запущен или не стартовал;
+- для Self frontend не должен показывать это как готовый safe fallback report.
 
 ## 7. Endpoint: list reports
 
@@ -271,6 +290,7 @@ GET /api/v1/reports?product=self&limit=100
 ## 7.2 Зачем он нужен в E11
 
 Frontend использует list endpoint, чтобы:
+
 - получить список report'ов пользователя;
 - выбрать latest report для конкретного `profile_id`;
 - дальше перейти к polling/detail flow уже по `report_id`.
@@ -296,6 +316,7 @@ Frontend использует list endpoint, чтобы:
 ```
 
 Важно:
+
 - каждый item сериализуется тем же `ReportResponse`;
 - backend подмешивает latest narrative state для каждого report.
 
@@ -331,9 +352,10 @@ GET /api/v1/reports/{report_id}
 Это нормальный и ожидаемый ответ.
 
 Клиент в этом состоянии должен:
+
 - продолжать polling;
 - отсчитывать timeout;
-- быть готовым показать fallback.
+- быть готовым остаться в progress/unavailable flow, но не открывать fallback summary как основной результат.
 
 ## 8.4 Ответ, когда narrative готов
 
@@ -377,9 +399,10 @@ GET /api/v1/reports/{report_id}
 ```
 
 Практически клиенту важно следующее:
+
 - отчёт не пропал;
-- `report_data` доступен;
-- можно включить deterministic fallback;
+- `report_data` доступен на backend как deterministic база;
+- основной Self UI не должен подменять отсутствие полного narrative техническим fallback summary;
 - можно вызвать regenerate.
 
 ## 9. Endpoint: regenerate narrative
@@ -410,6 +433,7 @@ Body не требуется:
 ### Почему `force=True` важно
 
 `force=True` означает:
+
 - новый narrative attempt не должен просто взять готовый cache hit;
 - endpoint действительно инициирует новую попытку генерации narrative-слоя.
 
@@ -430,6 +454,7 @@ Body не требуется:
 ```
 
 Важно понимать нюанс текущего контракта:
+
 - report уже переведён в новый `generating_narrative`;
 - но в ответе может ещё приехать предыдущий latest narrative state, считанный до enqueue;
 - поэтому клиенту после regenerate надо ориентироваться прежде всего на верхнеуровневый `report.status`, а затем polling-ить detail endpoint.
@@ -474,12 +499,15 @@ Body не требуется:
 5. если через 90 секунд всё ещё `generating_narrative`:
    - показать timeout UI;
    - предложить `Обновить`;
-   - предложить `Показать технический отчёт`;
-6. если пришёл `narrative_failed` или `deterministic_ready`:
-   - показать deterministic fallback;
+   - предложить `Повторить генерацию`;
+6. если пришёл `narrative_failed` или `ready` без narrative:
+   - показать unavailable state;
    - дать кнопку `Повторить генерацию`;
-7. при retry вызвать `POST /api/v1/reports/{report_id}/narrative/regenerate`;
-8. снова перейти в polling.
+7. если пришёл `deterministic_ready`:
+   - не рендерить technical fallback summary как основной результат;
+   - продолжать progress UI или предложить regenerate, в зависимости от экрана;
+8. при retry вызвать `POST /api/v1/reports/{report_id}/narrative/regenerate`;
+9. снова перейти в polling.
 
 ## 11. Что клиенту нельзя предполагать
 
@@ -507,6 +535,8 @@ E11 API работает так:
 - `POST /api/v1/reports/{report_id}/narrative/regenerate` — повторить только narrative generation
 
 Главная идея контракта:
+
 - deterministic report живёт отдельно и раньше narrative;
-- narrative может быть `null` или failed, но отчёт при этом всё равно usable;
-- frontend должен мыслить через status machine, а не через "есть текст / нет текста".
+- narrative может быть `null` или failed, но deterministic расчёт при этом всё равно сохранён;
+- frontend должен мыслить через status machine, а не через "есть текст / нет текста";
+- для Self отсутствие narrative не даёт права показывать safe fallback summary как готовый ответ.

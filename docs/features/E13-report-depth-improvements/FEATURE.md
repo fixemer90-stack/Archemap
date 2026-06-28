@@ -1,6 +1,6 @@
 # E13 — Report Depth Improvements
 
-> Статус: ⬜ Не начато
+> Статус: ✅ Готово
 > Источник: `docs/Tips.md` / Obsidian note `Archemap/docs/Tips`
 > Дата подготовки: 2026-06-18
 
@@ -82,30 +82,30 @@
 
 ## Stories
 
-| Story | Название | Статус | Документ |
-|---|---|---|---|
-| S01 | Dominants and inner mechanism contract | ✅ Готово | `S01-dominants-inner-mechanism.md` |
-| S02 | House scenario interpreter | ✅ Готово | `S02-house-scenarios.md` |
-| S03 | Evidence tracing in narrative and PDF | ⬜ Не начато | `S03-evidence-tracing.md` |
-| S04 | Contradictions, failures, maturity levels | ⬜ Не начато | `S04-contradictions-failures-maturity.md` |
-| S05 | Calibration questions and feedback loop | ⬜ Не начато | `S05-calibration-questions.md` |
-| S06 | Self-to-Career teaser | ⬜ Не начато | `S06-career-teaser.md` |
-| S07 | Rendering, prompt contract, and quality gates | ⬜ Не начато | `S07-rendering-prompt-quality-gates.md` |
+| Story | Название                                      | Статус       | Документ                                  |
+| ----- | --------------------------------------------- | ------------ | ----------------------------------------- |
+| S01   | Dominants and inner mechanism contract        | ✅ Готово    | `S01-dominants-inner-mechanism.md`        |
+| S02   | House scenario interpreter                    | ✅ Готово    | `S02-house-scenarios.md`                  |
+| S03   | Evidence tracing in narrative and PDF         | ✅ Готово    | `S03-evidence-tracing.md`                 |
+| S04   | Contradictions, failures, maturity levels     | ✅ Готово    | `S04-contradictions-failures-maturity.md` |
+| S05   | Calibration questions and feedback loop       | ✅ Готово    | `S05-calibration-questions.md`            |
+| S06   | Self-to-Career teaser                         | ✅ Готово    | `S06-career-teaser.md`                    |
+| S07   | Rendering, prompt contract, and quality gates | ✅ Готово    | `S07-rendering-prompt-quality-gates.md`   |
 
 ## Acceptance criteria
 
-- [ ] Self report has a structured “Ключевые доминанты карты” block based on normalized chart features and important placements.
-- [ ] Self report explains an “internal mechanism” as a step-by-step behavioral model, not only as traits.
-- [ ] At least 3 central contradictions are generated from chart evidence and rendered in narrative/PDF.
+- [x] Self report has a structured “Ключевые доминанты карты” block based on normalized chart features and important placements.
+- [x] Self report explains an “internal mechanism” as a step-by-step behavioral model, not only as traits.
+- [x] At least 3 central contradictions are generated from chart evidence and rendered in narrative/PDF.
 - [x] House interpretations are scenario-based and include manifestation + shadow/risk.
-- [ ] Major claims can expose bases: astrological fact, psychological mechanism, limitation/counter-evidence.
-- [ ] Vulnerability section includes concrete failure modes, not only soft generic advice.
-- [ ] Self report includes “Как это видно в жизни” with practical recognisable patterns.
-- [ ] Self report includes calibration questions; answers are not required for MVP, but the contract supports future feedback storage.
-- [ ] Self report includes maturity levels: low / medium / high expression.
-- [ ] Career teaser is useful but bounded; it does not list a full career plan or replace Career product.
-- [ ] PDF contains the same new semantic blocks as web, with technical details still after narrative.
-- [ ] Regression checks prevent raw English enum leaks, ungrounded LLM claims, missing required sections, and Self/Career boundary violations.
+- [x] Major claims can expose bases: astrological fact, psychological mechanism, limitation/counter-evidence.
+- [x] Vulnerability section includes concrete failure modes, not only soft generic advice.
+- [x] Self report includes “Как это видно в жизни” with practical recognisable patterns.
+- [x] Self report includes calibration questions; answers are not required for MVP, but the contract supports future feedback storage.
+- [x] Self report includes maturity levels: low / medium / high expression.
+- [x] Career teaser is useful but bounded; it does not list a full career plan or replace Career product.
+- [x] PDF contains the same new semantic blocks as web, with technical details still after narrative.
+- [x] Regression checks prevent raw English enum leaks, ungrounded LLM claims, missing required sections, and Self/Career boundary violations.
 
 ## Implementation notes
 
@@ -134,7 +134,7 @@ Likely touched modules:
 - new components if needed:
   - `dominants-section.tsx`
   - `inner-mechanism-section.tsx`
-  - `calibration-questions.tsx`
+  - `calibration-questions-section.tsx`
   - `maturity-levels.tsx`
 - `frontend/scripts/check-report-ux.mjs`
 
@@ -214,3 +214,11 @@ curl http://localhost:8000/api/v1/health
 - Whether calibration answers are stored immediately or only rendered as questions in MVP. Preferred: render-only in first iteration, storage in follow-up.
 - Whether dominants are deterministic-only or LLM-rendered from deterministic input. Preferred: deterministic extraction + LLM wording.
 - Whether maturity levels are generic by archetype or generated per chart. Preferred: generated from structured deterministic evidence with validator constraints.
+
+## Relationship to E14
+
+E13 defines the semantic depth layer: dominants, mechanisms, house scenarios, contradictions, evidence tracing, maturity levels and calibration questions.
+
+E14 (`docs/features/E14-staged-narrative-pipeline/FEATURE.md`) defines the generation architecture needed to make that depth reliable in production: deterministic `DeepNatalSynthesis`, aspect ranking/pattern clustering, `NarrativePlan`, parallel section stages, final assembly and anti-horoscope quality gates.
+
+If a change is about what the report should understand, it belongs to E13. If a change is about how the system generates, validates, caches and retries deep narrative blocks, it belongs to E14.

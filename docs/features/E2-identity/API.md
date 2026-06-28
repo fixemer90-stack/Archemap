@@ -2,33 +2,35 @@
 
 Этот документ фиксирует целевой API contract для cookie-first browser authentication в Astrotype.
 
+Текущее фактическое состояние реализации: [CURRENT-AUTH-FLOW.md](CURRENT-AUTH-FLOW.md).
+
 Base path: `/api/v1`
 
 ## Token/cookie names
 
 ### Target browser cookies
 
-| Cookie | Purpose | JS-readable | HttpOnly | Lifetime | Notes |
-|---|---|---:|---:|---|---|
-| `access_token` | short-lived JWT for protected routes | no | yes | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Sent automatically by browser. |
-| `refresh_token` | long-lived JWT for refresh | no | yes | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Rotated on refresh. |
+| Cookie          | Purpose                              | JS-readable | HttpOnly | Lifetime                          | Notes                          |
+| --------------- | ------------------------------------ | ----------: | -------: | --------------------------------- | ------------------------------ |
+| `access_token`  | short-lived JWT for protected routes |          no |      yes | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Sent automatically by browser. |
+| `refresh_token` | long-lived JWT for refresh           |          no |      yes | `JWT_REFRESH_TOKEN_EXPIRE_DAYS`   | Rotated on refresh.            |
 
 ### Legacy migration cookies
 
-| Cookie | Status | Notes |
-|---|---|---|
-| `astrotype_token` | legacy / migration only | JS-readable; must not be source of truth in final browser flow. |
-| `astrotype_refresh_token` | legacy / migration only | JS-readable; remove after frontend migration. |
+| Cookie                    | Status                  | Notes                                                           |
+| ------------------------- | ----------------------- | --------------------------------------------------------------- |
+| `astrotype_token`         | legacy / migration only | JS-readable; must not be source of truth in final browser flow. |
+| `astrotype_refresh_token` | legacy / migration only | JS-readable; remove after frontend migration.                   |
 
 Backend may accept legacy cookies during migration, but frontend must stop writing them for browser auth.
 
 ## Authorization methods
 
-| Method | Intended consumer | Priority |
-|---|---|---|
-| HttpOnly cookies | Browser web app | Primary |
-| `Authorization: Bearer` | API clients, tests, backward compatibility | Fallback |
-| `astrotype_*` JS cookies | Migration compatibility only | Temporary fallback |
+| Method                   | Intended consumer                          | Priority           |
+| ------------------------ | ------------------------------------------ | ------------------ |
+| HttpOnly cookies         | Browser web app                            | Primary            |
+| `Authorization: Bearer`  | API clients, tests, backward compatibility | Fallback           |
+| `astrotype_*` JS cookies | Migration compatibility only               | Temporary fallback |
 
 Protected backend dependency must treat tokens as candidates:
 
@@ -93,11 +95,11 @@ But browser frontend must not depend on these fields. API clients may continue u
 
 ### Errors
 
-| Status | Reason |
-|---:|---|
-| 401 | Invalid email/password, inactive account. |
-| 403 | Email not verified. |
-| 429 | Login rate limit exceeded. |
+| Status | Reason                                    |
+| -----: | ----------------------------------------- |
+|    401 | Invalid email/password, inactive account. |
+|    403 | Email not verified.                       |
+|    429 | Login rate limit exceeded.                |
 
 ## POST /auth/refresh
 

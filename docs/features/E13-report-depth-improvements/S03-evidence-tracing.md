@@ -1,6 +1,6 @@
 # S03 — Evidence Tracing in Narrative and PDF
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -51,11 +51,11 @@
 
 ## Критерии приёмки
 
-- [ ] Главные выводы E13 имеют evidence refs.
-- [ ] Unknown refs отклоняются validator-ом.
-- [ ] Evidence в UI не доминирует над narrative.
-- [ ] PDF сохраняет трассировку.
-- [ ] Regression tests покрывают missing/unknown evidence refs.
+- [x] Главные выводы E13 имеют evidence refs.
+- [x] Unknown refs отклоняются validator-ом.
+- [x] Evidence в UI не доминирует над narrative.
+- [x] PDF сохраняет трассировку.
+- [x] Regression tests покрывают missing/unknown evidence refs.
 
 ## Проверка
 

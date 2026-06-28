@@ -286,20 +286,23 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ                                                                                                           | Назначение                      |
-| ------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                             | Индекс проекта: код, API, docs  |
-| [`docs/SPEC.md`](docs/SPEC.md)                                                                                     | Полная спецификация продукта    |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                               | Дорожная карта                  |
-| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                                   | Дизайн‑код и визуальная система |
-| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                           | Narrative‑first UX отчёта       |
-| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                               | Сторителлинг Self‑отчёта        |
-| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)             | Архитектура LLM narrative layer |
-| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md) | Улучшение глубины Self report   |
-| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                   | SRS для E13 depth-layer отчёта  |
-| [`docs/features/`](docs/features/)                                                                                 | Feature/story документация      |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                 | REST API contract               |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                               | Async/event contract            |
+| Документ                                                                                                           | Назначение                                    |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                             | Индекс проекта: код, API, docs                |
+| [`docs/SPEC.md`](docs/SPEC.md)                                                                                     | Полная спецификация продукта                  |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                               | Дорожная карта                                |
+| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                                   | Дизайн‑код и визуальная система               |
+| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                           | Narrative‑first UX отчёта                     |
+| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                               | Сторителлинг Self‑отчёта                      |
+| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)             | Архитектура LLM narrative layer               |
+| [`docs/features/E2-identity/CURRENT-AUTH-FLOW.md`](docs/features/E2-identity/CURRENT-AUTH-FLOW.md)                 | Текущий процесс авторизации                   |
+| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md) | Улучшение глубины Self report                 |
+| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                   | SRS для E13 depth-layer отчёта                |
+| [`docs/features/E14-staged-narrative-pipeline/FEATURE.md`](docs/features/E14-staged-narrative-pipeline/FEATURE.md) | Staged LLM pipeline для глубокого Self report |
+| [`docs/SRS/SRS-E14-staged-narrative-pipeline.md`](docs/SRS/SRS-E14-staged-narrative-pipeline.md)                   | SRS для staged narrative pipeline             |
+| [`docs/features/`](docs/features/)                                                                                 | Feature/story документация                    |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                 | REST API contract                             |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                               | Async/event contract                          |
 
 ---
 

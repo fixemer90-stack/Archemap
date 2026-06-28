@@ -42,7 +42,7 @@
 - Deterministic validators: schema, required sections, evidence refs, forbidden language, Self-vs-Career boundary, sexuality safety.
 - Celery generation task с timeout/retry/failure statuses.
 - API: report status/narrative in `GET /reports/{id}`, narrative regeneration endpoint.
-- Frontend: polling, timeout UI, retry, deterministic fallback, narrative-first rendering.
+- Frontend: polling, timeout UI, retry, strict no-fallback contract for Self (`full narrative or unavailable state`), narrative-first rendering.
 - PDF: rendering из того же narrative JSON.
 - Unit/integration/regression tests без реального network LLM call.
 
@@ -85,32 +85,32 @@ POST /api/v1/reports/generate
 - [x] Narrative generation идёт асинхронно через Celery; HTTP request не ждёт LLM.
 - [x] Статусы `generating_narrative`, `ready`, `narrative_failed` не дают бесконечного spinner на frontend.
 - [x] `POST /api/v1/reports/{report_id}/narrative/regenerate` регенерирует только narrative layer и не пересчитывает chart/rules.
-- [x] Frontend показывает narrative-first report, polling/timeout state, retry action и deterministic fallback.
+- [x] Frontend для Self показывает narrative-first report только при готовом полном narrative; при timeout/failure показывает progress или unavailable state с retry, но не deterministic fallback summary.
 - [x] PDF строится из сохранённого narrative JSON, без второго LLM-вызова.
 - [x] Backend gates (`ruff`, `format`, `mypy`, `pytest`) и frontend gates (`npm test`, `tsc`, `prettier`, `eslint`) проходят.
 
 ## Stories
 
-| ID | Описание | Статус |
-|---|---|---|
-| S01 | [Narrative contracts: input/output schemas](S01-narrative-contracts.md) | ✅ Готово |
-| S02 | [Storage: report_narratives model and migration](S02-report-narratives-storage.md) | ✅ Готово |
-| S03 | [LLM provider abstraction and settings](S03-llm-provider-abstraction.md) | ✅ Готово |
-| S04 | [Prompt contract self_story_v1](S04-prompt-contract-self-story-v1.md) | ✅ Готово |
-| S05 | [NarrativeInput builder, hashing and cache lookup](S05-narrative-input-builder-cache.md) | ✅ Готово |
-| S06 | [Narrative validation, repair and fallback policy](S06-narrative-validation-fallback.md) | ✅ Готово |
-| S07 | [Celery generation task, statuses and retry](S07-celery-generation-statuses.md) | ✅ Готово |
-| S08 | [Report API integration and regenerate endpoint](S08-report-api-narrative-endpoints.md) | ✅ Готово |
-| S09 | [Frontend status polling, timeout, retry and fallback](S09-frontend-status-polling-fallback.md) | ✅ Готово |
-| S10 | [Frontend narrative rendering components](S10-frontend-narrative-rendering.md) | ✅ Готово |
-| S11 | [PDF rendering from narrative JSON](S11-pdf-from-narrative-json.md) | ✅ Готово |
-| S12 | [Quality gates, tests and observability](S12-quality-gates-observability.md) | ✅ Готово |
+| ID  | Описание                                                                                                 | Статус    |
+| --- | -------------------------------------------------------------------------------------------------------- | --------- |
+| S01 | [Narrative contracts: input/output schemas](S01-narrative-contracts.md)                                  | ✅ Готово |
+| S02 | [Storage: report_narratives model and migration](S02-report-narratives-storage.md)                       | ✅ Готово |
+| S03 | [LLM provider abstraction and settings](S03-llm-provider-abstraction.md)                                 | ✅ Готово |
+| S04 | [Prompt contract self_story_v1](S04-prompt-contract-self-story-v1.md)                                    | ✅ Готово |
+| S05 | [NarrativeInput builder, hashing and cache lookup](S05-narrative-input-builder-cache.md)                 | ✅ Готово |
+| S06 | [Narrative validation, repair and failure policy](S06-narrative-validation-fallback.md)                  | ✅ Готово |
+| S07 | [Celery generation task, statuses and retry](S07-celery-generation-statuses.md)                          | ✅ Готово |
+| S08 | [Report API integration and regenerate endpoint](S08-report-api-narrative-endpoints.md)                  | ✅ Готово |
+| S09 | [Frontend status polling, timeout, retry and unavailable state](S09-frontend-status-polling-fallback.md) | ✅ Готово |
+| S10 | [Frontend narrative rendering components](S10-frontend-narrative-rendering.md)                           | ✅ Готово |
+| S11 | [PDF rendering from narrative JSON](S11-pdf-from-narrative-json.md)                                      | ✅ Готово |
+| S12 | [Quality gates, tests and observability](S12-quality-gates-observability.md)                             | ✅ Готово |
 
 ## Минимальный порядок разработки
 
 1. S01 → S02: сначала contracts и storage.
 2. S03 → S04: provider abstraction и prompt contract.
-3. S05 → S06: входные данные, hash/cache, validation/fallback.
+3. S05 → S06: входные данные, hash/cache, validation/failure policy.
 4. S07 → S08: async generation и API surface.
 5. S09 → S10: frontend state и rendering.
 6. S11: PDF из уже сохранённого JSON.

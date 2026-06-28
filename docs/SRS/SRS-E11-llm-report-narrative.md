@@ -11,7 +11,7 @@
 
 ### 1.1 Назначение
 
-Документ описывает программные требования к модулю **LLM Report Narrative**: контролируемому LLM-слою, который преобразует deterministic report facts в структурированный narrative JSON для frontend и PDF.
+Документ описывает программные требования к модулю **LLM Report Narrative**: контролируемому LLM-слою, который преобразует deterministic report facts в структурированный narrative JSON для frontend и PDF. Для Self-report пользовательский контракт строгий: основной UI показывает либо полный narrative, либо явное состояние недоступности/retry, но не safe fallback summary.
 
 ### 1.2 Область применения
 
@@ -28,27 +28,27 @@ Deterministic chart/rules/socionics/report_data
 
 ### 1.3 Определения
 
-| Термин | Определение |
-|---|---|
-| Deterministic report | Проверяемый расчёт карты, соционики, архетипов, scores, claims, evidence |
-| NarrativeInput | Очищенный DTO для LLM, собранный из deterministic facts |
-| SelfNarrative | Структурированный JSON-ответ LLM для Self report |
-| LLMProvider | Backend abstraction над real/mock LLM provider |
-| Prompt version | Версия prompt contract, например `self_story_v1` |
-| input_hash | SHA256 hash от normalized NarrativeInput для cache/idempotency |
-| narrative_failed | Состояние, когда deterministic report доступен, но LLM narrative не создан |
+| Термин               | Определение                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| Deterministic report | Проверяемый расчёт карты, соционики, архетипов, scores, claims, evidence   |
+| NarrativeInput       | Очищенный DTO для LLM, собранный из deterministic facts                    |
+| SelfNarrative        | Структурированный JSON-ответ LLM для Self report                           |
+| LLMProvider          | Backend abstraction над real/mock LLM provider                             |
+| Prompt version       | Версия prompt contract, например `self_story_v1`                           |
+| input_hash           | SHA256 hash от normalized NarrativeInput для cache/idempotency             |
+| narrative_failed     | Состояние, когда deterministic report доступен, но LLM narrative не создан |
 
 ### 1.4 Ссылки
 
-| Документ | Путь |
-|---|---|
-| Technical design | `docs/design/llm-report-narrative-architecture.md` |
+| Документ           | Путь                                                 |
+| ------------------ | ---------------------------------------------------- |
+| Technical design   | `docs/design/llm-report-narrative-architecture.md`   |
 | Workflow explainer | `docs/features/E11-llm-report-narrative/WORKFLOW.md` |
-| API explainer | `docs/features/E11-llm-report-narrative/API.md` |
-| Feature docs | `docs/features/E11-llm-report-narrative/` |
-| Report UX redesign | `docs/features/E10-report-ux-redesign/` |
-| Self storytelling | `docs/design/self-report-storytelling.md` |
-| Report UX design | `docs/design/report-ux-redesign.md` |
+| API explainer      | `docs/features/E11-llm-report-narrative/API.md`      |
+| Feature docs       | `docs/features/E11-llm-report-narrative/`            |
+| Report UX redesign | `docs/features/E10-report-ux-redesign/`              |
+| Self storytelling  | `docs/design/self-report-storytelling.md`            |
+| Report UX design   | `docs/design/report-ux-redesign.md`                  |
 
 ---
 
@@ -67,37 +67,37 @@ flowchart TD
     Input --> Provider[LLMProvider.generate_structured]
     Provider --> Validate[Validate SelfNarrative]
     Validate --> Store[Save report_narratives]
-    Store --> UI[Frontend narrative report]
+    Store --> UI[Frontend full narrative or unavailable state]
     Store --> PDF[PDF from same JSON]
-    Validate --> Failed[narrative_failed + fallback]
+    Validate --> Failed[narrative_failed without safe fallback UI]
 ```
 
 ### 2.2 Функции
 
-| Функция | Описание | Story |
-|---|---|---|
-| F11.1 | Narrative input/output schemas | S01 |
-| F11.2 | Separate narrative storage/versioning | S02 |
-| F11.3 | Provider abstraction and mock provider | S03 |
-| F11.4 | Versioned prompt contract | S04 |
-| F11.5 | NarrativeInput builder and hash/cache | S05 |
-| F11.6 | Validation/repair/fallback | S06 |
-| F11.7 | Async Celery generation/statuses | S07 |
-| F11.8 | API integration and regenerate endpoint | S08 |
-| F11.9 | Frontend status/polling/fallback | S09 |
-| F11.10 | Frontend narrative rendering | S10 |
-| F11.11 | PDF from saved narrative JSON | S11 |
-| F11.12 | Tests, quality gates, observability | S12 |
+| Функция | Описание                                           | Story |
+| ------- | -------------------------------------------------- | ----- |
+| F11.1   | Narrative input/output schemas                     | S01   |
+| F11.2   | Separate narrative storage/versioning              | S02   |
+| F11.3   | Provider abstraction and mock provider             | S03   |
+| F11.4   | Versioned prompt contract                          | S04   |
+| F11.5   | NarrativeInput builder and hash/cache              | S05   |
+| F11.6   | Validation/repair/failure policy                   | S06   |
+| F11.7   | Async Celery generation/statuses                   | S07   |
+| F11.8   | API integration and regenerate endpoint            | S08   |
+| F11.9   | Frontend status/polling/unavailable-state contract | S09   |
+| F11.10  | Frontend narrative rendering                       | S10   |
+| F11.11  | PDF from saved narrative JSON                      | S11   |
+| F11.12  | Tests, quality gates, observability                | S12   |
 
 ### 2.3 Ограничения
 
-| ID | Ограничение |
-|---|---|
-| C11.1 | LLM calls allowed only on backend |
-| C11.2 | Automated tests must not call real LLM/network provider |
-| C11.3 | LLM output must be JSON validated by Pydantic, not Markdown |
-| C11.4 | Self report must not include career deep dive |
-| C11.5 | PDF must reuse saved narrative JSON and not call LLM again |
+| ID    | Ограничение                                                     |
+| ----- | --------------------------------------------------------------- |
+| C11.1 | LLM calls allowed only on backend                               |
+| C11.2 | Automated tests must not call real LLM/network provider         |
+| C11.3 | LLM output must be JSON validated by Pydantic, not Markdown     |
+| C11.4 | Self report must not include career deep dive                   |
+| C11.5 | PDF must reuse saved narrative JSON and not call LLM again      |
 | C11.6 | Deterministic report must remain available when narrative fails |
 
 ---
@@ -154,7 +154,7 @@ flowchart TD
 
 **FR-11.6.2** Validator ДОЛЖЕН проверять required sections, section order, evidence refs, forbidden language and product boundaries.
 
-**FR-11.6.3** При validation/provider failure система ДОЛЖНА выставлять `narrative_failed` или deterministic fallback, а не бесконечную генерацию.
+**FR-11.6.3** При validation/provider failure система ДОЛЖНА выставлять `narrative_failed` или сохранять отчёт в явно недоступном для полного narrative состоянии, а не показывать safe fallback summary как будто это готовый финальный ответ.
 
 ### 3.7 Async generation/statuses (FR-11.7)
 
@@ -176,11 +176,11 @@ flowchart TD
 
 **FR-11.9.1** Frontend ДОЛЖЕН poll status while narrative is generating.
 
-**FR-11.9.2** After 90 seconds frontend ДОЛЖЕН show timeout guidance, refresh and deterministic fallback.
+**FR-11.9.2** After 90 seconds frontend ДОЛЖЕН show timeout guidance plus refresh/retry options, не переходя в technical fallback summary для Self.
 
 **FR-11.9.3** Ready narrative ДОЛЖЕН render narrative-first: hero, summary/sections, relationships/sexuality/development, career CTA, then collapsed technical details.
 
-**FR-11.9.4** `narrative_failed` ДОЛЖЕН show warning, fallback and retry.
+**FR-11.9.4** `narrative_failed` или `ready` без narrative ДОЛЖНЫ показывать warning + unavailable state + retry, а не deterministic fallback summary.
 
 ### 3.10 PDF (FR-11.11)
 
@@ -192,14 +192,14 @@ flowchart TD
 
 ## 4. Нефункциональные требования
 
-| ID | Требование | Значение |
-|---|---|---|
-| NFR-11.1 | Security | LLM API key never exposed to frontend/logs |
-| NFR-11.2 | Reliability | No endless generation state; failures become explicit statuses |
-| NFR-11.3 | Testability | All tests pass with mock provider and no real network calls |
-| NFR-11.4 | Cost control | Duplicate generation prevented by input_hash cache |
-| NFR-11.5 | Latency | HTTP generate endpoint does not wait for LLM |
-| NFR-11.6 | Safety | No medical diagnosis, fatalism, graphic sexuality, unsupported facts |
+| ID       | Требование   | Значение                                                                      |
+| -------- | ------------ | ----------------------------------------------------------------------------- |
+| NFR-11.1 | Security     | LLM API key never exposed to frontend/logs                                    |
+| NFR-11.2 | Reliability  | No endless generation state; failures become explicit statuses                |
+| NFR-11.3 | Testability  | All tests pass with mock provider and no real network calls                   |
+| NFR-11.4 | Cost control | Duplicate generation prevented by input_hash cache                            |
+| NFR-11.5 | Latency      | HTTP generate endpoint does not wait for LLM                                  |
+| NFR-11.6 | Safety       | No medical diagnosis, fatalism, graphic sexuality, unsupported facts          |
 | NFR-11.7 | Auditability | Store prompt_version, model_provider, model_name, input_hash, attempts/errors |
 
 ---
@@ -335,13 +335,13 @@ Response:
 
 ## 7. Frontend Integration
 
-| State | UI behavior |
-|---|---|
-| `generating_narrative` < 90s | Progress UI, no raw debug first viewport |
-| `generating_narrative` >= 90s | Message, refresh, deterministic fallback link/button |
-| `ready` + narrative | Narrative-first report UI |
-| `narrative_failed` | Warning, deterministic fallback, retry button |
-| `ready` without narrative | Treat as degraded/fallback state and log/report bug |
+| State                         | UI behavior                                             |
+| ----------------------------- | ------------------------------------------------------- |
+| `generating_narrative` < 90s  | Progress UI, no raw debug first viewport                |
+| `generating_narrative` >= 90s | Message, refresh/retry, still no safe fallback summary  |
+| `ready` + narrative           | Narrative-first report UI                               |
+| `narrative_failed`            | Warning, unavailable state, retry button                |
+| `ready` without narrative     | Treat as unavailable state, offer retry, log/report bug |
 
 ---
 
@@ -354,7 +354,7 @@ Response:
 - Provider factory/mock tests.
 - Prompt guardrail tests.
 - Input builder/hash/cache tests.
-- Validators/fallback tests.
+- Validators/failure-policy tests.
 - Task/status/retry tests.
 - API tests for generate/detail/regenerate.
 - PDF tests proving no LLM call.
@@ -364,7 +364,7 @@ Response:
 - Narrative-first section order.
 - Technical details collapsed after narrative.
 - Generation timeout UI.
-- Narrative failed fallback.
+- Narrative failed unavailable state.
 - Retry action wiring.
 
 ### 8.3 Quality gates
@@ -389,21 +389,21 @@ npx eslint .
 
 ### 9.1 Internal dependencies
 
-| Dependency | Reason |
-|---|---|
-| Reports module | Report model, generation service, PDF pipeline |
-| Rules module | Evidence-backed claims and archetype outputs |
-| Chart engine | Deterministic chart/socionics source facts |
-| Workers/Celery | Async narrative generation |
-| Frontend report page | Narrative rendering and statuses |
+| Dependency           | Reason                                         |
+| -------------------- | ---------------------------------------------- |
+| Reports module       | Report model, generation service, PDF pipeline |
+| Rules module         | Evidence-backed claims and archetype outputs   |
+| Chart engine         | Deterministic chart/socionics source facts     |
+| Workers/Celery       | Async narrative generation                     |
+| Frontend report page | Narrative rendering and statuses               |
 
 ### 9.2 External dependencies
 
-| Dependency | Reason |
-|---|---|
+| Dependency                                 | Reason                           |
+| ------------------------------------------ | -------------------------------- |
 | OpenAI/OpenRouter/Anthropic compatible API | Real LLM provider for production |
-| Redis/Celery broker | Async tasks and retries |
-| Pydantic | Structured output validation |
+| Redis/Celery broker                        | Async tasks and retries          |
+| Pydantic                                   | Structured output validation     |
 
 ---
 
@@ -412,7 +412,7 @@ npx eslint .
 1. Ship contracts/storage/provider/mock with tests.
 2. Ship prompt/input builder/validators with tests.
 3. Enable async generation behind `LLM_ENABLED`.
-4. Integrate API and frontend fallback states.
+4. Integrate API and frontend unavailable/progress states for missing narrative.
 5. Enable narrative rendering and PDF from JSON.
 6. Turn on real provider only after mock path is green locally and in CI.
 
@@ -420,12 +420,12 @@ npx eslint .
 
 ## 11. Risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Hallucinated facts | NarrativeInput filtering + evidence ref validation |
-| Endless spinner | Explicit statuses + timeout UI + narrative_failed |
-| Provider outage | Retry for transient errors + deterministic fallback |
-| High cost | input_hash cache + low retry count + MVP single style |
-| Secrets leak | Backend-only provider + sanitized logs |
-| Unsafe sexuality text | Prompt guardrails + deterministic validators |
-| Career cannibalizes Self | Product boundaries + validator for career deep dive |
+| Risk                     | Mitigation                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| Hallucinated facts       | NarrativeInput filtering + evidence ref validation                                       |
+| Endless spinner          | Explicit statuses + timeout UI + narrative_failed                                        |
+| Provider outage          | Retry for transient errors + explicit unavailable state instead of safe fallback summary |
+| High cost                | input_hash cache + low retry count + MVP single style                                    |
+| Secrets leak             | Backend-only provider + sanitized logs                                                   |
+| Unsafe sexuality text    | Prompt guardrails + deterministic validators                                             |
+| Career cannibalizes Self | Product boundaries + validator for career deep dive                                      |

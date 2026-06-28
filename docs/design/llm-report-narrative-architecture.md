@@ -9,6 +9,8 @@
 - `docs/design/report-ux-redesign.md`
 - `docs/features/E11-llm-report-narrative/FEATURE.md`
 - `docs/SRS/SRS-E11-llm-report-narrative.md`
+- `docs/features/E14-staged-narrative-pipeline/FEATURE.md`
+- `docs/SRS/SRS-E14-staged-narrative-pipeline.md`
 
 ## 1. Главная идея
 
@@ -76,6 +78,23 @@ generate_report_narrative(report_id)
 ```
 
 Важно: пользователь не должен ждать LLM синхронно внутри HTTP-запроса. Генерация текста должна быть фоновой задачей с явным статусом.
+
+### 2.1 Next evolution: staged pipeline
+
+E11 реализует базовый narrative layer, но глубокий Self report не должен навсегда оставаться одним большим LLM-запросом. Для отчётов, которые не должны звучать как поверхностный гороскоп, целевой next-step описан в E14:
+
+```text
+Report.report_data
+  → DeepNatalSynthesisBuilder
+  → NarrativePlan stage
+  → parallel section stages
+  → deterministic assembly / optional consistency pass
+  → validated SelfNarrative
+```
+
+Ключевое отличие: аспекты, дома, планеты и напряжения карты сначала собираются в deterministic `DeepNatalSynthesis`, а LLM получает уже ранжированные aspect patterns, chart dynamics, contradictions, maturity levels and calibration hypotheses. LLM не выбирает важные аспекты из плоского списка и не изобретает психологическую модель с нуля.
+
+Подробный контракт: `docs/features/E14-staged-narrative-pipeline/FEATURE.md`.
 
 ## 3. Где живёт LLM-код
 

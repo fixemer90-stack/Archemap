@@ -5,7 +5,7 @@
 1. откуда вообще запускается фича;
 2. какой именно вход получает LLM;
 3. что видит пользователь в UI;
-4. когда используется fallback;
+4. почему больше нельзя показывать safe fallback summary как нормальный ответ;
 5. что делает retry/regenerate.
 
 ## Короткий ответ
@@ -21,19 +21,21 @@ E11 — это не отдельный экран и не отдельная к�
 - потом в фоне запускает LLM только для текста;
 - frontend ждёт narrative-слой по статусам;
 - если narrative готов, показывает narrative-first report;
-- если narrative задержался или упал, показывает deterministic fallback без потери данных.
+- если narrative задержался или упал, показывает progress/unavailable state и retry, но не safe fallback summary.
 
 ## Для какого сценария вообще нужна E11
 
 Проблема E11 не в расчётах, а в подаче результата.
 
 Без E11 система уже умеет:
+
 - считать карту;
 - строить типологию;
 - собирать claims и evidence;
 - выдавать технический отчёт.
 
 Но такой отчёт:
+
 - трудно читать как цельную историю;
 - тяжело сделать мягким и живым только шаблонами;
 - неудобно подавать как premium narrative-first experience.
@@ -147,7 +149,7 @@ sequenceDiagram
     alt narrative готов
         FE-->>U: Показывает narrative-first report
     else narrative завис или failed
-        FE-->>U: Показывает deterministic fallback + retry
+        FE-->>U: Показывает progress/unavailable state + retry, без deterministic fallback summary
     end
 ```
 
@@ -156,6 +158,7 @@ sequenceDiagram
 ### Шаг 1. Считается deterministic report
 
 Сначала система делает обычную проверяемую работу:
+
 - chart snapshot;
 - features;
 - rules interpretation;
@@ -172,6 +175,7 @@ sequenceDiagram
 После deterministic-части report уже сохранён.
 
 Это критично, потому что:
+
 - LLM может отвечать медленно;
 - LLM может вернуть невалидный ответ;
 - provider может упасть;
@@ -186,6 +190,7 @@ sequenceDiagram
 ### Шаг 4. Celery собирает `NarrativeInput`
 
 Фоновая задача:
+
 - загружает saved report;
 - собирает curated `NarrativeInput`;
 - считает `input_hash`;
@@ -195,12 +200,14 @@ sequenceDiagram
 ## Что именно делает LLM
 
 LLM должна:
+
 - связать уже рассчитанные факты в цельный текст;
 - написать hero-блок и секции отчёта;
 - соблюдать тон и границы продукта;
 - вернуть строго structured JSON.
 
 LLM не должна:
+
 - придумывать новые положения планет;
 - добавлять несуществующие аспекты;
 - пересчитывать соционику;
@@ -212,6 +219,7 @@ LLM не должна:
 Успешный результат E11 — это не просто кусок текста.
 
 Успешный результат — это сохранённый narrative-объект, который:
+
 - прошёл schema validation;
 - содержит обязательные секции;
 - ссылается только на известные evidence refs;
@@ -226,16 +234,18 @@ LLM не должна:
 Frontend показывает progress screen, а не сырые технические детали на первом экране.
 
 Сейчас поведение такое:
+
 - polling `GET /api/v1/reports/{id}` каждые 5 секунд;
 - таймаут интерфейса через 90 секунд;
 - кнопка `Обновить`;
-- после таймаута кнопка `Показать технический отчёт`.
+- после таймаута кнопка `Повторить генерацию`.
 
-Это сценарий: «текст ещё собирается, но базовые данные уже не потеряны».
+Это сценарий: «полный текст ещё собирается; никакой safe fallback summary пока не показываем».
 
 ### 2. `ready`
 
 Если narrative готов, frontend показывает narrative-first Self report:
+
 - hero;
 - narrative sections;
 - relationship / sexuality / development блоки;
@@ -248,23 +258,27 @@ Frontend показывает progress screen, а не сырые техниче
 
 Если LLM-слой не удался, frontend не зависает.
 
-Он показывает deterministic fallback:
-- технический отчёт доступен сразу;
+Он показывает unavailable state:
+
+- полного narrative нет;
 - выводится warning;
 - есть кнопка `Повторить генерацию`.
 
-Важно: failure narrative-слоя не отменяет сам отчёт.
+Важно: failure narrative-слоя не отменяет сам deterministic расчёт, но и не должен маскироваться под готовый safe summary.
 
 ### 4. `deterministic_ready`
 
-Это промежуточный/fallback-friendly статус:
+Это промежуточный/degraded backend-статус:
+
 - deterministic-часть готова;
-- narrative ещё не вышел в финальное `ready`;
-- frontend может дать читать техническую версию и/или предложить regenerate.
+- narrative ещё не вышел в финальное `ready`.
+
+Для Self это не означает «покажи техническую версию как нормальный ответ». Корректное поведение — продолжать progress UI или дать retry/unavailable state, пока полного narrative нет.
 
 ## Retry / regenerate: когда и зачем
 
 Если текстовый narrative:
+
 - завис слишком долго;
 - не прошёл validation;
 - упал по provider/network ошибке;
@@ -277,6 +291,7 @@ POST /api/v1/reports/{report_id}/narrative/regenerate
 ```
 
 Смысл этого endpoint:
+
 - перегенерировать только narrative layer;
 - не пересчитывать chart/rules/socionics;
 - не терять уже сохранённый deterministic report.
@@ -288,6 +303,7 @@ POST /api/v1/reports/{report_id}/narrative/regenerate
 На текущем этапе основной сценарий E11 — это только `self`.
 
 Что это значит practically:
+
 - prompt contract полноценно описан для Self;
 - section ids и validators заточены под Self;
 - frontend narrative-first rendering ориентирован на Self-report;
@@ -302,10 +318,12 @@ POST /api/v1/reports/{report_id}/narrative/regenerate
 Это важная часть сценария использования.
 
 Self-report через E11 может:
+
 - кратко касаться проявления личности в работе;
 - завершаться CTA на отдельный Career-report.
 
 Self-report через E11 не должен:
+
 - выдавать список профессий;
 - строить стратегию дохода;
 - делать management profile;
@@ -313,16 +331,17 @@ Self-report через E11 не должен:
 
 Иначе пользовательский сценарий ломается: Self перестаёт быть Self и начинает смешиваться с другим продуктом.
 
-## Почему в системе есть fallback, а не только happy path
+## Почему в системе больше нельзя показывать fallback summary как основной результат
 
-Потому что LLM narrative здесь вторичен по отношению к проверяемому результату.
+Потому что для Self narrative теперь действует более строгий продуктовый контракт:
 
-Бизнес-смысл E11 такой:
-- narrative улучшает опыт чтения;
-- deterministic engine гарантирует базовую ценность;
-- сбой LLM не должен уничтожать deliverable.
+- пользователь либо получает полный narrative-ответ;
+- либо явно видит, что полный текст пока недоступен;
+- но не получает safe/technical fallback summary, замаскированный под готовый итог.
 
-Поэтому fallback — это не аварийный костыль, а часть нормального дизайна feature.
+Причина простая: fallback summary размывает разницу между "полный narrative готов" и "LLM-слой фактически не сработал". В результате пользователь видит суррогат как будто это финальный ответ. Для post-login/profile-entry experience это признано неверным поведением.
+
+Deterministic engine по-прежнему важен как источник истины и как основа для повторной генерации, PDF и отладки. Но на основном Self UI он больше не должен выступать как подмена narrative-ответа.
 
 ## Как это использовать при разработке и ревью
 
@@ -334,7 +353,7 @@ Self-report через E11 не должен:
 4. Идёт ли LLM через async task, а не внутри HTTP?
 5. Есть ли явные статусы `generating_narrative` / `ready` / `narrative_failed`?
 6. Polling-ит ли frontend статус?
-7. Есть ли timeout и fallback без потери отчёта?
+7. Есть ли timeout и unavailable/retry state без показа safe fallback summary?
 8. Повторяет ли `regenerate` только narrative layer?
 9. Строится ли PDF из сохранённого narrative JSON, а не из второго LLM-вызова?
 
@@ -349,5 +368,5 @@ E11 — это workflow не «LLM анализирует человека», а
 - backend строит curated `NarrativeInput`;
 - LLM пишет только narrative JSON;
 - frontend ждёт статус, потом показывает narrative-first UI;
-- при задержке или ошибке показывает deterministic fallback;
+- при задержке или ошибке показывает progress/unavailable state без safe fallback summary;
 - regenerate повторяет только narrative layer.

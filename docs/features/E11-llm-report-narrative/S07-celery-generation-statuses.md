@@ -5,7 +5,7 @@
 
 ## Контекст
 
-Frontend должен видеть статус narrative generation, получать deterministic fallback data, читать готовый narrative JSON и запускать регенерацию только LLM-текста без пересчёта chart/rules.
+Frontend должен видеть статус narrative generation, получать deterministic `report_data`, читать готовый narrative JSON и запускать регенерацию только LLM-текста без пересчёта chart/rules. Для Self отсутствие narrative не должно превращаться в показ safe fallback summary как будто это готовый ответ.
 
 ## Что сделано
 

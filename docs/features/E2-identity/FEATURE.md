@@ -24,21 +24,22 @@
 
 ## Документы
 
+- Current implementation: [CURRENT-AUTH-FLOW.md](CURRENT-AUTH-FLOW.md)
 - Workflow: [WORKFLOW.md](WORKFLOW.md)
 - API contract: [API.md](API.md)
 - SRS: [SRS-E2-identity-auth.md](../../SRS/SRS-E2-identity-auth.md)
 
 ## Stories
 
-| ID | Описание | Статус |
-|---|---|---|
-| S01 | [User model + регистрация по email/password: модели User, EmailVerification, хеширование паролей, endpoint POST /auth/register](S01-user-model-registration.md) | ✅ Готово |
-| S02 | [JWT access/refresh токены: создание, валидация, decode, refresh flow](S02-jwt-tokens.md) | ✅ Готово |
-| S03 | [Email верификация: генерация токена, отправка email, подтверждение, anti-enumeration](S03-email-verification.md) | ✅ Готово |
-| S04 | [Token blacklist (logout): Redis-based blacklist, POST /auth/logout, проверка при валидации](S04-token-blacklist-logout.md) | ✅ Готово |
-| S05 | [Yandex ID OAuth: Authorization Code flow, exchange code, get user info, account linking по email](S05-yandex-oauth.md) | ✅ Готово |
-| S06 | [VK ID OAuth: аналогично Yandex, VK-specific endpoints/scopes](S06-vk-oauth.md) | ⬜ Не начато |
-| S07 | [Привязка OAuth-провайдеров: link/unlink из настроек, IdentityLink model](S07-account-linking.md) | 🟡 В процессе |
-| S08 | [Сброс пароля: запрос по email, токен 24ч, новый пароль, anti-enumeration](S08-password-reset.md) | ✅ Готово |
-| S09 | [Rate limiting входа: Redis INCR+EXPIRE, 5 попыток/15 мин, HTTP 429](S09-rate-limiting.md) | ✅ Готово |
-| S10 | [Cookie-first session auth cleanup: HttpOnly cookies для browser flow, stale Bearer fallback, refresh/logout/session bootstrap, report-page 401 resilience](S10-cookie-first-session-auth.md) | ✅ Готово |
+| ID  | Описание                                                                                                                                                                                      | Статус        |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| S01 | [User model + регистрация по email/password: модели User, EmailVerification, хеширование паролей, endpoint POST /auth/register](S01-user-model-registration.md)                               | ✅ Готово     |
+| S02 | [JWT access/refresh токены: создание, валидация, decode, refresh flow](S02-jwt-tokens.md)                                                                                                     | ✅ Готово     |
+| S03 | [Email верификация: генерация токена, отправка email, подтверждение, anti-enumeration](S03-email-verification.md)                                                                             | ✅ Готово     |
+| S04 | [Token blacklist (logout): Redis-based blacklist, POST /auth/logout, проверка при валидации](S04-token-blacklist-logout.md)                                                                   | ✅ Готово     |
+| S05 | [Yandex ID OAuth: Authorization Code flow, exchange code, get user info, account linking по email](S05-yandex-oauth.md)                                                                       | ✅ Готово     |
+| S06 | [VK ID OAuth: аналогично Yandex, VK-specific endpoints/scopes](S06-vk-oauth.md)                                                                                                               | ⬜ Не начато  |
+| S07 | [Привязка OAuth-провайдеров: link/unlink из настроек, IdentityLink model](S07-account-linking.md)                                                                                             | 🟡 В процессе |
+| S08 | [Сброс пароля: запрос по email, токен 24ч, новый пароль, anti-enumeration](S08-password-reset.md)                                                                                             | ✅ Готово     |
+| S09 | [Rate limiting входа: Redis INCR+EXPIRE, 5 попыток/15 мин, HTTP 429](S09-rate-limiting.md)                                                                                                    | ✅ Готово     |
+| S10 | [Cookie-first session auth cleanup: HttpOnly cookies для browser flow, stale Bearer fallback, refresh/logout/session bootstrap, report-page 401 resilience](S10-cookie-first-session-auth.md) | ✅ Готово     |

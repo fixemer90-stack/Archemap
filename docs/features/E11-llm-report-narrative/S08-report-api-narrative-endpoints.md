@@ -5,7 +5,7 @@
 
 ## Контекст
 
-Frontend должен видеть статус narrative generation, получать deterministic fallback data, читать готовый narrative JSON и запускать регенерацию только LLM-текста без пересчёта chart/rules.
+Frontend должен видеть статус narrative generation, получать deterministic `report_data`, читать готовый narrative JSON и запускать регенерацию только LLM-текста без пересчёта chart/rules. Для Self отсутствие narrative не должно превращаться в показ safe fallback summary как будто это готовый ответ.
 
 ## Что сделано
 
@@ -20,16 +20,16 @@ Frontend должен видеть статус narrative generation, получ
 
 ## Затрагиваемые файлы
 
-| Файл | Действие |
-|---|---|
-| `backend/app/modules/reports/router.py` | Extend existing report endpoints, add regenerate route |
-| `backend/app/modules/reports/schemas.py` | Response schemas with narrative/status + serializer helpers |
-| `backend/app/modules/report_narratives/service.py` | Latest narrative lookup + force regeneration path |
-| `backend/app/modules/report_narratives/tasks.py` | Force flag propagation for task bridge |
-| `backend/workers/tasks/reports.py` | Celery task accepts `force` regenerate mode |
-| `contracts/openapi.yaml` | API contract update |
-| `backend/tests/unit/test_reports/test_reports.py` | Existing schema tests continue covering report serialization |
-| `backend/tests/unit/test_report_narratives/test_api.py` | New API tests |
+| Файл                                                    | Действие                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------ |
+| `backend/app/modules/reports/router.py`                 | Extend existing report endpoints, add regenerate route       |
+| `backend/app/modules/reports/schemas.py`                | Response schemas with narrative/status + serializer helpers  |
+| `backend/app/modules/report_narratives/service.py`      | Latest narrative lookup + force regeneration path            |
+| `backend/app/modules/report_narratives/tasks.py`        | Force flag propagation for task bridge                       |
+| `backend/workers/tasks/reports.py`                      | Celery task accepts `force` regenerate mode                  |
+| `contracts/openapi.yaml`                                | API contract update                                          |
+| `backend/tests/unit/test_reports/test_reports.py`       | Existing schema tests continue covering report serialization |
+| `backend/tests/unit/test_report_narratives/test_api.py` | New API tests                                                |
 
 ## Критерии приёмки
 

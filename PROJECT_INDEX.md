@@ -14,10 +14,13 @@ Astrotype — full-stack narrative-first платформа для астрол�
 - LLM design: `docs/design/llm-report-narrative-architecture.md`
 - E11 feature pack: `docs/features/E11-llm-report-narrative/FEATURE.md`
 - E13 report depth improvements: `docs/features/E13-report-depth-improvements/FEATURE.md`
+- E14 staged narrative pipeline: `docs/features/E14-staged-narrative-pipeline/FEATURE.md`
 - E2 identity auth cleanup: `docs/features/E2-identity/S10-cookie-first-session-auth.md`
+- E2 current auth flow: `docs/features/E2-identity/CURRENT-AUTH-FLOW.md`
 - E2 auth workflow/API: `docs/features/E2-identity/WORKFLOW.md`, `docs/features/E2-identity/API.md`
 - SRS E11: `docs/SRS/SRS-E11-llm-report-narrative.md`
 - SRS E13: `docs/SRS/SRS-E13-report-depth-improvements.md`
+- SRS E14: `docs/SRS/SRS-E14-staged-narrative-pipeline.md`
 
 ## Tech stack
 
@@ -211,11 +214,13 @@ docker compose up -d --build
 - `docs/design/llm-report-narrative-architecture.md`
 - `docs/features/E11-llm-report-narrative/FEATURE.md`
 - `docs/features/E13-report-depth-improvements/FEATURE.md`
+- `docs/features/E14-staged-narrative-pipeline/FEATURE.md`
 - `docs/features/E2-identity/FEATURE.md`
 - `docs/features/E2-identity/S10-cookie-first-session-auth.md`
 - `docs/SRS/SRS-E2-identity-auth.md`
 - `docs/SRS/SRS-E11-llm-report-narrative.md`
 - `docs/SRS/SRS-E13-report-depth-improvements.md`
+- `docs/SRS/SRS-E14-staged-narrative-pipeline.md`
 
 ## Current known gotchas
 

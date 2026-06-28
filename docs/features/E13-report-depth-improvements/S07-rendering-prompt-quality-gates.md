@@ -1,6 +1,6 @@
 # S07 — Rendering, Prompt Contract, and Quality Gates
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -56,13 +56,13 @@ E13 меняет не только текст, но и контракт отчё
 
 ## Критерии приёмки
 
-- [ ] `self_story_v2` exists and old prompt is not silently mutated.
-- [ ] New schema fields are validated and normalized.
-- [ ] Frontend renders sections in required order.
-- [ ] Missing required E13 section fails tests.
-- [ ] PDF includes E13 blocks.
-- [ ] Structural check protects narrative-first ordering.
-- [ ] Backend + frontend gates pass.
+- [x] `self_story_v2` exists and old prompt is not silently mutated.
+- [x] New schema fields are validated and normalized.
+- [x] Frontend renders sections in required order.
+- [x] Missing required E13 section fails tests.
+- [x] PDF includes E13 blocks.
+- [x] Structural check protects narrative-first ordering.
+- [x] Backend + frontend gates pass.
 
 ## Проверка
 

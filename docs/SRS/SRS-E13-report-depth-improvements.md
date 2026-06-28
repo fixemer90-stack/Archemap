@@ -1,7 +1,7 @@
 # SRS-E13 — Report Depth Improvements
 
 > Эпик: E13 Report Depth Improvements
-> Статус: ⬜ Не начато
+> Статус: ✅ Готово
 > Источник: `docs/Tips.md` / Obsidian `Archemap/docs/Tips`
 
 ## 1. Введение
@@ -85,7 +85,7 @@ PDF должен содержать те же смысловые E13 blocks, ч�
 - Safety: запрещены медицинские, диагностические, фаталистичные формулировки.
 - Determinism: LLM не является источником фактов, только renderer поверх structured input.
 - Backward compatibility: старые отчёты не должны ломать frontend; новые поля должны иметь graceful fallback.
-- Versioning: prompt должен быть версионирован (`self_story_v2` предпочтительно).
+- Versioning: prompt must remain versioned (`self_story_v2+` prompt family, currently advanced beyond v2 without mutating v1 in place).
 
 ## 5. Модель данных
 

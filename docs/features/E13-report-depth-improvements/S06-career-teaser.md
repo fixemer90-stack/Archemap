@@ -1,6 +1,6 @@
 # S06 — Self-to-Career Teaser
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -59,11 +59,11 @@ Not allowed in Self:
 
 ## Критерии приёмки
 
-- [ ] Career teaser is specific enough to be useful.
-- [ ] Career teaser remains bounded and does not replace Career report.
-- [ ] Validator catches detailed role/money/leadership plans inside Self.
-- [ ] CTA copy is commercial but not pushy.
-- [ ] UI and PDF render the same teaser content.
+- [x] Career teaser is specific enough to be useful.
+- [x] Career teaser remains bounded and does not replace Career report.
+- [x] Validator catches detailed role/money/leadership plans inside Self.
+- [x] CTA copy is commercial but not pushy.
+- [x] UI and PDF render the same teaser content.
 
 ## Проверка
 

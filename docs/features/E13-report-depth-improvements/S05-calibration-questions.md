@@ -1,6 +1,6 @@
 # S05 — Calibration Questions and Feedback Loop
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -50,21 +50,21 @@
 
 ## Затрагиваемые файлы
 
-| Файл | Изменение |
-|---|---|
-| `backend/app/modules/report_narratives/schemas.py` | `CalibrationQuestion` |
-| `backend/app/modules/report_narratives/prompts/self_story_v2.md` | Question generation rules |
-| `backend/app/modules/report_narratives/validators.py` | Question validation |
-| `frontend/src/components/report/calibration-questions.tsx` | UI block |
-| `backend/app/modules/reports/templates/report.html` | PDF parity |
+| Файл                                                               | Изменение                 |
+| ------------------------------------------------------------------ | ------------------------- |
+| `backend/app/modules/report_narratives/schemas.py`                 | `CalibrationQuestion`     |
+| `backend/app/modules/report_narratives/prompts/self_story_v4.md`   | Question generation rules |
+| `backend/app/modules/report_narratives/validators.py`              | Question validation       |
+| `frontend/src/components/report/calibration-questions-section.tsx` | UI block                  |
+| `backend/app/modules/reports/templates/report.html`                | PDF parity                |
 
 ## Критерии приёмки
 
-- [ ] Self report shows 5–7 calibration questions.
-- [ ] Questions are tied to model claims, not generic personality quiz filler.
-- [ ] No answer persistence is required for MVP.
-- [ ] Schema can later support answers without breaking API.
-- [ ] PDF includes the questions.
+- [x] Self report shows 5–7 calibration questions.
+- [x] Questions are tied to model claims, not generic personality quiz filler.
+- [x] No answer persistence is required for MVP.
+- [x] Schema can later support answers without breaking API.
+- [x] PDF includes the questions.
 
 ## Проверка
 

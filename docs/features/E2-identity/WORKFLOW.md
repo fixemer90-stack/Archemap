@@ -2,6 +2,8 @@
 
 Документ описывает целевой browser auth workflow для Astrotype после исправления рассинхрона JS-token и cookie-session.
 
+Текущее фактическое состояние реализации: [CURRENT-AUTH-FLOW.md](CURRENT-AUTH-FLOW.md).
+
 ## Проблема
 
 Исторически browser app использовал две разные auth-модели одновременно:
@@ -171,13 +173,13 @@ The report page is the canary for auth correctness because it makes several prot
 
 Target UX:
 
-| State | UI behavior |
-|---|---|
-| Initial auth missing | Show explicit “Сессия истекла. Войдите снова.” |
-| Report already loaded, later polling 401 | Keep report visible, show small session-expired banner. |
-| Refresh succeeds | Retry request once, no visible interruption. |
-| Refresh fails | Stop polling, keep cached report read-only, require login for updates/download. |
-| `narrative_failed` / fallback | Show deterministic fallback, not blank screen. |
+| State                                    | UI behavior                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------- |
+| Initial auth missing                     | Show explicit “Сессия истекла. Войдите снова.”                                  |
+| Report already loaded, later polling 401 | Keep report visible, show small session-expired banner.                         |
+| Refresh succeeds                         | Retry request once, no visible interruption.                                    |
+| Refresh fails                            | Stop polling, keep cached report read-only, require login for updates/download. |
+| `narrative_failed` / fallback            | Show deterministic fallback, not blank screen.                                  |
 
 ## Migration phases
 

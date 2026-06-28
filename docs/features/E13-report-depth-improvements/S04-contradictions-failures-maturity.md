@@ -1,6 +1,6 @@
 # S04 — Contradictions, Failures, and Maturity Levels
 
-Статус: ⬜ Не начато
+Статус: ✅ Готово
 Эпик: `E13-report-depth-improvements`
 
 ## Контекст
@@ -51,25 +51,31 @@
 
 ## Затрагиваемые файлы
 
-| Файл | Изменение |
-|---|---|
-| `backend/app/modules/report_narratives/schemas.py` | New section schemas |
-| `backend/app/modules/report_narratives/input_builder.py` | tension/failure signals |
-| `backend/app/modules/report_narratives/prompts/self_story_v2.md` | Prompt section rules |
-| `backend/app/modules/report_narratives/validators.py` | Safety + section validation |
-| `frontend/src/components/report/` | Rendering новых блоков |
+| Файл                                                             | Изменение                                                      |
+| ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| `backend/app/modules/report_narratives/schemas.py`               | New section schemas                                            |
+| `backend/app/modules/report_narratives/input_builder.py`         | Deterministic contradictions / failure modes / maturity levels |
+| `backend/app/modules/report_narratives/prompts/self_story_v5.md` | Prompt rules for S04 blocks                                    |
+| `backend/app/modules/report_narratives/validators.py`            | Safety + section validation                                    |
+| `backend/app/modules/report_narratives/fallback.py`              | Preserve S04 blocks in degraded mode                           |
+| `backend/app/modules/reports/templates/report.html`              | PDF parity for contradictions / failures / maturity            |
+| `frontend/src/lib/report/view-model.ts`                          | Adapter types + normalizers                                    |
+| `frontend/src/components/report/pattern-tensions-section.tsx`    | Rendering новых блоков                                         |
+| `frontend/src/components/report/report-narrative-page.tsx`       | Narrative order wiring                                         |
 
 ## Критерии приёмки
 
-- [ ] В отчёте есть 3–5 central contradictions.
-- [ ] Есть блок failure modes с конкретными поведенческими сбоями.
-- [ ] Есть maturity levels: low / medium / high.
-- [ ] Каждый конфликт имеет mature/reframe формулировку.
-- [ ] Нет fatalistic/medical/diagnostic wording.
-- [ ] Validator покрывает forbidden language.
+- [x] В отчёте есть 3–5 central contradictions.
+- [x] Есть блок failure modes с конкретными поведенческими сбоями.
+- [x] Есть maturity levels: low / medium / high.
+- [x] Каждый конфликт имеет mature/reframe формулировку.
+- [x] Нет fatalistic/medical/diagnostic wording.
+- [x] Validator покрывает forbidden language.
 
 ## Проверка
 
 ```bash
-docker compose exec -T backend sh -lc 'cd /app && python -m pytest tests/unit/test_report_narratives/test_validators.py -q'
+cd backend
+.venv/bin/python -m pytest tests/unit/test_report_narratives/test_schemas.py tests/unit/test_report_narratives/test_input_builder.py tests/unit/test_report_narratives/test_validators.py tests/unit/test_report_narratives/test_fallback.py tests/unit/test_report_narratives/test_prompts.py tests/unit/test_reports/test_pdf.py tests/unit/test_reports/test_reports.py -q
+.venv/bin/ruff check app/modules/report_narratives app/modules/reports tests/unit/test_report_narratives tests/unit/test_reports -q
 ```

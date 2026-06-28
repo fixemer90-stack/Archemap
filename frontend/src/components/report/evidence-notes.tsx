@@ -2,15 +2,31 @@ import type { NarrativeEvidenceNote } from "@/lib/report/view-model";
 
 interface EvidenceNotesProps {
   notes: NarrativeEvidenceNote[];
+  fallbackFactIds?: string[];
+  className?: string;
 }
 
-export function EvidenceNotes({ notes }: EvidenceNotesProps) {
-  if (notes.length === 0) {
+export function EvidenceNotes({
+  notes,
+  fallbackFactIds = [],
+  className,
+}: EvidenceNotesProps) {
+  if (notes.length === 0 && fallbackFactIds.length === 0) {
     return null;
   }
 
+  if (notes.length === 0) {
+    return (
+      <div className={className ?? "mt-4 text-xs text-muted-foreground"}>
+        Основания: {fallbackFactIds.join(", ")}
+      </div>
+    );
+  }
+
   return (
-    <details className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+    <details
+      className={`${className ?? "mt-4"} rounded-xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground`}
+    >
       <summary className="cursor-pointer font-medium text-foreground">
         Почему так видно
       </summary>

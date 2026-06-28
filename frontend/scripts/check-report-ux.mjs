@@ -8,10 +8,6 @@ const progressComponent = readFileSync(
   resolve("src/components/report/report-generation-progress.tsx"),
   "utf8",
 );
-const fallbackComponent = readFileSync(
-  resolve("src/components/report/deterministic-report-fallback.tsx"),
-  "utf8",
-);
 const narrativePagePath = resolve(
   "src/components/report/report-narrative-page.tsx",
 );
@@ -84,6 +80,8 @@ const requiredFiles = [
   "src/components/report/narrative-section.tsx",
   "src/components/report/career-cta.tsx",
   "src/components/report/house-scenarios-section.tsx",
+  "src/components/report/calibration-questions-section.tsx",
+  "src/components/report/pattern-tensions-section.tsx",
   "src/components/report/evidence-notes.tsx",
   "src/lib/glossary/report-glossary.ts",
   "src/lib/report/score-labels.ts",
@@ -153,6 +151,8 @@ for (const marker of [
 const narrativeOrder = [
   "<NarrativeHero",
   "<HouseScenariosSection",
+  "<CalibrationQuestionsSection",
+  "<PatternTensionsSection",
   "main_formula",
   "world_perception",
   "emotions_and_communication",
@@ -187,6 +187,10 @@ for (const marker of [
   "narrative.sections",
   "narrative.final_summary",
   "house_scenarios",
+  "calibration_questions",
+  "contradictions",
+  "failure_modes",
+  "maturity_levels",
 ]) {
   if (!adapter.includes(marker) && !reportNarrativeSource.includes(marker)) {
     throw new Error(`Missing narrative normalizer/rendering marker: ${marker}`);
@@ -260,6 +264,10 @@ for (const requiredNarrativeText of [
   "Жизненные сценарии домов",
   "Тень / риск",
   "Зрелая форма",
+  "Калибровочные вопросы",
+  "Главные внутренние противоречия",
+  "Где система даёт сбой",
+  "Уровни зрелости паттерна",
   "Сохранить этот разбор",
 ]) {
   if (!allUiSource.includes(requiredNarrativeText)) {
@@ -486,7 +494,7 @@ for (const requiredApiExport of [
 
 for (const requiredPollingMarker of [
   "ReportGenerationProgress",
-  "DeterministicReportFallback",
+  "NarrativeUnavailableState",
   "NARRATIVE_TIMEOUT_MS",
   "POLL_INTERVAL_MS",
   "setTimeout",
@@ -501,10 +509,26 @@ for (const requiredPollingMarker of [
   }
 }
 
+for (const forbiddenFallbackMarker of [
+  "DeterministicReportFallback",
+  "setShowFallback",
+  "showFallback",
+  "Показать технический отчёт",
+]) {
+  if (
+    page.includes(forbiddenFallbackMarker) ||
+    progressComponent.includes(forbiddenFallbackMarker)
+  ) {
+    throw new Error(
+      `Legacy technical-fallback marker must be removed: ${forbiddenFallbackMarker}`,
+    );
+  }
+}
+
 for (const requiredProgressText of [
   "Собираем ваш текстовый отчёт",
   "Текстовый отчёт ещё собирается",
-  "Показать технический отчёт",
+  "Повторить генерацию",
 ]) {
   if (!progressComponent.includes(requiredProgressText)) {
     throw new Error(
@@ -513,16 +537,12 @@ for (const requiredProgressText of [
   }
 }
 
-for (const requiredFallbackText of [
-  "Технический отчёт",
-  "Повторить генерацию",
-  "LLM-текст пока недоступен",
-]) {
-  if (!fallbackComponent.includes(requiredFallbackText)) {
-    throw new Error(
-      `Missing deterministic fallback UI text: ${requiredFallbackText}`,
-    );
-  }
+if (!page.includes("Полный отчёт пока недоступен")) {
+  throw new Error("Missing full-report-unavailable state heading");
+}
+
+if (!page.includes("Повторить генерацию")) {
+  throw new Error("Missing retry action for unavailable full report");
 }
 
 for (const requiredCalculationText of [

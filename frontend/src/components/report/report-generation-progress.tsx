@@ -6,14 +6,14 @@ interface ReportGenerationProgressProps {
   timedOut: boolean;
   elapsedSeconds: number;
   onRefresh: () => void;
-  onShowFallback: () => void;
+  onRetry: () => void;
 }
 
 export function ReportGenerationProgress({
   timedOut,
   elapsedSeconds,
   onRefresh,
-  onShowFallback,
+  onRetry,
 }: ReportGenerationProgressProps) {
   return (
     <Card className="mx-auto max-w-3xl border-[#5B3FD6]/30 bg-[rgba(23,20,42,0.92)]">
@@ -33,8 +33,8 @@ export function ReportGenerationProgress({
           </CardTitle>
           <p className="text-sm leading-6 text-[#D8DCE8]">
             {timedOut
-              ? "Астрологическая и типологическая база уже рассчитана. Можно обновить статус или открыть технический отчёт, не теряя данные."
-              : "Сначала готовим мягкое повествовательное чтение, а технические детали откроем ниже только при необходимости."}
+              ? "Полный текст пока не собрался. Можно обновить статус или повторить генерацию, но сокращённую техническую версию здесь не показываем."
+              : "Сначала готовим полный повествовательный отчёт. Пока он не готов, промежуточную техническую подмену не показываем."}
           </p>
         </div>
       </CardHeader>
@@ -63,8 +63,8 @@ export function ReportGenerationProgress({
             Обновить
           </Button>
           {timedOut && (
-            <Button onClick={onShowFallback} variant="outline">
-              Показать технический отчёт
+            <Button onClick={onRetry} variant="outline">
+              Повторить генерацию
             </Button>
           )}
         </div>

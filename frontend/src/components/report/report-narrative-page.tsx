@@ -1,10 +1,12 @@
 import { CalculationParameters } from "@/components/report/calculation-parameters";
+import { CalibrationQuestionsSection } from "@/components/report/calibration-questions-section";
 import { CareerCTA } from "@/components/report/career-cta";
 import { HouseScenariosSection } from "@/components/report/house-scenarios-section";
 import {
   NarrativeHero,
   NarrativeSection,
 } from "@/components/report/narrative-section";
+import { PatternTensionsSection } from "@/components/report/pattern-tensions-section";
 import { ReportPdfActions } from "@/components/report/report-pdf-actions";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +27,8 @@ interface ReportNarrativePageProps {
 const NARRATIVE_RENDER_ORDER = [
   "<NarrativeHero",
   "<HouseScenariosSection",
+  "<CalibrationQuestionsSection",
+  "<PatternTensionsSection",
   "main_formula",
   "world_perception",
   "emotions_and_communication",
@@ -100,6 +104,14 @@ export function ReportNarrativePage({
       <NarrativeHero hero={narrative.hero} />
       <GlossaryHelpStrip />
       <HouseScenariosSection scenarios={narrative.house_scenarios} />
+      <CalibrationQuestionsSection
+        questions={narrative.calibration_questions}
+      />
+      <PatternTensionsSection
+        contradictions={narrative.contradictions}
+        failureModes={narrative.failure_modes}
+        maturityLevels={narrative.maturity_levels}
+      />
       {orderedSections.map((section) => (
         <NarrativeSection key={section.id} section={section} />
       ))}

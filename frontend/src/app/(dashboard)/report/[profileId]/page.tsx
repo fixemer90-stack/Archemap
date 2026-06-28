@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from "next/navigation";
 import { CalculationParameters } from "@/components/report/calculation-parameters";
 import { ArchetypeProfileSummary } from "@/components/report/archetype-profile-summary";
 import { AstrologyOverview } from "@/components/report/astrology-overview";
-import { DeterministicReportFallback } from "@/components/report/deterministic-report-fallback";
 import { LifeManifestations } from "@/components/report/life-manifestations";
 import { PracticalRecommendations } from "@/components/report/practical-recommendations";
 import { ReportExecutiveSummary } from "@/components/report/report-executive-summary";
@@ -61,7 +60,10 @@ function ReportContent({
   onDownloadPdf: () => void | Promise<void>;
   profileId: string;
 }) {
-  if (data.product === "self" && data.narrative) {
+  if (data.product === "self") {
+    if (!data.narrative) {
+      return null;
+    }
     return (
       <ReportNarrativePage
         data={data}
@@ -225,6 +227,30 @@ function ReportError({ message }: { message: string }) {
   );
 }
 
+function NarrativeUnavailableState({
+  message,
+  isRetrying,
+  onRetry,
+}: {
+  message: string;
+  isRetrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <Card className="mx-auto max-w-3xl border-destructive/30">
+      <CardHeader>
+        <CardTitle>Полный отчёт пока недоступен</CardTitle>
+        <CardDescription>{message}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={onRetry} disabled={isRetrying}>
+          {isRetrying ? "Повторяем генерацию..." : "Повторить генерацию"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) {
@@ -294,7 +320,6 @@ export default function ReportPage() {
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTimedOut, setIsTimedOut] = useState(false);
-  const [showFallback, setShowFallback] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const generationStartedAtRef = useRef<number | null>(null);
   const autoGenerateAttemptedRef = useRef<Set<string>>(new Set());
@@ -346,7 +371,6 @@ export default function ReportPage() {
       setError(null);
       setSessionExpiredMessage(null);
       const report = await regenerateReportNarrative(currentReport.id);
-      setShowFallback(false);
       setIsTimedOut(false);
       generationStartedAtRef.current = Date.now();
       setElapsedSeconds(0);
@@ -366,7 +390,6 @@ export default function ReportPage() {
         setIsLoading(true);
         setError(null);
         setIsTimedOut(false);
-        setShowFallback(false);
         generationStartedAtRef.current = null;
         setElapsedSeconds(0);
         const loadedApiData = await fetchReportApiData(profileId, product);
@@ -423,7 +446,8 @@ export default function ReportPage() {
             );
           }
           if (
-            loadedApiData.generatedReport?.status === "generating_narrative"
+            loadedApiData.generatedReport?.status === "generating_narrative" ||
+            loadedApiData.generatedReport?.status === "deterministic_ready"
           ) {
             generationStartedAtRef.current = Date.now();
           }
@@ -458,7 +482,12 @@ export default function ReportPage() {
   ]);
 
   useEffect(() => {
-    if (currentReport?.status !== "generating_narrative" || !apiData) {
+    if (
+      !currentReport ||
+      !apiData ||
+      (currentReport.status !== "generating_narrative" &&
+        currentReport.status !== "deterministic_ready")
+    ) {
       return;
     }
 
@@ -480,7 +509,10 @@ export default function ReportPage() {
         .then((report) => {
           setSessionExpiredMessage(null);
           applyReportUpdate(apiData, report);
-          if (report.status !== "generating_narrative") {
+          if (
+            report.status !== "generating_narrative" &&
+            report.status !== "deterministic_ready"
+          ) {
             generationStartedAtRef.current = null;
             setIsTimedOut(false);
           }
@@ -488,7 +520,6 @@ export default function ReportPage() {
         .catch((pollError: unknown) => {
           if (pollError instanceof ApiError && pollError.status === 401) {
             generationStartedAtRef.current = null;
-            setShowFallback(false);
             setIsTimedOut(false);
             setSessionExpiredMessage(
               "Сессия истекла. Войдите снова, чтобы обновить отчёт.",
@@ -510,15 +541,17 @@ export default function ReportPage() {
   }, [apiData, applyReportUpdate, currentReport]);
 
   const reportStatus = currentReport?.status;
+  const isSelfReportWithoutNarrative = Boolean(
+    data && currentReport && data.product === "self" && !data.narrative,
+  );
   const shouldShowProgress =
-    (reportStatus === "generating_narrative" && !showFallback) ||
+    (isSelfReportWithoutNarrative &&
+      (reportStatus === "generating_narrative" ||
+        reportStatus === "deterministic_ready")) ||
     (Boolean(data) && !currentReport && !error);
-  const shouldShowFallback = Boolean(
-    data &&
-    currentReport &&
-    (showFallback ||
-      reportStatus === "narrative_failed" ||
-      reportStatus === "deterministic_ready"),
+  const shouldShowNarrativeUnavailable = Boolean(
+    isSelfReportWithoutNarrative &&
+    (reportStatus === "narrative_failed" || reportStatus === "ready"),
   );
 
   async function handleDownloadPdf() {
@@ -562,36 +595,25 @@ export default function ReportPage() {
         <ReportGenerationProgress
           elapsedSeconds={elapsedSeconds}
           onRefresh={refreshCurrentReport}
-          onShowFallback={() => setShowFallback(true)}
+          onRetry={retryNarrativeGeneration}
           timedOut={isTimedOut}
         />
       )}
-      {!isLoading && shouldShowFallback && data && currentReport && (
-        <DeterministicReportFallback
-          errorMessage={currentReport.error_message ?? error}
+      {!isLoading && shouldShowNarrativeUnavailable && currentReport && (
+        <NarrativeUnavailableState
           isRetrying={isRetrying}
-          onRetry={retryNarrativeGeneration}
-          reason={
-            reportStatus === "narrative_failed"
-              ? "failed"
-              : reportStatus === "deterministic_ready"
-                ? "deterministic_ready"
-                : "timeout"
+          message={
+            currentReport.error_message ??
+            "Не удалось получить полный текст отчёта."
           }
-        >
-          <ReportContent
-            data={data}
-            isDownloadingPdf={isDownloadingPdf}
-            onDownloadPdf={handleDownloadPdf}
-            profileId={profileId}
-          />
-        </DeterministicReportFallback>
+          onRetry={retryNarrativeGeneration}
+        />
       )}
       {!isLoading &&
         data &&
         currentReport &&
         !shouldShowProgress &&
-        !shouldShowFallback && (
+        !shouldShowNarrativeUnavailable && (
           <ReportContent
             data={data}
             isDownloadingPdf={isDownloadingPdf}

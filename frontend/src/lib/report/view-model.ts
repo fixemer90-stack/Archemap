@@ -197,6 +197,47 @@ export interface HouseScenarioViewModel {
   shadow: string;
   mature_expression: string;
   evidence_ids: string[];
+  evidence_notes: NarrativeEvidenceNote[];
+}
+
+export interface CalibrationQuestionViewModel {
+  id: string;
+  question: string;
+  evidence_ids: string[];
+  answer_type: "yes_no" | "scale_1_5" | "free_text";
+}
+
+export interface ContradictionInsightViewModel {
+  id: string;
+  title: string;
+  tension: string;
+  manifestation: string;
+  mature_expression: string;
+  evidence_ids: string[];
+  evidence_notes: NarrativeEvidenceNote[];
+}
+
+export interface FailureModeViewModel {
+  id: string;
+  title: string;
+  trigger: string;
+  manifestation: string;
+  supportive_reframe: string;
+  evidence_ids: string[];
+  evidence_notes: NarrativeEvidenceNote[];
+}
+
+export interface MaturityBandViewModel {
+  title: string;
+  body: string;
+  evidence_ids: string[];
+  evidence_notes: NarrativeEvidenceNote[];
+}
+
+export interface MaturityLevelsViewModel {
+  low: MaturityBandViewModel;
+  medium: MaturityBandViewModel;
+  high: MaturityBandViewModel;
 }
 
 export interface ReportNarrativeViewModel {
@@ -205,6 +246,10 @@ export interface ReportNarrativeViewModel {
   dominants: DominantInsightViewModel[];
   inner_mechanism: InnerMechanismViewModel | null;
   house_scenarios: HouseScenarioViewModel[];
+  calibration_questions: CalibrationQuestionViewModel[];
+  contradictions: ContradictionInsightViewModel[];
+  failure_modes: FailureModeViewModel[];
+  maturity_levels: MaturityLevelsViewModel | null;
   sections: NarrativeSectionViewModel[];
   career_cta: CareerCTAViewModel | null;
   final_summary: string;
@@ -730,9 +775,156 @@ function normalizeHouseScenarios(value: unknown): HouseScenarioViewModel[] {
         shadow,
         mature_expression: matureExpression,
         evidence_ids: evidenceIds,
+        evidence_notes: normalizeEvidenceNotes(item.evidence_notes),
       },
     ];
   });
+}
+
+function normalizeCalibrationQuestions(
+  value: unknown,
+): CalibrationQuestionViewModel[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const id = toStringValue(item.id).trim();
+    const question = toStringValue(item.question).trim();
+    const evidenceIds = toStringArray(item.evidence_ids).filter(Boolean);
+    const answerType = toStringValue(item.answer_type).trim();
+    if (
+      !id ||
+      !question ||
+      evidenceIds.length === 0 ||
+      (answerType !== "yes_no" &&
+        answerType !== "scale_1_5" &&
+        answerType !== "free_text")
+    ) {
+      return [];
+    }
+    return [
+      {
+        id,
+        question,
+        evidence_ids: evidenceIds,
+        answer_type: answerType,
+      },
+    ];
+  });
+}
+
+function normalizeContradictions(
+  value: unknown,
+): ContradictionInsightViewModel[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const id = toStringValue(item.id).trim();
+    const title = toStringValue(item.title).trim();
+    const tension = toStringValue(item.tension).trim();
+    const manifestation = toStringValue(item.manifestation).trim();
+    const matureExpression = toStringValue(item.mature_expression).trim();
+    const evidenceIds = toStringArray(item.evidence_ids).filter(Boolean);
+    if (
+      !id ||
+      !title ||
+      !tension ||
+      !manifestation ||
+      !matureExpression ||
+      evidenceIds.length === 0
+    ) {
+      return [];
+    }
+    return [
+      {
+        id,
+        title,
+        tension,
+        manifestation,
+        mature_expression: matureExpression,
+        evidence_ids: evidenceIds,
+        evidence_notes: normalizeEvidenceNotes(item.evidence_notes),
+      },
+    ];
+  });
+}
+
+function normalizeFailureModes(value: unknown): FailureModeViewModel[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const id = toStringValue(item.id).trim();
+    const title = toStringValue(item.title).trim();
+    const trigger = toStringValue(item.trigger).trim();
+    const manifestation = toStringValue(item.manifestation).trim();
+    const supportiveReframe = toStringValue(item.supportive_reframe).trim();
+    const evidenceIds = toStringArray(item.evidence_ids).filter(Boolean);
+    if (
+      !id ||
+      !title ||
+      !trigger ||
+      !manifestation ||
+      !supportiveReframe ||
+      evidenceIds.length === 0
+    ) {
+      return [];
+    }
+    return [
+      {
+        id,
+        title,
+        trigger,
+        manifestation,
+        supportive_reframe: supportiveReframe,
+        evidence_ids: evidenceIds,
+        evidence_notes: normalizeEvidenceNotes(item.evidence_notes),
+      },
+    ];
+  });
+}
+
+function normalizeMaturityBand(value: unknown): MaturityBandViewModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const title = toStringValue(value.title).trim();
+  const body = toStringValue(value.body).trim();
+  const evidenceIds = toStringArray(value.evidence_ids).filter(Boolean);
+  if (!title || !body || evidenceIds.length === 0) {
+    return null;
+  }
+  return {
+    title,
+    body,
+    evidence_ids: evidenceIds,
+    evidence_notes: normalizeEvidenceNotes(value.evidence_notes),
+  };
+}
+
+function normalizeMaturityLevels(
+  value: unknown,
+): MaturityLevelsViewModel | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const low = normalizeMaturityBand(value.low);
+  const medium = normalizeMaturityBand(value.medium);
+  const high = normalizeMaturityBand(value.high);
+  if (!low || !medium || !high) {
+    return null;
+  }
+  return { low, medium, high };
 }
 
 function normalizeCareerCTA(value: unknown): CareerCTAViewModel | null {
@@ -797,6 +989,18 @@ function normalizeNarrative(
   const houseScenarios = normalizeHouseScenarios(
     narrative.house_scenarios ?? content.house_scenarios,
   );
+  const calibrationQuestions = normalizeCalibrationQuestions(
+    narrative.calibration_questions ?? content.calibration_questions,
+  );
+  const contradictions = normalizeContradictions(
+    narrative.contradictions ?? content.contradictions,
+  );
+  const failureModes = normalizeFailureModes(
+    narrative.failure_modes ?? content.failure_modes,
+  );
+  const maturityLevels = normalizeMaturityLevels(
+    narrative.maturity_levels ?? content.maturity_levels,
+  );
 
   return {
     title: narrative.title ?? toStringValue(content.title, "Ваш личный отчёт"),
@@ -804,6 +1008,10 @@ function normalizeNarrative(
     dominants,
     inner_mechanism: innerMechanism,
     house_scenarios: houseScenarios,
+    calibration_questions: calibrationQuestions,
+    contradictions,
+    failure_modes: failureModes,
+    maturity_levels: maturityLevels,
     sections,
     career_cta: normalizeCareerCTA(narrative.career_cta),
     final_summary: finalSummary,

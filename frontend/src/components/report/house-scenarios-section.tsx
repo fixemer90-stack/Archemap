@@ -1,3 +1,4 @@
+import { EvidenceNotes } from "@/components/report/evidence-notes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { HouseScenarioViewModel } from "@/lib/report/view-model";
 
@@ -46,9 +47,11 @@ export function HouseScenariosSection({
                 <dd>{scenario.mature_expression}</dd>
               </div>
             </dl>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Основания: {scenario.evidence_ids.join(", ")}
-            </p>
+            <EvidenceNotes
+              className="mt-3"
+              notes={scenario.evidence_notes}
+              fallbackFactIds={scenario.evidence_ids}
+            />
           </article>
         ))}
       </CardContent>

@@ -122,6 +122,42 @@ class TestValidateSelfNarrative:
 
         assert any(error.code == "unknown_evidence_ref" for error in errors)
 
+    def test_rejects_house_scenario_unknown_evidence_note_ref(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.house_scenarios[0].evidence_notes[0].fact_ids = ["unknown_house_note_fact"]
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "unknown_evidence_ref" for error in errors)
+        assert any("house_scenarios[0].evidence_notes[0].fact_ids" in error.location for error in errors)
+
+    def test_rejects_contradiction_unknown_evidence_note_ref(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.contradictions[0].evidence_notes[0].fact_ids = ["unknown_contradiction_note_fact"]
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "unknown_evidence_ref" for error in errors)
+        assert any("contradictions[0].evidence_notes[0].fact_ids" in error.location for error in errors)
+
+    def test_rejects_failure_mode_unknown_evidence_note_ref(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.failure_modes[0].evidence_notes[0].fact_ids = ["unknown_failure_note_fact"]
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "unknown_evidence_ref" for error in errors)
+        assert any("failure_modes[0].evidence_notes[0].fact_ids" in error.location for error in errors)
+
+    def test_rejects_maturity_level_unknown_evidence_note_ref(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.maturity_levels.high.evidence_notes[0].fact_ids = ["unknown_maturity_note_fact"]
+
+        errors = validate_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "unknown_evidence_ref" for error in errors)
+        assert any("maturity_levels.high.evidence_notes[0].fact_ids" in error.location for error in errors)
+
     def test_rejects_missing_career_cta(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
         invalid_narrative = narrative.model_copy(update={"career_cta": None})

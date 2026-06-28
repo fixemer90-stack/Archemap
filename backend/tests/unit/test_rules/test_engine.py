@@ -143,6 +143,27 @@ class TestRuleEngine:
         assert len(set(result.all_archetype_scores.values())) > 1
         assert 0.25 not in result.all_archetype_scores.values()
 
+    def test_near_threshold_profile_still_gets_informative_best_fit(self) -> None:
+        """A real mixed profile near rule thresholds must not produce an empty report."""
+        features = make_features(
+            fire=0.12,
+            earth=0.387,
+            air=0.267,
+            water=0.227,
+            cardinal=0.573,
+            fixed=0.24,
+            mutable=0.187,
+            has_birth_time=True,
+            birth_time_quality=1.0,
+        )
+        ruleset = load_ruleset("self", "v1")
+        result = interpret(features, ruleset)
+
+        assert result.primary_archetype != "Неопределённый"
+        assert result.primary_score > 0
+        assert result.all_archetype_scores
+        assert result.claims
+
     def test_no_archetype_low_values(self) -> None:
         """Balanced features → no archetype should dominate."""
         features = make_features(fire=0.25, earth=0.25, air=0.25, water=0.25)

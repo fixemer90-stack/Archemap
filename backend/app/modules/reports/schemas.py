@@ -96,6 +96,10 @@ class NarrativeResponse(BaseModel):
     dominants: list[dict[str, Any]] = Field(default_factory=list)
     inner_mechanism: dict[str, Any] | None = None
     house_scenarios: list[dict[str, Any]] = Field(default_factory=list)
+    calibration_questions: list[dict[str, Any]] = Field(default_factory=list)
+    contradictions: list[dict[str, Any]] = Field(default_factory=list)
+    failure_modes: list[dict[str, Any]] = Field(default_factory=list)
+    maturity_levels: dict[str, Any] | None = None
     sections: list[dict[str, Any]] = Field(default_factory=list)
     career_cta: dict[str, Any] | None = None
     content: dict[str, Any] | None = None
@@ -177,6 +181,10 @@ def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
         dominants=content.get("dominants", []),
         inner_mechanism=content.get("inner_mechanism"),
         house_scenarios=content.get("house_scenarios", []),
+        calibration_questions=content.get("calibration_questions", []),
+        contradictions=content.get("contradictions", []),
+        failure_modes=content.get("failure_modes", []),
+        maturity_levels=content.get("maturity_levels"),
         sections=content.get("sections", []),
         career_cta=content.get("career_cta"),
         content=content or None,

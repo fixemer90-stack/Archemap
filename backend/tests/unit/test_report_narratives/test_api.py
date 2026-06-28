@@ -1,4 +1,5 @@
 """API tests for report narrative endpoints."""
+# ruff: noqa: RUF001
 
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from app.core.exceptions import NotFoundError
 from app.dependencies import get_current_user
 from app.main import app
 from app.modules.report_narratives.models import ReportNarrative
+from app.modules.report_narratives.service import _is_legacy_fallback_narrative
 from app.modules.reports.models import Report
 from app.modules.reports.service import ReportService
 
@@ -119,7 +121,41 @@ def make_narrative(report: Report, *, status: str = "ready") -> ReportNarrative:
     return narrative
 
 
+def make_legacy_fallback_narrative(report: Report) -> ReportNarrative:
+    narrative = make_narrative(report)
+    narrative.error_message = "provider_timeout_fallback"
+    narrative.content = {
+        "title": "Ваш внутренний портрет",
+        "hero": {
+            "body": (
+                "Сейчас текстовая версия недоступна, поэтому ниже показано краткое "
+                "детерминированное резюме. Текстовая версия временно недоступна, "
+                "поэтому показано безопасное резервное резюме."
+            ),
+        },
+        "final_summary": (
+            "Это резервная детерминированная версия: факты сохранены, а расширенный "
+            "связный narrative можно сгенерировать повторно позже."
+        ),
+        "sections": [],
+        "career_cta": {},
+    }
+    return narrative
+
+
 class TestReportNarrativeApi:
+    def test_detects_legacy_fallback_narrative_by_error_marker(self) -> None:
+        report = make_report(user_id=uuid4())
+        narrative = make_legacy_fallback_narrative(report)
+
+        assert _is_legacy_fallback_narrative(narrative) is True
+
+    def test_does_not_flag_normal_ready_narrative_as_legacy_fallback(self) -> None:
+        report = make_report(user_id=uuid4())
+        narrative = make_narrative(report)
+
+        assert _is_legacy_fallback_narrative(narrative) is False
+
     @pytest.mark.asyncio
     async def test_get_report_returns_deterministic_payload_with_null_narrative_while_generation_in_progress(
         self,

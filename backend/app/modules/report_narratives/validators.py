@@ -126,6 +126,10 @@ def validate_self_narrative(
     errors.extend(_validate_dominants(candidate))
     errors.extend(_validate_inner_mechanism(candidate))
     errors.extend(_validate_house_scenarios(candidate))
+    errors.extend(_validate_calibration_questions(candidate))
+    errors.extend(_validate_contradictions(candidate))
+    errors.extend(_validate_failure_modes(candidate))
+    errors.extend(_validate_maturity_levels(candidate))
     errors.extend(_validate_career_cta(candidate))
     errors.extend(_validate_evidence_refs(candidate, validated_input))
     errors.extend(_validate_career_boundaries(candidate))
@@ -268,6 +272,148 @@ def _validate_house_scenarios(narrative: SelfNarrative) -> list[NarrativeValidat
     return errors
 
 
+def _validate_calibration_questions(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    calibration_questions = getattr(narrative, "calibration_questions", None)
+    if not calibration_questions:
+        return [
+            NarrativeValidationError(
+                code="missing_calibration_questions",
+                message="Self narrative must include 5-7 calibration questions.",
+                location="calibration_questions",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for index, question in enumerate(calibration_questions):
+        if not getattr(question, "question", "").strip().endswith("?"):
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_calibration_question",
+                    message="Every calibration question must be phrased as a question.",
+                    location=f"calibration_questions[{index}].question",
+                    recoverable=True,
+                )
+            )
+        if not getattr(question, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_calibration_question",
+                    message="Every calibration question must reference deterministic evidence ids.",
+                    location=f"calibration_questions[{index}].evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_contradictions(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    contradictions = getattr(narrative, "contradictions", None)
+    if contradictions is None or not 3 <= len(contradictions) <= 5:
+        return [
+            NarrativeValidationError(
+                code="invalid_contradictions",
+                message="Self narrative must include 3-5 central contradictions.",
+                location="contradictions",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for index, contradiction in enumerate(contradictions):
+        if not getattr(contradiction, "mature_expression", "").strip():
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_contradiction",
+                    message="Every contradiction must include a mature expression.",
+                    location=f"contradictions[{index}].mature_expression",
+                    recoverable=True,
+                )
+            )
+        if not getattr(contradiction, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_contradiction",
+                    message="Every contradiction must reference deterministic evidence ids.",
+                    location=f"contradictions[{index}].evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_failure_modes(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    failure_modes = getattr(narrative, "failure_modes", None)
+    if failure_modes is None or not 3 <= len(failure_modes) <= 5:
+        return [
+            NarrativeValidationError(
+                code="invalid_failure_modes",
+                message="Self narrative must include 3-5 concrete failure modes.",
+                location="failure_modes",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for index, failure_mode in enumerate(failure_modes):
+        if not getattr(failure_mode, "supportive_reframe", "").strip():
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_failure_mode",
+                    message="Every failure mode must include a supportive reframe.",
+                    location=f"failure_modes[{index}].supportive_reframe",
+                    recoverable=True,
+                )
+            )
+        if not getattr(failure_mode, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_failure_mode",
+                    message="Every failure mode must reference deterministic evidence ids.",
+                    location=f"failure_modes[{index}].evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_maturity_levels(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    maturity_levels = getattr(narrative, "maturity_levels", None)
+    if maturity_levels is None:
+        return [
+            NarrativeValidationError(
+                code="missing_maturity_levels",
+                message="Self narrative must include low / medium / high maturity levels.",
+                location="maturity_levels",
+                recoverable=True,
+            )
+        ]
+
+    errors: list[NarrativeValidationError] = []
+    for band_name in ("low", "medium", "high"):
+        band = getattr(maturity_levels, band_name, None)
+        if band is None or not getattr(band, "body", "").strip():
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_maturity_levels",
+                    message="Every maturity band must include explanatory text.",
+                    location=f"maturity_levels.{band_name}.body",
+                    recoverable=True,
+                )
+            )
+            continue
+        if not getattr(band, "evidence_ids", None):
+            errors.append(
+                NarrativeValidationError(
+                    code="invalid_maturity_levels",
+                    message="Every maturity band must reference deterministic evidence ids.",
+                    location=f"maturity_levels.{band_name}.evidence_ids",
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
 def _validate_career_cta(narrative: SelfNarrative) -> list[NarrativeValidationError]:
     career_cta = getattr(narrative, "career_cta", None)
     if career_cta is not None:
@@ -375,6 +521,27 @@ def _allowed_fact_ids(narrative_input: NarrativeInput) -> set[str]:
         allowed.update(step.evidence_ids)
     for scenario in narrative_input.house_scenarios:
         allowed.update(scenario.evidence_ids)
+        for note in getattr(scenario, "evidence_notes", []) or []:
+            allowed.update(note.fact_ids)
+            allowed.update(note.limitation_fact_ids)
+    for question in narrative_input.calibration_questions:
+        allowed.update(question.evidence_ids)
+    for contradiction in narrative_input.contradictions:
+        allowed.update(contradiction.evidence_ids)
+        for note in getattr(contradiction, "evidence_notes", []) or []:
+            allowed.update(note.fact_ids)
+            allowed.update(note.limitation_fact_ids)
+    for failure_mode in narrative_input.failure_modes:
+        allowed.update(failure_mode.evidence_ids)
+        for note in getattr(failure_mode, "evidence_notes", []) or []:
+            allowed.update(note.fact_ids)
+            allowed.update(note.limitation_fact_ids)
+    for band_name in ("low", "medium", "high"):
+        band = getattr(narrative_input.maturity_levels, band_name)
+        allowed.update(band.evidence_ids)
+        for note in getattr(band, "evidence_notes", []) or []:
+            allowed.update(note.fact_ids)
+            allowed.update(note.limitation_fact_ids)
     for claim in _iter_claim_groups(narrative_input):
         allowed.update(claim.evidence_ids)
     return allowed
@@ -431,6 +598,46 @@ def _iter_evidence_notes(narrative: SelfNarrative) -> Iterable[tuple[str, Eviden
                 f"house_scenarios[{index}]",
                 EvidenceNote(claim=getattr(scenario, "manifestation", ""), fact_ids=fact_ids),
             )
+        for note_index, note in enumerate(getattr(scenario, "evidence_notes", []) or []):
+            yield (f"house_scenarios[{index}].evidence_notes[{note_index}]", note)
+    for index, question in enumerate(getattr(narrative, "calibration_questions", []) or []):
+        fact_ids = list(getattr(question, "evidence_ids", []) or [])
+        if fact_ids:
+            yield (
+                f"calibration_questions[{index}]",
+                EvidenceNote(claim=getattr(question, "question", ""), fact_ids=fact_ids),
+            )
+    for index, contradiction in enumerate(getattr(narrative, "contradictions", []) or []):
+        fact_ids = list(getattr(contradiction, "evidence_ids", []) or [])
+        if fact_ids:
+            yield (
+                f"contradictions[{index}]",
+                EvidenceNote(claim=getattr(contradiction, "manifestation", ""), fact_ids=fact_ids),
+            )
+        for note_index, note in enumerate(getattr(contradiction, "evidence_notes", []) or []):
+            yield (f"contradictions[{index}].evidence_notes[{note_index}]", note)
+    for index, failure_mode in enumerate(getattr(narrative, "failure_modes", []) or []):
+        fact_ids = list(getattr(failure_mode, "evidence_ids", []) or [])
+        if fact_ids:
+            yield (
+                f"failure_modes[{index}]",
+                EvidenceNote(claim=getattr(failure_mode, "manifestation", ""), fact_ids=fact_ids),
+            )
+        for note_index, note in enumerate(getattr(failure_mode, "evidence_notes", []) or []):
+            yield (f"failure_modes[{index}].evidence_notes[{note_index}]", note)
+    maturity_levels = getattr(narrative, "maturity_levels", None)
+    if maturity_levels is not None:
+        for band_name in ("low", "medium", "high"):
+            band = getattr(maturity_levels, band_name, None)
+            fact_ids = list(getattr(band, "evidence_ids", []) or []) if band is not None else []
+            if fact_ids:
+                yield (
+                    f"maturity_levels.{band_name}",
+                    EvidenceNote(claim=getattr(band, "body", ""), fact_ids=fact_ids),
+                )
+            if band is not None:
+                for note_index, note in enumerate(getattr(band, "evidence_notes", []) or []):
+                    yield (f"maturity_levels.{band_name}.evidence_notes[{note_index}]", note)
     for index, note in enumerate(narrative.hero.evidence_notes):
         yield (f"hero.evidence_notes[{index}]", note)
     for section_index, section in enumerate(narrative.sections):
@@ -459,6 +666,35 @@ def _iter_non_cta_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str]]:
         yield (f"house_scenarios[{scenario_index}].manifestation", scenario.manifestation)
         yield (f"house_scenarios[{scenario_index}].shadow", scenario.shadow)
         yield (f"house_scenarios[{scenario_index}].mature_expression", scenario.mature_expression)
+    for question_index, question in enumerate(getattr(narrative, "calibration_questions", []) or []):
+        yield (f"calibration_questions[{question_index}].question", question.question)
+    for contradiction_index, contradiction in enumerate(getattr(narrative, "contradictions", []) or []):
+        yield (f"contradictions[{contradiction_index}].title", contradiction.title)
+        yield (f"contradictions[{contradiction_index}].tension", contradiction.tension)
+        yield (f"contradictions[{contradiction_index}].manifestation", contradiction.manifestation)
+        yield (
+            f"contradictions[{contradiction_index}].mature_expression",
+            contradiction.mature_expression,
+        )
+    for failure_index, failure_mode in enumerate(getattr(narrative, "failure_modes", []) or []):
+        yield (f"failure_modes[{failure_index}].title", failure_mode.title)
+        yield (f"failure_modes[{failure_index}].trigger", failure_mode.trigger)
+        yield (
+            f"failure_modes[{failure_index}].manifestation",
+            failure_mode.manifestation,
+        )
+        yield (
+            f"failure_modes[{failure_index}].supportive_reframe",
+            failure_mode.supportive_reframe,
+        )
+    maturity_levels = getattr(narrative, "maturity_levels", None)
+    if maturity_levels is not None:
+        for band_name in ("low", "medium", "high"):
+            band = getattr(maturity_levels, band_name, None)
+            if band is None:
+                continue
+            yield (f"maturity_levels.{band_name}.title", band.title)
+            yield (f"maturity_levels.{band_name}.body", band.body)
     yield ("final_summary", narrative.final_summary)
     for section_index, section in enumerate(narrative.sections):
         yield (f"sections[{section_index}].title", section.title)

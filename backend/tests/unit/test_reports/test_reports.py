@@ -17,9 +17,15 @@ from app.modules.report_narratives.exceptions import NarrativeValidationError
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.validators import choose_narrative_recovery_action
 from app.modules.reports.models import Report, ReportVersion
-from app.modules.reports.schemas import GenerateReportRequest, ReportResponse, ReportVersionResponse
+from app.modules.reports.schemas import (
+    GenerateReportRequest,
+    ReportResponse,
+    ReportVersionResponse,
+    build_narrative_response,
+)
 from app.modules.reports.service import ReportService, _build_chart_summary, _report_matches_snapshot
 from app.modules.reports.tasks import _run_async as _run_async_pdf_task
+from tests.unit.test_report_narratives.test_schemas import make_self_narrative_payload
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -357,6 +363,29 @@ class TestReportSchemas:
 
         assert response.id == report.id
         assert response.profile_id == report.profile_id
+
+    def test_build_narrative_response_exposes_calibration_questions(self) -> None:
+        report = make_report()
+        now = datetime.now(UTC)
+        narrative = ReportNarrative(
+            id=uuid4(),
+            report_id=report.id,
+            product="self",
+            prompt_version="self_story_v4",
+            model_provider="mock",
+            model_name="mock-self-v4",
+            status="ready",
+            content=make_self_narrative_payload(),
+            input_hash="hash-1",
+            generation_attempts=1,
+            created_at=now,
+            updated_at=now,
+        )
+
+        response = build_narrative_response(narrative)
+
+        assert len(response.calibration_questions) == 5
+        assert response.calibration_questions[0]["answer_type"] == "yes_no"
 
     def test_report_version_response_accepts_uuid_fields(self) -> None:
         version = ReportVersion(

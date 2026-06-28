@@ -150,7 +150,13 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     normalized_sections: list[dict[str, Any]] = []
-    for section in payload.get("sections", []):
+    raw_sections = payload.get("sections", [])
+    if isinstance(raw_sections, dict):
+        raw_sections = [
+            {"id": section_id, **section} if isinstance(section, dict) else {"id": section_id, "body": section}
+            for section_id, section in raw_sections.items()
+        ]
+    for section in raw_sections:
         if not isinstance(section, dict):
             normalized_sections.append(section)
             continue
@@ -198,6 +204,9 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
     normalized_payload["hero"] = normalized_hero
     normalized_payload["sections"] = normalized_sections
     normalized_payload["career_cta"] = normalized_career_cta
+    normalized_payload["final_summary"] = _coerce_text(
+        payload.get("final_summary") or payload.get("summary"),
+    )
     return normalized_payload
 
 
@@ -206,4 +215,12 @@ def _coerce_text(value: Any) -> str:
         return value
     if isinstance(value, list):
         return "\n\n".join(str(item).strip() for item in value if str(item).strip())
+    if isinstance(value, dict):
+        return _coerce_text(
+            value.get("body")
+            or value.get("text")
+            or value.get("content")
+            or value.get("summary")
+            or value.get("description"),
+        )
     return "" if value is None else str(value)

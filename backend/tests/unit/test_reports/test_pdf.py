@@ -94,6 +94,13 @@ def test_render_report_html_prefers_saved_narrative_before_technical_appendix() 
     assert "Ограничение" in html
     assert "Это не отменяет перегрузку речи" in html
     assert "moon_trine_mercury" in html
+    assert "Поиск смысла и системы — не абстракция, а базовая потребность самовыражения." in html
+    assert "Ось противоречия строится между потребностью в точной системе и живой эмоциональной передачей." in html
+    assert (
+        "Сбой запускается там, где потребность всё собрать правильно оказывается сильнее, "
+        "чем готовность двигаться с неполной ясностью." in html
+    )
+    assert "На высоком уровне паттерн становится передаваемой системой, а не только личной особенностью." in html
     assert "Техническое приложение" in html
     assert html.index("Главное о вас") < html.index("Техническое приложение")
     assert html.index("Главное о вас") < html.index("Планеты")

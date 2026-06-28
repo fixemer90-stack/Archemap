@@ -80,6 +80,139 @@ def make_narrative_input() -> NarrativeInput:
                     },
                 ],
             },
+            "house_scenarios": [
+                {
+                    "id": "house_8_focus",
+                    "title": "Сценарий 8 дома",
+                    "placement": "Лев в 8 доме",
+                    "need": "Проживать интенсивность через доверие и честность",
+                    "manifestation": "Вы углубляете контакт, когда чувствуете эмоциональную включённость.",
+                    "shadow": "При перегрузе можете драматизировать или закрываться.",
+                    "mature_expression": "Глубина становится ресурсом, когда есть ритм и границы.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "evidence_notes": [
+                        {
+                            "claim": "Интенсивность включается через доверительный контакт.",
+                            "fact_ids": ["mercury_venus_jupiter_leo_8"],
+                        }
+                    ],
+                }
+            ],
+            "calibration_questions": [
+                {
+                    "id": "cq_1",
+                    "question": "Замечаете ли вы эмоциональный фон до того, как включитесь в разговор?",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "answer_type": "yes_no",
+                },
+                {
+                    "id": "cq_2",
+                    "question": "Насколько важно вам найти точную формулировку переживания?",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "answer_type": "scale_1_5",
+                },
+                {
+                    "id": "cq_3",
+                    "question": "Бывает ли, что сильные эмоции сначала усиливают выразительность, а потом истощают?",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "answer_type": "yes_no",
+                },
+                {
+                    "id": "cq_4",
+                    "question": "Что помогает вам проживать интенсивные разговоры без перегруза?",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "answer_type": "free_text",
+                },
+                {
+                    "id": "cq_5",
+                    "question": "Чувствуете ли вы потребность в глубоком доверии перед настоящей близостью?",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "answer_type": "yes_no",
+                },
+            ],
+            "contradictions": [
+                {
+                    "id": "contr_1",
+                    "title": "Яркость и уязвимость",
+                    "tension": "Хочется проявляться ярко, но не потерять внутреннюю безопасность.",
+                    "manifestation": "Вы то усиливаете выражение, то резко отступаете.",
+                    "mature_expression": "Яркость работает лучше, когда у неё есть контейнер и границы.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                    "evidence_notes": [
+                        {
+                            "claim": "Выразительность и чувствительность включаются одновременно.",
+                            "fact_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                        }
+                    ],
+                },
+                {
+                    "id": "contr_2",
+                    "title": "Импульс и осмысление",
+                    "tension": "Сначала хочется ответить сразу, но потом нужно осмыслить впечатление.",
+                    "manifestation": "После сильного контакта может понадобиться откат и тишина.",
+                    "mature_expression": "Ритм пауза → формулировка делает контакт устойчивее.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "evidence_notes": [],
+                },
+                {
+                    "id": "contr_3",
+                    "title": "Близость и контроль",
+                    "tension": "Есть тяга к глубине, но и настороженность к потере контроля.",
+                    "manifestation": "Вы раскрываетесь только там, где чувствуете безопасный контур.",
+                    "mature_expression": "Контроль ослабевает, когда доверие строится постепенно.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "evidence_notes": [],
+                },
+            ],
+            "failure_modes": [
+                {
+                    "id": "fm_1",
+                    "title": "Эмоциональный перегрев",
+                    "trigger": "Слишком интенсивный обмен без паузы.",
+                    "manifestation": "Речь ускоряется, а точность падает.",
+                    "supportive_reframe": "Лучше остановиться и вернуться к сути после короткой паузы.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "evidence_notes": [],
+                },
+                {
+                    "id": "fm_2",
+                    "title": "Драматизация контакта",
+                    "trigger": "Когда ставка на отношения кажется слишком высокой.",
+                    "manifestation": "Мелкий сигнал воспринимается как большой смысловой поворот.",
+                    "supportive_reframe": "Полезно сначала проверить факты, а потом уже строить интерпретацию.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "evidence_notes": [],
+                },
+                {
+                    "id": "fm_3",
+                    "title": "Уход в молчание",
+                    "trigger": "После перегруза или ощущения непонятости.",
+                    "manifestation": "Контакт резко обрывается, хотя потребность в связи остаётся.",
+                    "supportive_reframe": "Можно не исчезать полностью, а назвать своё состояние простыми словами.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "evidence_notes": [],
+                },
+            ],
+            "maturity_levels": {
+                "low": {
+                    "title": "Низкая зрелость",
+                    "body": "Эмоции ведут форму, а не наоборот, поэтому контакт часто перегревается.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "evidence_notes": [],
+                },
+                "medium": {
+                    "title": "Средняя зрелость",
+                    "body": "Вы уже умеете замечать перегруз и иногда останавливать его до срыва.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "evidence_notes": [],
+                },
+                "high": {
+                    "title": "Высокая зрелость",
+                    "body": "Вы соединяете глубину чувств и ясность формулировки без потери контакта.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                    "evidence_notes": [],
+                },
+            },
             "socionics": {
                 "type": "EIE",
                 "type_ru": "ЭИЭ",
@@ -193,6 +326,62 @@ class TestDeepSeekNormalization:
         assert normalized["sections"][0]["body"] == "Body line 1\n\nBody line 2"
         assert normalized["career_cta"]["body"]
         assert normalized["career_cta"]["button_label"] == "Перейти в Career"
+
+    def test_normalizes_final_summary_object_to_body_text(self) -> None:
+        normalized = _normalize_self_narrative_shape(
+            {
+                "title": "Ваш разбор",
+                "hero": {"id": "hero", "title": "Hero", "body": "Text"},
+                "sections": [
+                    {
+                        "id": "main_formula",
+                        "title": "Главная формула",
+                        "body": "Body",
+                    }
+                ],
+                "career_cta": "Career",
+                "final_summary": {
+                    "title": "Резюме",
+                    "body": "Вы строите себя через отношения и осмысленный порядок.",
+                },
+            }
+        )
+
+        assert normalized["final_summary"] == "Вы строите себя через отношения и осмысленный порядок."
+
+    def test_normalizes_sections_object_to_section_list(self) -> None:
+        normalized = _normalize_self_narrative_shape(
+            {
+                "title": "Ваш разбор",
+                "hero": {"id": "hero", "title": "Hero", "body": "Text"},
+                "sections": {
+                    "main_formula": {
+                        "title": "Главная формула",
+                        "body": "Body",
+                    },
+                    "world_perception": "World body",
+                },
+                "career_cta": "Career",
+                "final_summary": "Итог",
+            }
+        )
+
+        assert normalized["sections"] == [
+            {
+                "id": "main_formula",
+                "title": "Главная формула",
+                "body": "Body",
+                "bullets": [],
+                "evidence_notes": [],
+            },
+            {
+                "id": "world_perception",
+                "title": "Как вы воспринимаете мир",
+                "body": "World body",
+                "bullets": [],
+                "evidence_notes": [],
+            },
+        ]
 
 
 class TestProviderFactory:

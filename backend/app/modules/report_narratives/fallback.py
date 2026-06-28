@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from app.modules.report_narratives.schemas import (
+    CalibrationQuestion,
     CareerCTA,
     EvidenceBackedClaim,
     EvidenceNote,
@@ -63,6 +64,10 @@ def build_deterministic_self_fallback(
         dominants=narrative_input.dominants,
         inner_mechanism=narrative_input.inner_mechanism,
         house_scenarios=narrative_input.house_scenarios,
+        calibration_questions=_build_calibration_questions(narrative_input),
+        contradictions=narrative_input.contradictions,
+        failure_modes=narrative_input.failure_modes,
+        maturity_levels=narrative_input.maturity_levels,
         sections=sections,
         career_cta=CareerCTA(
             title="Отдельный отчёт Career",
@@ -157,6 +162,34 @@ def _claim_to_note(claim: EvidenceBackedClaim | None) -> EvidenceNote | None:
     if claim is None:
         return None
     return EvidenceNote(claim=claim.claim, fact_ids=list(claim.evidence_ids))
+
+
+def _build_calibration_questions(narrative_input: NarrativeInput) -> list[CalibrationQuestion]:
+    questions = list(narrative_input.calibration_questions[:5])
+    if len(questions) >= 5:
+        return questions
+
+    fallback_pool = [
+        CalibrationQuestion(
+            id="calibration_fallback_clarity",
+            question="Замечаете ли вы, что ясность приходит, когда удаётся назвать переживание точными словами?",
+            evidence_ids=[*narrative_input.inner_mechanism.steps[0].evidence_ids[:1]],
+            answer_type="yes_no",
+        ),
+        CalibrationQuestion(
+            id="calibration_fallback_overload",
+            question="Бывает ли, что внутреннее напряжение растёт, если вы не видите понятную структуру происходящего?",
+            evidence_ids=[*narrative_input.house_scenarios[0].evidence_ids[:1]]
+            if narrative_input.house_scenarios
+            else [*narrative_input.dominants[0].evidence_ids[:1]],
+            answer_type="scale_1_5",
+        ),
+    ]
+    for question in fallback_pool:
+        if len(questions) >= 5:
+            break
+        questions.append(question)
+    return questions[:5]
 
 
 def _claim_or_default(claims: list[EvidenceBackedClaim], default: str) -> str:

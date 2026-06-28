@@ -91,8 +91,15 @@ class MockLLMProvider:
                     "shadow": "Можно откладывать действие ради идеальной системы.",
                     "mature_expression": "Зрелая форма — применять знание в выборе.",
                     "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "evidence_notes": [],
                 }
             ],
+            "calibration_questions": [
+                item.model_dump(mode="json") for item in narrative_input.calibration_questions
+            ],
+            "contradictions": [item.model_dump(mode="json") for item in narrative_input.contradictions],
+            "failure_modes": [item.model_dump(mode="json") for item in narrative_input.failure_modes],
+            "maturity_levels": narrative_input.maturity_levels.model_dump(mode="json"),
             "sections": [
                 {
                     "id": "main_formula",

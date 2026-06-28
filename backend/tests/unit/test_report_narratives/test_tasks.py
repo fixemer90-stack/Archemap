@@ -377,7 +377,7 @@ class TestReportNarrativeService:
                 assert "super-secret-key" not in str(value)
 
     @pytest.mark.asyncio
-    async def test_invalid_provider_response_falls_back_to_ready_deterministic_narrative(
+    async def test_invalid_provider_response_marks_narrative_failed_without_fallback_summary(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -392,15 +392,14 @@ class TestReportNarrativeService:
 
         result = await service.generate_for_report(report_fixture.id)
 
-        assert result.status == "ready"
-        assert result.content is not None
-        assert result.error_message == "invalid_response_fallback"
-        assert report_fixture.status == "ready"
-        assert report_fixture.error_message is None
-        assert "Сейчас текстовая версия недоступна" in result.content["hero"]["body"]
+        assert result.status == "narrative_failed"
+        assert result.content is None
+        assert result.error_message == "Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию."
+        assert report_fixture.status == "narrative_failed"
+        assert report_fixture.error_message == result.error_message
 
     @pytest.mark.asyncio
-    async def test_timeout_provider_response_falls_back_to_ready_deterministic_narrative(
+    async def test_timeout_provider_response_marks_narrative_failed_without_fallback_summary(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -415,15 +414,14 @@ class TestReportNarrativeService:
 
         result = await service.generate_for_report(report_fixture.id)
 
-        assert result.status == "ready"
-        assert result.content is not None
-        assert result.error_message == "provider_timeout_fallback"
-        assert report_fixture.status == "ready"
-        assert report_fixture.error_message is None
-        assert "Сейчас текстовая версия недоступна" in result.content["hero"]["body"]
+        assert result.status == "narrative_failed"
+        assert result.content is None
+        assert result.error_message == "Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию."
+        assert report_fixture.status == "narrative_failed"
+        assert report_fixture.error_message == result.error_message
 
     @pytest.mark.asyncio
-    async def test_logs_validation_fallback_for_invalid_output(
+    async def test_logs_validation_failure_for_invalid_output(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -443,16 +441,16 @@ class TestReportNarrativeService:
         validation_events = [
             payload for _, event, payload in fake_logger.events if event == "report_narrative_validation_failed"
         ]
-        success_events = [
-            payload for _, event, payload in fake_logger.events if event == "report_narrative_generation_succeeded"
+        failed_events = [
+            payload for _, event, payload in fake_logger.events if event == "report_narrative_generation_failed"
         ]
         assert validation_events
         assert any(payload.get("failure_kind") == "validation_failed" for payload in validation_events)
         assert any(payload.get("recovery_action") == "fallback" for payload in validation_events)
-        assert any(payload.get("recovery_action") == "validation_fallback" for payload in success_events)
+        assert any(payload.get("failure_kind") == "validation_failed" for payload in failed_events)
 
     @pytest.mark.asyncio
-    async def test_recoverable_validation_failure_falls_back_after_single_repair_attempt(
+    async def test_recoverable_validation_failure_marks_narrative_failed_after_single_repair_attempt(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -469,13 +467,13 @@ class TestReportNarrativeService:
         result = await service.generate_for_report(report_fixture.id)
 
         assert provider.calls == 2
-        assert result.status == "ready"
-        assert result.content is not None
-        assert "текстовая версия" in result.content["hero"]["body"].lower()
-        assert report_fixture.status == "ready"
+        assert result.status == "narrative_failed"
+        assert result.content is None
+        assert result.error_message == "Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию."
+        assert report_fixture.status == "narrative_failed"
 
     @pytest.mark.asyncio
-    async def test_validation_failure_falls_back_to_ready_narrative(
+    async def test_validation_failure_marks_narrative_failed_without_fallback_summary(
         self,
         report_fixture: Report,
         monkeypatch: pytest.MonkeyPatch,
@@ -490,11 +488,11 @@ class TestReportNarrativeService:
 
         result = await service.generate_for_report(report_fixture.id)
 
-        assert result.status == "ready"
-        assert result.error_message == "validation_fallback"
-        assert result.content is not None
-        assert report_fixture.status == "ready"
-        assert report_fixture.error_message is None
+        assert result.status == "narrative_failed"
+        assert result.error_message == "Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию."
+        assert result.content is None
+        assert report_fixture.status == "narrative_failed"
+        assert report_fixture.error_message == result.error_message
 
     @pytest.mark.asyncio
     async def test_force_regenerate_reuses_existing_cache_key_record(

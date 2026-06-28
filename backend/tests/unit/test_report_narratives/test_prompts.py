@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, E501
 """Unit tests for report narrative prompt contracts."""
 
 from __future__ import annotations
@@ -136,6 +136,109 @@ def make_narrative_input() -> NarrativeInput:
                     "evidence_ids": ["moon_trine_mercury"],
                 }
             ],
+            "calibration_questions": [
+                {
+                    "id": "calibration_argument_system",
+                    "question": "Вам легче объяснить свою позицию через систему аргументов, чем через чистую эмоцию?",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                    "answer_type": "yes_no",
+                },
+                {
+                    "id": "calibration_result_value",
+                    "question": "Бывает ли, что собственную ценность вы измеряете только через результат?",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "answer_type": "scale_1_5",
+                },
+                {
+                    "id": "calibration_structure_vs_feeling",
+                    "question": (
+                        "Вы раздражаетесь, когда в ситуации нет структуры, даже если чувства уже требуют отклика?"
+                    ),
+                    "evidence_ids": ["moon_trine_mercury"],
+                    "answer_type": "yes_no",
+                },
+                {
+                    "id": "calibration_big_idea",
+                    "question": "Для вас важно понимать большую идею за задачей, а не только саму задачу?",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                    "answer_type": "yes_no",
+                },
+                {
+                    "id": "calibration_enough",
+                    "question": "Знакомо ли вам чувство: «я сделал много, но всё равно недостаточно»?",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                    "answer_type": "scale_1_5",
+                },
+            ],
+            "contradictions": [
+                {
+                    "id": "contradiction_structure_vs_expression",
+                    "title": "Структура против выразительности",
+                    "tension": "Одна часть вас хочет собрать всё в точную систему, а другая — быстро выразить переживание и захватить внимание.",
+                    "manifestation": "Это создаёт качание между точной настройкой и импульсом сразу перейти к выразительной подаче.",
+                    "mature_expression": "Зрелая форма — сначала находить каркас смысла, а потом усиливать его интонацией и образом.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                },
+                {
+                    "id": "contradiction_intensity_vs_clarity",
+                    "title": "Интенсивность против ясности",
+                    "tension": "Чем сильнее эмоциональная вовлечённость, тем труднее удержать идеально ясную форму мысли.",
+                    "manifestation": "Иногда переживание идёт быстрее, чем его удаётся спокойно собрать в объяснение.",
+                    "mature_expression": "Зрелая форма — выдерживать чувство без требования немедленно всё объяснить идеально.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                },
+                {
+                    "id": "contradiction_recognition_vs_patience",
+                    "title": "Признание против терпения",
+                    "tension": "Есть желание, чтобы сила идеи была замечена быстро, но для точной формулировки часто нужно больше времени.",
+                    "manifestation": "На этом фоне легко раздражаться на задержку между внутренним знанием и внешним результатом.",
+                    "mature_expression": "Зрелая форма — считать этап созревания частью результата, а не его провалом.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                },
+            ],
+            "failure_modes": [
+                {
+                    "id": "failure_analysis_overload",
+                    "title": "Перегрузка анализом",
+                    "trigger": "Слишком много одновременно значимых факторов.",
+                    "manifestation": "Вместо действия начинается цикл уточнений и проверки формулировки.",
+                    "supportive_reframe": "Сначала выбрать следующий ясный шаг, а не идеальную схему целиком.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                },
+                {
+                    "id": "failure_delayed_action",
+                    "title": "Отложенное действие",
+                    "trigger": "Ощущение, что система ещё не собрана до конца.",
+                    "manifestation": "Решение почти есть, но движение откладывается.",
+                    "supportive_reframe": "Проверять гипотезу маленьким действием, а не ждать полного внутреннего согласия.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+                },
+                {
+                    "id": "failure_emotional_freeze",
+                    "title": "Эмоциональная самозаморозка",
+                    "trigger": "Слишком интенсивная близость или эмоциональная ставка.",
+                    "manifestation": "Снаружи это выглядит как пауза или уход в контроль.",
+                    "supportive_reframe": "Сначала признать интенсивность переживания, потом возвращаться в контакт.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                },
+            ],
+            "maturity_levels": {
+                "low": {
+                    "title": "Низкий уровень проявления",
+                    "body": "Тревога за качество и внешнюю оценку может сжимать движение и повышать внутреннее давление.",
+                    "evidence_ids": ["moon_trine_mercury"],
+                },
+                "medium": {
+                    "title": "Средний уровень проявления",
+                    "body": "Появляется способность выдерживать напряжение и превращать сложные переживания в рабочую форму.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                },
+                "high": {
+                    "title": "Высокий уровень проявления",
+                    "body": "Личный паттерн превращается в метод: вы умеете собирать смысл, передавать его и вести других без лишней драматизации.",
+                    "evidence_ids": ["mercury_venus_jupiter_leo_8", "moon_trine_mercury"],
+                },
+            },
             "product_boundaries": {
                 "career_policy": "В Self-отчёте карьеру затрагивать кратко и завершать CTA на Career.",
                 "allowed_sections": [
@@ -155,7 +258,7 @@ def make_narrative_input() -> NarrativeInput:
 
 class TestPromptTemplate:
     def test_version_constant_is_stable(self) -> None:
-        assert SELF_STORY_PROMPT_VERSION == "self_story_v3"
+        assert SELF_STORY_PROMPT_VERSION == "self_story_v5"
 
     def test_template_contains_required_guardrails(self) -> None:
         template = load_prompt_template(SELF_STORY_PROMPT_VERSION)
@@ -170,7 +273,15 @@ class TestPromptTemplate:
         assert "только для взрослых пользователей" in template
         assert "house_scenarios" in template
         assert "потребность, жизненное проявление, тень/риск и зрелую форму" in template
-        assert "self_story_v3" in template
+        assert "calibration_questions" in template
+        assert "5–7 калибровочных вопросов" in template
+        assert "contradictions" in template
+        assert "failure_modes" in template
+        assert "maturity_levels" in template
+        assert "каждый конфликт должен иметь mature form" in template
+        assert "yes_no" in template
+        assert "scale_1_5" in template
+        assert "self_story_v5" in template
 
 
 class TestBuildSelfStoryPrompt:
@@ -181,6 +292,10 @@ class TestBuildSelfStoryPrompt:
         assert '"name": "Алексей"' in prompt
         assert '"career_policy": "В Self-отчёте карьеру затрагивать кратко и завершать CTA на Career."' in prompt
         assert '"house_scenarios": [' in prompt
+        assert '"calibration_questions": [' in prompt
+        assert '"contradictions": [' in prompt
+        assert '"failure_modes": [' in prompt
+        assert '"maturity_levels": {' in prompt
 
     def test_builder_keeps_required_output_and_safety_rules(self) -> None:
         prompt = build_self_story_prompt(make_narrative_input())
@@ -188,5 +303,10 @@ class TestBuildSelfStoryPrompt:
         assert "Верни только JSON-объект без Markdown" in prompt
         assert "main_formula" in prompt
         assert "sexuality" in prompt
+        assert "calibration_questions" in prompt
+        assert "contradictions" in prompt
+        assert "failure_modes" in prompt
+        assert "maturity_levels" in prompt
+        assert "answer_type" in prompt
         assert "не ставь диагнозы" in prompt
         assert "без фатализма" in prompt

@@ -172,6 +172,11 @@ class TestNarrativeInputBuilder:
         assert result.house_scenarios[0].shadow
         assert result.house_scenarios[0].mature_expression
         assert result.house_scenarios[0].evidence_ids == ["sun_virgo_house_9"]
+        assert len(result.contradictions) == 3
+        assert result.contradictions[0].mature_expression
+        assert len(result.failure_modes) >= 3
+        assert result.failure_modes[0].supportive_reframe
+        assert result.maturity_levels.high.body
         assert "Virgo" not in result.house_scenarios[0].placement
         assert "Sun" not in result.house_scenarios[0].placement
         assert "Virgo" not in result.key_facts[0].label
@@ -193,6 +198,9 @@ class TestNarrativeInputBuilder:
         assert result.key_facts == []
         assert result.key_aspects == []
         assert result.house_scenarios == []
+        assert len(result.contradictions) == 3
+        assert len(result.failure_modes) >= 3
+        assert result.maturity_levels.low.evidence_ids
         assert result.socionics.type == "unknown"
         assert result.socionics.type_ru == "Не определено"
 

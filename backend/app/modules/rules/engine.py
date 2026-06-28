@@ -37,7 +37,9 @@ _OPERATORS = {
     ConditionOp.NEQ: operator.ne,
 }
 
-RULE_ENGINE_VERSION = "0.1.1"
+RULE_ENGINE_VERSION = "0.1.2"
+
+_PARTIAL_MATCH_MIN_RATIO = 0.8
 
 
 def interpret(
@@ -229,8 +231,12 @@ def _evaluate_conditions(
                 results.append(_condition_match_score(cond, actual))
                 matched.append((cond.fact, cond.value, actual))
             else:
-                results.append(0.0)
-                unmatched.append((cond.fact, cond.value, actual))
+                partial_score = _partial_condition_match_score(cond, actual)
+                results.append(partial_score)
+                if partial_score > 0.0:
+                    matched.append((cond.fact, cond.value, actual))
+                else:
+                    unmatched.append((cond.fact, cond.value, actual))
 
     if group.conjunction == "all":
         score = min(results) if results else 0.0
@@ -257,6 +263,39 @@ def _check_condition(condition: Condition, facts: dict[str, Any]) -> bool:
     if condition.op == ConditionOp.BETWEEN:
         return bool(condition.value <= actual <= (condition.value_upper or condition.value))
     return False
+
+
+def _partial_condition_match_score(condition: Condition, actual: Any) -> float:
+    """Return a bounded near-threshold score for otherwise failed numeric conditions.
+
+    The Self rules are intentionally thresholded, but a real mixed chart can sit just
+    below one threshold while strongly matching the rest of an archetype. Returning
+    hard zero in that case makes the whole report empty. Near-threshold scoring keeps
+    the output informative while still ignoring weak/noisy matches.
+    """
+    if condition.op not in {ConditionOp.GTE, ConditionOp.GT, ConditionOp.LTE, ConditionOp.LT}:
+        return 0.0
+
+    try:
+        actual_float = float(actual)
+        expected_float = float(condition.value)
+    except (TypeError, ValueError):
+        return 0.0
+
+    if condition.op in {ConditionOp.GTE, ConditionOp.GT}:
+        if expected_float <= 0:
+            return 0.0
+        ratio = actual_float / expected_float
+        return actual_float if ratio >= _PARTIAL_MATCH_MIN_RATIO else 0.0
+
+    if expected_float >= 1:
+        return 0.0
+    distance_to_limit = actual_float - expected_float
+    available_range = 1.0 - expected_float
+    if distance_to_limit <= 0 or available_range <= 0:
+        return 0.0
+    ratio = 1.0 - distance_to_limit / available_range
+    return 1.0 - actual_float if ratio >= _PARTIAL_MATCH_MIN_RATIO else 0.0
 
 
 def _condition_match_score(condition: Condition, actual: Any) -> float:

@@ -22,7 +22,6 @@ from app.modules.llm.exceptions import (
     LLMTimeoutError,
 )
 from app.modules.llm.provider import LLMProvider, get_llm_provider
-from app.modules.report_narratives.fallback import build_deterministic_self_fallback
 from app.modules.report_narratives.hash import compute_input_hash
 from app.modules.report_narratives.input_builder import build_narrative_input
 from app.modules.report_narratives.models import ReportNarrative
@@ -145,18 +144,17 @@ class ReportNarrativeService:
                 narrative_id=str(narrative.id),
                 product=report.product,
                 failure_kind="provider_disabled",
-                recovery_action="deterministic_fallback",
+                recovery_action="narrative_failed",
                 duration_ms=_duration_ms(started_at),
                 error_type=type(exc).__name__,
                 error_message=str(exc),
             )
-            return await self._save_ready_narrative(
+            return await self._save_failed_narrative(
                 report=report,
                 narrative=narrative,
-                payload=build_deterministic_self_fallback(narrative_input, reason=str(exc)),
-                reason=str(exc),
+                reason="Полный текстовый отчёт сейчас недоступен. Попробуйте позже.",
                 duration_ms=_duration_ms(started_at),
-                recovery_action="deterministic_fallback",
+                failure_kind="provider_disabled",
             )
         except LLMInvalidResponseError as exc:
             logger.warning(
@@ -165,21 +163,17 @@ class ReportNarrativeService:
                 narrative_id=str(narrative.id),
                 product=report.product,
                 failure_kind="invalid_response",
-                recovery_action="deterministic_fallback",
+                recovery_action="narrative_failed",
                 duration_ms=_duration_ms(started_at),
                 error_type=type(exc).__name__,
                 error_message=str(exc),
             )
-            return await self._save_ready_narrative(
+            return await self._save_failed_narrative(
                 report=report,
                 narrative=narrative,
-                payload=build_deterministic_self_fallback(
-                    narrative_input,
-                    reason="Текстовая версия временно недоступна, поэтому показано безопасное резервное резюме.",
-                ),
-                reason="invalid_response_fallback",
+                reason="Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию.",
                 duration_ms=_duration_ms(started_at),
-                recovery_action="deterministic_fallback",
+                failure_kind="invalid_response",
             )
         except (LLMTimeoutError, LLMProviderUnavailableError) as exc:
             logger.warning(
@@ -188,25 +182,17 @@ class ReportNarrativeService:
                 narrative_id=str(narrative.id),
                 product=report.product,
                 failure_kind="provider_timeout" if isinstance(exc, LLMTimeoutError) else "provider_unavailable",
-                recovery_action="deterministic_fallback",
+                recovery_action="narrative_failed",
                 duration_ms=_duration_ms(started_at),
                 error_type=type(exc).__name__,
                 error_message=str(exc),
             )
-            if isinstance(exc, LLMTimeoutError):
-                reason = "provider_timeout_fallback"
-            else:
-                reason = "provider_unavailable_fallback"
-            return await self._save_ready_narrative(
+            return await self._save_failed_narrative(
                 report=report,
                 narrative=narrative,
-                payload=build_deterministic_self_fallback(
-                    narrative_input,
-                    reason="Текстовая версия временно недоступна, поэтому показано безопасное резервное резюме.",
-                ),
-                reason=reason,
+                reason="Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию.",
                 duration_ms=_duration_ms(started_at),
-                recovery_action="deterministic_fallback",
+                failure_kind=("provider_timeout" if isinstance(exc, LLMTimeoutError) else "provider_unavailable"),
             )
 
         errors = validate_self_narrative(candidate, narrative_input)
@@ -238,16 +224,12 @@ class ReportNarrativeService:
                 errors = validate_self_narrative(candidate, narrative_input)
                 continue
             if action == "fallback":
-                return await self._save_ready_narrative(
+                return await self._save_failed_narrative(
                     report=report,
                     narrative=narrative,
-                    payload=build_deterministic_self_fallback(
-                        narrative_input,
-                        reason="Narrative generation failed validation and switched to deterministic fallback.",
-                    ),
-                    reason="validation_fallback",
+                    reason="Не удалось собрать полный текстовый отчёт. Попробуйте повторить генерацию.",
                     duration_ms=_duration_ms(started_at),
-                    recovery_action="validation_fallback",
+                    failure_kind="validation_failed",
                 )
             if action == "narrative_failed":
                 return await self._save_failed_narrative(
@@ -415,7 +397,10 @@ async def get_latest_narrative_for_report(
             .where(ReportNarrative.report_id == report_id)
             .order_by(ReportNarrative.created_at.desc())
         )
-        return result.scalars().first()
+        narrative = result.scalars().first()
+        if narrative is not None and _is_legacy_fallback_narrative(narrative):
+            return None
+        return narrative
 
     if report.product != "self":
         result = await db.execute(
@@ -432,7 +417,7 @@ async def get_latest_narrative_for_report(
     # local/runtime deploys; if the prompt version and deterministic input hash
     # match, the row is the correct narrative for this report. Cache lookup during
     # generation remains model-specific via find_cached_narrative().
-    return await _find_matching_narrative_record(
+    narrative = await _find_matching_narrative_record(
         db=db,
         report_id=report_id,
         product=report.product,
@@ -440,6 +425,9 @@ async def get_latest_narrative_for_report(
         input_hash=input_hash,
         model_name=None,
     )
+    if narrative is not None and _is_legacy_fallback_narrative(narrative):
+        return None
+    return narrative
 
 
 async def _find_matching_narrative_record(
@@ -462,6 +450,35 @@ async def _find_matching_narrative_record(
 
     result = await db.execute(select(ReportNarrative).where(*conditions).order_by(ReportNarrative.created_at.desc()))
     return result.scalars().first()
+
+
+def _is_legacy_fallback_narrative(narrative: ReportNarrative) -> bool:
+    """Detect old fallback payloads that must not be shown as ready Self narratives."""
+    if narrative.product != "self" or narrative.status != "ready":
+        return False
+
+    if narrative.error_message in {
+        "provider_timeout_fallback",
+        "provider_unavailable_fallback",
+        "validation_fallback",
+        "llm_disabled_fallback",
+    }:
+        return True
+
+    content = narrative.content or {}
+    if not isinstance(content, dict):
+        return False
+
+    hero = content.get("hero")
+    hero_body = hero.get("body") if isinstance(hero, dict) else None
+    final_summary = content.get("final_summary")
+
+    if isinstance(hero_body, str) and (
+        "безопасное резервное резюме" in hero_body or "детерминированное резюме" in hero_body
+    ):
+        return True
+
+    return isinstance(final_summary, str) and "резервная детерминированная версия" in final_summary
 
 
 async def find_cached_narrative(

@@ -120,6 +120,57 @@ class HouseScenario(BaseModel):
     shadow: str = Field(..., min_length=1, max_length=1500)
     mature_expression: str = Field(..., min_length=1, max_length=1500)
     evidence_ids: list[str] = Field(..., min_length=1)
+    evidence_notes: list[EvidenceNote] = Field(default_factory=list)
+
+
+class CalibrationQuestion(BaseModel):
+    """Question that helps the user verify whether a deep pattern fits lived experience."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    question: str = Field(..., min_length=1, max_length=500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    answer_type: Literal["yes_no", "scale_1_5", "free_text"]
+
+
+class ContradictionInsight(BaseModel):
+    """Central internal contradiction with a mature form of integration."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    tension: str = Field(..., min_length=1, max_length=1500)
+    manifestation: str = Field(..., min_length=1, max_length=1500)
+    mature_expression: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    evidence_notes: list[EvidenceNote] = Field(default_factory=list)
+
+
+class FailureMode(BaseModel):
+    """Concrete behavioral failure mode with a supportive reframe."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    trigger: str = Field(..., min_length=1, max_length=1000)
+    manifestation: str = Field(..., min_length=1, max_length=1500)
+    supportive_reframe: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    evidence_notes: list[EvidenceNote] = Field(default_factory=list)
+
+
+class MaturityBand(BaseModel):
+    """One maturity band for the same core pattern."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    evidence_notes: list[EvidenceNote] = Field(default_factory=list)
+
+
+class MaturityLevels(BaseModel):
+    """Low / medium / high expression levels for the report's core pattern."""
+
+    low: MaturityBand
+    medium: MaturityBand
+    high: MaturityBand
 
 
 class ProductBoundaries(BaseModel):
@@ -141,6 +192,10 @@ class NarrativeInput(BaseModel):
     dominants: list[DominantInsight] = Field(..., min_length=1)
     inner_mechanism: InnerMechanism
     house_scenarios: list[HouseScenario] = Field(default_factory=list)
+    calibration_questions: list[CalibrationQuestion] = Field(..., min_length=5, max_length=7)
+    contradictions: list[ContradictionInsight] = Field(..., min_length=3, max_length=5)
+    failure_modes: list[FailureMode] = Field(..., min_length=3, max_length=5)
+    maturity_levels: MaturityLevels
     socionics: SocionicsSummary
     archetype: ArchetypeSummary
     strengths: list[EvidenceBackedClaim]
@@ -198,6 +253,10 @@ class SelfNarrative(BaseModel):
     dominants: list[DominantInsight] = Field(..., min_length=1)
     inner_mechanism: InnerMechanism
     house_scenarios: list[HouseScenario] = Field(..., min_length=1)
+    calibration_questions: list[CalibrationQuestion] = Field(..., min_length=5, max_length=7)
+    contradictions: list[ContradictionInsight] = Field(..., min_length=3, max_length=5)
+    failure_modes: list[FailureMode] = Field(..., min_length=3, max_length=5)
+    maturity_levels: MaturityLevels
     sections: list[NarrativeSection] = Field(..., min_length=1)
     career_cta: CareerCTA
     final_summary: str = Field(..., min_length=1, max_length=2000)

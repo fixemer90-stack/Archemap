@@ -4,17 +4,22 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from app.modules.report_narratives.schemas import (
     ArchetypeSummary,
     AspectFact,
     AstroFact,
     CalculationQuality,
+    CalibrationQuestion,
+    ContradictionInsight,
     DominantInsight,
     EvidenceBackedClaim,
+    FailureMode,
     HouseScenario,
     InnerMechanism,
+    MaturityBand,
+    MaturityLevels,
     MechanismStep,
     NarrativeInput,
     NarrativeProfile,
@@ -258,6 +263,27 @@ def build_narrative_input(report: Any) -> NarrativeInput:
         dominants = _fallback_dominants_from_claims(grouped_claims)
     inner_mechanism = _build_inner_mechanism(dominants)
     house_scenarios = _build_house_scenarios(chart, key_facts)
+    calibration_questions = _build_calibration_questions(
+        dominants=dominants,
+        house_scenarios=house_scenarios,
+        grouped_claims=grouped_claims,
+    )
+    contradictions = _build_contradictions(
+        dominants=dominants,
+        house_scenarios=house_scenarios,
+        grouped_claims=grouped_claims,
+        key_aspects=key_aspects,
+    )
+    failure_modes = _build_failure_modes(
+        house_scenarios=house_scenarios,
+        grouped_claims=grouped_claims,
+        key_aspects=key_aspects,
+    )
+    maturity_levels = _build_maturity_levels(
+        dominants=dominants,
+        grouped_claims=grouped_claims,
+        key_aspects=key_aspects,
+    )
 
     socionics_data = report_data.get("socionics") or {}
     socionics = SocionicsSummary(
@@ -293,6 +319,10 @@ def build_narrative_input(report: Any) -> NarrativeInput:
         dominants=dominants,
         inner_mechanism=inner_mechanism,
         house_scenarios=house_scenarios,
+        calibration_questions=calibration_questions,
+        contradictions=contradictions,
+        failure_modes=failure_modes,
+        maturity_levels=maturity_levels,
         socionics=socionics,
         archetype=archetype,
         strengths=grouped_claims["strengths"],
@@ -578,6 +608,336 @@ def _build_inner_mechanism(dominants: list[DominantInsight]) -> InnerMechanism:
             ),
         ],
     )
+
+
+def _build_calibration_questions(
+    *,
+    dominants: list[DominantInsight],
+    house_scenarios: list[HouseScenario],
+    grouped_claims: dict[str, list[EvidenceBackedClaim]],
+) -> list[CalibrationQuestion]:
+    questions: list[CalibrationQuestion] = []
+
+    if dominants:
+        dominant = dominants[0]
+        questions.append(
+            CalibrationQuestion(
+                id="calibration_dominant_activation",
+                question="Замечаете ли вы, что чаще всего включаетесь через тот паттерн, который кажется вашим главным внутренним акцентом?",
+                evidence_ids=list(dominant.evidence_ids),
+                answer_type="yes_no",
+            )
+        )
+
+    if house_scenarios:
+        scenario = house_scenarios[0]
+        questions.append(
+            CalibrationQuestion(
+                id="calibration_house_need",
+                question="Похоже ли, что описанная жизненная потребность действительно регулярно возвращается в ваших ключевых выборах?",
+                evidence_ids=list(scenario.evidence_ids),
+                answer_type="scale_1_5",
+            )
+        )
+
+    question_specs: list[
+        tuple[
+            str,
+            str,
+            str,
+            Literal["yes_no", "scale_1_5", "free_text"],
+        ]
+    ] = [
+        (
+            "risks",
+            "calibration_risk_pattern",
+            "Узнаёте ли вы этот риск-паттерн в напряжённых или перегруженных ситуациях?",
+            "yes_no",
+        ),
+        (
+            "strengths",
+            "calibration_strength_pattern",
+            "Бывает ли, что эта сильная сторона проявляется почти автоматически, даже без специального усилия?",
+            "scale_1_5",
+        ),
+        (
+            "relationship_patterns",
+            "calibration_relationship_pattern",
+            "Видите ли вы этот паттерн в том, как вы входите в близость и держите контакт с другими?",
+            "yes_no",
+        ),
+        (
+            "development_recommendations",
+            "calibration_development_pattern",
+            "Если опираться на этот вектор развития, чувствуете ли вы, что он действительно снижает внутреннее напряжение?",
+            "scale_1_5",
+        ),
+        (
+            "sexuality_patterns",
+            "calibration_intimacy_pattern",
+            "Если смотреть честно, насколько этот паттерн близости совпадает с вашим реальным способом сближения?",
+            "free_text",
+        ),
+    ]
+
+    for group_name, question_id, question_text, answer_type in question_specs:
+        claims = grouped_claims.get(group_name, [])
+        if not claims:
+            continue
+        questions.append(
+            CalibrationQuestion(
+                id=question_id,
+                question=question_text,
+                evidence_ids=list(claims[0].evidence_ids),
+                answer_type=answer_type,
+            )
+        )
+        if len(questions) >= 5:
+            break
+
+    fallback_evidence = list(house_scenarios[0].evidence_ids) if house_scenarios else list(dominants[0].evidence_ids)
+    while len(questions) < 5:
+        questions.append(
+            CalibrationQuestion(
+                id=f"calibration_fallback_{len(questions) + 1}",
+                question="Если перечитать этот портрет позже, остаётся ли ощущение, что он описывает повторяющийся жизненный механизм, а не случайный эпизод?",
+                evidence_ids=fallback_evidence,
+                answer_type="free_text",
+            )
+        )
+
+    return questions[:5]
+
+
+def _build_contradictions(
+    *,
+    dominants: list[DominantInsight],
+    house_scenarios: list[HouseScenario],
+    grouped_claims: dict[str, list[EvidenceBackedClaim]],
+    key_aspects: list[AspectFact],
+) -> list[ContradictionInsight]:
+    contradictions: list[ContradictionInsight] = []
+    primary_dominant = dominants[0] if dominants else None
+    primary_scenario = house_scenarios[0] if house_scenarios else None
+    primary_risk = next(iter(grouped_claims.get("risks", [])), None)
+    primary_strength = next(iter(grouped_claims.get("strengths", [])), None)
+    primary_relationship = next(iter(grouped_claims.get("relationship_patterns", [])), None)
+    primary_development = next(iter(grouped_claims.get("development_recommendations", [])), None)
+    primary_aspect = key_aspects[0] if key_aspects else None
+
+    evidence_primary = _merge_evidence_ids(
+        getattr(primary_dominant, "evidence_ids", []),
+        getattr(primary_scenario, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    if evidence_primary:
+        contradictions.append(
+            ContradictionInsight(
+                id="contradiction_structure_vs_expression",
+                title="Структура против выразительности",
+                tension="Одна часть вас хочет собрать происходящее в точную внутреннюю систему, а другая — быстро выразить живой импульс и не потерять интенсивность момента.",
+                manifestation="На практике это может ощущаться как качание между тщательной настройкой формулировки и желанием сразу перейти к сильной выразительной подаче.",
+                mature_expression="Зрелая форма — сначала находить смысловой каркас, а потом усиливать его интонацией, образом и личным присутствием.",
+                evidence_ids=evidence_primary,
+            )
+        )
+
+    evidence_secondary = _merge_evidence_ids(
+        getattr(primary_strength, "evidence_ids", []),
+        getattr(primary_risk, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    if evidence_secondary:
+        contradictions.append(
+            ContradictionInsight(
+                id="contradiction_intensity_vs_clarity",
+                title="Интенсивность против ясности",
+                tension="Чем сильнее эмоциональная вовлечённость, тем труднее удержать идеально ясную и спокойную форму мысли.",
+                manifestation="В напряжённой ситуации легко чувствовать, что переживание идёт быстрее, чем его удаётся без потерь собрать в понятное объяснение.",
+                mature_expression="Зрелая форма — не обесценивать силу чувства, но и не позволять ему полностью задавать всю интерпретацию происходящего.",
+                evidence_ids=evidence_secondary,
+            )
+        )
+
+    evidence_tertiary = _merge_evidence_ids(
+        getattr(primary_relationship, "evidence_ids", []),
+        getattr(primary_development, "evidence_ids", []),
+        getattr(primary_scenario, "evidence_ids", []),
+    )
+    if evidence_tertiary:
+        contradictions.append(
+            ContradictionInsight(
+                id="contradiction_recognition_vs_patience",
+                title="Признание против терпения",
+                tension="Есть потребность, чтобы важный смысл и личная ценность были замечены, но путь к зрелому проявлению часто требует паузы, настройки и внутреннего терпения.",
+                manifestation="Из-за этого можно раздражаться на задержку между внутренним знанием и внешним результатом или признанием.",
+                mature_expression="Зрелая форма — считать этап созревания частью результата, а не признаком собственной недостаточности.",
+                evidence_ids=evidence_tertiary,
+            )
+        )
+
+    fallback_evidence = _merge_evidence_ids(
+        getattr(primary_dominant, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    while len(contradictions) < 3 and fallback_evidence:
+        contradictions.append(
+            ContradictionInsight(
+                id=f"contradiction_fallback_{len(contradictions) + 1}",
+                title="Импульс против внутренней сборки",
+                tension="Внутренний импульс не всегда совпадает по темпу с тем, как быстро удаётся собрать его в устойчивую форму.",
+                manifestation="Это создаёт фрустрацию, когда чувствуется важность момента, но ещё нет ощущения полной внутренней готовности.",
+                mature_expression="Зрелая форма — разрешать себе промежуточную версию действия вместо ожидания идеальной готовности.",
+                evidence_ids=fallback_evidence,
+            )
+        )
+
+    return contradictions[:5]
+
+
+def _build_failure_modes(
+    *,
+    house_scenarios: list[HouseScenario],
+    grouped_claims: dict[str, list[EvidenceBackedClaim]],
+    key_aspects: list[AspectFact],
+) -> list[FailureMode]:
+    failure_modes: list[FailureMode] = []
+    primary_risk = next(iter(grouped_claims.get("risks", [])), None)
+    primary_development = next(iter(grouped_claims.get("development_recommendations", [])), None)
+    primary_scenario = house_scenarios[0] if house_scenarios else None
+    primary_strength = next(iter(grouped_claims.get("strengths", [])), None)
+    primary_aspect = key_aspects[0] if key_aspects else None
+
+    evidence_overload = _merge_evidence_ids(
+        getattr(primary_risk, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    if evidence_overload:
+        failure_modes.append(
+            FailureMode(
+                id="failure_analysis_overload",
+                title="Перегрузка анализом",
+                trigger="Слишком много одновременно значимых факторов, смыслов и требований к качеству.",
+                manifestation="Вместо движения запускается цикл уточнений, внутренних перепроверок и давления на себя, чтобы сразу собрать всё идеально.",
+                supportive_reframe="Полезно временно снизить планку идеальности и сначала выбрать следующий ясный шаг, а не всю схему целиком.",
+                evidence_ids=evidence_overload,
+            )
+        )
+
+    evidence_delay = _merge_evidence_ids(
+        getattr(primary_scenario, "evidence_ids", []),
+        getattr(primary_development, "evidence_ids", []),
+    )
+    if evidence_delay:
+        failure_modes.append(
+            FailureMode(
+                id="failure_delayed_action",
+                title="Отложенное действие",
+                trigger="Ощущение, что картина ещё не собрана в достаточно правильную или осмысленную систему.",
+                manifestation="Решение уже почти созрело, но движение переносится вперёд в ожидании ещё одного слоя ясности.",
+                supportive_reframe="Иногда опорой становится не идеальная теория, а первый ограниченный эксперимент, который возвращает контакт с реальностью.",
+                evidence_ids=evidence_delay,
+            )
+        )
+
+    evidence_freeze = _merge_evidence_ids(
+        getattr(primary_strength, "evidence_ids", []),
+        getattr(primary_risk, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    if evidence_freeze:
+        failure_modes.append(
+            FailureMode(
+                id="failure_emotional_freeze",
+                title="Эмоциональная самозаморозка",
+                trigger="Ситуации, где ставка переживания или значимость контакта ощущаются слишком высоко.",
+                manifestation="Снаружи это может выглядеть как пауза, уход в контроль, задержка с ответом или слишком сильная внутренняя самоцензура.",
+                supportive_reframe="Сначала назвать переживание для себя, а потом возвращаться в разговор уже из большей собранности, а не из самообрыва.",
+                evidence_ids=evidence_freeze,
+            )
+        )
+
+    fallback_evidence = _merge_evidence_ids(
+        getattr(primary_scenario, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    while len(failure_modes) < 3 and fallback_evidence:
+        failure_modes.append(
+            FailureMode(
+                id=f"failure_fallback_{len(failure_modes) + 1}",
+                title="Срыв внутреннего темпа",
+                trigger="Несовпадение между внутренним напряжением и доступной скоростью внешнего действия.",
+                manifestation="Возникает резкий переход от внутренней собранности к усталости, паузе или чрезмерному контролю деталей.",
+                supportive_reframe="Лучше вернуть себе управляемый ритм через один конкретный шаг, чем пытаться сразу исправить весь сценарий целиком.",
+                evidence_ids=fallback_evidence,
+            )
+        )
+
+    return failure_modes[:5]
+
+
+def _build_maturity_levels(
+    *,
+    dominants: list[DominantInsight],
+    grouped_claims: dict[str, list[EvidenceBackedClaim]],
+    key_aspects: list[AspectFact],
+) -> MaturityLevels:
+    primary_dominant = dominants[0] if dominants else None
+    primary_strength = next(iter(grouped_claims.get("strengths", [])), None)
+    primary_risk = next(iter(grouped_claims.get("risks", [])), None)
+    primary_development = next(iter(grouped_claims.get("development_recommendations", [])), None)
+    primary_aspect = key_aspects[0] if key_aspects else None
+
+    low_evidence = _merge_evidence_ids(
+        getattr(primary_risk, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    medium_evidence = _merge_evidence_ids(
+        getattr(primary_dominant, "evidence_ids", []),
+        getattr(primary_strength, "evidence_ids", []),
+    )
+    high_evidence = _merge_evidence_ids(
+        getattr(primary_strength, "evidence_ids", []),
+        getattr(primary_development, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+    fallback_evidence = _merge_evidence_ids(
+        getattr(primary_dominant, "evidence_ids", []),
+        getattr(primary_aspect, "id", None),
+    )
+
+    return MaturityLevels(
+        low=MaturityBand(
+            title="Низкий уровень проявления",
+            body="В напряжении паттерн может сжиматься в перфекционизм, тревогу за результат и зависимость от внешнего подтверждения собственной ценности.",
+            evidence_ids=low_evidence or fallback_evidence,
+        ),
+        medium=MaturityBand(
+            title="Средний уровень проявления",
+            body="Появляется способность выдерживать внутреннее напряжение, собирать устойчивые процессы и превращать сложные переживания в рабочую форму действия.",
+            evidence_ids=medium_evidence or fallback_evidence,
+        ),
+        high=MaturityBand(
+            title="Высокий уровень проявления",
+            body="Сильная сторона становится методом: вы не только понимаете и чувствуете, но и умеете передавать смысл другим, сохраняя зрелую устойчивость без лишней драматизации.",
+            evidence_ids=high_evidence or fallback_evidence,
+        ),
+    )
+
+
+def _merge_evidence_ids(*groups: object) -> list[str]:
+    merged: list[str] = []
+    for group in groups:
+        if isinstance(group, str):
+            if group and group not in merged:
+                merged.append(group)
+            continue
+        if not isinstance(group, list):
+            continue
+        for item in group:
+            if isinstance(item, str) and item and item not in merged:
+                merged.append(item)
+    return merged
 
 
 def _top_weighted_key(values: Any, labels: dict[str, str]) -> str | None:

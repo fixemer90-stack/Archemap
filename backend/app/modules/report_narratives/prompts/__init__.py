@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.modules.report_narratives.schemas import NarrativeInput
 
-SELF_STORY_PROMPT_VERSION = "self_story_v3"
+SELF_STORY_PROMPT_VERSION = "self_story_v5"
 _PROMPTS_DIR = Path(__file__).parent
 
 

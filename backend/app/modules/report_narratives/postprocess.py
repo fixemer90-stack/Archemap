@@ -59,11 +59,7 @@ def _normalize_sections(
     allowed_fact_ids: set[str],
     fallback_fact_ids: list[str],
 ) -> list[dict[str, Any]]:
-    by_id = {
-        section.get("id"): section
-        for section in sections
-        if isinstance(section, dict) and section.get("id")
-    }
+    by_id = {section.get("id"): section for section in sections if isinstance(section, dict) and section.get("id")}
     normalized: list[dict[str, Any]] = []
     for section_id in narrative_input.product_boundaries.allowed_sections:
         section = by_id.get(section_id)
@@ -180,9 +176,7 @@ def _repair_evidence_ids_in_place(
     inner_mechanism = data.get("inner_mechanism") or {}
     for index, step in enumerate(inner_mechanism.get("steps", [])):
         source_step = (
-            narrative_input.inner_mechanism.steps[index]
-            if index < len(narrative_input.inner_mechanism.steps)
-            else None
+            narrative_input.inner_mechanism.steps[index] if index < len(narrative_input.inner_mechanism.steps) else None
         )
         step["evidence_ids"] = _sanitize_fact_ids(
             step.get("evidence_ids", []),
@@ -191,9 +185,7 @@ def _repair_evidence_ids_in_place(
         )
     for index, item in enumerate(data.get("house_scenarios", [])):
         source_scenario = (
-            narrative_input.house_scenarios[index]
-            if index < len(narrative_input.house_scenarios)
-            else None
+            narrative_input.house_scenarios[index] if index < len(narrative_input.house_scenarios) else None
         )
         item["evidence_ids"] = _sanitize_fact_ids(
             item.get("evidence_ids", []),
@@ -203,9 +195,7 @@ def _repair_evidence_ids_in_place(
         _repair_note_list(item.get("evidence_notes", []), allowed_fact_ids, item["evidence_ids"])
     for index, item in enumerate(data.get("calibration_questions", [])):
         source_question = (
-            narrative_input.calibration_questions[index]
-            if index < len(narrative_input.calibration_questions)
-            else None
+            narrative_input.calibration_questions[index] if index < len(narrative_input.calibration_questions) else None
         )
         item["evidence_ids"] = _sanitize_fact_ids(
             item.get("evidence_ids", []),
@@ -227,9 +217,7 @@ def _repair_evidence_ids_in_place(
         _repair_note_list(item.get("evidence_notes", []), allowed_fact_ids, item["evidence_ids"])
     for index, item in enumerate(data.get("failure_modes", [])):
         source_failure_mode = (
-            narrative_input.failure_modes[index]
-            if index < len(narrative_input.failure_modes)
-            else None
+            narrative_input.failure_modes[index] if index < len(narrative_input.failure_modes) else None
         )
         item["evidence_ids"] = _sanitize_fact_ids(
             item.get("evidence_ids", []),

@@ -25,6 +25,7 @@ from app.modules.llm.provider import LLMProvider, get_llm_provider
 from app.modules.report_narratives.hash import compute_input_hash
 from app.modules.report_narratives.input_builder import build_narrative_input
 from app.modules.report_narratives.models import ReportNarrative
+from app.modules.report_narratives.postprocess import harden_self_narrative
 from app.modules.report_narratives.prompts import SELF_STORY_PROMPT_VERSION, build_self_story_prompt
 from app.modules.report_narratives.schemas import NarrativeInput, SelfNarrative
 from app.modules.report_narratives.validators import (
@@ -221,9 +222,20 @@ class ReportNarrativeService:
                     narrative_input=narrative_input,
                     schema=SelfNarrative,
                 )
+                candidate = harden_self_narrative(candidate, narrative_input)
                 errors = validate_self_narrative(candidate, narrative_input)
                 continue
             if action == "fallback":
+                hardened_candidate = harden_self_narrative(candidate, narrative_input)
+                hardened_errors = validate_self_narrative(hardened_candidate, narrative_input)
+                if not hardened_errors:
+                    return await self._save_ready_narrative(
+                        report=report,
+                        narrative=narrative,
+                        payload=hardened_candidate,
+                        duration_ms=_duration_ms(started_at),
+                        recovery_action="deterministic_hardening",
+                    )
                 return await self._save_failed_narrative(
                     report=report,
                     narrative=narrative,

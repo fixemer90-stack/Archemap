@@ -998,8 +998,8 @@ function normalizeStageSummary(
     total_stages: progress.total_stages,
     completed_stages: progress.completed_stages,
     ready: progress.ready,
-    running_stage_label: stageLabel(progress.running_stage),
-    failed_stage_label: stageLabel(progress.failed_stage),
+    running_stage_label: stageLabel(progress.current_stage ?? progress.running_stage ?? null),
+    failed_stage_label: stageLabel(progress.failed_stage ?? null),
     completed_stage_labels: Array.from(new Set(completedStageLabels)),
   }
 }

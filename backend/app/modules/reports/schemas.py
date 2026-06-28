@@ -132,6 +132,8 @@ class ReportResponse(BaseModel):
     pdf_generated: bool
     report_data: dict[str, Any]
     narrative: NarrativeResponse | None = None
+    narrative_progress: NarrativeStageProgress | None = None
+    narrative_stage_artifacts: list[NarrativeStageArtifact] = Field(default_factory=list)
     error_message: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -217,6 +219,7 @@ def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
 
 def build_report_response(report: Report, narrative: ReportNarrative | None = None) -> ReportResponse:
     """Serialize a report together with its latest narrative state."""
+    serialized_narrative = build_narrative_response(narrative) if narrative is not None else None
     return ReportResponse(
         id=report.id,
         profile_id=report.profile_id,
@@ -230,7 +233,11 @@ def build_report_response(report: Report, narrative: ReportNarrative | None = No
         pdf_url=report.pdf_url,
         pdf_generated=report.pdf_generated,
         report_data=report.report_data,
-        narrative=build_narrative_response(narrative) if narrative is not None else None,
+        narrative=serialized_narrative,
+        narrative_progress=serialized_narrative.stage_progress if serialized_narrative is not None else None,
+        narrative_stage_artifacts=(
+            serialized_narrative.stage_artifacts if serialized_narrative is not None else []
+        ),
         error_message=report.error_message,
         created_at=report.created_at,
         updated_at=report.updated_at,

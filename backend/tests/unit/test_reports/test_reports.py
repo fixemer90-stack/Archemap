@@ -22,6 +22,7 @@ from app.modules.reports.schemas import (
     ReportResponse,
     ReportVersionResponse,
     build_narrative_response,
+    build_report_response,
 )
 from app.modules.reports.service import ReportService, _build_chart_summary, _report_matches_snapshot
 from app.modules.reports.tasks import _run_async as _run_async_pdf_task
@@ -387,6 +388,63 @@ class TestReportSchemas:
         assert len(response.calibration_questions) == 5
         assert response.calibration_questions[0]["answer_type"] == "yes_no"
 
+    def test_build_report_response_exposes_top_level_narrative_progress(self) -> None:
+        report = make_report(status="generating_narrative")
+        now = datetime.now(UTC)
+        payload = make_self_narrative_payload()
+        payload["stage_artifacts"] = [
+            {
+                "stage_id": "plan",
+                "status": "ready",
+                "prompt_version": "self_plan_v1",
+                "model_name": "mock-self-v1",
+                "input_hash": "a" * 64,
+                "attempt_count": 1,
+                "error_message": None,
+                "artifact": {"summary": "plan"},
+            },
+            {
+                "stage_id": "identity",
+                "status": "ready",
+                "prompt_version": "self_section_identity_v1",
+                "model_name": "mock-self-v1",
+                "input_hash": "b" * 64,
+                "attempt_count": 1,
+                "error_message": None,
+                "artifact": {"summary": "identity"},
+            },
+        ]
+        payload["stage_progress"] = {
+            "total_stages": 7,
+            "completed_stages": 2,
+            "current_stage": "emotional",
+            "ready": False,
+            "stages": payload["stage_artifacts"],
+        }
+        narrative = ReportNarrative(
+            id=uuid4(),
+            report_id=report.id,
+            product="self",
+            prompt_version="self_story_v5",
+            model_provider="mock",
+            model_name="mock-self-v5",
+            status="generating",
+            content=payload,
+            input_hash="hash-progress",
+            generation_attempts=1,
+            created_at=now,
+            updated_at=now,
+        )
+        report.created_at = report.updated_at = now
+
+        response = build_report_response(report, narrative)
+
+        assert response.narrative_progress is not None
+        assert response.narrative_progress.current_stage == "emotional"
+        assert response.narrative_progress.completed_stages == 2
+        assert len(response.narrative_stage_artifacts) == 2
+        assert response.narrative_stage_artifacts[0].stage_id == "plan"
+
     def test_report_version_response_accepts_uuid_fields(self) -> None:
         version = ReportVersion(
             id=uuid4(),
@@ -472,6 +530,88 @@ def test_choose_narrative_recovery_action_marks_forbidden_language_as_failed() -
     ]
 
     assert choose_narrative_recovery_action(errors, repair_attempts_used=0, llm_available=True) == "narrative_failed"
+
+
+@pytest.mark.asyncio
+async def test_get_report_route_exposes_top_level_narrative_progress(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = make_report(status="generating_narrative")
+    report.created_at = report.updated_at = datetime.now(UTC)
+    narrative_payload = make_self_narrative_payload()
+    narrative_payload["stage_artifacts"] = [
+        {
+            "stage_id": "plan",
+            "status": "ready",
+            "prompt_version": "self_plan_v1",
+            "model_name": "mock-self-v1",
+            "input_hash": "c" * 64,
+            "attempt_count": 1,
+            "error_message": None,
+            "artifact": {"summary": "plan"},
+        },
+        {
+            "stage_id": "identity",
+            "status": "ready",
+            "prompt_version": "self_section_identity_v1",
+            "model_name": "mock-self-v1",
+            "input_hash": "d" * 64,
+            "attempt_count": 1,
+            "error_message": None,
+            "artifact": {"summary": "identity"},
+        },
+    ]
+    narrative_payload["stage_progress"] = {
+        "total_stages": 7,
+        "completed_stages": 3,
+        "current_stage": "relationships",
+        "ready": False,
+        "stages": narrative_payload["stage_artifacts"],
+    }
+    narrative = ReportNarrative(
+        id=uuid4(),
+        report_id=report.id,
+        product="self",
+        prompt_version="self_story_v5",
+        model_provider="mock",
+        model_name="mock-self-v5",
+        status="generating",
+        content=narrative_payload,
+        input_hash="route-progress",
+        generation_attempts=1,
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+    )
+
+    class FakeDB:
+        async def flush(self) -> None:
+            return None
+
+        async def commit(self) -> None:
+            return None
+
+        async def refresh(self, _report: Report) -> None:
+            return None
+
+    db = FakeDB()
+
+    async def fake_get_report(self: ReportService, report_id: UUID, user_id: UUID) -> Report:
+        assert report_id == report.id
+        assert user_id == report.user_id
+        return report
+
+    async def fake_get_latest_narrative_for_report(**_kwargs: Any) -> ReportNarrative:
+        return narrative
+
+    monkeypatch.setattr(ReportService, "get_report", fake_get_report)
+    monkeypatch.setattr(reports_router, "get_latest_narrative_for_report", fake_get_latest_narrative_for_report)
+
+    response = await reports_router.get_report(report.id, cast(Any, db), report.user_id)
+
+    assert response.narrative_progress is not None
+    assert response.narrative_progress.current_stage == "relationships"
+    assert len(response.narrative_stage_artifacts) == 2
+    assert response.narrative_stage_artifacts[1].stage_id == "identity"
 
 
 @pytest.mark.asyncio

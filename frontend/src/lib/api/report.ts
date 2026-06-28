@@ -26,9 +26,11 @@ export type NarrativeStageId =
 export interface NarrativeStageProgressApiResponse {
   total_stages: number;
   completed_stages: number;
-  running_stage: NarrativeStageId | null;
-  failed_stage: NarrativeStageId | null;
+  current_stage?: NarrativeStageId | null;
+  running_stage?: NarrativeStageId | null;
+  failed_stage?: NarrativeStageId | null;
   ready: boolean;
+  stages?: NarrativeStageArtifactApiResponse[];
 }
 
 export interface NarrativeStageArtifactApiResponse {
@@ -112,6 +114,8 @@ export interface GeneratedReportApiResponse {
     [key: string]: unknown;
   };
   narrative: NarrativeApiResponse | null;
+  narrative_progress?: NarrativeStageProgressApiResponse | null;
+  narrative_stage_artifacts?: NarrativeStageArtifactApiResponse[];
   error_message?: string | null;
   created_at?: string;
   updated_at?: string;

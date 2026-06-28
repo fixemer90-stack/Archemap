@@ -1,5 +1,8 @@
 import { Clock3, RefreshCw, Sparkles, TimerReset } from "lucide-react";
-import type { NarrativeStageProgressApiResponse } from "@/lib/api/report";
+import type {
+  NarrativeStageArtifactApiResponse,
+  NarrativeStageProgressApiResponse,
+} from "@/lib/api/report";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -7,41 +10,68 @@ interface ReportGenerationProgressProps {
   timedOut: boolean;
   elapsedSeconds: number;
   stageProgress?: NarrativeStageProgressApiResponse | null;
+  stageArtifacts?: NarrativeStageArtifactApiResponse[];
   onRefresh: () => void;
   onRetry: () => void;
 }
 
-function stageStatusLabel(
+function stageLabel(
   stageId: NarrativeStageProgressApiResponse["running_stage"],
 ): string | null {
   switch (stageId) {
     case "plan":
-      return "Сейчас собираем план структуры";
+      return "План структуры";
     case "identity":
-      return "Сейчас пишем главную формулу личности";
+      return "Главная формула личности";
     case "emotional":
-      return "Сейчас собираем блок эмоций и коммуникации";
+      return "Эмоции и коммуникация";
     case "relationships":
-      return "Сейчас собираем блок отношений и близости";
+      return "Отношения и близость";
     case "development":
-      return "Сейчас собираем блок развития и зрелости";
+      return "Развитие и зрелость";
     case "house_scenarios":
-      return "Сейчас собираем жизненные сценарии домов";
+      return "Жизненные сценарии домов";
     case "assembly":
-      return "Сейчас идёт финальная сборка текста";
+      return "Финальная сборка";
     default:
       return null;
   }
+}
+
+function runningStageStatus(
+  stageId: NarrativeStageProgressApiResponse["running_stage"],
+): string | null {
+  const label = stageLabel(stageId);
+  return label ? `Сейчас собираем: ${label.toLowerCase()}` : null;
 }
 
 export function ReportGenerationProgress({
   timedOut,
   elapsedSeconds,
   stageProgress,
+  stageArtifacts = [],
   onRefresh,
   onRetry,
 }: ReportGenerationProgressProps) {
-  const runningStageLabel = stageStatusLabel(stageProgress?.running_stage ?? null);
+  const runningStageLabel = runningStageStatus(
+    stageProgress?.current_stage ?? stageProgress?.running_stage ?? null,
+  );
+  const failedStageLabel =
+    stageLabel(stageProgress?.failed_stage ?? null) ??
+    stageLabel(
+      stageArtifacts.find((artifact) => artifact.status === "failed")?.stage_id ??
+        stageProgress?.stages?.find((artifact) => artifact.status === "failed")
+          ?.stage_id ??
+        null,
+    );
+  const completedStageLabels = Array.from(
+    new Set(
+      [...stageArtifacts, ...(stageProgress?.stages ?? [])]
+        .filter((artifact) => artifact.status === "ready")
+        .map((artifact) => stageLabel(artifact.stage_id))
+        .filter((label): label is string => Boolean(label)),
+    ),
+  );
   return (
     <Card className="mx-auto max-w-3xl border-[#5B3FD6]/30 bg-[rgba(23,20,42,0.92)]">
       <CardHeader className="space-y-4 text-center">
@@ -74,10 +104,32 @@ export function ReportGenerationProgress({
           {runningStageLabel && (
             <p className="mb-3 text-sm text-[#D8DCE8]">{runningStageLabel}.</p>
           )}
+          {failedStageLabel && (
+            <p className="mb-3 text-sm text-amber-200">
+              Требует повтора: {failedStageLabel.toLowerCase()}.
+            </p>
+          )}
           {stageProgress && (
             <p className="mb-3 text-xs text-[#D8DCE8]">
               Готово этапов: {stageProgress.completed_stages}/{stageProgress.total_stages}
             </p>
+          )}
+          {completedStageLabels.length > 0 && (
+            <div className="mb-3 space-y-2">
+              <p className="text-xs uppercase tracking-wide text-[#D8B45A]">
+                Уже готовы
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {completedStageLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full border border-[#D8B45A]/25 bg-[#F6F1E8]/5 px-2 py-1 text-xs text-[#F6F1E8]"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
           <div className="h-2 overflow-hidden rounded-full bg-[#F6F1E8]/10">
             <div

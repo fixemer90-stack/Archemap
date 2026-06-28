@@ -186,8 +186,19 @@ for (const marker of [
   "completed_stage_labels",
   "completed_stages",
   "total_stages",
+  "narrative_progress",
+  "narrative_stage_artifacts",
+  "current_stage",
+  "stageProgress?.current_stage",
+  "currentReport?.narrative_progress",
+  "currentReport?.narrative_stage_artifacts",
 ]) {
-  if (!adapter.includes(marker) && !reportNarrativeSource.includes(marker)) {
+  if (
+    !adapter.includes(marker) &&
+    !reportNarrativeSource.includes(marker) &&
+    !allUiSource.includes(marker) &&
+    !reportApi.includes(marker)
+  ) {
     throw new Error(`Missing staged narrative marker: ${marker}`);
   }
 }

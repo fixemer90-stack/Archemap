@@ -86,10 +86,9 @@
 
 Ещё не закрыто end-to-end:
 
-- staged pipeline не подключён в реальный generation flow вместо single-shot narrative;
-- нет полного worker/runtime orchestration по stage-level lifecycle;
-- нет полной API/frontend/PDF integration для user-visible staged progress и final parity;
-- нет свежего runtime smoke, доказывающего staged путь в живом `generate -> ready -> pdf` цикле.
+- staged pipeline ещё требует live runtime proof на полном `generate -> progress -> ready -> pdf` цикле;
+- нет полного worker/runtime smoke, доказывающего stage-level lifecycle на живом flow;
+- API/frontend/PDF integration уже частично закрыта и верифицирована тестами, но runtime parity ещё не доказана end-to-end.
 
 ## Stories
 
@@ -101,7 +100,7 @@
 | S04   | Staged LLM schemas and prompt family                           | ✅ Готово    | `S04-staged-llm-contracts-prompts.md`  |
 | S05   | Orchestration, cache, retry and statuses                       | 🟡 В процессе | `S05-orchestration-cache-statuses.md`  |
 | S06   | Section assembly, consistency and anti-horoscope quality gates | 🟡 В процессе | `S06-assembly-quality-gates.md`        |
-| S07   | API/frontend/PDF integration                                   | ⬜ Не начато | `S07-api-frontend-pdf-integration.md`  |
+| S07   | API/frontend/PDF integration                                   | 🟡 В процессе | `S07-api-frontend-pdf-integration.md`  |
 
 ## Acceptance criteria
 
@@ -115,7 +114,7 @@
 - [x] Failed section generation does not corrupt ready sections and can be retried by stage.
 - [ ] Final assembled report has consistent tone, no duplicate paragraphs and no contradictory claims.
 - [x] Validators reject unknown evidence refs, unsupported aspect claims, Career leakage and horoscope-generic fallback prose.
-- [ ] Web and PDF render the same staged narrative content.
+- [x] Web and PDF render the same staged narrative content at serializer/template regression level.
 - [ ] Runtime logs expose stage-level duration, model, failure_kind and recovery_action without logging prompt bodies or API keys.
 
 ## Data contract sketch
@@ -199,6 +198,8 @@ register -> verify -> login -> generate Self report -> staged statuses progress 
 - `617b5aa` — `feat(report): add staged prompt contracts`
 - `e7528b8` — `feat(report): add staged narrative progress helpers`
 - `4ce5175` — `feat(report): add staged assembly quality gates`
+- `fd7dc6c` — `feat(report): add staged summary pdf parity`
+- `252d7dc` — `feat(report): expose staged narrative progress in api`
 
 ## Risks
 

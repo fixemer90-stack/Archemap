@@ -7,6 +7,10 @@ import hashlib
 import json
 from typing import Any
 
+from app.modules.report_narratives.aspect_synthesis import (
+    cluster_aspect_patterns,
+    rank_chart_aspects,
+)
 from app.modules.report_narratives.schemas import (
     AspectFact,
     AspectPattern,
@@ -51,16 +55,7 @@ def build_deep_natal_synthesis(report: Any) -> DeepNatalSynthesis:
         "snapshot_id"
     ) or "chart:unknown"
 
-    ranked_aspects = [
-        RankedAspect(
-            id=aspect.id,
-            label=aspect.label,
-            weight=max(0.1, 1.0 - index * 0.1),
-            evidence_ids=[aspect.id],
-            section_targets=["world_perception", "emotions_and_communication"],
-        )
-        for index, aspect in enumerate(narrative_input.key_aspects)
-    ]
+    ranked_aspects = rank_chart_aspects((report.report_data or {}).get("chart", {}))
     if not ranked_aspects and fallback_ids:
         ranked_aspects = [
             RankedAspect(
@@ -72,23 +67,7 @@ def build_deep_natal_synthesis(report: Any) -> DeepNatalSynthesis:
             )
         ]
 
-    aspect_patterns = [
-        AspectPattern(
-            id=f"aspect_pattern_{aspect.id}",
-            title=aspect.label,
-            aspect_ids=[aspect.id],
-            planets=[aspect.label],
-            pattern_type="support",
-            psychological_mechanism=aspect.meaning,
-            life_manifestation=f"Этот паттерн заметен в том, как проявляется {aspect.label.lower()}.",
-            risk="При перегрузе этот паттерн может звучать односторонне.",
-            mature_expression="В зрелой форме он становится опорой для более точного самовыражения.",
-            section_targets=["emotions_and_communication"],
-            evidence_ids=[aspect.id],
-            weight=max(0.1, 1.0 - index * 0.1),
-        )
-        for index, aspect in enumerate(narrative_input.key_aspects[:3])
-    ]
+    aspect_patterns = cluster_aspect_patterns((report.report_data or {}).get("chart", {}), ranked_aspects)
     if not aspect_patterns and fallback_ids:
         aspect_patterns = [
             AspectPattern(

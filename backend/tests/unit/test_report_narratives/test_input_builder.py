@@ -158,6 +158,9 @@ class TestNarrativeInputBuilder:
         assert result.key_facts[0].label == "Солнце в Деве в 9 доме"
         assert result.key_aspects[0].id == "moon_trine_mercury"
         assert result.key_aspects[0].label == "Луна тригон Меркурий"
+        assert result.deep_natal_synthesis is not None
+        assert result.deep_natal_synthesis.contract_version == "deep_natal_synthesis_v1"
+        assert result.deep_natal_synthesis.evidence_map
         assert result.strengths[0].evidence_ids == ["sun_virgo_house_9"]
         assert result.relationship_patterns[0].evidence_ids == ["moon_leo_house_8"]
         assert result.product_boundaries.allowed_sections[-1] == "development"

@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Literal
 
+from app.modules.report_narratives.deep_synthesis import build_deep_natal_synthesis
 from app.modules.report_narratives.schemas import (
     ArchetypeSummary,
     AspectFact,
@@ -230,7 +231,7 @@ SECTION_MAP = {
 }
 
 
-def build_narrative_input(report: Any) -> NarrativeInput:
+def build_narrative_input(report: Any, *, include_deep_synthesis: bool = True) -> NarrativeInput:
     """Build curated NarrativeInput from deterministic report data."""
     report_data = report.report_data or {}
     profile_data = report_data.get("profile", {})
@@ -309,13 +310,14 @@ def build_narrative_input(report: Any) -> NarrativeInput:
         ),
     )
 
-    return NarrativeInput(
+    narrative_input = NarrativeInput(
         product=report.product,
         language="ru",
         profile=narrative_profile,
         calculation_quality=calculation_quality,
         key_facts=key_facts,
         key_aspects=key_aspects,
+        deep_natal_synthesis=None,
         dominants=dominants,
         inner_mechanism=inner_mechanism,
         house_scenarios=house_scenarios,
@@ -338,6 +340,9 @@ def build_narrative_input(report: Any) -> NarrativeInput:
             allowed_sections=SELF_ALLOWED_SECTIONS,
         ),
     )
+    if include_deep_synthesis:
+        narrative_input.deep_natal_synthesis = build_deep_natal_synthesis(report)
+    return narrative_input
 
 
 def _parse_birth_date(value: Any) -> date:

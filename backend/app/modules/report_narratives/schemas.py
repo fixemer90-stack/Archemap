@@ -7,6 +7,17 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+DeepSynthesisSectionTarget = Literal[
+    "main_formula",
+    "world_perception",
+    "emotions_and_communication",
+    "strengths",
+    "vulnerabilities",
+    "relationships",
+    "sexuality",
+    "development",
+]
+
 SelfSectionId = Literal[
     "main_formula",
     "world_perception",
@@ -180,6 +191,93 @@ class ProductBoundaries(BaseModel):
     allowed_sections: list[SelfSectionId] = Field(..., min_length=1)
 
 
+class RankedAspect(BaseModel):
+    """Deterministically ranked aspect used by staged narrative planning."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    label: str = Field(..., min_length=1, max_length=300)
+    weight: float
+    evidence_ids: list[str] = Field(..., min_length=1)
+    section_targets: list[DeepSynthesisSectionTarget] = Field(..., min_length=1)
+
+
+class AspectPattern(BaseModel):
+    """Cluster of related aspects expressed as one chart pattern."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    aspect_ids: list[str] = Field(default_factory=list)
+    planets: list[str] = Field(default_factory=list)
+    pattern_type: Literal["support", "tension", "mixed", "integration"]
+    psychological_mechanism: str = Field(..., min_length=1, max_length=1500)
+    life_manifestation: str = Field(..., min_length=1, max_length=1500)
+    risk: str = Field(..., min_length=1, max_length=1500)
+    mature_expression: str = Field(..., min_length=1, max_length=1500)
+    section_targets: list[DeepSynthesisSectionTarget] = Field(..., min_length=1)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    weight: float
+
+
+class HouseAxisPattern(BaseModel):
+    """Deterministic life-axis pattern derived from house emphasis."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    axis: str = Field(..., min_length=1, max_length=300)
+    mechanism: str = Field(..., min_length=1, max_length=1500)
+    manifestation: str = Field(..., min_length=1, max_length=1500)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    section_targets: list[DeepSynthesisSectionTarget] = Field(..., min_length=1)
+
+
+class PlanetRole(BaseModel):
+    """Narrative role assigned to a key planet placement."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    function: str = Field(..., min_length=1, max_length=1500)
+    influence: str = Field(..., min_length=1, max_length=1500)
+    section_targets: list[DeepSynthesisSectionTarget] = Field(..., min_length=1)
+    evidence_ids: list[str] = Field(..., min_length=1)
+
+
+class ChartDynamic(BaseModel):
+    """Central dynamic explaining tension and compensation in the chart."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    title: str = Field(..., min_length=1, max_length=200)
+    mechanism: str = Field(..., min_length=1, max_length=1500)
+    tension: str = Field(..., min_length=1, max_length=1500)
+    compensation: str = Field(..., min_length=1, max_length=1500)
+    section_targets: list[DeepSynthesisSectionTarget] = Field(..., min_length=1)
+    evidence_ids: list[str] = Field(..., min_length=1)
+
+
+class CalibrationHypothesis(BaseModel):
+    """Evidence-backed hypothesis for future user calibration."""
+
+    id: str = Field(..., min_length=1, max_length=120)
+    hypothesis: str = Field(..., min_length=1, max_length=500)
+    answer_type: Literal["yes_no", "scale_1_5", "free_text"]
+    evidence_ids: list[str] = Field(..., min_length=1)
+
+
+class DeepNatalSynthesis(BaseModel):
+    """Deterministic pre-LLM synthesis layer for the staged narrative pipeline."""
+
+    contract_version: str = Field(..., min_length=1, max_length=100)
+    source_chart_snapshot_id: str = Field(..., min_length=1, max_length=200)
+    evidence_map: dict[str, AstroFact | AspectFact] = Field(default_factory=dict)
+    ranked_aspects: list[RankedAspect] = Field(default_factory=list)
+    aspect_patterns: list[AspectPattern] = Field(default_factory=list)
+    house_axis_patterns: list[HouseAxisPattern] = Field(default_factory=list)
+    planet_roles: list[PlanetRole] = Field(default_factory=list)
+    chart_dynamics: list[ChartDynamic] = Field(default_factory=list)
+    contradictions: list[ContradictionInsight] = Field(default_factory=list)
+    maturity_levels: MaturityLevels
+    calibration_hypotheses: list[CalibrationHypothesis] = Field(default_factory=list)
+
+
 class NarrativeInput(BaseModel):
     """Curated DTO used as the only LLM input source."""
 
@@ -189,6 +287,7 @@ class NarrativeInput(BaseModel):
     calculation_quality: CalculationQuality
     key_facts: list[AstroFact]
     key_aspects: list[AspectFact]
+    deep_natal_synthesis: DeepNatalSynthesis | None = None
     dominants: list[DominantInsight] = Field(..., min_length=1)
     inner_mechanism: InnerMechanism
     house_scenarios: list[HouseScenario] = Field(default_factory=list)

@@ -1,29 +1,19 @@
 # S03 — Chart Dynamics: Contradictions, Compensations, Maturity
 
-> Статус: ⬜ Не начато
+> Статус: ✅ Готово
+> Коммит: `91b34fa`
 
 ## Контекст
 
 Пользовательский фидбек: отчёт всё ещё звучит как поверхностный гороскоп. Причина — недостаточно объясняется взаимодействие факторов: где карта тянет в разные стороны, как человек компенсирует напряжение и что является зрелой формой паттерна.
 
-## Что сделать
+## Что сделано
 
-1. Построить `ChartDynamic` items from:
-   - dominant elements/modalities;
-   - house axis patterns;
-   - aspect patterns;
-   - archetype claims;
-   - socionics summary when relevant.
-2. Вывести 3–5 central contradictions.
-3. Для каждого contradiction указать:
-   - source evidence;
-   - psychological mechanism;
-   - visible life manifestation;
-   - failure mode;
-   - mature expression;
-   - calibration question.
-4. Добавить maturity levels: low / medium / high expression.
-5. Добавить tests against generic outputs: no item can be only “вы практичны/эмоциональны/структурны”.
+1. Добавлены `ChartDynamic` items поверх аспектных паттернов, house-axis patterns и role synthesis.
+2. Добавлены deterministic contradictions.
+3. Добавлены bounded maturity levels: low / medium / high.
+4. Добавлены calibration hypotheses поверх dynamics/contradictions.
+5. Добавлены tests против generic/пустых dynamics outputs.
 
 ## Затрагиваемые файлы
 
@@ -32,11 +22,19 @@
 | `backend/app/modules/report_narratives/deep_synthesis.py`          | Dynamics builder                                           |
 | `backend/app/modules/report_narratives/schemas.py`                 | `ChartDynamic`, `ContradictionInsight`, `MaturityLevelSet` |
 | `backend/tests/unit/test_report_narratives/test_chart_dynamics.py` | Dynamics tests                                             |
+| `backend/tests/unit/test_report_narratives/test_deep_synthesis.py` | Deep synthesis regression                                  |
 
 ## Acceptance criteria
 
-- [ ] At least 3 central contradictions are produced when chart evidence supports them.
-- [ ] Contradictions reference aspect/house/planet evidence, not just archetype labels.
-- [ ] Failure modes are concrete but non-diagnostic.
-- [ ] Mature expressions are actionable and bounded.
-- [ ] Calibration questions are specific enough to validate the hypothesis.
+- [x] At least 3 central contradictions are produced when chart evidence supports them.
+- [x] Contradictions reference aspect/house/planet evidence, not just archetype labels.
+- [x] Failure modes are concrete but non-diagnostic.
+- [x] Mature expressions are actionable and bounded.
+- [x] Calibration questions are specific enough to validate the hypothesis.
+
+## Verification
+
+- `pytest tests/unit/test_report_narratives/test_chart_dynamics.py tests/unit/test_report_narratives/test_deep_synthesis.py -q`
+- `pytest tests/unit/test_report_narratives -q`
+- `ruff check app/modules/report_narratives/deep_synthesis.py tests/unit/test_report_narratives/test_chart_dynamics.py`
+- `mypy app/modules/report_narratives/deep_synthesis.py tests/unit/test_report_narratives/test_chart_dynamics.py`

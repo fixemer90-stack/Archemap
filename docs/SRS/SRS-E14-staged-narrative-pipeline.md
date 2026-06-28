@@ -1,8 +1,9 @@
 # SRS-E14 — Staged Narrative Pipeline
 
 > Эпик: E14 Staged Narrative Pipeline
-> Статус: ⬜ Не начато
+> Статус: 🟡 В процессе
 > Дата: 2026-06-27
+> Последняя синхронизация с кодом: 2026-06-28
 
 ## 1. Введение
 
@@ -31,51 +32,91 @@ Single-shot LLM generation создаёт приемлемый structured report
 
 Система должна сначала строить deterministic synthesis карты, затем генерировать narrative по стадиям, валидировать каждую стадию и собирать финальный Self report без generic horoscope prose.
 
+### 2.3 Реальный статус внедрения
+
+Уже реализовано в backend:
+
+- deterministic `DeepNatalSynthesis`;
+- aspect ranking / pattern clustering;
+- chart dynamics / contradictions / maturity / calibration synthesis;
+- staged schemas и prompt family;
+- baseline helpers для stage artifacts, cache/retry и progress snapshot;
+- baseline deterministic assembler и assembled quality gates.
+
+Ещё не реализовано end-to-end:
+
+- staged generation flow в реальном runtime вместо single-shot narrative path;
+- worker stage lifecycle и полноценные runtime logs;
+- frontend/PDF integration и user-visible progress flow;
+- live staged runtime smoke.
+
 ## 3. Функциональные требования
 
 ### FR-1. Deep natal synthesis
 
 Система должна создавать `DeepNatalSynthesis` из deterministic report data без LLM.
 
+Статус: реализовано.
+
 ### FR-2. Aspect ranking
 
 Система должна ранжировать аспекты по orb, типу аспекта, важности планет, personal relevance and section relevance.
+
+Статус: реализовано.
 
 ### FR-3. Aspect pattern clustering
 
 Система должна группировать связанные аспекты в `AspectPattern`, включая mechanism, manifestation, risk and mature expression.
 
+Статус: реализовано.
+
 ### FR-4. Chart dynamics
 
 Система должна выделять central contradictions, compensations, house-axis patterns, maturity levels and calibration hypotheses.
+
+Статус: реализовано.
 
 ### FR-5. Narrative planning
 
 Система должна выполнять отдельный `NarrativePlan` stage перед section generation.
 
+Статус: contract/prompt level реализовано, runtime wiring pending.
+
 ### FR-6. Parallel section generation
 
 Система должна поддерживать параллельную генерацию независимых секций после готового plan stage.
+
+Статус: gating/helpers реализованы, runtime wiring pending.
 
 ### FR-7. Stage storage and cache
 
 Система должна сохранять stage artifacts with prompt_version, model, input_hash, status, attempts and errors.
 
+Статус: baseline metadata contract реализован; отдельная persisted table всё ещё open decision.
+
 ### FR-8. Stage retry
 
 Система должна поддерживать retry failed/invalid stages без удаления ready stages.
+
+Статус: helper-level реализовано, runtime wiring pending.
 
 ### FR-9. Assembly and final validation
 
 Система должна собирать final narrative only from valid stages and reject duplicate, contradictory, ungrounded or horoscope-generic prose.
 
+Статус: baseline assembler + generic/fatalist/repetition checks реализованы; full contradiction/tone consistency enforcement pending.
+
 ### FR-10. API progress
 
 `GET /reports/{id}` должен отдавать safe progress metadata while report is generating.
 
+Статус: schema-level baseline реализован, router/frontend integration pending.
+
 ### FR-11. Web/PDF parity
 
 Web and PDF must render the same assembled staged narrative content.
+
+Статус: pending.
 
 ## 4. Нефункциональные требования
 
@@ -109,19 +150,14 @@ interface DeepNatalSynthesis {
 
 ```ts
 interface NarrativeStageArtifact {
-  id: string;
-  report_id: string;
   stage_id: NarrativeStageId;
+  status: "pending" | "running" | "ready" | "failed";
   prompt_version: string;
-  model_provider: string;
   model_name: string;
   input_hash: string;
-  status: "pending" | "running" | "ready" | "repairing" | "failed" | "skipped";
-  content: object | null;
+  attempt_count: number;
   error_message: string | null;
-  generation_attempts: number;
-  started_at: string | null;
-  finished_at: string | null;
+  artifact: object | null;
 }
 ```
 
@@ -131,11 +167,10 @@ interface NarrativeStageArtifact {
 ReportService
   → deterministic report_data
   → DeepNatalSynthesisBuilder
-  → StagedNarrativeService
-      → plan stage
-      → parallel section stages
-      → assembly stage
-      → final validation
+  → staged plan/section/assembly contracts
+  → stage artifact/cache/progress helpers
+  → deterministic assembled quality gates
+  → (pending) runtime staged orchestration in worker/service flow
   → ReportNarrative ready
 ```
 
@@ -143,9 +178,14 @@ ReportService
 
 No new public endpoint is required for MVP. Existing report endpoints are extended with progress metadata. See `docs/features/E14-staged-narrative-pipeline/API.md`.
 
+Current reality:
+
+- progress/artifact schemas are present in backend contracts;
+- full runtime exposure through router/frontend remains pending.
+
 ## 8. Prompt contracts
 
-Prompts must be file-backed and versioned:
+Prompts are file-backed and versioned:
 
 - `self_plan_v1.md`
 - `self_section_identity_v1.md`
@@ -169,6 +209,8 @@ Frontend should show progress labels but not raw stage JSON. Final report remain
 8. Calibration questions.
 9. Career CTA.
 10. Technical details collapsed.
+
+Current status: target only, not yet implemented end-to-end for staged pipeline.
 
 ## 10. Verification criteria
 
@@ -199,7 +241,16 @@ Runtime:
 - verify worker logs stage success and `used_fallback=False`;
 - verify web/PDF parity.
 
-## 11. Зависимости
+## 11. Свежая verification evidence
+
+- `pytest tests/unit/test_report_narratives tests/unit/test_reports -q` → `119 passed`
+- `pytest tests/unit/test_report_narratives -q` → `88 passed`
+- staged service slice → `20 passed`
+- staged assembly slice → `37 passed`
+- `ruff check ...` по затронутым narrative/reports backend файлам → `All checks passed!`
+- `mypy ...` по затронутым narrative/reports backend файлам → `Success: no issues found`
+
+## 12. Зависимости
 
 - E3 Profile & Chart Engine.
 - E4 Rules & Content.
@@ -207,7 +258,7 @@ Runtime:
 - E12 Runtime Readiness.
 - E13 Report Depth Improvements.
 
-## 12. Риски
+## 13. Риски
 
 - More LLM calls can increase cost.
 - Parallel generation can create tone drift.

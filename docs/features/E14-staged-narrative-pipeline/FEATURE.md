@@ -1,9 +1,10 @@
 # E14 — Staged Narrative Pipeline
 
-> Статус: ⬜ Не начато
+> Статус: 🟡 В процессе
 > Дата подготовки: 2026-06-27
+> Последняя синхронизация с кодом: 2026-06-28
 > Источник: пользовательский фидбек по Self report: “результат всё ещё похож на поверхностный гороскоп”
-> Зависимости: E3 ✅, E4 ✅, E11 ✅, E12 ✅, E13 🟡
+> Зависимости: E3 ✅, E4 ✅, E11 ✅, E12 ✅, E13 ✅
 
 ## Цель
 
@@ -72,53 +73,48 @@
 - User feedback learning loop with persisted answers; E14 only prepares calibration questions/metadata.
 - Manual one-off interpretation for a single chart.
 
-## Target architecture
+## Текущий статус реализации
 
-```text
-Report.report_data
-  → DeepNatalSynthesisBuilder
-      → AspectRanker
-      → AspectPatternClusterer
-      → HouseAxisSynthesizer
-      → PlanetRoleSynthesizer
-      → ContradictionSynthesizer
-      → MaturityAndCalibrationSynthesizer
-  → NarrativePlan LLM stage
-  → parallel Section LLM stages
-      → identity / perception
-      → emotions / communication
-      → relationships / sexuality
-      → development / maturity
-      → house scenarios / life manifestations
-  → deterministic assembler + optional final consistency LLM pass
-  → SelfNarrative vNext
-  → web + PDF
-```
+Реально реализовано и проверено:
+
+- deterministic `DeepNatalSynthesis` contract и builder;
+- aspect ranking + pattern clustering;
+- chart dynamics / contradictions / maturity / calibration synthesis;
+- staged schemas и file-backed prompt family;
+- baseline stage artifact / cache / retry / progress helpers;
+- baseline deterministic assembler и anti-generic quality gates.
+
+Ещё не закрыто end-to-end:
+
+- staged pipeline не подключён в реальный generation flow вместо single-shot narrative;
+- нет полного worker/runtime orchestration по stage-level lifecycle;
+- нет полной API/frontend/PDF integration для user-visible staged progress и final parity;
+- нет свежего runtime smoke, доказывающего staged путь в живом `generate -> ready -> pdf` цикле.
 
 ## Stories
 
 | Story | Название                                                       | Статус       | Документ                               |
 | ----- | -------------------------------------------------------------- | ------------ | -------------------------------------- |
-| S01   | DeepNatalSynthesis contract                                    | ⬜ Не начато | `S01-deep-natal-synthesis-contract.md` |
-| S02   | Aspect ranking and pattern clustering                          | ⬜ Не начато | `S02-aspect-ranking-patterns.md`       |
-| S03   | Chart dynamics: contradictions, compensations, maturity        | ⬜ Не начато | `S03-chart-dynamics-synthesis.md`      |
-| S04   | Staged LLM schemas and prompt family                           | ⬜ Не начато | `S04-staged-llm-contracts-prompts.md`  |
-| S05   | Orchestration, cache, retry and statuses                       | ⬜ Не начато | `S05-orchestration-cache-statuses.md`  |
-| S06   | Section assembly, consistency and anti-horoscope quality gates | ⬜ Не начато | `S06-assembly-quality-gates.md`        |
+| S01   | DeepNatalSynthesis contract                                    | ✅ Готово    | `S01-deep-natal-synthesis-contract.md` |
+| S02   | Aspect ranking and pattern clustering                          | ✅ Готово    | `S02-aspect-ranking-patterns.md`       |
+| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово    | `S03-chart-dynamics-synthesis.md`      |
+| S04   | Staged LLM schemas and prompt family                           | ✅ Готово    | `S04-staged-llm-contracts-prompts.md`  |
+| S05   | Orchestration, cache, retry and statuses                       | 🟡 В процессе | `S05-orchestration-cache-statuses.md`  |
+| S06   | Section assembly, consistency and anti-horoscope quality gates | 🟡 В процессе | `S06-assembly-quality-gates.md`        |
 | S07   | API/frontend/PDF integration                                   | ⬜ Не начато | `S07-api-frontend-pdf-integration.md`  |
 
 ## Acceptance criteria
 
 - [ ] Self report generation no longer depends on one monolithic LLM call for the complete report.
-- [ ] `DeepNatalSynthesis` exists as a deterministic, testable contract before any LLM prose stage.
-- [ ] Top aspects are ranked by orb, planet importance, aspect type, personal relevance and section relevance.
-- [ ] Aspect patterns group related aspects into psychological mechanisms, not isolated aspect blurbs.
-- [ ] The report explains central contradictions and compensations using evidence-backed chart dynamics.
+- [x] `DeepNatalSynthesis` exists as a deterministic, testable contract before any LLM prose stage.
+- [x] Top aspects are ranked by orb, planet importance, aspect type, personal relevance and section relevance.
+- [x] Aspect patterns group related aspects into psychological mechanisms, not isolated aspect blurbs.
+- [x] The report explains central contradictions and compensations using evidence-backed chart dynamics.
 - [ ] Section generation can run in parallel after a shared `NarrativePlan` stage.
-- [ ] Each staged artifact has stable `input_hash`, `prompt_version`, `model`, `status`, error and retry metadata.
-- [ ] Failed section generation does not corrupt ready sections and can be retried by stage.
+- [x] Each staged artifact has stable `input_hash`, `prompt_version`, `model`, `status`, error and retry metadata.
+- [x] Failed section generation does not corrupt ready sections and can be retried by stage.
 - [ ] Final assembled report has consistent tone, no duplicate paragraphs and no contradictory claims.
-- [ ] Validators reject unknown evidence refs, unsupported aspect claims, Career leakage and horoscope-generic fallback prose.
+- [x] Validators reject unknown evidence refs, unsupported aspect claims, Career leakage and horoscope-generic fallback prose.
 - [ ] Web and PDF render the same staged narrative content.
 - [ ] Runtime logs expose stage-level duration, model, failure_kind and recovery_action without logging prompt bodies or API keys.
 
@@ -184,6 +180,26 @@ Runtime smoke:
 register -> verify -> login -> generate Self report -> staged statuses progress -> report ready -> narrative ready -> web report has staged sections -> PDF parity -> worker logs used_fallback=False
 ```
 
+## Свежая verification evidence
+
+Проверено на backend change sets E14 S01–S06:
+
+- `pytest tests/unit/test_report_narratives tests/unit/test_reports -q` → `119 passed`
+- `pytest tests/unit/test_report_narratives -q` → `88 passed`
+- targeted staged assembly slice → `37 passed`
+- targeted staged service slice → `20 passed`
+- `ruff check ...` по затронутым backend narrative/reports модулям → `All checks passed!`
+- `mypy ...` по затронутым backend narrative/reports модулям → `Success: no issues found`
+
+Ключевые incremental commits:
+
+- `92584af` — `feat(report): add deep natal synthesis contract`
+- `193b605` — `feat(report): rank and cluster narrative aspects`
+- `91b34fa` — `feat(report): synthesize chart dynamics`
+- `617b5aa` — `feat(report): add staged prompt contracts`
+- `e7528b8` — `feat(report): add staged narrative progress helpers`
+- `4ce5175` — `feat(report): add staged assembly quality gates`
+
 ## Risks
 
 - Too many LLM calls can increase cost and queue time if not parallelized/cached correctly.
@@ -194,7 +210,7 @@ register -> verify -> login -> generate Self report -> staged statuses progress 
 
 ## Open decisions
 
-- Whether staged artifacts live in a new `report_narrative_stages` table or inside `report_narratives.metadata` JSON. Preferred: table for observability and retry.
-- Whether the final assembly uses no LLM or a small consistency LLM pass. Preferred: deterministic assembler first, optional consistency pass behind feature flag.
-- Whether E14 produces `SelfNarrativeV2` or extends current `SelfNarrative`. Preferred: create versioned vNext schema and compatibility adapter.
+- Whether staged artifacts live in a new `report_narrative_stages` table or inside `report_narratives.metadata` JSON. Baseline currently uses typed metadata contract; separate table is still open.
+- Whether the final assembly uses no LLM or a small consistency LLM pass. Baseline currently ships deterministic assembler only.
+- Whether E14 produces `SelfNarrativeV2` or extends current `SelfNarrative`. Current baseline extends current contract instead of introducing a vNext schema.
 - Whether to support partial UI during generation. Preferred: no partial report content in main Self route until final ready; expose stage progress only.

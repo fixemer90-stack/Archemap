@@ -6,9 +6,19 @@
 
 Staged backend is not enough; the user needs a smooth report screen and PDF parity without seeing internal debug artifacts.
 
+## Текущий кодовый статус
+
+На момент синхронизации docs backend уже имеет baseline progress contracts в `backend/app/modules/reports/schemas.py`, но end-to-end integration ещё не подключена:
+
+- frontend не использует `narrative_progress` / `stage_progress`;
+- staged progress labels не рендерятся пользователю;
+- web report не переключён на staged assembled content path;
+- PDF parity для staged output не доказана;
+- runtime smoke по staged flow отсутствует.
+
 ## Что сделать
 
-1. Extend report API response with `narrative_progress`.
+1. Extend report API response with `narrative_progress` / staged progress metadata.
 2. Update frontend polling copy and progress steps.
 3. Render staged narrative output through existing narrative-first UI.
 4. Add UI blocks for aspect patterns and chart dynamics if they become visible sections.
@@ -19,7 +29,7 @@ Staged backend is not enough; the user needs a smooth report screen and PDF pari
 
 | Файл                                                            | Действие                                 |
 | --------------------------------------------------------------- | ---------------------------------------- |
-| `backend/app/modules/reports/schemas.py`                        | Progress and narrative schema extensions |
+| `backend/app/modules/reports/schemas.py`                        | Baseline progress fields уже добавлены   |
 | `backend/app/modules/reports/router.py`                         | Include progress metadata                |
 | `frontend/src/lib/api/report.ts`                                | Type updates                             |
 | `frontend/src/lib/report/view-model.ts`                         | Normalize staged narrative               |

@@ -577,7 +577,8 @@ async def test_get_or_create_narrative_record_recovers_from_insert_race(monkeypa
     result = await service._get_or_create_narrative_record(
         report=report,
         input_hash="hash-1",
-        model_name="deepseek-v4-flash",
+        model_name="deepseek-chat",
+        prompt_version="self_story_v5",
         force_new=False,
     )
 

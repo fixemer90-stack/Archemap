@@ -8,7 +8,7 @@ import json
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -25,28 +25,41 @@ from app.modules.llm.exceptions import (
     LLMTimeoutError,
 )
 from app.modules.llm.provider import LLMProvider, get_llm_provider
+from app.modules.report_narratives.assembler import assemble_self_narrative
 from app.modules.report_narratives.hash import compute_input_hash
 from app.modules.report_narratives.input_builder import build_narrative_input
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.postprocess import harden_self_narrative
-from app.modules.report_narratives.prompts import SELF_STORY_PROMPT_VERSION, build_self_story_prompt
+from app.modules.report_narratives.prompts import (
+    SELF_STORY_PROMPT_VERSION,
+    build_self_story_prompt,
+    build_stage_prompt,
+)
 from app.modules.report_narratives.schemas import (
     AssemblyCheck,
     DeepNatalSynthesis,
+    DevelopmentSectionOutput,
+    EmotionalSectionOutput,
+    HouseScenariosSectionOutput,
+    IdentitySectionOutput,
     NarrativeInput,
     NarrativePlan,
     NarrativeStageArtifact,
     NarrativeStageId,
     NarrativeStageProgress,
+    RelationshipSectionOutput,
     SelfNarrative,
 )
 from app.modules.report_narratives.validators import (
     choose_narrative_recovery_action,
+    validate_assembled_self_narrative,
     validate_self_narrative,
 )
 from app.modules.reports.models import Report
 
 logger = structlog.get_logger()
+
+_STAGED_SELF_PIPELINE_PROMPT_VERSION = "self_staged_v1"
 
 
 class ReportNarrativeService:
@@ -78,13 +91,14 @@ class ReportNarrativeService:
             )
             raise
         model_name = getattr(self.llm_provider, "model_name", self.app_settings.LLM_MODEL)
+        prompt_version = self._resolve_prompt_version(report, narrative_input)
 
         if not force:
             cached = await find_cached_narrative(
                 db=self.db,
                 report_id=report.id,
                 product=report.product,
-                prompt_version=SELF_STORY_PROMPT_VERSION,
+                prompt_version=prompt_version,
                 input_hash=input_hash,
                 model_name=model_name,
             )
@@ -94,7 +108,7 @@ class ReportNarrativeService:
                     report_id=str(report.id),
                     narrative_id=str(cached.id),
                     product=report.product,
-                    prompt_version=SELF_STORY_PROMPT_VERSION,
+                    prompt_version=prompt_version,
                     model_name=model_name,
                 )
                 report.status = "ready"
@@ -106,6 +120,7 @@ class ReportNarrativeService:
             report=report,
             input_hash=input_hash,
             model_name=model_name,
+            prompt_version=prompt_version,
             force_new=force,
         )
         return await self._generate_and_persist(
@@ -121,6 +136,12 @@ class ReportNarrativeService:
         narrative: ReportNarrative,
         narrative_input: NarrativeInput,
     ) -> ReportNarrative:
+        if self._should_use_staged_pipeline(report, narrative_input):
+            return await self._generate_and_persist_staged(
+                report=report,
+                narrative=narrative,
+                narrative_input=narrative_input,
+            )
         prompt = build_self_story_prompt(narrative_input)
         now = datetime.now(UTC).replace(tzinfo=None)
         started_at = time.perf_counter()
@@ -271,19 +292,206 @@ class ReportNarrativeService:
             duration_ms=_duration_ms(started_at),
         )
 
+    async def _generate_and_persist_staged(
+        self,
+        *,
+        report: Report,
+        narrative: ReportNarrative,
+        narrative_input: NarrativeInput,
+    ) -> ReportNarrative:
+        synthesis = narrative_input.deep_natal_synthesis
+        if synthesis is None:
+            raise ValueError("Staged pipeline requires deep_natal_synthesis")
+
+        now = datetime.now(UTC).replace(tzinfo=None)
+        started_at = time.perf_counter()
+        narrative.status = "generating"
+        narrative.generation_attempts += 1
+        narrative.generation_started_at = now
+        narrative.generation_finished_at = None
+        narrative.error_message = None
+        report.status = "generating_narrative"
+        report.error_message = None
+        await self.db.flush()
+        logger.info(
+            "report_narrative_generation_started",
+            report_id=str(report.id),
+            narrative_id=str(narrative.id),
+            product=report.product,
+            prompt_version=narrative.prompt_version,
+            model_provider=narrative.model_provider,
+            model_name=narrative.model_name,
+            attempt=narrative.generation_attempts,
+        )
+
+        artifacts: dict[NarrativeStageId, NarrativeStageArtifact] = {
+            "plan": NarrativeStageArtifact(
+                stage_id="plan",
+                status="running",
+                prompt_version=_STAGE_PROMPT_VERSIONS["plan"],
+                model_name=narrative.model_name,
+                input_hash=_stable_hash({"DeepNatalSynthesis": synthesis.model_dump(mode="json")}),
+                attempt_count=1,
+                error_message=None,
+                artifact=None,
+            )
+        }
+        plan = await self.llm_provider.generate_structured(
+            prompt=build_stage_prompt("plan", synthesis=synthesis),
+            narrative_input=narrative_input,
+            schema=NarrativePlan,
+        )
+        artifacts["plan"] = NarrativeStageArtifact(
+            stage_id="plan",
+            status="ready",
+            prompt_version=_STAGE_PROMPT_VERSIONS["plan"],
+            model_name=narrative.model_name,
+            input_hash=artifacts["plan"].input_hash,
+            attempt_count=1,
+            error_message=None,
+            artifact=plan.model_dump(mode="json"),
+        )
+
+        stage_hashes = compute_stage_input_hashes(synthesis, plan)
+        stage_outputs: dict[str, dict[str, Any]] = {}
+        stage_schemas: list[
+            tuple[
+                NarrativeStageId,
+                type[
+                    IdentitySectionOutput
+                    | EmotionalSectionOutput
+                    | RelationshipSectionOutput
+                    | DevelopmentSectionOutput
+                    | HouseScenariosSectionOutput
+                ],
+            ]
+        ] = [
+            ("identity", IdentitySectionOutput),
+            ("emotional", EmotionalSectionOutput),
+            ("relationships", RelationshipSectionOutput),
+            ("development", DevelopmentSectionOutput),
+            ("house_scenarios", HouseScenariosSectionOutput),
+        ]
+        for stage_id, schema in stage_schemas:
+            artifacts[stage_id] = NarrativeStageArtifact(
+                stage_id=stage_id,
+                status="running",
+                prompt_version=_STAGE_PROMPT_VERSIONS[stage_id],
+                model_name=narrative.model_name,
+                input_hash=stage_hashes[stage_id],
+                attempt_count=1,
+                error_message=None,
+                artifact=None,
+            )
+            section_output = await self.llm_provider.generate_structured(
+                prompt=build_stage_prompt(stage_id, synthesis=synthesis),
+                narrative_input=narrative_input,
+                schema=schema,
+            )
+            payload = section_output.model_dump(mode="json")
+            stage_outputs[stage_id] = payload
+            artifacts[stage_id] = NarrativeStageArtifact(
+                stage_id=stage_id,
+                status="ready",
+                prompt_version=_STAGE_PROMPT_VERSIONS[stage_id],
+                model_name=narrative.model_name,
+                input_hash=stage_hashes[stage_id],
+                attempt_count=1,
+                error_message=None,
+                artifact=payload,
+            )
+
+        artifacts["assembly"] = NarrativeStageArtifact(
+            stage_id="assembly",
+            status="running",
+            prompt_version=_STAGE_PROMPT_VERSIONS["assembly"],
+            model_name=narrative.model_name,
+            input_hash=stage_hashes["assembly"],
+            attempt_count=1,
+            error_message=None,
+            artifact=None,
+        )
+        final_check = await self.llm_provider.generate_structured(
+            prompt=build_stage_prompt("assembly", synthesis=synthesis, stage_outputs=stage_outputs),
+            narrative_input=narrative_input,
+            schema=AssemblyCheck,
+        )
+        assembled = assemble_self_narrative(
+            narrative_input=narrative_input,
+            plan=plan,
+            stage_outputs=cast(dict[str, object], stage_outputs),
+            final_check=final_check,
+        )
+        errors = validate_assembled_self_narrative(assembled, narrative_input)
+        if final_check.needs_retry or errors:
+            artifacts["assembly"] = NarrativeStageArtifact(
+                stage_id="assembly",
+                status="failed",
+                prompt_version=_STAGE_PROMPT_VERSIONS["assembly"],
+                model_name=narrative.model_name,
+                input_hash=stage_hashes["assembly"],
+                attempt_count=1,
+                error_message=_format_validation_errors(errors) if errors else "assembly_requested_retry",
+                artifact=final_check.model_dump(mode="json"),
+            )
+            return await self._save_failed_narrative(
+                report=report,
+                narrative=narrative,
+                reason=(
+                    _format_validation_errors(errors)
+                    if errors
+                    else "Не удалось собрать связный staged Self-отчёт. Попробуйте повторить генерацию."
+                ),
+                duration_ms=_duration_ms(started_at),
+                failure_kind="staged_validation_failed",
+            )
+
+        artifacts["assembly"] = NarrativeStageArtifact(
+            stage_id="assembly",
+            status="ready",
+            prompt_version=_STAGE_PROMPT_VERSIONS["assembly"],
+            model_name=narrative.model_name,
+            input_hash=stage_hashes["assembly"],
+            attempt_count=1,
+            error_message=None,
+            artifact=final_check.model_dump(mode="json"),
+        )
+        progress = build_stage_progress_snapshot(artifacts, final_check=final_check)
+        payload = assembled.model_dump(mode="json")
+        payload["stage_progress"] = progress.model_dump(mode="json")
+        payload["stage_artifacts"] = [artifact.model_dump(mode="json") for artifact in artifacts.values()]
+        return await self._save_ready_narrative(
+            report=report,
+            narrative=narrative,
+            payload=payload,
+            duration_ms=_duration_ms(started_at),
+        )
+
+    def _should_use_staged_pipeline(self, report: Report, narrative_input: NarrativeInput) -> bool:
+        return (
+            report.product == "self"
+            and narrative_input.deep_natal_synthesis is not None
+            and bool(getattr(self.llm_provider, "supports_staged_pipeline", False))
+        )
+
+    def _resolve_prompt_version(self, report: Report, narrative_input: NarrativeInput) -> str:
+        if self._should_use_staged_pipeline(report, narrative_input):
+            return _STAGED_SELF_PIPELINE_PROMPT_VERSION
+        return SELF_STORY_PROMPT_VERSION
+
     async def _save_ready_narrative(
         self,
         *,
         report: Report,
         narrative: ReportNarrative,
-        payload: SelfNarrative,
+        payload: SelfNarrative | dict[str, Any],
         reason: str | None = None,
         duration_ms: int | None = None,
         recovery_action: str | None = None,
     ) -> ReportNarrative:
         now = datetime.now(UTC).replace(tzinfo=None)
         narrative.status = "ready"
-        narrative.content = payload.model_dump(mode="json")
+        narrative.content = payload.model_dump(mode="json") if isinstance(payload, SelfNarrative) else payload
         narrative.error_message = reason
         narrative.generation_finished_at = now
         report.status = "ready"
@@ -340,13 +548,14 @@ class ReportNarrativeService:
         report: Report,
         input_hash: str,
         model_name: str,
+        prompt_version: str,
         force_new: bool = False,
     ) -> ReportNarrative:
         existing = await _find_matching_narrative_record(
             db=self.db,
             report_id=report.id,
             product=report.product,
-            prompt_version=SELF_STORY_PROMPT_VERSION,
+            prompt_version=prompt_version,
             input_hash=input_hash,
             model_name=model_name,
         )
@@ -363,7 +572,7 @@ class ReportNarrativeService:
         narrative = ReportNarrative(
             report_id=report.id,
             product=report.product,
-            prompt_version=SELF_STORY_PROMPT_VERSION,
+            prompt_version=prompt_version,
             model_provider=self.app_settings.LLM_PROVIDER,
             model_name=model_name,
             status="pending",
@@ -380,7 +589,7 @@ class ReportNarrativeService:
                 db=self.db,
                 report_id=report.id,
                 product=report.product,
-                prompt_version=SELF_STORY_PROMPT_VERSION,
+                prompt_version=prompt_version,
                 input_hash=input_hash,
                 model_name=model_name,
             )

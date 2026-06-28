@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, E501
 """Unit tests for narrative generation service and task orchestration."""
 
 from __future__ import annotations
@@ -60,6 +60,144 @@ class ReadyProvider:
     ) -> StructuredSchemaT:
         del prompt
         return schema.model_validate(build_deterministic_self_fallback(narrative_input))
+
+
+class ReadyStagedProvider:
+    model_name = "mock-self-v1"
+    supports_staged_pipeline = True
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[StructuredSchemaT],
+    ) -> StructuredSchemaT:
+        del prompt
+        synthesis = narrative_input.deep_natal_synthesis
+        assert synthesis is not None
+        schema_name = schema.__name__
+        self.calls.append(schema_name)
+
+        if schema_name == "NarrativePlan":
+            evidence_ids = list(synthesis.evidence_map.keys())[:3]
+            return schema.model_validate(
+                {
+                    "prompt_version": "self_plan_v1",
+                    "sections": [
+                        {
+                            "section_id": "identity",
+                            "title": "Identity",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Главная формула и сильные стороны.",
+                        },
+                        {
+                            "section_id": "emotional",
+                            "title": "Emotional",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Эмоции, речь и уязвимости.",
+                        },
+                        {
+                            "section_id": "relationships",
+                            "title": "Relationships",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Отношения и близость.",
+                        },
+                        {
+                            "section_id": "development",
+                            "title": "Development",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Вектор развития.",
+                        },
+                        {
+                            "section_id": "house_scenarios",
+                            "title": "House scenarios",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Жизненные сценарии и восприятие мира.",
+                        },
+                    ],
+                    "global_guardrails": ["Только evidence-backed claims"],
+                    "assembly_notes": "Собери единый narrative-first Self report.",
+                }
+            )
+        if schema_name == "IdentitySectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "identity",
+                    "title": "Identity",
+                    "paragraphs": [
+                        "Вы строите идентичность через смысл, точность и внутреннюю собранность.",
+                        "В сильной форме это даёт ясность, дисциплину и способность держать свою линию.",
+                    ],
+                    "evidence_ids": ["sun_virgo_house_9", "moon_trine_mercury"],
+                    "covered_pattern_ids": ["identity_pattern"],
+                }
+            )
+        if schema_name == "EmotionalSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "emotional",
+                    "title": "Emotional",
+                    "paragraphs": [
+                        "Эмоции быстро связываются с мыслью, поэтому вы не просто чувствуете, а сразу пытаетесь это осмыслить.",
+                        "Уязвимость появляется там, где внутреннее напряжение требует немедленного словесного контроля.",
+                    ],
+                    "evidence_ids": ["moon_trine_mercury", "moon_leo_house_8"],
+                    "covered_pattern_ids": ["emotional_pattern"],
+                }
+            )
+        if schema_name == "RelationshipSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "relationships",
+                    "title": "Relationships",
+                    "paragraphs": [
+                        "В отношениях вы ищете не формальную близость, а эмоциональную глубину и взаимную вовлечённость.",
+                        "Сексуальность раскрывается там, где есть доверие, интенсивность и ощущение живого контакта.",
+                    ],
+                    "evidence_ids": ["moon_leo_house_8", "moon_trine_mercury"],
+                    "covered_pattern_ids": ["relationship_pattern"],
+                }
+            )
+        if schema_name == "DevelopmentSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "development",
+                    "title": "Development",
+                    "paragraphs": [
+                        "Ваш рост начинается там, где вы перестаёте чинить напряжение мгновенной реакцией и выдерживаете паузу.",
+                        "Зрелость приходит, когда чувствительность превращается в наблюдение, а не в перегрузку.",
+                    ],
+                    "evidence_ids": ["moon_trine_mercury", "sun_virgo_house_9"],
+                    "covered_pattern_ids": ["development_pattern"],
+                }
+            )
+        if schema_name == "HouseScenariosSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "house_scenarios",
+                    "title": "House scenarios",
+                    "paragraphs": [
+                        "Вы воспринимаете мир через поиск смысла, глубины и скрытых взаимосвязей.",
+                        "Жизненные сюжеты становятся наиболее плодотворными там, где есть исследование и внутренняя честность.",
+                    ],
+                    "evidence_ids": ["sun_virgo_house_9", "moon_leo_house_8"],
+                    "covered_pattern_ids": ["house_pattern"],
+                }
+            )
+        if schema_name == "AssemblyCheck":
+            return schema.model_validate(
+                {
+                    "duplicate_claim_ids": [],
+                    "missing_required_evidence_ids": [],
+                    "tone_notes": ["Собранный текст держит плотный Self-first тон."],
+                    "needs_retry": False,
+                }
+            )
+        raise AssertionError(f"Unexpected schema for staged provider: {schema_name}")
 
 
 class RecoverableInvalidProvider:
@@ -327,11 +465,13 @@ class TestReportNarrativeService:
             report: Report,
             input_hash: str,
             model_name: str,
+            prompt_version: str,
             force_new: bool = False,
         ) -> ReportNarrative:
             assert report is report_fixture
             assert input_hash
             assert model_name == "mock-self-v1"
+            assert prompt_version in {"self_story_v5", "self_staged_v1"}
             assert force_new is False
             return record
 
@@ -345,6 +485,49 @@ class TestReportNarrativeService:
         assert result.generation_attempts == 1
         assert result.content is not None
         assert result.content["title"] == "Ваш внутренний портрет"
+        assert report_fixture.status == "ready"
+        assert report_fixture.error_message is None
+
+    @pytest.mark.asyncio
+    async def test_self_report_uses_staged_runtime_path_when_deep_synthesis_present(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = ReadyStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert provider.calls == [
+            "NarrativePlan",
+            "IdentitySectionOutput",
+            "EmotionalSectionOutput",
+            "RelationshipSectionOutput",
+            "DevelopmentSectionOutput",
+            "HouseScenariosSectionOutput",
+            "AssemblyCheck",
+        ]
+        assert result.status == "ready"
+        assert result.content is not None
+        assert result.content["title"] == f"Ваш внутренний портрет — {report_fixture.report_data['profile']['name']}"
+        assert result.content["stage_progress"]["ready"] is True
+        assert len(result.content["stage_artifacts"]) == 7
+        assert {artifact["stage_id"] for artifact in result.content["stage_artifacts"]} == {
+            "plan",
+            "identity",
+            "emotional",
+            "relationships",
+            "development",
+            "house_scenarios",
+            "assembly",
+        }
         assert report_fixture.status == "ready"
         assert report_fixture.error_message is None
 
@@ -515,6 +698,7 @@ class TestReportNarrativeService:
             report=report_fixture,
             input_hash="hash123",
             model_name="mock-self-v1",
+            prompt_version="self_story_v5",
             force_new=True,
         )
 

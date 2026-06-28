@@ -94,9 +94,7 @@ class MockLLMProvider:
                     "evidence_notes": [],
                 }
             ],
-            "calibration_questions": [
-                item.model_dump(mode="json") for item in narrative_input.calibration_questions
-            ],
+            "calibration_questions": [item.model_dump(mode="json") for item in narrative_input.calibration_questions],
             "contradictions": [item.model_dump(mode="json") for item in narrative_input.contradictions],
             "failure_modes": [item.model_dump(mode="json") for item in narrative_input.failure_modes],
             "maturity_levels": narrative_input.maturity_levels.model_dump(mode="json"),

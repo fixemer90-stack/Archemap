@@ -3,7 +3,12 @@ import {
   formatPlanetPlacementRu,
   signNameRu,
 } from "@/lib/astrology/labels";
-import type { GeneratedReportApiResponse } from "@/lib/api/report";
+import type {
+  GeneratedReportApiResponse,
+  NarrativeStageArtifactApiResponse,
+  NarrativeStageId,
+  NarrativeStageProgressApiResponse,
+} from "@/lib/api/report";
 import { confidenceLabel } from "@/lib/report/score-labels";
 
 export interface ReportPlanet {
@@ -240,6 +245,15 @@ export interface MaturityLevelsViewModel {
   high: MaturityBandViewModel;
 }
 
+export interface ReportNarrativeStageSummaryViewModel {
+  total_stages: number;
+  completed_stages: number;
+  ready: boolean;
+  running_stage_label: string | null;
+  failed_stage_label: string | null;
+  completed_stage_labels: string[];
+}
+
 export interface ReportNarrativeViewModel {
   title: string;
   hero: NarrativeHeroViewModel;
@@ -250,6 +264,7 @@ export interface ReportNarrativeViewModel {
   contradictions: ContradictionInsightViewModel[];
   failure_modes: FailureModeViewModel[];
   maturity_levels: MaturityLevelsViewModel | null;
+  stage_summary: ReportNarrativeStageSummaryViewModel | null;
   sections: NarrativeSectionViewModel[];
   career_cta: CareerCTAViewModel | null;
   final_summary: string;
@@ -945,6 +960,50 @@ function normalizeCareerCTA(value: unknown): CareerCTAViewModel | null {
   };
 }
 
+function stageLabel(stageId: NarrativeStageId | null): string | null {
+  switch (stageId) {
+    case "plan":
+      return "План структуры"
+    case "identity":
+      return "Главная формула личности"
+    case "emotional":
+      return "Эмоции и коммуникация"
+    case "relationships":
+      return "Отношения и близость"
+    case "development":
+      return "Развитие и зрелость"
+    case "house_scenarios":
+      return "Жизненные сценарии домов"
+    case "assembly":
+      return "Финальная сборка"
+    default:
+      return stageId ? stageId : null
+  }
+}
+
+function normalizeStageSummary(
+  progress: NarrativeStageProgressApiResponse | null | undefined,
+  artifacts: NarrativeStageArtifactApiResponse[] | undefined,
+): ReportNarrativeStageSummaryViewModel | null {
+  if (!progress) {
+    return null
+  }
+
+  const completedStageLabels = (artifacts ?? [])
+    .filter((artifact) => artifact.status === "ready")
+    .map((artifact) => stageLabel(artifact.stage_id))
+    .filter((label): label is string => Boolean(label))
+
+  return {
+    total_stages: progress.total_stages,
+    completed_stages: progress.completed_stages,
+    ready: progress.ready,
+    running_stage_label: stageLabel(progress.running_stage),
+    failed_stage_label: stageLabel(progress.failed_stage),
+    completed_stage_labels: Array.from(new Set(completedStageLabels)),
+  }
+}
+
 function normalizeNarrative(
   generatedReport: GeneratedReportApiResponse | undefined,
 ): ReportNarrativeViewModel | undefined {
@@ -1001,6 +1060,10 @@ function normalizeNarrative(
   const maturityLevels = normalizeMaturityLevels(
     narrative.maturity_levels ?? content.maturity_levels,
   );
+  const stageSummary = normalizeStageSummary(
+    narrative.stage_progress,
+    narrative.stage_artifacts,
+  );
 
   return {
     title: narrative.title ?? toStringValue(content.title, "Ваш личный отчёт"),
@@ -1012,6 +1075,7 @@ function normalizeNarrative(
     contradictions,
     failure_modes: failureModes,
     maturity_levels: maturityLevels,
+    stage_summary: stageSummary,
     sections,
     career_cta: normalizeCareerCTA(narrative.career_cta),
     final_summary: finalSummary,

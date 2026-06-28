@@ -86,7 +86,12 @@ def make_report(*, user_id: UUID, status: str = "ready", product: str = "self") 
     return report
 
 
-def make_narrative(report: Report, *, status: str = "ready") -> ReportNarrative:
+def make_narrative(
+    report: Report,
+    *,
+    status: str = "ready",
+    content_override: dict[str, object] | None = None,
+) -> ReportNarrative:
     narrative = ReportNarrative(
         id=uuid4(),
         report_id=report.id,
@@ -95,7 +100,8 @@ def make_narrative(report: Report, *, status: str = "ready") -> ReportNarrative:
         model_provider="mock",
         model_name="mock-self-v1",
         status=status,
-        content={
+        content=content_override
+        or {
             "title": "Ваш внутренний портрет",
             "hero": {
                 "heading": "Как вас воспринимают",
@@ -203,6 +209,85 @@ class TestReportNarrativeApi:
         assert payload["narrative"]["model_name"] == "mock-self-v1"
         assert payload["narrative"]["sections"][0]["slug"] == "strengths"
         assert payload["narrative"]["career_cta"]["label"] == "Развернуть карьерный сценарий"
+        assert payload["narrative"]["stage_progress"] is None
+        assert payload["narrative"]["stage_artifacts"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_report_returns_staged_runtime_metadata_when_present(
+        self,
+        client: AsyncClient,
+        current_user_id: UUID,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        report = make_report(user_id=current_user_id, status="ready")
+        narrative = make_narrative(
+            report,
+            content_override={
+                "title": "Ваш внутренний портрет",
+                "hero": {
+                    "heading": "Как вас воспринимают",
+                    "body": "Тёплый и собранный образ.",
+                    "evidence_notes": [{"fact_ids": ["sun_virgo_house_9"], "note": "Солнце в Деве."}],
+                },
+                "sections": [
+                    {
+                        "slug": "strengths",
+                        "heading": "Сильные стороны",
+                        "body": "Вы умеете наводить порядок в сложных темах.",
+                        "evidence_notes": [{"fact_ids": ["sun_virgo_house_9"], "note": "Солнце в 9 доме."}],
+                    }
+                ],
+                "career_cta": {
+                    "label": "Развернуть карьерный сценарий",
+                    "reason": "Для глубокой карьеры нужен отдельный отчёт.",
+                },
+                "stage_progress": {
+                    "total_stages": 7,
+                    "completed_stages": 7,
+                    "running_stage": None,
+                    "failed_stage": None,
+                    "ready": True,
+                },
+                "stage_artifacts": [
+                    {
+                        "stage_id": "plan",
+                        "status": "ready",
+                        "prompt_version": "self_plan_v1",
+                        "model_name": "mock-self-v1",
+                        "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "attempt_count": 1,
+                        "error_message": None,
+                        "artifact": {"sections": ["strengths"]},
+                    },
+                    {
+                        "stage_id": "assembly",
+                        "status": "ready",
+                        "prompt_version": "self_assembly_v1",
+                        "model_name": "mock-self-v1",
+                        "input_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "attempt_count": 1,
+                        "error_message": None,
+                        "artifact": {"needs_retry": False},
+                    },
+                ],
+            },
+        )
+
+        monkeypatch.setattr(ReportService, "get_report", AsyncMock(return_value=report))
+        monkeypatch.setattr(
+            "app.modules.reports.router.get_latest_narrative_for_report",
+            AsyncMock(return_value=narrative),
+        )
+
+        response = await client.get(f"/api/v1/reports/{report.id}")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["narrative"]["stage_progress"]["ready"] is True
+        assert payload["narrative"]["stage_progress"]["completed_stages"] == 7
+        assert len(payload["narrative"]["stage_artifacts"]) == 2
+        assert payload["narrative"]["stage_artifacts"][0]["stage_id"] == "plan"
+        assert payload["narrative"]["stage_artifacts"][1]["stage_id"] == "assembly"
 
     @pytest.mark.asyncio
     async def test_generate_report_response_can_return_generating_narrative_status(

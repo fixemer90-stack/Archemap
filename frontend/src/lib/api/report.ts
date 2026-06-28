@@ -13,6 +13,35 @@ export type ReportStatus =
   | "narrative_failed"
   | string;
 
+export type NarrativeStageId =
+  | "plan"
+  | "identity"
+  | "emotional"
+  | "relationships"
+  | "development"
+  | "house_scenarios"
+  | "assembly"
+  | string;
+
+export interface NarrativeStageProgressApiResponse {
+  total_stages: number;
+  completed_stages: number;
+  running_stage: NarrativeStageId | null;
+  failed_stage: NarrativeStageId | null;
+  ready: boolean;
+}
+
+export interface NarrativeStageArtifactApiResponse {
+  stage_id: NarrativeStageId;
+  status: string;
+  prompt_version: string;
+  model_name: string;
+  input_hash: string;
+  attempt_count: number;
+  error_message: string | null;
+  artifact: Record<string, unknown> | null;
+}
+
 export interface NarrativeApiResponse {
   id: string;
   report_id: string;
@@ -33,6 +62,8 @@ export interface NarrativeApiResponse {
   sections: Array<Record<string, unknown>>;
   career_cta: Record<string, unknown> | null;
   content: Record<string, unknown> | null;
+  stage_progress: NarrativeStageProgressApiResponse | null;
+  stage_artifacts: NarrativeStageArtifactApiResponse[];
   error_message: string | null;
   generation_started_at: string | null;
   generation_finished_at: string | null;

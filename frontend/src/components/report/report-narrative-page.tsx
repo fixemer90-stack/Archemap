@@ -80,6 +80,51 @@ function GlossaryHelpStrip() {
   );
 }
 
+function StagedPipelineSummary({
+  totalStages,
+  completedStages,
+  completedStageLabels,
+}: {
+  totalStages: number;
+  completedStages: number;
+  completedStageLabels: string[];
+}) {
+  if (totalStages <= 0 || completedStages <= 0) {
+    return null;
+  }
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          Этот текст собран поэтапно
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            {completedStages}/{totalStages}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <p>
+          Сначала система собирает план и смысловые блоки, затем проходит
+          финальную сборку без показа технических промежуточных артефактов.
+        </p>
+        {completedStageLabels.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {completedStageLabels.map((label) => (
+              <span
+                key={label}
+                className="rounded-full border border-border bg-background px-2 py-1 text-xs text-foreground"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ReportNarrativePage({
   data,
   isDownloadingPdf,
@@ -103,6 +148,13 @@ export function ReportNarrativePage({
     <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6">
       <NarrativeHero hero={narrative.hero} />
       <GlossaryHelpStrip />
+      {narrative.stage_summary?.ready && (
+        <StagedPipelineSummary
+          completedStageLabels={narrative.stage_summary.completed_stage_labels}
+          completedStages={narrative.stage_summary.completed_stages}
+          totalStages={narrative.stage_summary.total_stages}
+        />
+      )}
       <HouseScenariosSection scenarios={narrative.house_scenarios} />
       <CalibrationQuestionsSection
         questions={narrative.calibration_questions}

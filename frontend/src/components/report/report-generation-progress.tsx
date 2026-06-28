@@ -1,20 +1,47 @@
 import { Clock3, RefreshCw, Sparkles, TimerReset } from "lucide-react";
+import type { NarrativeStageProgressApiResponse } from "@/lib/api/report";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ReportGenerationProgressProps {
   timedOut: boolean;
   elapsedSeconds: number;
+  stageProgress?: NarrativeStageProgressApiResponse | null;
   onRefresh: () => void;
   onRetry: () => void;
+}
+
+function stageStatusLabel(
+  stageId: NarrativeStageProgressApiResponse["running_stage"],
+): string | null {
+  switch (stageId) {
+    case "plan":
+      return "Сейчас собираем план структуры";
+    case "identity":
+      return "Сейчас пишем главную формулу личности";
+    case "emotional":
+      return "Сейчас собираем блок эмоций и коммуникации";
+    case "relationships":
+      return "Сейчас собираем блок отношений и близости";
+    case "development":
+      return "Сейчас собираем блок развития и зрелости";
+    case "house_scenarios":
+      return "Сейчас собираем жизненные сценарии домов";
+    case "assembly":
+      return "Сейчас идёт финальная сборка текста";
+    default:
+      return null;
+  }
 }
 
 export function ReportGenerationProgress({
   timedOut,
   elapsedSeconds,
+  stageProgress,
   onRefresh,
   onRetry,
 }: ReportGenerationProgressProps) {
+  const runningStageLabel = stageStatusLabel(stageProgress?.running_stage ?? null);
   return (
     <Card className="mx-auto max-w-3xl border-[#5B3FD6]/30 bg-[rgba(23,20,42,0.92)]">
       <CardHeader className="space-y-4 text-center">
@@ -44,6 +71,14 @@ export function ReportGenerationProgress({
             <Clock3 className="h-4 w-4" />
             <span>Прошло около {elapsedSeconds} сек.</span>
           </div>
+          {runningStageLabel && (
+            <p className="mb-3 text-sm text-[#D8DCE8]">{runningStageLabel}.</p>
+          )}
+          {stageProgress && (
+            <p className="mb-3 text-xs text-[#D8DCE8]">
+              Готово этапов: {stageProgress.completed_stages}/{stageProgress.total_stages}
+            </p>
+          )}
           <div className="h-2 overflow-hidden rounded-full bg-[#F6F1E8]/10">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#5B3FD6] via-[#8DA8FF] to-[#D8B45A] transition-all"

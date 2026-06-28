@@ -596,6 +596,7 @@ export default function ReportPage() {
           elapsedSeconds={elapsedSeconds}
           onRefresh={refreshCurrentReport}
           onRetry={retryNarrativeGeneration}
+          stageProgress={currentReport?.narrative?.stage_progress ?? null}
           timedOut={isTimedOut}
         />
       )}

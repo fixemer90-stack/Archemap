@@ -77,6 +77,45 @@ def make_report_data() -> dict[str, object]:
 
 def test_render_report_html_prefers_saved_narrative_before_technical_appendix() -> None:
     narrative = make_self_narrative_payload()
+    narrative["stage_progress"] = {
+        "total_stages": 7,
+        "completed_stages": 7,
+        "running_stage": None,
+        "failed_stage": None,
+        "ready": True,
+    }
+    narrative["stage_artifacts"] = [
+        {
+            "stage_id": "plan",
+            "status": "ready",
+            "prompt_version": "self_plan_v1",
+            "model_name": "mock-self-v1",
+            "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "attempt_count": 1,
+            "error_message": None,
+            "artifact": {"sections": ["strengths"]},
+        },
+        {
+            "stage_id": "identity",
+            "status": "ready",
+            "prompt_version": "self_section_identity_v1",
+            "model_name": "mock-self-v1",
+            "input_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "attempt_count": 1,
+            "error_message": None,
+            "artifact": {"summary": "identity"},
+        },
+        {
+            "stage_id": "assembly",
+            "status": "ready",
+            "prompt_version": "self_assembly_v1",
+            "model_name": "mock-self-v1",
+            "input_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "attempt_count": 1,
+            "error_message": None,
+            "artifact": {"needs_retry": False},
+        },
+    ]
 
     html = render_report_html(
         make_report_data(),
@@ -87,6 +126,12 @@ def test_render_report_html_prefers_saved_narrative_before_technical_appendix() 
     )
 
     assert "Главное о вас" in html
+    assert "Этот текст собран поэтапно" in html
+    assert "7/7" in html
+    assert "План структуры" in html
+    assert "Главная формула личности" in html
+    assert "Финальная сборка" in html
+    assert "без показа технических промежуточных артефактов" in html
     assert "Открыть Career" in html
     assert "Финальное резюме" in html
     assert "Жизненные сценарии домов" in html

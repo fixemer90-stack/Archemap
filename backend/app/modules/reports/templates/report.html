@@ -197,6 +197,23 @@
       {% endif %}
     </div>
 
+    {% if narrative_stage_summary %}
+    <div class="card">
+      <h2>Этот текст собран поэтапно</h2>
+      <p class="muted">
+        Сначала система собирает план и смысловые блоки, затем проходит финальную сборку без показа технических промежуточных артефактов.
+      </p>
+      <p><strong>Готово этапов:</strong> {{ narrative_stage_summary.completed_stages }}/{{ narrative_stage_summary.total_stages }}</p>
+      {% if narrative_stage_summary.completed_stage_labels %}
+      <ul>
+        {% for label in narrative_stage_summary.completed_stage_labels %}
+        <li>{{ label }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if narrative.house_scenarios %}
     <div class="card">
       <h2>Жизненные сценарии домов</h2>

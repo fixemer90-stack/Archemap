@@ -180,6 +180,19 @@ for (const marker of narrativeOrder) {
 }
 
 for (const marker of [
+  "stage_summary",
+  "StagedPipelineSummary",
+  "Этот текст собран поэтапно",
+  "completed_stage_labels",
+  "completed_stages",
+  "total_stages",
+]) {
+  if (!adapter.includes(marker) && !reportNarrativeSource.includes(marker)) {
+    throw new Error(`Missing staged narrative marker: ${marker}`);
+  }
+}
+
+for (const marker of [
   "allowedSelfSectionIds",
   "unknownSectionIds",
   "console.warn",

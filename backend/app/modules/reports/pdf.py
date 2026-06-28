@@ -71,6 +71,49 @@ def _fallback_warning(narrative_status: str | None, narrative_error: str | None)
     return None
 
 
+def _stage_label(stage_id: str | None) -> str | None:
+    labels = {
+        "plan": "План структуры",
+        "identity": "Главная формула личности",
+        "emotional": "Эмоции и коммуникация",
+        "relationships": "Отношения и близость",
+        "development": "Развитие и зрелость",
+        "house_scenarios": "Жизненные сценарии домов",
+        "assembly": "Финальная сборка",
+    }
+    if not stage_id:
+        return None
+    return labels.get(stage_id, stage_id)
+
+
+def _narrative_stage_summary(
+    narrative_content: dict[str, Any] | None,
+    narrative_status: str | None,
+) -> dict[str, Any] | None:
+    if not narrative_content or narrative_status != "ready":
+        return None
+
+    progress = narrative_content.get("stage_progress")
+    if not isinstance(progress, dict) or not progress.get("ready"):
+        return None
+
+    artifacts = narrative_content.get("stage_artifacts")
+    ready_artifacts = artifacts if isinstance(artifacts, list) else []
+    completed_stage_labels = []
+    for artifact in ready_artifacts:
+        if not isinstance(artifact, dict) or artifact.get("status") != "ready":
+            continue
+        label = _stage_label(artifact.get("stage_id"))
+        if label and label not in completed_stage_labels:
+            completed_stage_labels.append(label)
+
+    return {
+        "total_stages": progress.get("total_stages", 0),
+        "completed_stages": progress.get("completed_stages", 0),
+        "completed_stage_labels": completed_stage_labels,
+    }
+
+
 def render_report_html(
     report_data: dict[str, Any],
     profile_name: str = "",
@@ -87,6 +130,10 @@ def render_report_html(
     template = env.get_template("report.html")
 
     has_ready_narrative = bool(narrative_content) and narrative_status == "ready"
+    narrative_stage_summary = _narrative_stage_summary(
+        narrative_content,
+        narrative_status,
+    )
     html = template.render(
         report=report_data,
         technical_report=report_data,
@@ -99,6 +146,7 @@ def render_report_html(
         quality_warning=report_data.get("quality_warning"),
         provenance=report_data.get("provenance", {}),
         narrative=narrative_content if has_ready_narrative else None,
+        narrative_stage_summary=narrative_stage_summary,
         narrative_status=narrative_status,
         narrative_error=narrative_error,
         fallback_warning=_fallback_warning(narrative_status, narrative_error),

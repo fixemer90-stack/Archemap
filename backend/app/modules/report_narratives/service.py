@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -27,7 +30,16 @@ from app.modules.report_narratives.input_builder import build_narrative_input
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.postprocess import harden_self_narrative
 from app.modules.report_narratives.prompts import SELF_STORY_PROMPT_VERSION, build_self_story_prompt
-from app.modules.report_narratives.schemas import NarrativeInput, SelfNarrative
+from app.modules.report_narratives.schemas import (
+    AssemblyCheck,
+    DeepNatalSynthesis,
+    NarrativeInput,
+    NarrativePlan,
+    NarrativeStageArtifact,
+    NarrativeStageId,
+    NarrativeStageProgress,
+    SelfNarrative,
+)
 from app.modules.report_narratives.validators import (
     choose_narrative_recovery_action,
     validate_self_narrative,
@@ -514,6 +526,178 @@ async def find_cached_narrative(
         )
     )
     return result.scalar_one_or_none()
+
+
+_STAGE_PROMPT_VERSIONS: dict[NarrativeStageId, str] = {
+    "plan": "self_plan_v1",
+    "identity": "self_section_identity_v1",
+    "emotional": "self_section_emotional_v1",
+    "relationships": "self_section_relationships_v1",
+    "development": "self_section_development_v1",
+    "house_scenarios": "self_section_house_scenarios_v1",
+    "assembly": "self_assemble_v1",
+}
+
+
+def _stable_hash(payload: dict[str, Any]) -> str:
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def compute_stage_input_hashes(
+    synthesis: DeepNatalSynthesis,
+    plan: NarrativePlan,
+) -> dict[NarrativeStageId, str]:
+    synthesis_payload = synthesis.model_dump(mode="json")
+    hashes: dict[NarrativeStageId, str] = {
+        "plan": _stable_hash({"DeepNatalSynthesis": synthesis_payload}),
+    }
+    section_map = {section.section_id: section for section in plan.sections}
+    if "identity" in section_map:
+        hashes["identity"] = _stable_hash(
+            {
+                "planet_roles": synthesis_payload["planet_roles"],
+                "house_axis_patterns": synthesis_payload["house_axis_patterns"],
+                "chart_dynamics": synthesis_payload["chart_dynamics"],
+                "plan_section": section_map["identity"].model_dump(mode="json"),
+            }
+        )
+    if "emotional" in section_map:
+        hashes["emotional"] = _stable_hash(
+            {
+                "chart_dynamics": synthesis_payload["chart_dynamics"],
+                "contradictions": synthesis_payload["contradictions"],
+                "maturity_levels": synthesis_payload["maturity_levels"],
+                "calibration_hypotheses": synthesis_payload["calibration_hypotheses"],
+                "plan_section": section_map["emotional"].model_dump(mode="json"),
+            }
+        )
+    if "relationships" in section_map:
+        hashes["relationships"] = _stable_hash(
+            {
+                "aspect_patterns": synthesis_payload["aspect_patterns"],
+                "chart_dynamics": synthesis_payload["chart_dynamics"],
+                "contradictions": synthesis_payload["contradictions"],
+                "plan_section": section_map["relationships"].model_dump(mode="json"),
+            }
+        )
+    if "development" in section_map:
+        hashes["development"] = _stable_hash(
+            {
+                "chart_dynamics": synthesis_payload["chart_dynamics"],
+                "contradictions": synthesis_payload["contradictions"],
+                "maturity_levels": synthesis_payload["maturity_levels"],
+                "calibration_hypotheses": synthesis_payload["calibration_hypotheses"],
+                "plan_section": section_map["development"].model_dump(mode="json"),
+            }
+        )
+    if "house_scenarios" in section_map:
+        hashes["house_scenarios"] = _stable_hash(
+            {
+                "house_axis_patterns": synthesis_payload["house_axis_patterns"],
+                "planet_roles": synthesis_payload["planet_roles"],
+                "plan_section": section_map["house_scenarios"].model_dump(mode="json"),
+            }
+        )
+    hashes["assembly"] = _stable_hash(
+        {
+            "prompt_version": plan.prompt_version,
+            "sections": [section.model_dump(mode="json") for section in plan.sections],
+            "assembly_notes": plan.assembly_notes,
+        }
+    )
+    return hashes
+
+
+def reuse_cached_stage_artifacts(
+    *,
+    existing_artifacts: dict[str, dict[str, Any]] | dict[str, NarrativeStageArtifact],
+    stage_input_hashes: dict[NarrativeStageId, str],
+    model_name: str,
+) -> dict[NarrativeStageId, NarrativeStageArtifact]:
+    artifacts: dict[NarrativeStageId, NarrativeStageArtifact] = {}
+    for stage_id, input_hash in stage_input_hashes.items():
+        raw_existing = existing_artifacts.get(stage_id)
+        existing = (
+            raw_existing
+            if isinstance(raw_existing, NarrativeStageArtifact)
+            else NarrativeStageArtifact.model_validate(raw_existing)
+            if raw_existing is not None
+            else None
+        )
+        if (
+            existing is not None
+            and existing.model_name == model_name
+            and existing.input_hash == input_hash
+            and existing.status == "ready"
+        ):
+            artifacts[stage_id] = existing
+            continue
+
+        attempt_count = existing.attempt_count if existing is not None else 0
+        artifacts[stage_id] = NarrativeStageArtifact(
+            stage_id=stage_id,
+            status="pending",
+            prompt_version=_STAGE_PROMPT_VERSIONS[stage_id],
+            model_name=model_name,
+            input_hash=input_hash,
+            attempt_count=attempt_count,
+            error_message=None,
+            artifact=existing.artifact if existing is not None and existing.status == "ready" else None,
+        )
+    return artifacts
+
+
+def get_runnable_stages(artifacts: dict[NarrativeStageId, NarrativeStageArtifact]) -> list[NarrativeStageId]:
+    plan_artifact = artifacts.get("plan")
+    if plan_artifact is None or plan_artifact.status != "ready":
+        return ["plan"] if plan_artifact is None or plan_artifact.status == "pending" else []
+
+    section_stage_ids: list[NarrativeStageId] = [
+        stage_id
+        for stage_id in (
+            "identity",
+            "emotional",
+            "relationships",
+            "development",
+            "house_scenarios",
+        )
+        if stage_id in artifacts
+    ]
+    runnable_sections = [stage_id for stage_id in section_stage_ids if artifacts[stage_id].status == "pending"]
+    if runnable_sections:
+        return runnable_sections
+
+    if section_stage_ids and all(artifacts[stage_id].status == "ready" for stage_id in section_stage_ids):
+        assembly_artifact = artifacts.get("assembly")
+        if assembly_artifact is not None and assembly_artifact.status == "pending":
+            return ["assembly"]
+    return []
+
+
+def build_stage_progress_snapshot(
+    artifacts: dict[NarrativeStageId, NarrativeStageArtifact],
+    *,
+    final_check: AssemblyCheck | None,
+) -> NarrativeStageProgress:
+    ordered = [artifacts[key] for key in sorted(artifacts)]
+    completed = sum(1 for artifact in ordered if artifact.status == "ready")
+    current: NarrativeStageId | None = next(
+        (artifact.stage_id for artifact in ordered if artifact.status == "running"), None
+    )
+    ready = (
+        "assembly" in artifacts
+        and artifacts["assembly"].status == "ready"
+        and final_check is not None
+        and not final_check.needs_retry
+    )
+    return NarrativeStageProgress(
+        total_stages=len(ordered),
+        completed_stages=completed,
+        current_stage=current,
+        ready=ready,
+        stages=ordered,
+    )
 
 
 def _duration_ms(started_at: float) -> int:

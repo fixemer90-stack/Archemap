@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -403,6 +403,35 @@ class AssemblyCheck(BaseModel):
     missing_required_evidence_ids: list[str] = Field(default_factory=list)
     tone_notes: list[str] = Field(default_factory=list)
     needs_retry: bool = False
+
+
+NarrativeStageId = Literal[
+    "plan", "identity", "emotional", "relationships", "development", "house_scenarios", "assembly"
+]
+NarrativeStageStatus = Literal["pending", "running", "ready", "failed"]
+
+
+class NarrativeStageArtifact(BaseModel):
+    """Persistable metadata for one staged generation artifact."""
+
+    stage_id: NarrativeStageId
+    status: NarrativeStageStatus
+    prompt_version: str = Field(..., min_length=1, max_length=100)
+    model_name: str = Field(..., min_length=1, max_length=100)
+    input_hash: str = Field(..., min_length=64, max_length=64)
+    attempt_count: int = Field(0, ge=0)
+    error_message: str | None = Field(default=None, max_length=2000)
+    artifact: dict[str, Any] | None = None
+
+
+class NarrativeStageProgress(BaseModel):
+    """High-level progress snapshot for staged narrative generation."""
+
+    total_stages: int = Field(..., ge=1)
+    completed_stages: int = Field(..., ge=0)
+    current_stage: NarrativeStageId | None = None
+    ready: bool = False
+    stages: list[NarrativeStageArtifact] = Field(default_factory=list)
 
 
 class SelfNarrative(BaseModel):

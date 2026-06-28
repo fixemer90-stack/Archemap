@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.modules.report_narratives.models import ReportNarrative
+from app.modules.report_narratives.schemas import NarrativeStageArtifact, NarrativeStageProgress
 from app.modules.reports.models import Report
 
 
@@ -103,6 +104,8 @@ class NarrativeResponse(BaseModel):
     sections: list[dict[str, Any]] = Field(default_factory=list)
     career_cta: dict[str, Any] | None = None
     content: dict[str, Any] | None = None
+    stage_progress: NarrativeStageProgress | None = None
+    stage_artifacts: list[NarrativeStageArtifact] = Field(default_factory=list)
     error_message: str | None = None
     generation_started_at: datetime | None = None
     generation_finished_at: datetime | None = None
@@ -168,6 +171,19 @@ class ReportVersionListResponse(BaseModel):
 def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
     """Serialize a persisted narrative row into API response shape."""
     content = narrative.content or {}
+    staged_progress_payload = content.get("stage_progress") if isinstance(content, dict) else None
+    raw_stage_artifacts_payload = content.get("stage_artifacts") if isinstance(content, dict) else []
+    staged_artifacts_payload = raw_stage_artifacts_payload if isinstance(raw_stage_artifacts_payload, list) else []
+    stage_progress = (
+        NarrativeStageProgress.model_validate(staged_progress_payload)
+        if isinstance(staged_progress_payload, dict)
+        else None
+    )
+    stage_artifacts = [
+        NarrativeStageArtifact.model_validate(item)
+        for item in staged_artifacts_payload
+        if isinstance(item, dict)
+    ]
     return NarrativeResponse(
         id=narrative.id,
         report_id=narrative.report_id,
@@ -188,6 +204,8 @@ def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
         sections=content.get("sections", []),
         career_cta=content.get("career_cta"),
         content=content or None,
+        stage_progress=stage_progress,
+        stage_artifacts=stage_artifacts,
         error_message=narrative.error_message,
         generation_started_at=narrative.generation_started_at,
         generation_finished_at=narrative.generation_finished_at,

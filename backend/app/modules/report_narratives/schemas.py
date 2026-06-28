@@ -344,6 +344,67 @@ class CareerCTA(BaseModel):
     button_label: str = Field(..., min_length=1, max_length=100)
 
 
+class NarrativePlanSection(BaseModel):
+    """One planned stage section with bounded focus and evidence scope."""
+
+    section_id: Literal[
+        "identity", "emotional", "relationships", "development", "house_scenarios"
+    ]
+    title: str = Field(..., min_length=1, max_length=200)
+    required_evidence_ids: list[str] = Field(..., min_length=1)
+    focus: str = Field(..., min_length=1, max_length=1000)
+
+
+class NarrativePlan(BaseModel):
+    """Shared plan produced before parallel section generation."""
+
+    prompt_version: str = Field(..., min_length=1, max_length=100)
+    sections: list[NarrativePlanSection] = Field(..., min_length=1)
+    global_guardrails: list[str] = Field(..., min_length=1)
+    assembly_notes: str = Field(..., min_length=1, max_length=1500)
+
+
+class StagedSectionOutput(BaseModel):
+    """Common contract for one staged section output."""
+
+    section_id: Literal[
+        "identity", "emotional", "relationships", "development", "house_scenarios"
+    ]
+    title: str = Field(..., min_length=1, max_length=200)
+    paragraphs: list[str] = Field(..., min_length=1)
+    evidence_ids: list[str] = Field(..., min_length=1)
+    covered_pattern_ids: list[str] = Field(..., min_length=1)
+
+
+class IdentitySectionOutput(StagedSectionOutput):
+    section_id: Literal["identity"]
+
+
+class EmotionalSectionOutput(StagedSectionOutput):
+    section_id: Literal["emotional"]
+
+
+class RelationshipSectionOutput(StagedSectionOutput):
+    section_id: Literal["relationships"]
+
+
+class DevelopmentSectionOutput(StagedSectionOutput):
+    section_id: Literal["development"]
+
+
+class HouseScenariosSectionOutput(StagedSectionOutput):
+    section_id: Literal["house_scenarios"]
+
+
+class AssemblyCheck(BaseModel):
+    """Consistency signal for final staged assembly."""
+
+    duplicate_claim_ids: list[str] = Field(default_factory=list)
+    missing_required_evidence_ids: list[str] = Field(default_factory=list)
+    tone_notes: list[str] = Field(default_factory=list)
+    needs_retry: bool = False
+
+
 class SelfNarrative(BaseModel):
     """Structured JSON output generated for a Self report."""
 

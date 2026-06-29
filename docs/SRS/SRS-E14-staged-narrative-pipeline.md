@@ -1,9 +1,9 @@
 # SRS-E14 — Staged Narrative Pipeline
 
 > Эпик: E14 Staged Narrative Pipeline
-> Статус: 🟡 В процессе
+> Статус: ✅ Готово
 > Дата: 2026-06-27
-> Последняя синхронизация с кодом: 2026-06-28
+> Последняя синхронизация с кодом: 2026-06-29
 
 ## 1. Введение
 
@@ -34,21 +34,23 @@ Single-shot LLM generation создаёт приемлемый structured report
 
 ### 2.3 Реальный статус внедрения
 
-Уже реализовано в backend:
+Уже реализовано и проверено live/runtime:
 
 - deterministic `DeepNatalSynthesis`;
 - aspect ranking / pattern clustering;
 - chart dynamics / contradictions / maturity / calibration synthesis;
 - staged schemas и prompt family;
-- baseline helpers для stage artifacts, cache/retry и progress snapshot;
-- baseline deterministic assembler и assembled quality gates.
+- stage artifacts, cache/retry и progress snapshots;
+- deterministic assembler и assembled quality gates;
+- staged runtime path for providers with `supports_staged_pipeline`;
+- API progress visibility during `generating_narrative`;
+- successful real-provider smoke `generate -> progress -> ready -> pdf`.
 
-Ещё не реализовано end-to-end:
+E14 закрыт как shipped staged Self pipeline.
 
-- staged generation flow в реальном runtime вместо single-shot narrative path;
-- worker stage lifecycle и полноценные runtime logs;
-- frontend/PDF integration и user-visible progress flow;
-- live staged runtime smoke.
+Deferred, but non-blocking for epic closure:
+
+- section stages в текущем runtime выполняются последовательно после `NarrativePlan`; future parallelization remains a performance optimization rather than a functional blocker.
 
 ## 3. Функциональные требования
 
@@ -80,43 +82,43 @@ Single-shot LLM generation создаёт приемлемый structured report
 
 Система должна выполнять отдельный `NarrativePlan` stage перед section generation.
 
-Статус: contract/prompt level реализовано, runtime wiring pending.
+Статус: реализовано и доказано live runtime.
 
 ### FR-6. Parallel section generation
 
 Система должна поддерживать параллельную генерацию независимых секций после готового plan stage.
 
-Статус: gating/helpers реализованы, runtime wiring pending.
+Статус: deferred. В shipped runtime секции выполняются последовательно; это performance follow-up, не blocker для E14.
 
 ### FR-7. Stage storage and cache
 
 Система должна сохранять stage artifacts with prompt_version, model, input_hash, status, attempts and errors.
 
-Статус: baseline metadata contract реализован; отдельная persisted table всё ещё open decision.
+Статус: реализовано; отдельная persisted table всё ещё open decision.
 
 ### FR-8. Stage retry
 
 Система должна поддерживать retry failed/invalid stages без удаления ready stages.
 
-Статус: helper-level реализовано, runtime wiring pending.
+Статус: реализовано в runtime.
 
 ### FR-9. Assembly and final validation
 
 Система должна собирать final narrative only from valid stages and reject duplicate, contradictory, ungrounded or horoscope-generic prose.
 
-Статус: baseline assembler + generic/fatalist/repetition checks реализованы; full contradiction/tone consistency enforcement pending.
+Статус: реализовано в shipped deterministic assembler + validators; fresh live/runtime smoke green.
 
 ### FR-10. API progress
 
 `GET /reports/{id}` должен отдавать safe progress metadata while report is generating.
 
-Статус: schema-level baseline реализован, router/frontend integration pending.
+Статус: реализовано в runtime/API.
 
 ### FR-11. Web/PDF parity
 
 Web and PDF must render the same assembled staged narrative content.
 
-Статус: pending.
+Статус: реализовано; contract tests green и live smoke reaches PDF `200`.
 
 ## 4. Нефункциональные требования
 
@@ -170,7 +172,7 @@ ReportService
   → staged plan/section/assembly contracts
   → stage artifact/cache/progress helpers
   → deterministic assembled quality gates
-  → (pending) runtime staged orchestration in worker/service flow
+  → runtime staged orchestration in worker/service flow
   → ReportNarrative ready
 ```
 
@@ -181,7 +183,8 @@ No new public endpoint is required for MVP. Existing report endpoints are extend
 Current reality:
 
 - progress/artifact schemas are present in backend contracts;
-- full runtime exposure through router/frontend remains pending.
+- router and serializer expose runtime staged progress during generation;
+- frontend/PDF integration is live for the shipped staged Self path.
 
 ## 8. Prompt contracts
 
@@ -210,7 +213,7 @@ Frontend should show progress labels but not raw stage JSON. Final report remain
 9. Career CTA.
 10. Technical details collapsed.
 
-Current status: target only, not yet implemented end-to-end for staged pipeline.
+Current status: implemented for the shipped staged pipeline; live runtime smoke reached `ready -> pdf` on real provider.
 
 ## 10. Verification criteria
 
@@ -249,6 +252,12 @@ Runtime:
 - staged assembly slice → `37 passed`
 - `ruff check ...` по затронутым narrative/reports backend файлам → `All checks passed!`
 - `mypy ...` по затронутым narrative/reports backend файлам → `Success: no issues found`
+- `pytest tests/unit/test_report_narratives/test_tasks.py tests/unit/test_report_narratives/test_api.py tests/unit/test_llm/test_provider_capabilities.py -q` → `28 passed`
+- `mypy tests/unit/test_report_narratives/test_tasks.py tests/unit/test_report_narratives/test_api.py tests/unit/test_llm/test_provider_capabilities.py app/modules/report_narratives/service.py app/modules/llm/providers/deepseek.py app/modules/llm/providers/openrouter.py app/modules/llm/providers/mock.py` → `Success: no issues found in 7 source files`
+- `ruff check app/modules/report_narratives/service.py app/modules/llm/providers/deepseek.py app/modules/llm/providers/openrouter.py app/modules/llm/providers/mock.py tests/unit/test_report_narratives/test_tasks.py tests/unit/test_report_narratives/test_api.py tests/unit/test_llm/test_provider_capabilities.py` → `All checks passed!`
+- `pytest tests/unit/test_report_narratives/test_tasks.py -q && mypy app/modules/report_narratives/assembler.py tests/unit/test_report_narratives/test_tasks.py && ruff check app/modules/report_narratives/assembler.py tests/unit/test_report_narratives/test_tasks.py` → `22 passed`, `Success: no issues found in 2 source files`, `All checks passed!`
+- live smoke after backend/worker restart confirms staged runtime end-to-end on real provider: progress is visible during generation, then `report.status=ready`, `narrative.status=ready`
+- same fresh live smoke reaches `POST /reports/{id}/pdf -> 200 application/pdf` and worker logs `used_fallback=False`
 
 ## 12. Зависимости
 

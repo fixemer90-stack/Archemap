@@ -1,8 +1,8 @@
 # E14 — Staged Narrative Pipeline
 
-> Статус: 🟡 В процессе
+> Статус: ✅ Готово
 > Дата подготовки: 2026-06-27
-> Последняя синхронизация с кодом: 2026-06-28
+> Последняя синхронизация с кодом: 2026-06-29
 > Источник: пользовательский фидбек по Self report: “результат всё ещё похож на поверхностный гороскоп”
 > Зависимости: E3 ✅, E4 ✅, E11 ✅, E12 ✅, E13 ✅
 
@@ -81,41 +81,47 @@
 - aspect ranking + pattern clustering;
 - chart dynamics / contradictions / maturity / calibration synthesis;
 - staged schemas и file-backed prompt family;
-- baseline stage artifact / cache / retry / progress helpers;
-- baseline deterministic assembler и anti-generic quality gates.
+- stage artifact / cache / retry / progress helpers;
+- deterministic assembler и anti-generic quality gates;
+- staged provider gating и межсессионная visibility progress snapshots для live polling path;
+- live runtime `generate -> progress -> ready -> pdf` на реальном provider без fallback.
 
-Ещё не закрыто end-to-end:
+E14 закрыт как shipped staged Self pipeline:
 
-- staged pipeline ещё требует live runtime proof на полном `generate -> progress -> ready -> pdf` цикле;
-- нет полного worker/runtime smoke, доказывающего stage-level lifecycle на живом flow;
-- API/frontend/PDF integration уже частично закрыта и верифицирована тестами, но runtime parity ещё не доказана end-to-end.
+- staged runtime активен вместо monolithic single-shot path для supported providers;
+- API отдаёт `narrative`, `narrative_progress` и `narrative_stage_artifacts` уже во время `generating_narrative`;
+- итоговый live smoke доходит до `report.status=ready`, `narrative.status=ready` и `POST /reports/{id}/pdf -> 200`.
+
+Non-blocking deferred follow-up:
+
+- текущий runtime генерирует section stages последовательно внутри общего staged flow; параллельное выполнение после `NarrativePlan` остаётся future optimization, а не blocker для закрытия E14.
 
 ## Stories
 
-| Story | Название                                                       | Статус       | Документ                               |
-| ----- | -------------------------------------------------------------- | ------------ | -------------------------------------- |
-| S01   | DeepNatalSynthesis contract                                    | ✅ Готово    | `S01-deep-natal-synthesis-contract.md` |
-| S02   | Aspect ranking and pattern clustering                          | ✅ Готово    | `S02-aspect-ranking-patterns.md`       |
-| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово    | `S03-chart-dynamics-synthesis.md`      |
-| S04   | Staged LLM schemas and prompt family                           | ✅ Готово    | `S04-staged-llm-contracts-prompts.md`  |
-| S05   | Orchestration, cache, retry and statuses                       | 🟡 В процессе | `S05-orchestration-cache-statuses.md`  |
-| S06   | Section assembly, consistency and anti-horoscope quality gates | 🟡 В процессе | `S06-assembly-quality-gates.md`        |
-| S07   | API/frontend/PDF integration                                   | 🟡 В процессе | `S07-api-frontend-pdf-integration.md`  |
+| Story | Название                                                       | Статус    | Документ                               |
+| ----- | -------------------------------------------------------------- | --------- | -------------------------------------- |
+| S01   | DeepNatalSynthesis contract                                    | ✅ Готово | `S01-deep-natal-synthesis-contract.md` |
+| S02   | Aspect ranking and pattern clustering                          | ✅ Готово | `S02-aspect-ranking-patterns.md`       |
+| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово | `S03-chart-dynamics-synthesis.md`      |
+| S04   | Staged LLM schemas and prompt family                           | ✅ Готово | `S04-staged-llm-contracts-prompts.md`  |
+| S05   | Orchestration, cache, retry and statuses                       | ✅ Готово | `S05-orchestration-cache-statuses.md`  |
+| S06   | Section assembly, consistency and anti-horoscope quality gates | ✅ Готово | `S06-assembly-quality-gates.md`        |
+| S07   | API/frontend/PDF integration                                   | ✅ Готово | `S07-api-frontend-pdf-integration.md`  |
 
 ## Acceptance criteria
 
-- [ ] Self report generation no longer depends on one monolithic LLM call for the complete report.
+- [x] Self report generation no longer depends on one monolithic LLM call for the complete report.
 - [x] `DeepNatalSynthesis` exists as a deterministic, testable contract before any LLM prose stage.
 - [x] Top aspects are ranked by orb, planet importance, aspect type, personal relevance and section relevance.
 - [x] Aspect patterns group related aspects into psychological mechanisms, not isolated aspect blurbs.
 - [x] The report explains central contradictions and compensations using evidence-backed chart dynamics.
-- [ ] Section generation can run in parallel after a shared `NarrativePlan` stage.
+- [ ] Section generation can run in parallel after a shared `NarrativePlan` stage. Deferred: current shipped runtime executes section stages sequentially.
 - [x] Each staged artifact has stable `input_hash`, `prompt_version`, `model`, `status`, error and retry metadata.
 - [x] Failed section generation does not corrupt ready sections and can be retried by stage.
-- [ ] Final assembled report has consistent tone, no duplicate paragraphs and no contradictory claims.
+- [x] Final assembled report has consistent tone, no duplicate paragraphs and no contradictory claims in fresh live/runtime verification.
 - [x] Validators reject unknown evidence refs, unsupported aspect claims, Career leakage and horoscope-generic fallback prose.
-- [x] Web and PDF render the same staged narrative content at serializer/template regression level.
-- [ ] Runtime logs expose stage-level duration, model, failure_kind and recovery_action without logging prompt bodies or API keys.
+- [x] Web and PDF render the same staged narrative content at serializer/template regression level and fresh live smoke reaches PDF `200`.
+- [x] Runtime logs expose stage-level duration, model, failure_kind and recovery_action without logging prompt bodies or API keys.
 
 ## Data contract sketch
 
@@ -200,6 +206,15 @@ register -> verify -> login -> generate Self report -> staged statuses progress 
 - `4ce5175` — `feat(report): add staged assembly quality gates`
 - `fd7dc6c` — `feat(report): add staged summary pdf parity`
 - `252d7dc` — `feat(report): expose staged narrative progress in api`
+
+Свежий runtime slice (2026-06-29):
+
+- `pytest tests/unit/test_report_narratives/test_tasks.py tests/unit/test_report_narratives/test_api.py tests/unit/test_llm/test_provider_capabilities.py -q` → `28 passed`
+- `mypy tests/unit/test_report_narratives/test_tasks.py tests/unit/test_report_narratives/test_api.py tests/unit/test_llm/test_provider_capabilities.py app/modules/report_narratives/service.py app/modules/llm/providers/deepseek.py app/modules/llm/providers/openrouter.py app/modules/llm/providers/mock.py` → `Success: no issues found in 7 source files`
+- `ruff check app/modules/report_narratives/service.py app/modules/llm/providers/deepseek.py app/modules/llm/providers/openrouter.py app/modules/llm/providers/mock.py tests/unit/test_report_narratives/test_tasks.py tests/unit/test_report_narratives/test_api.py tests/unit/test_llm/test_provider_capabilities.py` → `All checks passed!`
+- `pytest tests/unit/test_report_narratives/test_tasks.py -q && mypy app/modules/report_narratives/assembler.py tests/unit/test_report_narratives/test_tasks.py && ruff check app/modules/report_narratives/assembler.py tests/unit/test_report_narratives/test_tasks.py` → `22 passed`, `Success: no issues found in 2 source files`, `All checks passed!`
+- live smoke after backend/worker restart confirms full staged path on real provider: `generate -> polling GET /reports/{id}` shows `narrative_status=generating`, затем `narrative_status=ready`, затем `report.status=ready`
+- same fresh live smoke reaches `POST /reports/{id}/pdf -> 200 application/pdf` with `used_fallback=False` in worker logs.
 
 ## Risks
 

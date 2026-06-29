@@ -228,17 +228,11 @@ async def head_report_pdf(
     return Response(status_code=status.HTTP_200_OK, media_type="application/pdf", headers=headers)
 
 
-@router.get("/{report_id}/pdf")
-async def get_report_pdf(
+async def _render_report_pdf(
     report_id: UUID,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession,
+    current_user: UUID,
 ) -> Response:
-    """Render report PDF on demand from JSON stored in Postgres.
-
-    The persisted source of truth is report.report_data plus the latest narrative
-    JSON row. We intentionally do not depend on pre-generated S3 artifacts here.
-    """
     headers = await _get_report_pdf_headers(report_id, db, current_user)
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
@@ -255,6 +249,26 @@ async def get_report_pdf(
         media_type="application/pdf",
         headers=headers,
     )
+
+
+@router.get("/{report_id}/pdf")
+async def get_report_pdf(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> Response:
+    """Render report PDF on demand from JSON stored in Postgres."""
+    return await _render_report_pdf(report_id, db, current_user)
+
+
+@router.post("/{report_id}/pdf")
+async def post_report_pdf(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> Response:
+    """POST alias for PDF downloads used by the current client flow."""
+    return await _render_report_pdf(report_id, db, current_user)
 
 
 @router.get("/{report_id}/versions", response_model=ReportVersionListResponse)

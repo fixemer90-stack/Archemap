@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -21,9 +22,14 @@ from app.modules.llm.exceptions import (
     LLMProviderUnavailableError,
     LLMTimeoutError,
 )
+from app.modules.report_narratives.assembler import assemble_self_narrative
 from app.modules.report_narratives.fallback import build_deterministic_self_fallback
 from app.modules.report_narratives.models import ReportNarrative
-from app.modules.report_narratives.schemas import NarrativeInput
+from app.modules.report_narratives.schemas import (
+    AssemblyCheck,
+    NarrativeInput,
+    NarrativePlan,
+)
 from app.modules.report_narratives.service import ReportNarrativeService
 from app.modules.report_narratives.tasks import (
     _generate_report_narrative_async,
@@ -32,7 +38,9 @@ from app.modules.report_narratives.tasks import (
     generate_report_narrative_task,
     should_retry_narrative_task_error,
 )
+from app.modules.report_narratives.validators import validate_assembled_self_narrative
 from app.modules.reports.models import Report
+from workers.tasks.reports import generate_report_narrative
 
 StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
 
@@ -271,6 +279,52 @@ class SchemaInvalidProvider:
         )
 
 
+class FailingStagedProvider(ReadyStagedProvider):
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[StructuredSchemaT],
+    ) -> StructuredSchemaT:
+        if schema.__name__ == "EmotionalSectionOutput":
+            raise LLMInvalidResponseError(
+                "LLM provider returned JSON that does not match schema",
+                code="llm_invalid_response",
+            )
+        return await super().generate_structured(
+            prompt=prompt,
+            narrative_input=narrative_input,
+            schema=schema,
+        )
+
+
+class FlakyStagedProvider(ReadyStagedProvider):
+    def __init__(self) -> None:
+        super().__init__()
+        self.identity_calls = 0
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[StructuredSchemaT],
+    ) -> StructuredSchemaT:
+        if schema.__name__ == "IdentitySectionOutput":
+            self.identity_calls += 1
+            if self.identity_calls == 1:
+                raise LLMInvalidResponseError(
+                    "LLM provider returned JSON that does not match schema",
+                    code="llm_invalid_response",
+                )
+        return await super().generate_structured(
+            prompt=prompt,
+            narrative_input=narrative_input,
+            schema=schema,
+        )
+
+
 class TimeoutProvider:
     model_name = "deepseek-v4-pro"
 
@@ -313,6 +367,173 @@ def test_report_narrative_task_runner_reuses_process_event_loop() -> None:
     second = _run_async(get_loop_id())
 
     assert first == second
+
+
+def test_generate_report_narrative_task_has_extended_time_limits_for_staged_runtime() -> None:
+    task_obj: Any = generate_report_narrative
+    assert cast(int, task_obj.soft_time_limit) >= 600
+    assert cast(int, task_obj.time_limit) >= 720
+
+
+def test_assemble_self_narrative_avoids_duplicate_sexuality_when_relationships_has_one_paragraph() -> None:
+    narrative_input = NarrativeInput.model_validate(make_narrative_input_payload())
+    plan = NarrativePlan.model_validate(
+        {
+            "prompt_version": "self_plan_v1",
+            "sections": [
+                {
+                    "section_id": section_id,
+                    "title": section_id,
+                    "required_evidence_ids": ["legacy_plan_fallback"],
+                    "focus": section_id,
+                }
+                for section_id in ["identity", "emotional", "relationships", "development", "house_scenarios"]
+            ],
+            "global_guardrails": ["evidence-backed only"],
+            "assembly_notes": "test",
+        }
+    )
+    stage_outputs = {
+        "identity": {
+            "section_id": "identity",
+            "title": "Identity",
+            "paragraphs": ["Identity paragraph.", "Identity strength paragraph."],
+            "evidence_ids": ["sun_virgo_house_9"],
+            "covered_pattern_ids": ["identity_pattern"],
+        },
+        "emotional": {
+            "section_id": "emotional",
+            "title": "Emotional",
+            "paragraphs": ["Emotional paragraph.", "Emotional vulnerability paragraph."],
+            "evidence_ids": ["moon_trine_mercury"],
+            "covered_pattern_ids": ["emotional_pattern"],
+        },
+        "relationships": {
+            "section_id": "relationships",
+            "title": "Relationships",
+            "paragraphs": ["Single relationships paragraph."],
+            "evidence_ids": ["moon_libra_house_8"],
+            "covered_pattern_ids": ["relationship_pattern"],
+        },
+        "development": {
+            "section_id": "development",
+            "title": "Development",
+            "paragraphs": ["Development paragraph.", "Development summary paragraph."],
+            "evidence_ids": ["sun_virgo_house_9"],
+            "covered_pattern_ids": ["development_pattern"],
+        },
+        "house_scenarios": {
+            "section_id": "house_scenarios",
+            "title": "House scenarios",
+            "paragraphs": ["House paragraph.", "House summary paragraph."],
+            "evidence_ids": ["sun_virgo_house_9"],
+            "covered_pattern_ids": ["house_pattern"],
+        },
+    }
+    final_check = AssemblyCheck.model_validate(
+        {
+            "duplicate_claim_ids": [],
+            "missing_required_evidence_ids": [],
+            "tone_notes": [],
+            "needs_retry": False,
+        }
+    )
+
+    narrative = assemble_self_narrative(
+        narrative_input=narrative_input,
+        plan=plan,
+        stage_outputs=cast(dict[str, object], stage_outputs),
+        final_check=final_check,
+    )
+
+    relationships_body = next(section.body for section in narrative.sections if section.id == "relationships")
+    sexuality_body = next(section.body for section in narrative.sections if section.id == "sexuality")
+    assert relationships_body != sexuality_body
+    errors = validate_assembled_self_narrative(narrative, narrative_input)
+    assert not any(error.code == "duplicate_paragraph" and error.location == "sections[sexuality]" for error in errors)
+
+
+def test_assemble_self_narrative_sanitizes_invalid_identity_stage_output() -> None:
+    narrative_input = NarrativeInput.model_validate(make_narrative_input_payload())
+    plan = NarrativePlan.model_validate(
+        {
+            "prompt_version": "self_plan_v1",
+            "sections": [
+                {
+                    "section_id": section_id,
+                    "title": section_id,
+                    "required_evidence_ids": ["legacy_plan_fallback"],
+                    "focus": section_id,
+                }
+                for section_id in ["identity", "emotional", "relationships", "development", "house_scenarios"]
+            ],
+            "global_guardrails": ["evidence-backed only"],
+            "assembly_notes": "test",
+        }
+    )
+    stage_outputs = {
+        "identity": {
+            "section_id": "identity",
+            "title": "Identity",
+            "paragraphs": [
+                "Identity is built from Sun in Capricorn and Moon in Libra with Mercury direction.",
+            ],
+            "evidence_ids": [
+                "sun_virgo_house_9",
+                "house_axis_house_scenario_sun_12",
+                "chart_dynamic_identity_depth_axis",
+            ],
+            "covered_pattern_ids": ["identity_pattern"],
+        },
+        "emotional": {
+            "section_id": "emotional",
+            "title": "Emotional",
+            "paragraphs": ["Эмоциональный абзац.", "Уязвимость собирается в ясный риск."],
+            "evidence_ids": ["moon_trine_mercury"],
+            "covered_pattern_ids": ["emotional_pattern"],
+        },
+        "relationships": {
+            "section_id": "relationships",
+            "title": "Relationships",
+            "paragraphs": ["Абзац про отношения.", "Абзац про близость."],
+            "evidence_ids": ["mercury_venus_jupiter_leo_8"],
+            "covered_pattern_ids": ["relationship_pattern"],
+        },
+        "development": {
+            "section_id": "development",
+            "title": "Development",
+            "paragraphs": ["Абзац развития.", "Итог развития."],
+            "evidence_ids": ["sun_virgo_house_9"],
+            "covered_pattern_ids": ["development_pattern"],
+        },
+        "house_scenarios": {
+            "section_id": "house_scenarios",
+            "title": "House scenarios",
+            "paragraphs": ["Абзац про жизненные сценарии.", "Итог house scenarios."],
+            "evidence_ids": ["sun_virgo_house_9"],
+            "covered_pattern_ids": ["house_pattern"],
+        },
+    }
+    final_check = AssemblyCheck.model_validate(
+        {
+            "duplicate_claim_ids": [],
+            "missing_required_evidence_ids": [],
+            "tone_notes": [],
+            "needs_retry": False,
+        }
+    )
+
+    narrative = assemble_self_narrative(
+        narrative_input=narrative_input,
+        plan=plan,
+        stage_outputs=cast(dict[str, object], stage_outputs),
+        final_check=final_check,
+    )
+
+    errors = validate_assembled_self_narrative(narrative, narrative_input)
+    assert not any(error.code == "unsupported_domain_term" for error in errors)
+    assert not any(error.code == "unknown_evidence_ref" for error in errors)
+    assert not any(error.code == "duplicate_paragraph" and error.location == "sections[strengths]" for error in errors)
 
 
 @pytest.fixture
@@ -530,6 +751,90 @@ class TestReportNarrativeService:
         }
         assert report_fixture.status == "ready"
         assert report_fixture.error_message is None
+
+    @pytest.mark.asyncio
+    async def test_staged_runtime_persists_progress_snapshots_before_final_ready(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = ReadyStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+        snapshots: list[dict[str, Any] | None] = []
+
+        async def capture_snapshot() -> None:
+            if record.content is None:
+                snapshots.append(None)
+            else:
+                snapshots.append(json.loads(json.dumps(record.content)))
+
+        db.commit.side_effect = capture_snapshot
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "ready"
+        persisted_progress = [snapshot for snapshot in snapshots if snapshot and snapshot.get("stage_progress")]
+        assert persisted_progress
+        assert db.commit.await_count >= 2
+        assert persisted_progress[0]["stage_progress"]["current_stage"] == "plan"
+        assert any(snapshot["stage_progress"]["current_stage"] is not None for snapshot in persisted_progress)
+
+    @pytest.mark.asyncio
+    async def test_staged_runtime_persists_progress_payload_on_failure(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = FailingStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "narrative_failed"
+        assert result.content is not None
+        assert result.content["stage_progress"]["current_stage"] is None
+        assert any(artifact["stage_id"] == "plan" for artifact in result.content["stage_artifacts"])
+        assert any(
+            artifact["stage_id"] == "emotional" and artifact["status"] == "failed"
+            for artifact in result.content["stage_artifacts"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_staged_runtime_retries_invalid_response_once_and_recovers(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = FlakyStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "ready"
+        assert provider.identity_calls == 2
+        assert result.content is not None
+        identity_artifact = next(
+            artifact for artifact in result.content["stage_artifacts"] if artifact["stage_id"] == "identity"
+        )
+        assert identity_artifact["status"] == "ready"
+        assert identity_artifact["attempt_count"] == 2
 
     @pytest.mark.asyncio
     async def test_logs_generation_lifecycle_without_prompt_or_api_key(

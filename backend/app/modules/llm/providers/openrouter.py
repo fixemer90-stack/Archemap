@@ -21,6 +21,8 @@ StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
 class OpenRouterProvider:
     """Minimal OpenRouter provider using the OpenAI-compatible HTTP API."""
 
+    supports_staged_pipeline = True
+
     def __init__(self, *, api_key: str, model: str, timeout_seconds: int, max_retries: int) -> None:
         self._api_key = api_key
         self.model_name = model

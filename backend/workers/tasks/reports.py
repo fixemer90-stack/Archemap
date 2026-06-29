@@ -31,8 +31,8 @@ def generate_pdf(self: Any, report_id: str, user_id: str, profile_name: str = ""
     bind=True,
     max_retries=settings.LLM_MAX_RETRIES,
     default_retry_delay=30,
-    soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS + 120, 180),
-    time_limit=max(settings.LLM_TIMEOUT_SECONDS + 180, 240),
+    soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4, 600),
+    time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720),
 )
 def generate_report_narrative(self: Any, report_id: str, force: bool = False) -> dict[str, Any]:
     """Generate structured narrative for a deterministic report."""

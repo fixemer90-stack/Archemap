@@ -16,6 +16,7 @@ class MockLLMProvider:
     """Return a stable, schema-valid narrative without any network calls."""
 
     model_name = "mock-self-v1"
+    supports_staged_pipeline = True
 
     async def generate_structured(
         self,

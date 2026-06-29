@@ -186,6 +186,87 @@ class TestReportNarrativeApi:
         assert payload["narrative"] is None
 
     @pytest.mark.asyncio
+    async def test_get_report_returns_generating_staged_narrative_progress_for_current_prompt_version(
+        self,
+        client: AsyncClient,
+        current_user_id: UUID,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        report = make_report(user_id=current_user_id, status="generating_narrative")
+        narrative = make_narrative(
+            report,
+            status="generating",
+            content_override={
+                "stage_progress": {
+                    "total_stages": 7,
+                    "completed_stages": 2,
+                    "current_stage": "emotional",
+                    "ready": False,
+                    "stages": [
+                        {
+                            "stage_id": "plan",
+                            "status": "ready",
+                            "prompt_version": "self_plan_v1",
+                            "model_name": "mock-self-v1",
+                            "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            "attempt_count": 1,
+                            "error_message": None,
+                            "artifact": {"summary": "plan"},
+                        },
+                        {
+                            "stage_id": "emotional",
+                            "status": "running",
+                            "prompt_version": "self_section_emotional_v1",
+                            "model_name": "mock-self-v1",
+                            "input_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                            "attempt_count": 1,
+                            "error_message": None,
+                            "artifact": None,
+                        },
+                    ],
+                },
+                "stage_artifacts": [
+                    {
+                        "stage_id": "plan",
+                        "status": "ready",
+                        "prompt_version": "self_plan_v1",
+                        "model_name": "mock-self-v1",
+                        "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "attempt_count": 1,
+                        "error_message": None,
+                        "artifact": {"summary": "plan"},
+                    },
+                    {
+                        "stage_id": "emotional",
+                        "status": "running",
+                        "prompt_version": "self_section_emotional_v1",
+                        "model_name": "mock-self-v1",
+                        "input_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "attempt_count": 1,
+                        "error_message": None,
+                        "artifact": None,
+                    },
+                ],
+            },
+        )
+        narrative.prompt_version = "self_staged_v1"
+
+        monkeypatch.setattr(ReportService, "get_report", AsyncMock(return_value=report))
+        monkeypatch.setattr(
+            "app.modules.reports.router.get_latest_narrative_for_report",
+            AsyncMock(return_value=narrative),
+        )
+
+        response = await client.get(f"/api/v1/reports/{report.id}")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "generating_narrative"
+        assert payload["narrative"]["prompt_version"] == "self_staged_v1"
+        assert payload["narrative_progress"]["current_stage"] == "emotional"
+        assert payload["narrative_stage_artifacts"][1]["stage_id"] == "emotional"
+
+    @pytest.mark.asyncio
     async def test_get_report_returns_ready_narrative_payload(
         self,
         client: AsyncClient,
@@ -244,9 +325,9 @@ class TestReportNarrativeApi:
                 "stage_progress": {
                     "total_stages": 7,
                     "completed_stages": 7,
-                    "running_stage": None,
-                    "failed_stage": None,
+                    "current_stage": None,
                     "ready": True,
+                    "stages": [],
                 },
                 "stage_artifacts": [
                     {

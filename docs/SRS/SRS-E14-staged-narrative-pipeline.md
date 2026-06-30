@@ -50,7 +50,7 @@ E14 закрыт как shipped staged Self pipeline.
 
 Deferred, but non-blocking for epic closure:
 
-- section stages в текущем runtime выполняются последовательно после `NarrativePlan`; future parallelization remains a performance optimization rather than a functional blocker.
+- отдельная persisted table для stage artifacts остаётся необязательным future refactor; shipped runtime принимает JSON-backed `stage_progress` / `stage_artifacts` как достаточный MVP storage contract.
 
 ## 3. Функциональные требования
 
@@ -88,13 +88,13 @@ Deferred, but non-blocking for epic closure:
 
 Система должна поддерживать параллельную генерацию независимых секций после готового plan stage.
 
-Статус: deferred. В shipped runtime секции выполняются последовательно; это performance follow-up, не blocker для E14.
+Статус: реализовано в runtime.
 
 ### FR-7. Stage storage and cache
 
 Система должна сохранять stage artifacts with prompt_version, model, input_hash, status, attempts and errors.
 
-Статус: реализовано; отдельная persisted table всё ещё open decision.
+Статус: реализовано; JSON-backed `narrative.content.stage_progress` / `stage_artifacts` принят как shipped MVP storage contract.
 
 ### FR-8. Stage retry
 
@@ -106,7 +106,7 @@ Deferred, but non-blocking for epic closure:
 
 Система должна собирать final narrative only from valid stages and reject duplicate, contradictory, ungrounded or horoscope-generic prose.
 
-Статус: baseline реализовано в shipped deterministic assembler + validators; duplicate/generic/fatalistic/ungrounded guards и runtime assembly wiring живы, но stronger contradiction/tone-drift enforcement остаётся deferred follow-up.
+Статус: реализовано в shipped deterministic assembler + validators, включая contradiction checks, tone-drift / technical-tone leakage guards, anti-generic gates и runtime assembly wiring.
 
 ### FR-10. API progress
 
@@ -124,7 +124,7 @@ Web and PDF must render the same assembled staged narrative content.
 
 - Reliability: failure in one section must not corrupt other ready stages.
 - Performance: section stages should run in parallel after planning.
-- Observability: target contract expects stage_id, duration_ms, failure_kind and recovery_action in per-stage logs; current shipped runtime still relies mainly on narrative-level logs plus progress snapshots.
+- Observability: logs include per-stage `stage_id`, `duration_ms`, `failure_kind`, `recovery_action`, `model_name` and retry metadata.
 - Safety: no diagnosis, fatalism, medical claims or explicit sexuality.
 - Privacy: no prompt bodies, API keys or raw provider payloads in logs.
 - Testability: deterministic synthesis and validators must be unit-testable without network.

@@ -1,8 +1,8 @@
 # S06 — Assembly, Consistency and Anti-Horoscope Quality Gates
 
-> Статус: 🟡 Частично готово
+> Статус: ✅ Готово
 > Базовый backend commit: `4ce5175`
-> Последняя синхронизация с кодом: 2026-06-29
+> Последняя синхронизация с кодом: 2026-06-30
 
 ## Контекст
 
@@ -28,10 +28,12 @@ Parallel section generation can create repetition, tone drift and contradictions
 
 ## Что ещё осталось
 
-1. Добавить full contradiction checks между central claims секций.
-2. Добавить stronger consistency / tone-drift validation beyond current baseline gates.
-3. При необходимости подключить optional final consistency pass behind feature flag.
-4. При желании вынести richer staged fixtures в отдельный `fixtures/` каталог.
+Blocking quality-gate gaps в рамках S06 больше не осталось.
+
+Optional future follow-up, уже вне рамок этой story:
+
+1. richer staged fixtures в отдельном `fixtures/` каталоге, если тестовые данные разрастутся;
+2. дополнительный consistency pass как чистая optimisation/guardrail tightening, если позже появятся новые failure patterns.
 
 ## Затрагиваемые файлы
 
@@ -45,12 +47,12 @@ Parallel section generation can create repetition, tone drift and contradictions
 
 ## Acceptance criteria
 
-- [ ] Final report cannot pass if sections contradict each other on a central claim.
+- [x] Final report cannot pass if sections contradict each other on a central claim.
 - [x] Final report cannot pass if it contains mostly generic horoscope language.
 - [x] Final report preserves evidence refs from staged outputs.
 - [x] Final report keeps Self narrative-first order.
 - [x] Final report has no obvious repeated paragraphs.
-- [ ] Final report voice consistency is fully enforced beyond current baseline checks.
+- [x] Final report voice consistency is enforced against technical pipeline leakage and informal tone drift in addition to baseline anti-generic checks.
 
 ## Verification
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -318,6 +319,45 @@ class FlakyStagedProvider(ReadyStagedProvider):
                     "LLM provider returned JSON that does not match schema",
                     code="llm_invalid_response",
                 )
+        return await super().generate_structured(
+            prompt=prompt,
+            narrative_input=narrative_input,
+            schema=schema,
+        )
+
+
+class ParallelTrackingProvider(ReadyStagedProvider):
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_flight = 0
+        self.max_in_flight = 0
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[StructuredSchemaT],
+    ) -> StructuredSchemaT:
+        is_section_schema = schema.__name__ in {
+            "IdentitySectionOutput",
+            "EmotionalSectionOutput",
+            "RelationshipSectionOutput",
+            "DevelopmentSectionOutput",
+            "HouseScenariosSectionOutput",
+        }
+        if is_section_schema:
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+            await asyncio.sleep(0.02)
+            try:
+                return await super().generate_structured(
+                    prompt=prompt,
+                    narrative_input=narrative_input,
+                    schema=schema,
+                )
+            finally:
+                self.in_flight -= 1
         return await super().generate_structured(
             prompt=prompt,
             narrative_input=narrative_input,
@@ -726,15 +766,15 @@ class TestReportNarrativeService:
 
         result = await service.generate_for_report(report_fixture.id)
 
-        assert provider.calls == [
-            "NarrativePlan",
+        assert provider.calls[0] == "NarrativePlan"
+        assert provider.calls[-1] == "AssemblyCheck"
+        assert set(provider.calls[1:-1]) == {
             "IdentitySectionOutput",
             "EmotionalSectionOutput",
             "RelationshipSectionOutput",
             "DevelopmentSectionOutput",
             "HouseScenariosSectionOutput",
-            "AssemblyCheck",
-        ]
+        }
         assert result.status == "ready"
         assert result.content is not None
         assert result.content["title"] == f"Ваш внутренний портрет — {report_fixture.report_data['profile']['name']}"
@@ -751,6 +791,26 @@ class TestReportNarrativeService:
         }
         assert report_fixture.status == "ready"
         assert report_fixture.error_message is None
+
+    @pytest.mark.asyncio
+    async def test_staged_runtime_runs_section_generation_in_parallel_after_plan(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = ParallelTrackingProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "ready"
+        assert provider.max_in_flight > 1
 
     @pytest.mark.asyncio
     async def test_staged_runtime_persists_progress_snapshots_before_final_ready(
@@ -835,6 +895,48 @@ class TestReportNarrativeService:
         )
         assert identity_artifact["status"] == "ready"
         assert identity_artifact["attempt_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_staged_runtime_logs_per_stage_metadata_and_retry_recovery(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = FlakyStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+        fake_logger = FakeLogger()
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+        monkeypatch.setattr("app.modules.report_narratives.service.logger", fake_logger, raising=False)
+
+        result = await service.generate_for_report(report_fixture.id)
+
+        assert result.status == "ready"
+        stage_started = [payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_started"]
+        stage_succeeded = [payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_succeeded"]
+        stage_failed = [payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_failed"]
+
+        assert any(payload.get("stage_id") == "plan" for payload in stage_started)
+        assert any(payload.get("stage_id") == "assembly" for payload in stage_succeeded)
+        assert any(
+            payload.get("stage_id") == "identity"
+            and payload.get("failure_kind") == "invalid_response"
+            and payload.get("recovery_action") == "retry"
+            for payload in stage_failed
+        )
+        assert any(
+            payload.get("stage_id") == "identity"
+            and payload.get("recovery_action") == "retry_recovered"
+            and isinstance(payload.get("duration_ms"), int)
+            and cast(int, payload.get("duration_ms")) >= 0
+            for payload in stage_succeeded
+        )
+        assert all("model_name" in payload for payload in stage_started)
+        assert all("prompt" not in payload for payload in stage_started + stage_succeeded + stage_failed)
 
     @pytest.mark.asyncio
     async def test_logs_generation_lifecycle_without_prompt_or_api_key(

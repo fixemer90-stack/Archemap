@@ -1,8 +1,8 @@
 # S05 — Orchestration, Cache, Retry and Statuses
 
-> Статус: 🟡 Частично готово
+> Статус: ✅ Готово
 > Базовый backend commit: `e7528b8`
-> Последняя синхронизация с кодом: 2026-06-29
+> Последняя синхронизация с кодом: 2026-06-30
 
 ## Контекст
 
@@ -26,9 +26,9 @@ Staged generation needs orchestration beyond the current single `generate_report
 
 ## Что ещё осталось
 
-1. Добавить полноценные per-stage structured logs: `stage_id`, `duration`, `failure_kind`, `recovery_action` на каждый этап, а не только narrative-level success/failure logs.
-2. Если parallel section execution остаётся продуктовой целью, реализовать реальный parallel runtime после `NarrativePlan`; сейчас section stages выполняются последовательно.
-3. Зафиксировать окончательное решение по отдельному persisted stage storage vs текущему metadata-in-JSON подходу, если это всё ещё требуется вне MVP.
+Blocking runtime gaps в рамках S05 больше не осталось.
+
+Отдельная persisted table для stage artifacts не требуется для shipped MVP: текущий metadata-in-JSON runtime contract (`narrative.content.stage_progress` / `stage_artifacts`) принят как достаточный baseline. Вынос в отдельное storage layer остаётся только будущим архитектурным упрощением, а не незакрытой частью story.
 
 ## Затрагиваемые файлы
 
@@ -46,9 +46,9 @@ Staged generation needs orchestration beyond the current single `generate_report
 - [x] Stage artifacts have status, prompt_version, model, input_hash, attempt count and error message.
 - [x] Ready cached stages are reused.
 - [x] Failed stage can be retried without deleting ready stages.
-- [x] Section stages start only after a valid `NarrativePlan` stage.
+- [x] Section stages start only after a valid `NarrativePlan` stage and now run in parallel inside the shipped runtime.
 - [x] Top-level `ready` is set only after final assembly validation passes.
-- [ ] Runtime logs still need true per-stage fields (`stage_id`, `duration`, `failure_kind`, `recovery_action`) instead of only narrative-level success/failure logs.
+- [x] Runtime logs include per-stage `stage_id`, `duration`, `failure_kind`, `recovery_action`, `model_name` and retry metadata without prompt bodies.
 
 ## Verification
 

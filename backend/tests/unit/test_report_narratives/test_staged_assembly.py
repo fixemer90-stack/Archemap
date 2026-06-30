@@ -191,3 +191,22 @@ def test_validate_assembled_self_narrative_rejects_missing_mechanism_risk_mature
     errors = validate_assembled_self_narrative(bad, _narrative_input())
 
     assert any(error.code == "missing_mechanism_risk_mature_chain" for error in errors)
+
+
+def test_validate_assembled_self_narrative_rejects_cross_section_contradiction_and_tone_drift() -> None:
+    narrative = assemble_self_narrative(
+        narrative_input=_narrative_input(),
+        plan=_plan(),
+        stage_outputs=_good_stage_outputs(),
+        final_check=AssemblyCheck(),
+    )
+    bad = narrative.model_copy(deep=True)
+    bad.sections[5].body = "В близости вам важна эмоциональная глубина и вовлечённость."
+    bad.sections[6].body = "В близости вам достаточно поверхностного контакта, глубина только мешает."
+    bad.sections[7].body = "Ты можешь просто взять этот JSON schema и пройти stage без паузы."
+
+    errors = validate_assembled_self_narrative(bad, _narrative_input())
+    codes = {error.code for error in errors}
+
+    assert "cross_section_contradiction" in codes
+    assert "tone_drift" in codes

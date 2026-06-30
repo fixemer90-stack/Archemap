@@ -128,7 +128,6 @@ def assemble_self_narrative(
         for part in [
             _compose_main_formula_body(identity.paragraphs, narrative_input),
             _compose_emotional_body(emotional.paragraphs, narrative_input),
-            f"Сборка выполнена по staged plan {plan.prompt_version}.",
         ]
         if part
     )

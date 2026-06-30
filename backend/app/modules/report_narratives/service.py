@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
@@ -351,6 +352,7 @@ class ReportNarrativeService:
                     narrative_input=narrative_input,
                     schema=NarrativePlan,
                     narrative=narrative,
+                    report=report,
                     artifacts=artifacts,
                 ),
             )
@@ -390,7 +392,7 @@ class ReportNarrativeService:
                 ("development", DevelopmentSectionOutput),
                 ("house_scenarios", HouseScenariosSectionOutput),
             ]
-            for stage_id, schema in stage_schemas:
+            for stage_id, _schema in stage_schemas:
                 artifacts[stage_id] = NarrativeStageArtifact(
                     stage_id=stage_id,
                     status="running",
@@ -401,36 +403,46 @@ class ReportNarrativeService:
                     error_message=None,
                     artifact=None,
                 )
+            await self._persist_stage_runtime_snapshot(
+                narrative=narrative,
+                artifacts=artifacts,
+                final_check=None,
+            )
+
+            section_tasks = [
+                asyncio.create_task(
+                    self._generate_staged_schema_parallel(
+                        stage_id=stage_id,
+                        prompt=build_stage_prompt(stage_id, synthesis=synthesis),
+                        narrative_input=narrative_input,
+                        schema=schema,
+                        narrative=narrative,
+                        report=report,
+                        artifact=artifacts[stage_id],
+                    )
+                )
+                for stage_id, schema in stage_schemas
+            ]
+            first_stage_error: Exception | None = None
+            for completed_task in asyncio.as_completed(section_tasks):
+                (
+                    completed_stage_id,
+                    section_output,
+                    final_artifact,
+                    stage_error,
+                ) = await completed_task
+                artifacts[completed_stage_id] = final_artifact
+                if section_output is not None:
+                    stage_outputs[completed_stage_id] = section_output.model_dump(mode="json")
                 await self._persist_stage_runtime_snapshot(
                     narrative=narrative,
                     artifacts=artifacts,
                     final_check=None,
                 )
-                section_output = await self._generate_staged_schema(
-                    stage_id=stage_id,
-                    prompt=build_stage_prompt(stage_id, synthesis=synthesis),
-                    narrative_input=narrative_input,
-                    schema=schema,
-                    narrative=narrative,
-                    artifacts=artifacts,
-                )
-                payload = section_output.model_dump(mode="json")
-                stage_outputs[stage_id] = payload
-                artifacts[stage_id] = NarrativeStageArtifact(
-                    stage_id=stage_id,
-                    status="ready",
-                    prompt_version=_STAGE_PROMPT_VERSIONS[stage_id],
-                    model_name=narrative.model_name,
-                    input_hash=stage_hashes[stage_id],
-                    attempt_count=artifacts[stage_id].attempt_count,
-                    error_message=None,
-                    artifact=payload,
-                )
-                await self._persist_stage_runtime_snapshot(
-                    narrative=narrative,
-                    artifacts=artifacts,
-                    final_check=None,
-                )
+                if stage_error is not None and first_stage_error is None:
+                    first_stage_error = stage_error
+            if first_stage_error is not None:
+                raise first_stage_error
 
             artifacts["assembly"] = NarrativeStageArtifact(
                 stage_id="assembly",
@@ -455,9 +467,11 @@ class ReportNarrativeService:
                     narrative_input=narrative_input,
                     schema=AssemblyCheck,
                     narrative=narrative,
+                    report=report,
                     artifacts=artifacts,
                 ),
             )
+            assembly_validation_started_at = time.perf_counter()
             assembled = assemble_self_narrative(
                 narrative_input=narrative_input,
                 plan=plan,
@@ -480,6 +494,16 @@ class ReportNarrativeService:
                     narrative=narrative,
                     artifacts=artifacts,
                     final_check=final_check,
+                )
+                self._log_stage_event(
+                    level="error",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=artifacts["assembly"],
+                    duration_ms=_duration_ms(assembly_validation_started_at),
+                    failure_kind=("staged_validation_failed" if errors else "assembly_requested_retry"),
+                    recovery_action="narrative_failed",
                 )
                 return await self._save_failed_narrative(
                     report=report,
@@ -591,6 +615,38 @@ class ReportNarrativeService:
         }
         await self.db.commit()
 
+    def _log_stage_event(
+        self,
+        *,
+        level: str,
+        event: str,
+        report: Report,
+        narrative: ReportNarrative,
+        artifact: NarrativeStageArtifact,
+        duration_ms: int | None = None,
+        failure_kind: str | None = None,
+        recovery_action: str | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        log_fn = getattr(logger, level)
+        payload: dict[str, Any] = {
+            "report_id": str(report.id),
+            "narrative_id": str(narrative.id),
+            "product": report.product,
+            "stage_id": artifact.stage_id,
+            "prompt_version": artifact.prompt_version,
+            "model_name": artifact.model_name,
+            "input_hash": artifact.input_hash,
+            "attempt": artifact.attempt_count,
+            "duration_ms": duration_ms,
+            "failure_kind": failure_kind,
+            "recovery_action": recovery_action,
+        }
+        if error is not None:
+            payload["error_type"] = type(error).__name__
+            payload["error_message"] = str(error)
+        log_fn(event, **payload)
+
     async def _generate_staged_schema(
         self,
         *,
@@ -599,6 +655,7 @@ class ReportNarrativeService:
         narrative_input: NarrativeInput,
         schema: type[Any],
         narrative: ReportNarrative,
+        report: Report,
         artifacts: dict[NarrativeStageId, NarrativeStageArtifact],
     ) -> Any:
         artifact = artifacts[stage_id]
@@ -614,23 +671,43 @@ class ReportNarrativeService:
                 error_message=None,
                 artifact=None,
             )
+            current_artifact = artifacts[stage_id]
             await self._persist_stage_runtime_snapshot(
                 narrative=narrative,
                 artifacts=artifacts,
                 final_check=None,
+            )
+            self._log_stage_event(
+                level="info",
+                event="report_narrative_stage_started",
+                report=report,
+                narrative=narrative,
+                artifact=current_artifact,
             )
             attempt_prompt = (
                 prompt
                 if attempt == artifact.attempt_count
                 else _build_staged_schema_retry_prompt(prompt, schema)
             )
+            stage_started_at = time.perf_counter()
             try:
-                return await self.llm_provider.generate_structured(
+                result = await self.llm_provider.generate_structured(
                     prompt=attempt_prompt,
                     narrative_input=narrative_input,
                     schema=schema,
                 )
+                self._log_stage_event(
+                    level="info",
+                    event="report_narrative_stage_succeeded",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    recovery_action=("retry_recovered" if attempt > 1 else "completed"),
+                )
+                return result
             except LLMInvalidResponseError as exc:
+                duration_ms = _duration_ms(stage_started_at)
                 if attempt >= max_attempts:
                     artifacts[stage_id] = NarrativeStageArtifact(
                         stage_id=artifact.stage_id,
@@ -647,7 +724,240 @@ class ReportNarrativeService:
                         artifacts=artifacts,
                         final_check=None,
                     )
+                    self._log_stage_event(
+                        level="error",
+                        event="report_narrative_stage_failed",
+                        report=report,
+                        narrative=narrative,
+                        artifact=artifacts[stage_id],
+                        duration_ms=duration_ms,
+                        failure_kind="invalid_response",
+                        recovery_action="stage_failed",
+                        error=exc,
+                    )
                     raise
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=duration_ms,
+                    failure_kind="invalid_response",
+                    recovery_action="retry",
+                    error=exc,
+                )
+            except LLMDisabledError as exc:
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    failure_kind="provider_disabled",
+                    recovery_action="narrative_failed",
+                    error=exc,
+                )
+                raise
+            except LLMTimeoutError as exc:
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    failure_kind="provider_timeout",
+                    recovery_action="narrative_failed",
+                    error=exc,
+                )
+                raise
+            except LLMProviderUnavailableError as exc:
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    failure_kind="provider_unavailable",
+                    recovery_action="narrative_failed",
+                    error=exc,
+                )
+                raise
+        raise AssertionError(f"unreachable staged generation path for stage {stage_id}")
+
+    async def _generate_staged_schema_parallel(
+        self,
+        *,
+        stage_id: NarrativeStageId,
+        prompt: str,
+        narrative_input: NarrativeInput,
+        schema: type[Any],
+        narrative: ReportNarrative,
+        report: Report,
+        artifact: NarrativeStageArtifact,
+    ) -> tuple[NarrativeStageId, Any | None, NarrativeStageArtifact, Exception | None]:
+        max_attempts = max(1, _STAGED_INVALID_RESPONSE_MAX_ATTEMPTS)
+        current_attempt = max(1, artifact.attempt_count)
+        while current_attempt <= max_attempts:
+            current_artifact = NarrativeStageArtifact(
+                stage_id=artifact.stage_id,
+                status="running",
+                prompt_version=artifact.prompt_version,
+                model_name=artifact.model_name,
+                input_hash=artifact.input_hash,
+                attempt_count=current_attempt,
+                error_message=None,
+                artifact=None,
+            )
+            self._log_stage_event(
+                level="info",
+                event="report_narrative_stage_started",
+                report=report,
+                narrative=narrative,
+                artifact=current_artifact,
+            )
+            attempt_prompt = (
+                prompt
+                if current_attempt == artifact.attempt_count
+                else _build_staged_schema_retry_prompt(prompt, schema)
+            )
+            stage_started_at = time.perf_counter()
+            try:
+                result = await self.llm_provider.generate_structured(
+                    prompt=attempt_prompt,
+                    narrative_input=narrative_input,
+                    schema=schema,
+                )
+                self._log_stage_event(
+                    level="info",
+                    event="report_narrative_stage_succeeded",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    recovery_action=("retry_recovered" if current_attempt > 1 else "completed"),
+                )
+                ready_artifact = NarrativeStageArtifact(
+                    stage_id=artifact.stage_id,
+                    status="ready",
+                    prompt_version=artifact.prompt_version,
+                    model_name=artifact.model_name,
+                    input_hash=artifact.input_hash,
+                    attempt_count=current_attempt,
+                    error_message=None,
+                    artifact=result.model_dump(mode="json"),
+                )
+                return stage_id, result, ready_artifact, None
+            except LLMInvalidResponseError as exc:
+                duration_ms = _duration_ms(stage_started_at)
+                if current_attempt >= max_attempts:
+                    failed_artifact = NarrativeStageArtifact(
+                        stage_id=artifact.stage_id,
+                        status="failed",
+                        prompt_version=artifact.prompt_version,
+                        model_name=artifact.model_name,
+                        input_hash=artifact.input_hash,
+                        attempt_count=current_attempt,
+                        error_message=str(exc),
+                        artifact=None,
+                    )
+                    self._log_stage_event(
+                        level="error",
+                        event="report_narrative_stage_failed",
+                        report=report,
+                        narrative=narrative,
+                        artifact=failed_artifact,
+                        duration_ms=duration_ms,
+                        failure_kind="invalid_response",
+                        recovery_action="stage_failed",
+                        error=exc,
+                    )
+                    return stage_id, None, failed_artifact, exc
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=current_artifact,
+                    duration_ms=duration_ms,
+                    failure_kind="invalid_response",
+                    recovery_action="retry",
+                    error=exc,
+                )
+                current_attempt += 1
+                continue
+            except LLMDisabledError as exc:
+                failed_artifact = NarrativeStageArtifact(
+                    stage_id=artifact.stage_id,
+                    status="failed",
+                    prompt_version=artifact.prompt_version,
+                    model_name=artifact.model_name,
+                    input_hash=artifact.input_hash,
+                    attempt_count=current_attempt,
+                    error_message=str(exc),
+                    artifact=None,
+                )
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=failed_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    failure_kind="provider_disabled",
+                    recovery_action="narrative_failed",
+                    error=exc,
+                )
+                return stage_id, None, failed_artifact, exc
+            except LLMTimeoutError as exc:
+                failed_artifact = NarrativeStageArtifact(
+                    stage_id=artifact.stage_id,
+                    status="failed",
+                    prompt_version=artifact.prompt_version,
+                    model_name=artifact.model_name,
+                    input_hash=artifact.input_hash,
+                    attempt_count=current_attempt,
+                    error_message=str(exc),
+                    artifact=None,
+                )
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=failed_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    failure_kind="provider_timeout",
+                    recovery_action="narrative_failed",
+                    error=exc,
+                )
+                return stage_id, None, failed_artifact, exc
+            except LLMProviderUnavailableError as exc:
+                failed_artifact = NarrativeStageArtifact(
+                    stage_id=artifact.stage_id,
+                    status="failed",
+                    prompt_version=artifact.prompt_version,
+                    model_name=artifact.model_name,
+                    input_hash=artifact.input_hash,
+                    attempt_count=current_attempt,
+                    error_message=str(exc),
+                    artifact=None,
+                )
+                self._log_stage_event(
+                    level="warning",
+                    event="report_narrative_stage_failed",
+                    report=report,
+                    narrative=narrative,
+                    artifact=failed_artifact,
+                    duration_ms=_duration_ms(stage_started_at),
+                    failure_kind="provider_unavailable",
+                    recovery_action="narrative_failed",
+                    error=exc,
+                )
+                return stage_id, None, failed_artifact, exc
         raise AssertionError(f"unreachable staged generation path for stage {stage_id}")
 
     def _should_use_staged_pipeline(self, report: Report, narrative_input: NarrativeInput) -> bool:

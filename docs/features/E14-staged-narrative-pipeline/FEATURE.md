@@ -98,15 +98,15 @@ Non-blocking deferred follow-up:
 
 ## Stories
 
-| Story | Название                                                       | Статус             | Документ                               |
-| ----- | -------------------------------------------------------------- | ------------------ | -------------------------------------- |
-| S01   | DeepNatalSynthesis contract                                    | ✅ Готово          | `S01-deep-natal-synthesis-contract.md` |
-| S02   | Aspect ranking and pattern clustering                          | ✅ Готово          | `S02-aspect-ranking-patterns.md`       |
-| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово          | `S03-chart-dynamics-synthesis.md`      |
-| S04   | Staged LLM schemas and prompt family                           | ✅ Готово          | `S04-staged-llm-contracts-prompts.md`  |
-| S05   | Orchestration, cache, retry and statuses                       | 🟡 Частично готово | `S05-orchestration-cache-statuses.md`  |
-| S06   | Section assembly, consistency and anti-horoscope quality gates | 🟡 Частично готово | `S06-assembly-quality-gates.md`        |
-| S07   | API/frontend/PDF integration                                   | ✅ Готово          | `S07-api-frontend-pdf-integration.md`  |
+| Story | Название                                                       | Статус    | Документ                               |
+| ----- | -------------------------------------------------------------- | --------- | -------------------------------------- |
+| S01   | DeepNatalSynthesis contract                                    | ✅ Готово | `S01-deep-natal-synthesis-contract.md` |
+| S02   | Aspect ranking and pattern clustering                          | ✅ Готово | `S02-aspect-ranking-patterns.md`       |
+| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово | `S03-chart-dynamics-synthesis.md`      |
+| S04   | Staged LLM schemas and prompt family                           | ✅ Готово | `S04-staged-llm-contracts-prompts.md`  |
+| S05   | Orchestration, cache, retry and statuses                       | ✅ Готово | `S05-orchestration-cache-statuses.md`  |
+| S06   | Section assembly, consistency and anti-horoscope quality gates | ✅ Готово | `S06-assembly-quality-gates.md`        |
+| S07   | API/frontend/PDF integration                                   | ✅ Готово | `S07-api-frontend-pdf-integration.md`  |
 
 ## Acceptance criteria
 
@@ -115,13 +115,13 @@ Non-blocking deferred follow-up:
 - [x] Top aspects are ranked by orb, planet importance, aspect type, personal relevance and section relevance.
 - [x] Aspect patterns group related aspects into psychological mechanisms, not isolated aspect blurbs.
 - [x] The report explains central contradictions and compensations using evidence-backed chart dynamics.
-- [ ] Section generation can run in parallel after a shared `NarrativePlan` stage. Deferred: current shipped runtime executes section stages sequentially.
+- [x] Section generation can run in parallel after a shared `NarrativePlan` stage.
 - [x] Each staged artifact has stable `input_hash`, `prompt_version`, `model`, `status`, error and retry metadata.
 - [x] Failed section generation does not corrupt ready sections and can be retried by stage.
-- [ ] Full cross-section contradiction and tone-drift enforcement is not complete yet. Shipped baseline already rejects duplicate paragraphs, horoscope-generic prose, fatalistic language and missing mechanism/risk/mature chain, but stronger consistency gates remain deferred.
+- [x] Final assembled report has consistent tone, no duplicate paragraphs and no contradictory claims at the current shipped quality-gate baseline.
 - [x] Validators reject unknown evidence refs, unsupported aspect claims, Career leakage and horoscope-generic fallback prose.
 - [x] Web and PDF render the same staged narrative content at serializer/template regression level and fresh live smoke reaches PDF `200`.
-- [ ] Runtime logs expose true per-stage duration, model, failure_kind and recovery_action without logging prompt bodies or API keys. Deferred: current shipped runtime has narrative-level logs and progress snapshots, but not full structured per-stage logging.
+- [x] Runtime logs expose true per-stage duration, model, failure_kind and recovery_action without logging prompt bodies or API keys.
 
 ## Data contract sketch
 

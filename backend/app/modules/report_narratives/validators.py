@@ -32,6 +32,75 @@ _FATALISTIC_MARKERS = (
     "всегда будет",
     "никогда не сможет",
 )
+_INFORMAL_ADDRESS_MARKERS = (
+    " ты ",
+    " тебе ",
+    " тебя ",
+    " тобой ",
+    " твой ",
+    " твоя ",
+    " твои ",
+    " твою ",
+)
+_TECHNICAL_PIPELINE_MARKERS = (
+    "json schema",
+    "json",
+    "schema",
+    "staged",
+    "stage",
+    "pipeline",
+    "prompt_version",
+    "guardrail",
+    "retry",
+    "section output",
+)
+_CROSS_SECTION_CONTRADICTION_MARKERS: dict[str, dict[str, tuple[str, ...]]] = {
+    "depth": {
+        "positive": (
+            "важна глубина",
+            "эмоциональная глубина",
+            "ищете глубину",
+            "нужна глубина",
+            "эмоциональная интенсивность",
+        ),
+        "negative": (
+            "достаточно поверхност",
+            "поверхностного контакта",
+            "глубина только мешает",
+            "не нужна глубина",
+            "избегаете глубины",
+        ),
+    },
+    "structure": {
+        "positive": (
+            "нужен каркас",
+            "нужна структура",
+            "важна ясность",
+            "ищете порядок",
+            "нужен порядок",
+        ),
+        "negative": (
+            "каркас только мешает",
+            "структура только мешает",
+            "не нужна структура",
+            "порядок только мешает",
+            "лучше хаос",
+        ),
+    },
+    "pause": {
+        "positive": (
+            "нужна пауза",
+            "выдерживать паузу",
+            "полезно делать паузу",
+        ),
+        "negative": (
+            "пауза только мешает",
+            "нельзя делать паузу",
+            "нужно реагировать сразу",
+            "надо реагировать сразу",
+        ),
+    },
+}
 
 _ALLOWED_PLANET_TOKENS = {
     "солнце",
@@ -166,6 +235,8 @@ def validate_assembled_self_narrative(
     errors.extend(_validate_generic_horoscope_prose(candidate))
     errors.extend(_validate_fatalistic_language(candidate))
     errors.extend(_validate_mechanism_risk_mature_chain(candidate))
+    errors.extend(_validate_cross_section_contradictions(candidate))
+    errors.extend(_validate_tone_drift(candidate))
     return errors
 
 
@@ -742,6 +813,63 @@ def _validate_mechanism_risk_mature_chain(narrative: SelfNarrative) -> list[Narr
             recoverable=True,
         )
     ]
+
+
+def _validate_cross_section_contradictions(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    section_bodies = [(section.id, section.body.lower()) for section in narrative.sections]
+    errors: list[NarrativeValidationError] = []
+    for axis_name, markers in _CROSS_SECTION_CONTRADICTION_MARKERS.items():
+        positive_sections = [
+            section_id
+            for section_id, body in section_bodies
+            if any(marker in body for marker in markers["positive"])
+        ]
+        negative_sections = [
+            section_id
+            for section_id, body in section_bodies
+            if any(marker in body for marker in markers["negative"])
+        ]
+        if positive_sections and negative_sections:
+            errors.append(
+                NarrativeValidationError(
+                    code="cross_section_contradiction",
+                    message=(
+                        "Final assembled narrative contains conflicting central claims across sections "
+                        f"for axis '{axis_name}'."
+                    ),
+                    location=(
+                        f"sections[{positive_sections[0]}] vs sections[{negative_sections[0]}]"
+                    ),
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _validate_tone_drift(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    errors: list[NarrativeValidationError] = []
+    for location, text in _iter_non_cta_texts(narrative):
+        lowered = f" {text.casefold()} "
+        if any(marker in lowered for marker in _INFORMAL_ADDRESS_MARKERS):
+            errors.append(
+                NarrativeValidationError(
+                    code="tone_drift",
+                    message="Final assembled narrative drifts into informal second-person register.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+            continue
+        if any(marker in lowered for marker in _TECHNICAL_PIPELINE_MARKERS):
+            errors.append(
+                NarrativeValidationError(
+                    code="tone_drift",
+                    message="Final assembled narrative leaks technical pipeline wording into user-facing prose.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+    return errors
 
 
 def _iter_non_cta_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str]]:

@@ -1,7 +1,8 @@
 # S05 — Orchestration, Cache, Retry and Statuses
 
-> Статус: 🟡 В процессе
+> Статус: 🟡 Частично готово
 > Базовый backend commit: `e7528b8`
+> Последняя синхронизация с кодом: 2026-06-29
 
 ## Контекст
 
@@ -16,33 +17,38 @@ Staged generation needs orchestration beyond the current single `generate_report
 5. Добавлен progress snapshot contract для `GET /reports/{id}` payload metadata.
 6. Добавлены unit tests на stage gating / retry / cache reuse.
 
+## Что уже закрыто поверх baseline
+
+1. Staged orchestration подключена в реальный `generate_report_narrative` / worker flow.
+2. `plan -> section stages -> assembly` реально исполняются в shipped runtime.
+3. Top-level `ready` проставляется только после успешной staged assembly и final validation.
+4. Runtime progress snapshots persist-ятся в `narrative.content.stage_progress` / `stage_artifacts` и доступны live polling path.
+
 ## Что ещё осталось
 
-1. Подключить stage orchestration в реальный `generate_report_narrative` / worker flow.
-2. Реально запускать section stages после plan stage, а не только держать helper-контракт.
-3. Проставлять top-level `ready` только после end-to-end staged assembly/validation.
-4. Добавить реальные worker logs: `stage_id`, `duration`, `failure_kind`, `recovery_action`.
-5. Решить вопрос отдельного persisted stage storage vs metadata-only baseline.
+1. Добавить полноценные per-stage structured logs: `stage_id`, `duration`, `failure_kind`, `recovery_action` на каждый этап, а не только narrative-level success/failure logs.
+2. Если parallel section execution остаётся продуктовой целью, реализовать реальный parallel runtime после `NarrativePlan`; сейчас section stages выполняются последовательно.
+3. Зафиксировать окончательное решение по отдельному persisted stage storage vs текущему metadata-in-JSON подходу, если это всё ещё требуется вне MVP.
 
 ## Затрагиваемые файлы
 
-| Файл                                                               | Действие                                  |
-| ------------------------------------------------------------------ | ----------------------------------------- |
+| Файл                                                               | Действие                                       |
+| ------------------------------------------------------------------ | ---------------------------------------------- |
 | `backend/app/modules/report_narratives/models.py`                  | Baseline metadata contract remains JSON-backed |
-| `backend/app/modules/report_narratives/service.py`                 | Staged orchestration helpers              |
-| `backend/app/modules/report_narratives/tasks.py`                   | Ещё требует full runtime wiring           |
-| `backend/workers/tasks/reports.py`                                 | Ещё требует staged worker entrypoints     |
-| `backend/app/modules/reports/schemas.py`                           | Progress response contract                |
-| `backend/tests/unit/test_report_narratives/test_staged_service.py` | Orchestration tests                       |
+| `backend/app/modules/report_narratives/service.py`                 | Staged orchestration helpers                   |
+| `backend/app/modules/report_narratives/tasks.py`                   | Runtime task wiring и failure handling         |
+| `backend/workers/tasks/reports.py`                                 | Celery entrypoint для staged runtime path      |
+| `backend/app/modules/reports/schemas.py`                           | Progress response contract                     |
+| `backend/tests/unit/test_report_narratives/test_staged_service.py` | Orchestration tests                            |
 
 ## Acceptance criteria
 
 - [x] Stage artifacts have status, prompt_version, model, input_hash, attempt count and error message.
 - [x] Ready cached stages are reused.
 - [x] Failed stage can be retried without deleting ready stages.
-- [x] Parallel section stages are gated to start only after plan is valid.
-- [ ] Top-level `ready` is set only after final assembly validation passes.
-- [ ] Worker logs include stage id, duration, failure kind and recovery action.
+- [x] Section stages start only after a valid `NarrativePlan` stage.
+- [x] Top-level `ready` is set only after final assembly validation passes.
+- [ ] Runtime logs still need true per-stage fields (`stage_id`, `duration`, `failure_kind`, `recovery_action`) instead of only narrative-level success/failure logs.
 
 ## Verification
 

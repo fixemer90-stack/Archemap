@@ -106,7 +106,7 @@ Deferred, but non-blocking for epic closure:
 
 Система должна собирать final narrative only from valid stages and reject duplicate, contradictory, ungrounded or horoscope-generic prose.
 
-Статус: реализовано в shipped deterministic assembler + validators; fresh live/runtime smoke green.
+Статус: baseline реализовано в shipped deterministic assembler + validators; duplicate/generic/fatalistic/ungrounded guards и runtime assembly wiring живы, но stronger contradiction/tone-drift enforcement остаётся deferred follow-up.
 
 ### FR-10. API progress
 
@@ -124,7 +124,7 @@ Web and PDF must render the same assembled staged narrative content.
 
 - Reliability: failure in one section must not corrupt other ready stages.
 - Performance: section stages should run in parallel after planning.
-- Observability: logs must include stage_id, duration_ms, failure_kind and recovery_action.
+- Observability: target contract expects stage_id, duration_ms, failure_kind and recovery_action in per-stage logs; current shipped runtime still relies mainly on narrative-level logs plus progress snapshots.
 - Safety: no diagnosis, fatalism, medical claims or explicit sexuality.
 - Privacy: no prompt bodies, API keys or raw provider payloads in logs.
 - Testability: deterministic synthesis and validators must be unit-testable without network.

@@ -59,7 +59,8 @@ export function ReportGenerationProgress({
   const failedStageLabel =
     stageLabel(stageProgress?.failed_stage ?? null) ??
     stageLabel(
-      stageArtifacts.find((artifact) => artifact.status === "failed")?.stage_id ??
+      stageArtifacts.find((artifact) => artifact.status === "failed")
+        ?.stage_id ??
         stageProgress?.stages?.find((artifact) => artifact.status === "failed")
           ?.stage_id ??
         null,
@@ -90,8 +91,8 @@ export function ReportGenerationProgress({
           </CardTitle>
           <p className="text-sm leading-6 text-[#D8DCE8]">
             {timedOut
-              ? "Полный текст пока не собрался. Можно обновить статус или повторить генерацию, но сокращённую техническую версию здесь не показываем."
-              : "Сначала готовим полный повествовательный отчёт. Пока он не готов, промежуточную техническую подмену не показываем."}
+              ? "Подробный текст ещё формируется. Вы можете обновить статус или запустить повторную генерацию. Отчёт появится здесь, как только будет готова полная версия."
+              : "Сейчас формируем полную версию отчёта. Пока сборка не завершена, на этом экране не показываются промежуточные технические данные."}
           </p>
         </div>
       </CardHeader>
@@ -111,7 +112,8 @@ export function ReportGenerationProgress({
           )}
           {stageProgress && (
             <p className="mb-3 text-xs text-[#D8DCE8]">
-              Готово этапов: {stageProgress.completed_stages}/{stageProgress.total_stages}
+              Готово этапов: {stageProgress.completed_stages}/
+              {stageProgress.total_stages}
             </p>
           )}
           {completedStageLabels.length > 0 && (

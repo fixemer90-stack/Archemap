@@ -1,7 +1,8 @@
 # S06 — Assembly, Consistency and Anti-Horoscope Quality Gates
 
-> Статус: 🟡 В процессе
+> Статус: 🟡 Частично готово
 > Базовый backend commit: `4ce5175`
+> Последняя синхронизация с кодом: 2026-06-29
 
 ## Контекст
 
@@ -19,22 +20,28 @@ Parallel section generation can create repetition, tone drift and contradictions
    - `missing_mechanism_risk_mature_chain`.
 5. Добавлены RED/fixture-style tests на good/bad assembled outputs.
 
+## Что уже закрыто поверх baseline
+
+1. Assembler и assembled validators уже встроены в реальный staged runtime flow.
+2. Финальный `SelfNarrative` собирается только после `assembly` stage и затем валидируется перед `ready`.
+3. Baseline anti-generic quality gates реально защищают от duplicate paragraphs, horoscope-generic prose, fatalistic language и missing mechanism/risk/mature chain.
+
 ## Что ещё осталось
 
 1. Добавить full contradiction checks между central claims секций.
-2. Добавить stronger consistency / tone-drift validation.
+2. Добавить stronger consistency / tone-drift validation beyond current baseline gates.
 3. При необходимости подключить optional final consistency pass behind feature flag.
-4. Встроить assembler/assembled validators в реальный staged runtime flow.
-5. При желании вынести richer staged fixtures в отдельный `fixtures/` каталог.
+4. При желании вынести richer staged fixtures в отдельный `fixtures/` каталог.
 
 ## Затрагиваемые файлы
 
-| Файл                                                                | Действие                       |
-| ------------------------------------------------------------------- | ------------------------------ |
-| `backend/app/modules/report_narratives/assembler.py`                | New assembler                  |
-| `backend/app/modules/report_narratives/validators.py`               | Stage/final quality validators |
-| `backend/tests/unit/test_report_narratives/test_staged_assembly.py` | Assembly tests                 |
-| `backend/tests/unit/test_report_narratives/fixtures/`               | Пока не создано, fixtures зашиты в тест  |
+| Файл                                                                | Действие                                |
+| ------------------------------------------------------------------- | --------------------------------------- |
+| `backend/app/modules/report_narratives/assembler.py`                | New assembler                           |
+| `backend/app/modules/report_narratives/validators.py`               | Stage/final quality validators          |
+| `backend/tests/unit/test_report_narratives/test_staged_assembly.py` | Assembly tests                          |
+| `backend/app/modules/report_narratives/service.py`                  | Runtime assembly + validation wiring    |
+| `backend/tests/unit/test_report_narratives/fixtures/`               | Пока не создано, fixtures зашиты в тест |
 
 ## Acceptance criteria
 

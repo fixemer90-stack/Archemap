@@ -25,7 +25,7 @@ jobs:
     # Ensure CI passes before deploying
     # needs: [ci]  # Uncomment when CI workflow is fully wired
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Deploy
         run: |

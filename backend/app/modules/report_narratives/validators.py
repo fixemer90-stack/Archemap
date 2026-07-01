@@ -820,14 +820,10 @@ def _validate_cross_section_contradictions(narrative: SelfNarrative) -> list[Nar
     errors: list[NarrativeValidationError] = []
     for axis_name, markers in _CROSS_SECTION_CONTRADICTION_MARKERS.items():
         positive_sections = [
-            section_id
-            for section_id, body in section_bodies
-            if any(marker in body for marker in markers["positive"])
+            section_id for section_id, body in section_bodies if any(marker in body for marker in markers["positive"])
         ]
         negative_sections = [
-            section_id
-            for section_id, body in section_bodies
-            if any(marker in body for marker in markers["negative"])
+            section_id for section_id, body in section_bodies if any(marker in body for marker in markers["negative"])
         ]
         if positive_sections and negative_sections:
             errors.append(
@@ -837,9 +833,7 @@ def _validate_cross_section_contradictions(narrative: SelfNarrative) -> list[Nar
                         "Final assembled narrative contains conflicting central claims across sections "
                         f"for axis '{axis_name}'."
                     ),
-                    location=(
-                        f"sections[{positive_sections[0]}] vs sections[{negative_sections[0]}]"
-                    ),
+                    location=(f"sections[{positive_sections[0]}] vs sections[{negative_sections[0]}]"),
                     recoverable=True,
                 )
             )

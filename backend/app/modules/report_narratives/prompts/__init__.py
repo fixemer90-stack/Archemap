@@ -7,9 +7,7 @@ from typing import Any, Literal
 
 from app.modules.report_narratives.schemas import DeepNatalSynthesis
 
-StageName = Literal[
-    "plan", "identity", "emotional", "relationships", "development", "house_scenarios", "assembly"
-]
+StageName = Literal["plan", "identity", "emotional", "relationships", "development", "house_scenarios", "assembly"]
 
 SELF_STORY_PROMPT_VERSION = "self_story_v5"
 STAGED_SELF_PROMPT_VERSIONS: dict[StageName, str] = {

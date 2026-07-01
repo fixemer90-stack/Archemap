@@ -963,21 +963,21 @@ function normalizeCareerCTA(value: unknown): CareerCTAViewModel | null {
 function stageLabel(stageId: NarrativeStageId | null): string | null {
   switch (stageId) {
     case "plan":
-      return "План структуры"
+      return "План структуры";
     case "identity":
-      return "Главная формула личности"
+      return "Главная формула личности";
     case "emotional":
-      return "Эмоции и коммуникация"
+      return "Эмоции и коммуникация";
     case "relationships":
-      return "Отношения и близость"
+      return "Отношения и близость";
     case "development":
-      return "Развитие и зрелость"
+      return "Развитие и зрелость";
     case "house_scenarios":
-      return "Жизненные сценарии домов"
+      return "Жизненные сценарии домов";
     case "assembly":
-      return "Финальная сборка"
+      return "Финальная сборка";
     default:
-      return stageId ? stageId : null
+      return stageId ? stageId : null;
   }
 }
 
@@ -986,22 +986,24 @@ function normalizeStageSummary(
   artifacts: NarrativeStageArtifactApiResponse[] | undefined,
 ): ReportNarrativeStageSummaryViewModel | null {
   if (!progress) {
-    return null
+    return null;
   }
 
   const completedStageLabels = (artifacts ?? [])
     .filter((artifact) => artifact.status === "ready")
     .map((artifact) => stageLabel(artifact.stage_id))
-    .filter((label): label is string => Boolean(label))
+    .filter((label): label is string => Boolean(label));
 
   return {
     total_stages: progress.total_stages,
     completed_stages: progress.completed_stages,
     ready: progress.ready,
-    running_stage_label: stageLabel(progress.current_stage ?? progress.running_stage ?? null),
+    running_stage_label: stageLabel(
+      progress.current_stage ?? progress.running_stage ?? null,
+    ),
     failed_stage_label: stageLabel(progress.failed_stage ?? null),
     completed_stage_labels: Array.from(new Set(completedStageLabels)),
-  }
+  };
 }
 
 function normalizeNarrative(

@@ -185,14 +185,8 @@ def cluster_aspect_patterns(chart: dict[str, Any], ranked_aspects: list[RankedAs
             return
         aspect_types = {str(member.get("aspect_type")) for member in members}
         planets = sorted(
-            {
-                PLANET_RU.get(str(member.get("planet_a")), str(member.get("planet_a")))
-                for member in members
-            }
-            | {
-                PLANET_RU.get(str(member.get("planet_b")), str(member.get("planet_b")))
-                for member in members
-            }
+            {PLANET_RU.get(str(member.get("planet_a")), str(member.get("planet_a"))) for member in members}
+            | {PLANET_RU.get(str(member.get("planet_b")), str(member.get("planet_b"))) for member in members}
         )
         pattern_type = (
             "integration"
@@ -208,17 +202,14 @@ def cluster_aspect_patterns(chart: dict[str, Any], ranked_aspects: list[RankedAs
                 planets=planets,
                 pattern_type=pattern_type,
                 psychological_mechanism=(
-                    f"Паттерн {title.lower()} связывает повторяющийся способ "
-                    "внутренней обработки опыта."
+                    f"Паттерн {title.lower()} связывает повторяющийся способ внутренней обработки опыта."
                 ),
                 life_manifestation=(
-                    "Это проявляется в повторяемой манере реагировать, связывать "
-                    "переживание и действие."
+                    "Это проявляется в повторяемой манере реагировать, связывать переживание и действие."
                 ),
                 risk="Под нагрузкой этот паттерн может уходить в автоматизм и односторонность.",
                 mature_expression=(
-                    "В зрелой форме он становится более осознанным способом "
-                    "интеграции разных частей личности."
+                    "В зрелой форме он становится более осознанным способом интеграции разных частей личности."
                 ),
                 section_targets=section_targets,
                 evidence_ids=ids,
@@ -227,9 +218,7 @@ def cluster_aspect_patterns(chart: dict[str, Any], ranked_aspects: list[RankedAs
         )
 
     moon_mercury_ids = [
-        item_id
-        for item_id in high_signal_ids
-        if item_id.startswith("moon_") and item_id.endswith("_mercury")
+        item_id for item_id in high_signal_ids if item_id.startswith("moon_") and item_id.endswith("_mercury")
     ]
     build_pattern(
         "moon_mercury_pattern",

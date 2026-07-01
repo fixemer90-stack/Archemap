@@ -208,9 +208,13 @@ def _compose_development_body(paragraphs: list[str], narrative_input: NarrativeI
     risk = narrative_input.failure_modes[0].manifestation
     mature = narrative_input.contradictions[0].mature_expression
     if _is_stage_paragraph_usable(primary) and not _contains_career_language(primary):
-        return " ".join(part for part in [primary, f"Механизм: {mechanism}", f"Риск: {risk}", f"Зрелая форма: {mature}"] if part)
+        return " ".join(
+            part for part in [primary, f"Механизм: {mechanism}", f"Риск: {risk}", f"Зрелая форма: {mature}"] if part
+        )
     recommendation = " ".join(item.claim for item in narrative_input.development_recommendations[:2])
-    return " ".join(part for part in [recommendation, f"Механизм: {mechanism}", f"Риск: {risk}", f"Зрелая форма: {mature}"] if part)
+    return " ".join(
+        part for part in [recommendation, f"Механизм: {mechanism}", f"Риск: {risk}", f"Зрелая форма: {mature}"] if part
+    )
 
 
 def _compose_strengths_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:

@@ -298,6 +298,7 @@ class TestMockProvider:
         assert isinstance(result, SelfNarrative)
         assert result.hero.id == "hero"
         assert result.sections[0].id == "main_formula"
+        assert result.career_cta is not None
         assert result.career_cta.button_label == "Открыть Career"
 
 

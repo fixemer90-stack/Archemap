@@ -1,4 +1,4 @@
-# ruff: noqa: E501, RUF001
+# ruff: noqa: RUF001
 # mypy: ignore-errors
 """DeepSeek adapter behind the generic LLM provider boundary."""
 
@@ -162,9 +162,7 @@ def _normalize_narrative_plan_shape(
             if isinstance(sections_source.get(legacy_id), dict)
         ]
         evidence_ids = _unique_strings(
-            evidence_id
-            for section in legacy_sections
-            for evidence_id in section.get("evidence_ids", [])
+            evidence_id for section in legacy_sections for evidence_id in section.get("evidence_ids", [])
         )
         focus_parts = [
             _coerce_text(section.get("description") or section.get("focus") or section.get("summary"))
@@ -172,11 +170,7 @@ def _normalize_narrative_plan_shape(
         ]
         focus = " ".join(part for part in focus_parts if part).strip()
         title = next(
-            (
-                _coerce_text(section.get("title"))
-                for section in legacy_sections
-                if _coerce_text(section.get("title"))
-            ),
+            (_coerce_text(section.get("title")) for section in legacy_sections if _coerce_text(section.get("title"))),
             fallback_title,
         )
         return {
@@ -189,7 +183,9 @@ def _normalize_narrative_plan_shape(
     return {
         "prompt_version": "self_plan_v1",
         "sections": [
-            build_section("identity", ["main_formula", "world_perception", "strengths"], "Идентичность и внутренняя опора"),
+            build_section(
+                "identity", ["main_formula", "world_perception", "strengths"], "Идентичность и внутренняя опора"
+            ),
             build_section(
                 "emotional",
                 ["emotions_and_communication", "vulnerabilities"],
@@ -217,7 +213,12 @@ def _normalize_identity_section_shape(
         return payload
     raw_source = payload.get("identity_section")
     source: dict[str, Any] = raw_source if isinstance(raw_source, dict) else payload
-    if "identity" not in source and "identity_synthesis" not in source and "identity_summary" not in source and "summary" not in source:
+    if (
+        "identity" not in source
+        and "identity_synthesis" not in source
+        and "identity_summary" not in source
+        and "summary" not in source
+    ):
         return payload
     evidence_ids = _unique_strings(source.get("evidence_ids", [])) or _fallback_evidence_ids(narrative_input)
     component_paragraphs = [
@@ -272,24 +273,20 @@ def _normalize_emotional_section_shape(
         _coerce_text(payload.get("emotional_expression")),
         _coerce_text(payload.get("emotional_regulation")),
         _coerce_text((contradictions[0] if contradictions else {}).get("manifestation")),
-        _coerce_text((maturity_levels.get("high") if isinstance(maturity_levels.get("high"), dict) else {}).get("body")),
+        _coerce_text(
+            (maturity_levels.get("high") if isinstance(maturity_levels.get("high"), dict) else {}).get("body")
+        ),
     ]
     combined_items = list(chart_dynamics) + list(contradictions)
     evidence_ids = _unique_strings(
-        evidence_id
-        for item in combined_items
-        if isinstance(item, dict)
-        for evidence_id in item.get("evidence_ids", [])
+        evidence_id for item in combined_items if isinstance(item, dict) for evidence_id in item.get("evidence_ids", [])
     )
-    covered_pattern_ids = _unique_strings(
-        item.get("id")
-        for item in combined_items
-        if isinstance(item, dict)
-    )
+    covered_pattern_ids = _unique_strings(item.get("id") for item in combined_items if isinstance(item, dict))
     return {
         "section_id": "emotional",
         "title": "Эмоциональная динамика",
-        "paragraphs": [part for part in paragraphs if part] or ["Эмоциональная динамика требует дополнительной сборки."],
+        "paragraphs": [part for part in paragraphs if part]
+        or ["Эмоциональная динамика требует дополнительной сборки."],
         "evidence_ids": evidence_ids or covered_pattern_ids or _fallback_evidence_ids(narrative_input),
         "covered_pattern_ids": covered_pattern_ids or evidence_ids or _fallback_evidence_ids(narrative_input),
     }
@@ -301,7 +298,9 @@ def _normalize_relationship_section_shape(
 ) -> dict[str, Any]:
     if {"section_id", "title", "paragraphs", "evidence_ids", "covered_pattern_ids"} <= set(payload):
         return payload
-    wrapped = payload.get("relationships_sexuality") if isinstance(payload.get("relationships_sexuality"), dict) else None
+    wrapped = (
+        payload.get("relationships_sexuality") if isinstance(payload.get("relationships_sexuality"), dict) else None
+    )
     if wrapped is not None:
         content_items = wrapped.get("content") if isinstance(wrapped.get("content"), list) else []
         if content_items:
@@ -310,7 +309,9 @@ def _normalize_relationship_section_shape(
                     part
                     for part in [
                         _coerce_text(item.get("psychological_mechanism") or item.get("mechanism")),
-                        _coerce_text(item.get("life_manifestation") or item.get("manifestation") or item.get("tension")),
+                        _coerce_text(
+                            item.get("life_manifestation") or item.get("manifestation") or item.get("tension")
+                        ),
                         _coerce_text(item.get("risk") or item.get("compensation") or item.get("mature_expression")),
                     ]
                     if part
@@ -324,9 +325,9 @@ def _normalize_relationship_section_shape(
                 if isinstance(item, dict)
                 for evidence_id in item.get("evidence_ids", [])
             ) or _fallback_evidence_ids(narrative_input)
-            covered_pattern_ids = _unique_strings(
-                item.get("source") for item in content_items if isinstance(item, dict)
-            ) or evidence_ids
+            covered_pattern_ids = (
+                _unique_strings(item.get("source") for item in content_items if isinstance(item, dict)) or evidence_ids
+            )
             return {
                 "section_id": "relationships",
                 "title": _coerce_text(wrapped.get("title")) or "Отношения и близость",
@@ -335,7 +336,9 @@ def _normalize_relationship_section_shape(
                 "covered_pattern_ids": covered_pattern_ids,
             }
         wrapped_body = _coerce_text(wrapped.get("body"))
-        wrapped_evidence_ids = _unique_strings(wrapped.get("evidence_ids", [])) or _fallback_evidence_ids(narrative_input)
+        wrapped_evidence_ids = _unique_strings(wrapped.get("evidence_ids", [])) or _fallback_evidence_ids(
+            narrative_input
+        )
         return {
             "section_id": "relationships",
             "title": _coerce_text(wrapped.get("title")) or "Отношения и близость",
@@ -371,7 +374,8 @@ def _normalize_relationship_section_shape(
     return {
         "section_id": "relationships",
         "title": _coerce_text(relationships.get("title")) or "Отношения и близость",
-        "paragraphs": [part for part in [relationship_body, sexuality_body] if part] or ["Отношения требуют дополнительной сборки."],
+        "paragraphs": [part for part in [relationship_body, sexuality_body] if part]
+        or ["Отношения требуют дополнительной сборки."],
         "evidence_ids": fallback_ids,
         "covered_pattern_ids": covered_pattern_ids or fallback_ids,
     }
@@ -396,21 +400,16 @@ def _normalize_development_section_shape(
     paragraphs = [
         _coerce_text((chart_dynamics[0] if chart_dynamics else {}).get("compensation")),
         _coerce_text((contradictions[0] if contradictions else {}).get("mature_expression")),
-        _coerce_text((maturity_levels.get("high") if isinstance(maturity_levels.get("high"), dict) else {}).get("body")),
+        _coerce_text(
+            (maturity_levels.get("high") if isinstance(maturity_levels.get("high"), dict) else {}).get("body")
+        ),
         _coerce_text((calibration_hypotheses[0] if calibration_hypotheses else {}).get("hypothesis")),
     ]
     combined_items = chart_dynamics + contradictions + calibration_hypotheses
     evidence_ids = _unique_strings(
-        evidence_id
-        for item in combined_items
-        if isinstance(item, dict)
-        for evidence_id in item.get("evidence_ids", [])
+        evidence_id for item in combined_items if isinstance(item, dict) for evidence_id in item.get("evidence_ids", [])
     )
-    covered_pattern_ids = _unique_strings(
-        item.get("id")
-        for item in combined_items
-        if isinstance(item, dict)
-    )
+    covered_pattern_ids = _unique_strings(item.get("id") for item in combined_items if isinstance(item, dict))
     fallback_ids = evidence_ids or covered_pattern_ids or _fallback_evidence_ids(narrative_input)
     return {
         "section_id": "development",
@@ -449,9 +448,7 @@ def _normalize_house_scenarios_section_shape(
         if isinstance(scenario, dict)
         for evidence_id in scenario.get("evidence_ids", [])
     )
-    covered_pattern_ids = _unique_strings(
-        scenario.get("id") for scenario in scenarios if isinstance(scenario, dict)
-    )
+    covered_pattern_ids = _unique_strings(scenario.get("id") for scenario in scenarios if isinstance(scenario, dict))
     fallback_ids = evidence_ids or covered_pattern_ids or _fallback_evidence_ids(narrative_input)
     return {
         "section_id": "house_scenarios",
@@ -551,8 +548,7 @@ def _normalize_self_narrative_shape(payload: dict[str, Any]) -> dict[str, Any]:
     career_cta = payload.get("career_cta")
     normalized_career_cta = career_cta
     fallback_career_body = (
-        "В Career-отчёте можно перевести этот личный паттерн "
-        "в рабочие роли, стиль задач и профессиональные сценарии."
+        "В Career-отчёте можно перевести этот личный паттерн в рабочие роли, стиль задач и профессиональные сценарии."
     )
 
     if not isinstance(career_cta, dict):

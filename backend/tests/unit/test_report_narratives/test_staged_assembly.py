@@ -145,10 +145,7 @@ def test_assemble_self_narrative_produces_single_report_in_self_order_and_preser
         "development",
     ]
     all_fact_ids = {
-        fact_id
-        for section in narrative.sections
-        for note in section.evidence_notes
-        for fact_id in note.fact_ids
+        fact_id for section in narrative.sections for note in section.evidence_notes for fact_id in note.fact_ids
     }
     assert "sun_virgo_house_9" in all_fact_ids
     assert "moon_trine_mercury" in all_fact_ids

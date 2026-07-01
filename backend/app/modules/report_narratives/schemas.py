@@ -347,9 +347,7 @@ class CareerCTA(BaseModel):
 class NarrativePlanSection(BaseModel):
     """One planned stage section with bounded focus and evidence scope."""
 
-    section_id: Literal[
-        "identity", "emotional", "relationships", "development", "house_scenarios"
-    ]
+    section_id: Literal["identity", "emotional", "relationships", "development", "house_scenarios"]
     title: str = Field(..., min_length=1, max_length=200)
     required_evidence_ids: list[str] = Field(..., min_length=1)
     focus: str = Field(..., min_length=1, max_length=1000)
@@ -367,9 +365,7 @@ class NarrativePlan(BaseModel):
 class StagedSectionOutput(BaseModel):
     """Common contract for one staged section output."""
 
-    section_id: Literal[
-        "identity", "emotional", "relationships", "development", "house_scenarios"
-    ]
+    section_id: Literal["identity", "emotional", "relationships", "development", "house_scenarios"]
     title: str = Field(..., min_length=1, max_length=200)
     paragraphs: list[str] = Field(..., min_length=1)
     evidence_ids: list[str] = Field(..., min_length=1)
@@ -447,5 +443,5 @@ class SelfNarrative(BaseModel):
     failure_modes: list[FailureMode] = Field(..., min_length=3, max_length=5)
     maturity_levels: MaturityLevels
     sections: list[NarrativeSection] = Field(..., min_length=1)
-    career_cta: CareerCTA
+    career_cta: CareerCTA | None = None
     final_summary: str = Field(..., min_length=1, max_length=2000)

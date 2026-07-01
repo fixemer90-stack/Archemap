@@ -29,6 +29,7 @@ def test_builds_deterministic_fallback_with_explicit_degraded_message() -> None:
     assert fallback.maturity_levels.medium.body
     assert fallback.calibration_questions[0].answer_type == "yes_no"
     assert [section.id for section in fallback.sections] == narrative_input.product_boundaries.allowed_sections
+    assert fallback.career_cta is not None
     assert fallback.career_cta.button_label == "Открыть Career"
     assert fallback.final_summary
 

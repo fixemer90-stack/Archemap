@@ -212,11 +212,14 @@ def _build_calibration_hypotheses(
 def _build_maturity_levels(
     contradictions: list[Any],
     chart_dynamics: list[ChartDynamic],
+    fallback_evidence_ids: list[str],
 ) -> MaturityLevels:
     evidence_ids = _chart_evidence_ids(
         *[item.evidence_ids for item in contradictions[:3]],
         *[item.evidence_ids for item in chart_dynamics[:2]],
     )
+    if not evidence_ids:
+        evidence_ids = list(fallback_evidence_ids)
     return MaturityLevels(
         low=MaturityBand(
             title="Паттерн живёт как автоматическая защита",
@@ -321,6 +324,7 @@ def build_deep_natal_synthesis(report: Any) -> DeepNatalSynthesis:
     maturity_levels = _build_maturity_levels(
         contradictions=contradictions,
         chart_dynamics=chart_dynamics,
+        fallback_evidence_ids=fallback_ids,
     )
 
     return DeepNatalSynthesis(

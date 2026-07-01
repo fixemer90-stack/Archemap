@@ -171,6 +171,7 @@ def narrative_input_to_hero(
     body: str,
     evidence_ids: list[str],
 ) -> HeroSection:
+    evidence_notes = [EvidenceNote(claim=body, fact_ids=list(evidence_ids))] if evidence_ids else []
     return HeroSection(
         id="hero",
         title="Главное о вас",
@@ -180,7 +181,7 @@ def narrative_input_to_hero(
             f"Соционика: {narrative_input.socionics.type_ru}",
             f"Архетип: {narrative_input.archetype.primary}",
         ],
-        evidence_notes=[EvidenceNote(claim=body, fact_ids=list(evidence_ids))],
+        evidence_notes=evidence_notes,
     )
 
 

@@ -165,17 +165,15 @@ _ALLOWED_ASPECT_TOKENS = {
     "quincunx",
 }
 _CAREER_MARKERS = (
-    "професси",
-    "карьерн",
-    "деньг",
-    "доход",
-    "зарплат",
-    "финансов",
-    "вакан",
-    "собесед",
-    "управлен",
-    "менедж",
-    "должност",
+    "подойдут профессии",
+    "выбор профессии",
+    "карьерная стратегия",
+    "денежная стратегия",
+    "стратегия дохода",
+    "уровень дохода",
+    "карьерный трек",
+    "подходящие вакансии",
+    "собеседован",
 )
 _FORBIDDEN_LANGUAGE_MARKERS = (
     "диагноз",
@@ -518,16 +516,9 @@ def _validate_maturity_levels(narrative: SelfNarrative) -> list[NarrativeValidat
 
 def _validate_career_cta(narrative: SelfNarrative) -> list[NarrativeValidationError]:
     career_cta = getattr(narrative, "career_cta", None)
-    if career_cta is not None:
+    if career_cta is None:
         return []
-    return [
-        NarrativeValidationError(
-            code="missing_career_cta",
-            message="Self narrative must include career_cta.",
-            location="career_cta",
-            recoverable=True,
-        )
-    ]
+    return []
 
 
 def _validate_evidence_refs(

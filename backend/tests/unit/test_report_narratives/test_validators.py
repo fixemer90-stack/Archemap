@@ -158,13 +158,13 @@ class TestValidateSelfNarrative:
         assert any(error.code == "unknown_evidence_ref" for error in errors)
         assert any("maturity_levels.high.evidence_notes[0].fact_ids" in error.location for error in errors)
 
-    def test_rejects_missing_career_cta(self) -> None:
+    def test_allows_missing_career_cta(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()
-        invalid_narrative = narrative.model_copy(update={"career_cta": None})
+        without_cta = narrative.model_copy(update={"career_cta": None})
 
-        errors = validate_self_narrative(invalid_narrative, narrative_input_payload)
+        errors = validate_self_narrative(without_cta, narrative_input_payload)
 
-        assert any(error.code == "missing_career_cta" for error in errors)
+        assert not any(error.code == "missing_career_cta" for error in errors)
 
     def test_rejects_career_deep_dive_inside_self_sections(self) -> None:
         narrative, narrative_input_payload = make_validated_inputs()

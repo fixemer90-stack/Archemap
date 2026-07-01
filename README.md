@@ -28,7 +28,7 @@ Astrotype — это full‑stack SaaS для персональных астр�
 Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым, а пользовательский интерфейс показывает смысл до raw math, confidence и technical evidence.
 
 ```text
-birth data → chart snapshot → normalized features → rules → claims + evidence → narrative report → PDF / UI
+birth data → chart snapshot → normalized features → rules → claims + evidence → deep synthesis → staged narrative pipeline → PDF / UI
 ```
 
 ---
@@ -41,7 +41,7 @@ birth data → chart snapshot → normalized features → rules → claims + evi
 | **Astrotype Career** | Сильные стороны, профессиональные роли, сценарии развития             | ✅ Реализовано          |
 | **Astrotype Love**   | Совместимость, паттерны отношений, триггеры конфликтов                | 🧭 Запланировано        |
 | **Astrotype Child**  | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию   | 🧭 Запланировано        |
-| **LLM Narrative**    | Runtime‑слой structured JSON narrative поверх deterministic report    | ✅ Реализовано для Self |
+| **LLM Narrative**    | Staged structured JSON narrative pipeline поверх deterministic report | ✅ Реализовано для Self |
 
 ### Почему это не «астро‑гадалка»
 
@@ -49,7 +49,7 @@ birth data → chart snapshot → normalized features → rules → claims + evi
 - Каждый вывод имеет `evidence trail`: факты → правила → claim.
 - Соционический профиль считается отдельным engine‑слоем, а не придумывается текстом.
 - Технические детали доступны, но спрятаны в progressive disclosure.
-- LLM‑слой пишет валидируемый narrative JSON поверх deterministic report, но не рассчитывает карту и не добавляет факты.
+- LLM‑слой пишет валидируемый staged narrative JSON поверх deterministic report и deep synthesis, но не рассчитывает карту и не добавляет факты.
 
 ---
 
@@ -286,23 +286,25 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ                                                                                                           | Назначение                                    |
-| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                             | Индекс проекта: код, API, docs                |
-| [`docs/SPEC.md`](docs/SPEC.md)                                                                                     | Полная спецификация продукта                  |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                               | Дорожная карта                                |
-| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                                   | Дизайн‑код и визуальная система               |
-| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                           | Narrative‑first UX отчёта                     |
-| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                               | Сторителлинг Self‑отчёта                      |
-| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)             | Архитектура LLM narrative layer               |
-| [`docs/features/E2-identity/CURRENT-AUTH-FLOW.md`](docs/features/E2-identity/CURRENT-AUTH-FLOW.md)                 | Текущий процесс авторизации                   |
-| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md) | Улучшение глубины Self report                 |
-| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                   | SRS для E13 depth-layer отчёта                |
-| [`docs/features/E14-staged-narrative-pipeline/FEATURE.md`](docs/features/E14-staged-narrative-pipeline/FEATURE.md) | Staged LLM pipeline для глубокого Self report |
-| [`docs/SRS/SRS-E14-staged-narrative-pipeline.md`](docs/SRS/SRS-E14-staged-narrative-pipeline.md)                   | SRS для staged narrative pipeline             |
-| [`docs/features/`](docs/features/)                                                                                 | Feature/story документация                    |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                 | REST API contract                             |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                               | Async/event contract                          |
+| Документ                                                                                                             | Назначение                                             |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                               | Индекс проекта: код, API, docs                         |
+| [`docs/SPEC.md`](docs/SPEC.md)                                                                                       | Полная спецификация продукта                           |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                                 | Дорожная карта                                         |
+| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                                     | Дизайн‑код и визуальная система                        |
+| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                             | Narrative‑first UX отчёта                              |
+| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                                 | Сторителлинг Self‑отчёта                               |
+| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)               | Архитектура LLM/staged narrative layer                 |
+| [`docs/features/E2-identity/CURRENT-AUTH-FLOW.md`](docs/features/E2-identity/CURRENT-AUTH-FLOW.md)                   | Текущий процесс авторизации                            |
+| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md)   | Улучшение глубины Self report                          |
+| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                     | SRS для E13 depth-layer отчёта                         |
+| [`docs/features/E14-staged-narrative-pipeline/FEATURE.md`](docs/features/E14-staged-narrative-pipeline/FEATURE.md)   | E14: shipped staged pipeline для глубокого Self report |
+| [`docs/features/E14-staged-narrative-pipeline/WORKFLOW.md`](docs/features/E14-staged-narrative-pipeline/WORKFLOW.md) | Workflow staged generate → progress → ready → PDF      |
+| [`docs/features/E14-staged-narrative-pipeline/API.md`](docs/features/E14-staged-narrative-pipeline/API.md)           | API/state machine staged narrative pipeline            |
+| [`docs/SRS/SRS-E14-staged-narrative-pipeline.md`](docs/SRS/SRS-E14-staged-narrative-pipeline.md)                     | SRS для staged narrative pipeline                      |
+| [`docs/features/`](docs/features/)                                                                                   | Feature/story документация                             |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                   | REST API contract                                      |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                 | Async/event contract                                   |
 
 ---
 

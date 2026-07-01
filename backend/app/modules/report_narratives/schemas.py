@@ -336,7 +336,7 @@ class NarrativeSection(BaseModel):
 
 
 class CareerCTA(BaseModel):
-    """Career upsell block required in Self narrative."""
+    """Optional career upsell block for Self narrative."""
 
     title: str = Field(..., min_length=1, max_length=200)
     body: str = Field(..., min_length=1, max_length=1500)

@@ -238,10 +238,12 @@ def build_narrative_input(report: Any, *, include_deep_synthesis: bool = True) -
     chart = report_data.get("chart", {})
     claims = report_data.get("claims", [])
 
+    birth_time_quality = profile_data.get("birth_time_accuracy") or profile_data.get("birth_time_quality") or "unknown"
+
     narrative_profile = NarrativeProfile(
         name=profile_data.get("name", "Пользователь"),
         birth_date=_parse_birth_date(profile_data.get("birth_date")),
-        birth_time_quality=profile_data.get("birth_time_quality", "unknown"),
+        birth_time_quality=birth_time_quality,
         birth_place=profile_data.get("birth_place", "Неизвестно"),
     )
 

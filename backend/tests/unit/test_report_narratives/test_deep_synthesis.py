@@ -137,3 +137,19 @@ def test_deep_synthesis_hash_changes_when_contract_version_or_chart_changes(
     modified = build_deep_natal_synthesis(changed)
 
     assert compute_deep_synthesis_hash(base) != compute_deep_synthesis_hash(modified)
+
+
+def test_build_deep_natal_synthesis_keeps_maturity_evidence_for_sparse_live_report_shape(
+    report_fixture: SimpleNamespace,
+) -> None:
+    sparse = deepcopy(report_fixture)
+    sparse.report_data["chart"]["aspects"] = []
+    sparse.report_data["claims"] = []
+
+    synthesis = build_deep_natal_synthesis(sparse)
+
+    assert synthesis.evidence_map
+    assert synthesis.maturity_levels.low.evidence_ids
+    assert synthesis.maturity_levels.medium.evidence_ids
+    assert synthesis.maturity_levels.high.evidence_ids
+    assert set(synthesis.maturity_levels.low.evidence_ids) <= set(synthesis.evidence_map)

@@ -1,7 +1,7 @@
 # Astrotype — Дорожная карта
 
 > **Продукт:** Платформа астрологических личностных профилей (4 вертикали: Self, Love, Child, Career)
-> **Обновлено:** 2026-06-20
+> **Обновлено:** 2026-06-30
 
 ---
 
@@ -35,7 +35,7 @@
 | E11  | LLM Report Narrative         | ✅ Готово                                                 |
 | E12  | LLM Report Runtime Readiness | ✅ Готово (PDF delivery без обязательного object storage) |
 | E13  | Report Depth Improvements    | 🟡 В процессе                                             |
-| E14  | Staged Narrative Pipeline    | ⬜ Не начато                                              |
+| E14  | Staged Narrative Pipeline    | ✅ Готово                                                 |
 
 ---
 
@@ -247,25 +247,32 @@
 
 ---
 
-## Epic 14: Staged Narrative Pipeline
+## Epic 14: Staged Narrative Pipeline ✅
 
-**Статус:** ⬜ Не начато
-**Оценка:** 2–4 недели
-**Зависимости:** E3 ✅, E4 ✅, E11 ✅, E12 ✅, E13 🟡
+**Статус:** ✅ Готово
+**Фактическая поставка:** shipped staged Self pipeline в runtime
+**Зависимости:** E3 ✅, E4 ✅, E11 ✅, E12 ✅, E13 ✅
 
-Цель E14 — заменить монолитный one-shot LLM narrative на staged pipeline: сначала deterministic deep natal synthesis, затем общий narrative plan, параллельная генерация секций и финальная сборка/валидация. Это нужно, чтобы Self report перестал звучать как поверхностный гороскоп и начал объяснять динамику карты: аспекты, противоречия, компенсации, maturity levels и жизненные сценарии.
+Цель E14 была — заменить монолитный one-shot LLM narrative на staged pipeline: сначала deterministic deep natal synthesis, затем общий narrative plan, параллельная генерация секций и финальная сборка/валидация. Эта цель закрыта: staged Self runtime теперь проходит `generate -> progress -> ready -> pdf` и держит deterministic-first quality gates против generic horoscope prose.
 
 | #    | Фича                | Описание                                                                        | Документы                                                                          | Статус |
 | ---- | ------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------ |
-| 14.1 | DeepNatalSynthesis  | Детерминированный слой перед LLM: evidence map, aspect patterns, chart dynamics | `docs/features/E14-staged-narrative-pipeline/S01-deep-natal-synthesis-contract.md` | ⬜     |
-| 14.2 | Aspect ranking      | Ранжирование и кластеризация аспектов по orb, важности планет и смысловой роли  | `docs/features/E14-staged-narrative-pipeline/S02-aspect-ranking-patterns.md`       | ⬜     |
-| 14.3 | Chart dynamics      | Противоречия, компенсации, зрелая форма и калибровочные гипотезы                | `docs/features/E14-staged-narrative-pipeline/S03-chart-dynamics-synthesis.md`      | ⬜     |
-| 14.4 | Staged prompts      | Prompt family для plan/section/assembly stages                                  | `docs/features/E14-staged-narrative-pipeline/S04-staged-llm-contracts-prompts.md`  | ⬜     |
-| 14.5 | Orchestration       | Stage cache, retry, statuses, worker orchestration                              | `docs/features/E14-staged-narrative-pipeline/S05-orchestration-cache-statuses.md`  | ⬜     |
-| 14.6 | Quality gates       | Final assembly, consistency and anti-horoscope validators                       | `docs/features/E14-staged-narrative-pipeline/S06-assembly-quality-gates.md`        | ⬜     |
-| 14.7 | Web/PDF integration | Progress API, frontend rendering, PDF parity                                    | `docs/features/E14-staged-narrative-pipeline/S07-api-frontend-pdf-integration.md`  | ⬜     |
+| 14.1 | DeepNatalSynthesis  | Детерминированный слой перед LLM: evidence map, aspect patterns, chart dynamics | `docs/features/E14-staged-narrative-pipeline/S01-deep-natal-synthesis-contract.md` | ✅     |
+| 14.2 | Aspect ranking      | Ранжирование и кластеризация аспектов по orb, важности планет и смысловой роли  | `docs/features/E14-staged-narrative-pipeline/S02-aspect-ranking-patterns.md`       | ✅     |
+| 14.3 | Chart dynamics      | Противоречия, компенсации, зрелая форма и калибровочные гипотезы                | `docs/features/E14-staged-narrative-pipeline/S03-chart-dynamics-synthesis.md`      | ✅     |
+| 14.4 | Staged prompts      | Prompt family для plan/section/assembly stages                                  | `docs/features/E14-staged-narrative-pipeline/S04-staged-llm-contracts-prompts.md`  | ✅     |
+| 14.5 | Orchestration       | Stage cache, retry, statuses, worker orchestration                              | `docs/features/E14-staged-narrative-pipeline/S05-orchestration-cache-statuses.md`  | ✅     |
+| 14.6 | Quality gates       | Final assembly, consistency and anti-horoscope validators                       | `docs/features/E14-staged-narrative-pipeline/S06-assembly-quality-gates.md`        | ✅     |
+| 14.7 | Web/PDF integration | Progress API, frontend rendering, PDF parity                                    | `docs/features/E14-staged-narrative-pipeline/S07-api-frontend-pdf-integration.md`  | ✅     |
 
 Полный контракт: `docs/SRS/SRS-E14-staged-narrative-pipeline.md`.
+
+Итог поставки E14:
+
+- monolithic one-shot Self narrative заменён staged runtime path;
+- deterministic `DeepNatalSynthesis` и staged validators стоят перед финальной отдачей пользователю;
+- API отдаёт progress/status metadata во время генерации;
+- web и PDF работают от одного staged narrative результата.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > Статус: ✅ Готово
 > Дата подготовки: 2026-06-27
-> Последняя синхронизация с кодом: 2026-06-29
+> Последняя синхронизация с кодом: 2026-06-30
 > Источник: пользовательский фидбек по Self report: “результат всё ещё похож на поверхностный гороскоп”
 > Зависимости: E3 ✅, E4 ✅, E11 ✅, E12 ✅, E13 ✅
 
@@ -82,6 +82,8 @@
 - chart dynamics / contradictions / maturity / calibration synthesis;
 - staged schemas и file-backed prompt family;
 - stage artifact / cache / retry / progress helpers;
+- persisted `stage_progress` / `stage_artifacts` snapshots for live polling, operator debugging and staged selective resume;
+- default staged regenerate now reuses valid ready artifacts and reruns only failed/missing/stale stages plus downstream `assembly`;
 - deterministic assembler и anti-generic quality gates;
 - staged provider gating и межсессионная visibility progress snapshots для live polling path;
 - live runtime `generate -> progress -> ready -> pdf` на реальном provider без fallback.
@@ -94,19 +96,22 @@ E14 закрыт как shipped staged Self pipeline:
 
 Non-blocking deferred follow-up:
 
-- текущий runtime генерирует section stages последовательно внутри общего staged flow; параллельное выполнение после `NarrativePlan` остаётся future optimization, а не blocker для закрытия E14.
+- richer staged fixtures / additional guardrail tightening могут добавляться дальше без изменения shipped runtime contract;
+- selective resume из persisted stage artifacts реализован для default staged regenerate; explicit public request-body scopes (`stage`, `failed_stages`, `full`) остаются follow-up API extension;
+- отдельная persisted table для stage artifacts остаётся возможным future refactor, но не нужна для текущего shipped MVP.
 
 ## Stories
 
-| Story | Название                                                       | Статус    | Документ                               |
-| ----- | -------------------------------------------------------------- | --------- | -------------------------------------- |
-| S01   | DeepNatalSynthesis contract                                    | ✅ Готово | `S01-deep-natal-synthesis-contract.md` |
-| S02   | Aspect ranking and pattern clustering                          | ✅ Готово | `S02-aspect-ranking-patterns.md`       |
-| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово | `S03-chart-dynamics-synthesis.md`      |
-| S04   | Staged LLM schemas and prompt family                           | ✅ Готово | `S04-staged-llm-contracts-prompts.md`  |
-| S05   | Orchestration, cache, retry and statuses                       | ✅ Готово | `S05-orchestration-cache-statuses.md`  |
-| S06   | Section assembly, consistency and anti-horoscope quality gates | ✅ Готово | `S06-assembly-quality-gates.md`        |
-| S07   | API/frontend/PDF integration                                   | ✅ Готово | `S07-api-frontend-pdf-integration.md`  |
+| Story | Название                                                       | Статус      | Документ                               |
+| ----- | -------------------------------------------------------------- | ----------- | -------------------------------------- |
+| S01   | DeepNatalSynthesis contract                                    | ✅ Готово   | `S01-deep-natal-synthesis-contract.md` |
+| S02   | Aspect ranking and pattern clustering                          | ✅ Готово   | `S02-aspect-ranking-patterns.md`       |
+| S03   | Chart dynamics: contradictions, compensations, maturity        | ✅ Готово   | `S03-chart-dynamics-synthesis.md`      |
+| S04   | Staged LLM schemas and prompt family                           | ✅ Готово   | `S04-staged-llm-contracts-prompts.md`  |
+| S05   | Orchestration, cache, retry and statuses                       | ✅ Готово   | `S05-orchestration-cache-statuses.md`  |
+| S06   | Section assembly, consistency and anti-horoscope quality gates | ✅ Готово   | `S06-assembly-quality-gates.md`        |
+| S07   | API/frontend/PDF integration                                   | ✅ Готово   | `S07-api-frontend-pdf-integration.md`  |
+| S08   | Selective stage resume after block failure/interruption        | 🟡 Частично | `S08-selective-stage-resume.md`        |
 
 ## Acceptance criteria
 
@@ -117,7 +122,8 @@ Non-blocking deferred follow-up:
 - [x] The report explains central contradictions and compensations using evidence-backed chart dynamics.
 - [x] Section generation can run in parallel after a shared `NarrativePlan` stage.
 - [x] Each staged artifact has stable `input_hash`, `prompt_version`, `model`, `status`, error and retry metadata.
-- [x] Failed section generation does not corrupt ready sections and can be retried by stage.
+- [x] Failed section generation does not corrupt already produced stage snapshots within the same run; current shipped runtime persists them for observability but does not yet resume from them across reruns.
+- [x] Selective resume reuses valid persisted stage artifacts and regenerates only failed/stale stages plus downstream dependents (`S08`).
 - [x] Final assembled report has consistent tone, no duplicate paragraphs and no contradictory claims at the current shipped quality-gate baseline.
 - [x] Validators reject unknown evidence refs, unsupported aspect claims, Career leakage and horoscope-generic fallback prose.
 - [x] Web and PDF render the same staged narrative content at serializer/template regression level and fresh live smoke reaches PDF `200`.

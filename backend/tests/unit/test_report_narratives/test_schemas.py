@@ -640,13 +640,10 @@ class TestSelfNarrativeSchema:
         else:
             raise AssertionError("SelfNarrative unexpectedly accepted unknown section id")
 
-    def test_requires_career_cta(self) -> None:
+    def test_career_cta_is_optional_for_self_narrative(self) -> None:
         payload = make_self_narrative_payload()
         payload.pop("career_cta")
 
-        try:
-            SelfNarrative.model_validate(payload)
-        except ValidationError as exc:
-            assert "career_cta" in str(exc)
-        else:
-            raise AssertionError("SelfNarrative unexpectedly accepted payload without career_cta")
+        narrative = SelfNarrative.model_validate(payload)
+
+        assert narrative.career_cta is None

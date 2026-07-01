@@ -25,13 +25,19 @@ from app.modules.llm.exceptions import (
 )
 from app.modules.report_narratives.assembler import assemble_self_narrative
 from app.modules.report_narratives.fallback import build_deterministic_self_fallback
+from app.modules.report_narratives.hash import compute_input_hash
+from app.modules.report_narratives.input_builder import build_narrative_input
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.schemas import (
     AssemblyCheck,
     NarrativeInput,
     NarrativePlan,
+    NarrativeStageArtifact,
 )
-from app.modules.report_narratives.service import ReportNarrativeService
+from app.modules.report_narratives.service import (
+    ReportNarrativeService,
+    compute_stage_input_hashes,
+)
 from app.modules.report_narratives.tasks import (
     _generate_report_narrative_async,
     _run_async,
@@ -728,12 +734,14 @@ class TestReportNarrativeService:
             model_name: str,
             prompt_version: str,
             force_new: bool = False,
+            preserve_content_on_force: bool = False,
         ) -> ReportNarrative:
             assert report is report_fixture
             assert input_hash
             assert model_name == "mock-self-v1"
             assert prompt_version in {"self_story_v5", "self_staged_v1"}
             assert force_new is False
+            assert preserve_content_on_force is False
             return record
 
         monkeypatch.setattr(service, "_get_report", fake_get_report)
@@ -791,6 +799,136 @@ class TestReportNarrativeService:
         }
         assert report_fixture.status == "ready"
         assert report_fixture.error_message is None
+
+    @pytest.mark.asyncio
+    async def test_staged_runtime_reuses_ready_stage_artifacts_after_failed_assembly(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = ReadyStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+        narrative_input = build_narrative_input(report_fixture)
+        input_hash = compute_input_hash(narrative_input)
+        synthesis = narrative_input.deep_natal_synthesis
+        assert synthesis is not None
+
+        seed_provider = ReadyStagedProvider()
+        plan = await seed_provider.generate_structured(
+            prompt="",
+            narrative_input=narrative_input,
+            schema=NarrativePlan,
+        )
+        stage_hashes = compute_stage_input_hashes(synthesis, plan)
+        section_outputs = {
+            "identity": await seed_provider.generate_structured(
+                prompt="",
+                narrative_input=narrative_input,
+                schema=__import__(
+                    "app.modules.report_narratives.schemas",
+                    fromlist=["IdentitySectionOutput"],
+                ).IdentitySectionOutput,
+            ),
+            "emotional": await seed_provider.generate_structured(
+                prompt="",
+                narrative_input=narrative_input,
+                schema=__import__(
+                    "app.modules.report_narratives.schemas",
+                    fromlist=["EmotionalSectionOutput"],
+                ).EmotionalSectionOutput,
+            ),
+            "relationships": await seed_provider.generate_structured(
+                prompt="",
+                narrative_input=narrative_input,
+                schema=__import__(
+                    "app.modules.report_narratives.schemas",
+                    fromlist=["RelationshipSectionOutput"],
+                ).RelationshipSectionOutput,
+            ),
+            "development": await seed_provider.generate_structured(
+                prompt="",
+                narrative_input=narrative_input,
+                schema=__import__(
+                    "app.modules.report_narratives.schemas",
+                    fromlist=["DevelopmentSectionOutput"],
+                ).DevelopmentSectionOutput,
+            ),
+            "house_scenarios": await seed_provider.generate_structured(
+                prompt="",
+                narrative_input=narrative_input,
+                schema=__import__(
+                    "app.modules.report_narratives.schemas",
+                    fromlist=["HouseScenariosSectionOutput"],
+                ).HouseScenariosSectionOutput,
+            ),
+        }
+        ready_artifacts: dict[str, dict[str, Any]] = {
+            "plan": NarrativeStageArtifact(
+                stage_id="plan",
+                status="ready",
+                prompt_version="self_plan_v1",
+                model_name="mock-self-v1",
+                input_hash=stage_hashes["plan"],
+                attempt_count=1,
+                error_message=None,
+                artifact=plan.model_dump(mode="json"),
+            ).model_dump(mode="json"),
+        }
+        section_prompt_versions = {
+            "identity": "self_section_identity_v1",
+            "emotional": "self_section_emotional_v1",
+            "relationships": "self_section_relationships_v1",
+            "development": "self_section_development_v1",
+            "house_scenarios": "self_section_house_scenarios_v1",
+        }
+        for stage_id, output in section_outputs.items():
+            ready_artifacts[stage_id] = NarrativeStageArtifact(
+                stage_id=cast(Any, stage_id),
+                status="ready",
+                prompt_version=section_prompt_versions[stage_id],
+                model_name="mock-self-v1",
+                input_hash=stage_hashes[cast(Any, stage_id)],
+                attempt_count=1,
+                error_message=None,
+                artifact=output.model_dump(mode="json"),
+            ).model_dump(mode="json")
+        ready_artifacts["assembly"] = NarrativeStageArtifact(
+            stage_id="assembly",
+            status="failed",
+            prompt_version="self_assemble_v1",
+            model_name="mock-self-v1",
+            input_hash=stage_hashes["assembly"],
+            attempt_count=1,
+            error_message="career_boundary_violation",
+            artifact={
+                "duplicate_claim_ids": [],
+                "missing_required_evidence_ids": [],
+                "tone_notes": [],
+                "needs_retry": True,
+            },
+        ).model_dump(mode="json")
+        record.content = {
+            "stage_artifacts": list(ready_artifacts.values()),
+            "stage_progress": {"ready": False},
+        }
+        record.input_hash = input_hash
+        record.prompt_version = "self_staged_v1"
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(report_fixture.id, force=True)
+
+        assert result.status == "ready"
+        assert provider.calls == ["AssemblyCheck"]
+        assert result.content is not None
+        stage_artifacts = {artifact["stage_id"]: artifact for artifact in result.content["stage_artifacts"]}
+        assert stage_artifacts["plan"]["attempt_count"] == 1
+        assert stage_artifacts["identity"]["attempt_count"] == 1
+        assert stage_artifacts["assembly"]["status"] == "ready"
 
     @pytest.mark.asyncio
     async def test_staged_runtime_runs_section_generation_in_parallel_after_plan(
@@ -916,8 +1054,12 @@ class TestReportNarrativeService:
         result = await service.generate_for_report(report_fixture.id)
 
         assert result.status == "ready"
-        stage_started = [payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_started"]
-        stage_succeeded = [payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_succeeded"]
+        stage_started = [
+            payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_started"
+        ]
+        stage_succeeded = [
+            payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_succeeded"
+        ]
         stage_failed = [payload for _, event, payload in fake_logger.events if event == "report_narrative_stage_failed"]
 
         assert any(payload.get("stage_id") == "plan" for payload in stage_started)

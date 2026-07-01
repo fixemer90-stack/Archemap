@@ -8,6 +8,7 @@ from app.modules.report_narratives.service import (
     build_stage_progress_snapshot,
     compute_stage_input_hashes,
     get_runnable_stages,
+    plan_stage_resume,
     reuse_cached_stage_artifacts,
 )
 
@@ -222,6 +223,26 @@ def test_reuse_cached_stage_artifacts_preserves_ready_stages_and_reopens_only_fa
     assert reused["emotional"].attempt_count == 2
     assert reused["emotional"].error_message is None
     assert reused["assembly"].status == "pending"
+
+
+def test_plan_stage_resume_reuses_ready_siblings_and_regenerates_failed_stage_plus_assembly() -> None:
+    synthesis = _fake_synthesis()
+    plan = _fake_plan()
+    hashes = compute_stage_input_hashes(synthesis, plan)
+    artifacts = reuse_cached_stage_artifacts(existing_artifacts={}, stage_input_hashes=hashes, model_name="gpt-5.4")
+    artifacts["plan"].status = "ready"
+    artifacts["identity"].status = "ready"
+    artifacts["identity"].artifact = {"section_id": "identity"}
+    artifacts["emotional"].status = "failed"
+    artifacts["assembly"].status = "ready"
+    artifacts["assembly"].artifact = {"needs_retry": False}
+
+    resume_plan = plan_stage_resume(artifacts)
+
+    assert resume_plan.reused_stages == ["plan", "identity"]
+    assert resume_plan.regenerated_stages == ["emotional", "assembly"]
+    assert resume_plan.resume_mode == "resume"
+    assert resume_plan.reason == "failed_stage:emotional"
 
 
 def test_get_runnable_stages_waits_for_plan_and_then_unlocks_sections_and_assembly() -> None:

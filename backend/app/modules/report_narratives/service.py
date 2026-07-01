@@ -8,6 +8,7 @@ import hashlib
 import json
 import time
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
@@ -125,6 +126,7 @@ class ReportNarrativeService:
             model_name=model_name,
             prompt_version=prompt_version,
             force_new=force,
+            preserve_content_on_force=force and self._should_use_staged_pipeline(report, narrative_input),
         )
         return await self._generate_and_persist(
             report=report,
@@ -326,53 +328,80 @@ class ReportNarrativeService:
             attempt=narrative.generation_attempts,
         )
 
-        artifacts: dict[NarrativeStageId, NarrativeStageArtifact] = {
-            "plan": NarrativeStageArtifact(
+        existing_artifacts = _extract_stage_artifacts_from_content(narrative.content)
+        plan_hash = _stable_hash({"DeepNatalSynthesis": synthesis.model_dump(mode="json")})
+        artifacts = reuse_cached_stage_artifacts(
+            existing_artifacts=existing_artifacts,
+            stage_input_hashes={"plan": plan_hash},
+            model_name=narrative.model_name,
+        )
+        if artifacts["plan"].status == "pending":
+            artifacts["plan"] = NarrativeStageArtifact(
                 stage_id="plan",
                 status="running",
                 prompt_version=_STAGE_PROMPT_VERSIONS["plan"],
                 model_name=narrative.model_name,
-                input_hash=_stable_hash({"DeepNatalSynthesis": synthesis.model_dump(mode="json")}),
+                input_hash=plan_hash,
                 attempt_count=1,
                 error_message=None,
                 artifact=None,
             )
-        }
         await self._persist_stage_runtime_snapshot(
             narrative=narrative,
             artifacts=artifacts,
             final_check=None,
         )
         try:
-            plan = cast(
-                NarrativePlan,
-                await self._generate_staged_schema(
+            if artifacts["plan"].status == "ready" and artifacts["plan"].artifact is not None:
+                plan = NarrativePlan.model_validate(artifacts["plan"].artifact)
+            else:
+                plan = cast(
+                    NarrativePlan,
+                    await self._generate_staged_schema(
+                        stage_id="plan",
+                        prompt=build_stage_prompt("plan", synthesis=synthesis),
+                        narrative_input=narrative_input,
+                        schema=NarrativePlan,
+                        narrative=narrative,
+                        report=report,
+                        artifacts=artifacts,
+                    ),
+                )
+                artifacts["plan"] = NarrativeStageArtifact(
                     stage_id="plan",
-                    prompt=build_stage_prompt("plan", synthesis=synthesis),
-                    narrative_input=narrative_input,
-                    schema=NarrativePlan,
+                    status="ready",
+                    prompt_version=_STAGE_PROMPT_VERSIONS["plan"],
+                    model_name=narrative.model_name,
+                    input_hash=artifacts["plan"].input_hash,
+                    attempt_count=artifacts["plan"].attempt_count,
+                    error_message=None,
+                    artifact=plan.model_dump(mode="json"),
+                )
+                await self._persist_stage_runtime_snapshot(
                     narrative=narrative,
-                    report=report,
                     artifacts=artifacts,
-                ),
-            )
-            artifacts["plan"] = NarrativeStageArtifact(
-                stage_id="plan",
-                status="ready",
-                prompt_version=_STAGE_PROMPT_VERSIONS["plan"],
-                model_name=narrative.model_name,
-                input_hash=artifacts["plan"].input_hash,
-                attempt_count=artifacts["plan"].attempt_count,
-                error_message=None,
-                artifact=plan.model_dump(mode="json"),
-            )
-            await self._persist_stage_runtime_snapshot(
-                narrative=narrative,
-                artifacts=artifacts,
-                final_check=None,
-            )
+                    final_check=None,
+                )
 
             stage_hashes = compute_stage_input_hashes(synthesis, plan)
+            existing_artifacts["plan"] = artifacts["plan"].model_dump(mode="json")
+            artifacts = reuse_cached_stage_artifacts(
+                existing_artifacts=existing_artifacts,
+                stage_input_hashes=stage_hashes,
+                model_name=narrative.model_name,
+            )
+            resume_plan = plan_stage_resume(artifacts)
+            logger.info(
+                "report_narrative_resume_plan_created",
+                report_id=str(report.id),
+                narrative_id=str(narrative.id),
+                product=report.product,
+                resume_mode=resume_plan.resume_mode,
+                reused_stages=resume_plan.reused_stages,
+                regenerated_stages=resume_plan.regenerated_stages,
+                stale_stages=resume_plan.stale_stages,
+                resume_reason=resume_plan.reason,
+            )
             stage_outputs: dict[str, dict[str, Any]] = {}
             stage_schemas: list[
                 tuple[
@@ -392,14 +421,31 @@ class ReportNarrativeService:
                 ("development", DevelopmentSectionOutput),
                 ("house_scenarios", HouseScenariosSectionOutput),
             ]
-            for stage_id, _schema in stage_schemas:
+            pending_stage_schemas: list[
+                tuple[
+                    NarrativeStageId,
+                    type[
+                        IdentitySectionOutput
+                        | EmotionalSectionOutput
+                        | RelationshipSectionOutput
+                        | DevelopmentSectionOutput
+                        | HouseScenariosSectionOutput
+                    ],
+                ]
+            ] = []
+            for stage_id, schema in stage_schemas:
+                artifact = artifacts[stage_id]
+                if artifact.status == "ready" and artifact.artifact is not None:
+                    stage_outputs[stage_id] = schema.model_validate(artifact.artifact).model_dump(mode="json")
+                    continue
+                pending_stage_schemas.append((stage_id, schema))
                 artifacts[stage_id] = NarrativeStageArtifact(
                     stage_id=stage_id,
                     status="running",
                     prompt_version=_STAGE_PROMPT_VERSIONS[stage_id],
                     model_name=narrative.model_name,
                     input_hash=stage_hashes[stage_id],
-                    attempt_count=1,
+                    attempt_count=max(1, artifact.attempt_count),
                     error_message=None,
                     artifact=None,
                 )
@@ -421,7 +467,7 @@ class ReportNarrativeService:
                         artifact=artifacts[stage_id],
                     )
                 )
-                for stage_id, schema in stage_schemas
+                for stage_id, schema in pending_stage_schemas
             ]
             first_stage_error: Exception | None = None
             for completed_task in asyncio.as_completed(section_tasks):
@@ -685,9 +731,7 @@ class ReportNarrativeService:
                 artifact=current_artifact,
             )
             attempt_prompt = (
-                prompt
-                if attempt == artifact.attempt_count
-                else _build_staged_schema_retry_prompt(prompt, schema)
+                prompt if attempt == artifact.attempt_count else _build_staged_schema_retry_prompt(prompt, schema)
             )
             stage_started_at = time.perf_counter()
             try:
@@ -1045,6 +1089,7 @@ class ReportNarrativeService:
         model_name: str,
         prompt_version: str,
         force_new: bool = False,
+        preserve_content_on_force: bool = False,
     ) -> ReportNarrative:
         existing = await _find_matching_narrative_record(
             db=self.db,
@@ -1057,7 +1102,8 @@ class ReportNarrativeService:
         if existing is not None:
             if force_new:
                 existing.status = "pending"
-                existing.content = None
+                if not preserve_content_on_force:
+                    existing.content = None
                 existing.error_message = None
                 existing.generation_started_at = None
                 existing.generation_finished_at = None
@@ -1092,7 +1138,8 @@ class ReportNarrativeService:
                 raise
             if force_new:
                 existing.status = "pending"
-                existing.content = None
+                if not preserve_content_on_force:
+                    existing.content = None
                 existing.error_message = None
                 existing.generation_started_at = None
                 existing.generation_finished_at = None
@@ -1236,6 +1283,22 @@ _STAGE_PROMPT_VERSIONS: dict[NarrativeStageId, str] = {
     "house_scenarios": "self_section_house_scenarios_v1",
     "assembly": "self_assemble_v1",
 }
+_SECTION_STAGE_IDS: tuple[NarrativeStageId, ...] = (
+    "identity",
+    "emotional",
+    "relationships",
+    "development",
+    "house_scenarios",
+)
+
+
+@dataclass(frozen=True)
+class StageResumePlan:
+    resume_mode: str
+    reused_stages: list[NarrativeStageId]
+    regenerated_stages: list[NarrativeStageId]
+    stale_stages: list[NarrativeStageId]
+    reason: str
 
 
 def _stable_hash(payload: dict[str, Any]) -> str:
@@ -1308,6 +1371,22 @@ def compute_stage_input_hashes(
     return hashes
 
 
+def _extract_stage_artifacts_from_content(content: object) -> dict[str, dict[str, Any]]:
+    if not isinstance(content, dict):
+        return {}
+    raw_artifacts = content.get("stage_artifacts")
+    if not isinstance(raw_artifacts, list):
+        return {}
+    artifacts: dict[str, dict[str, Any]] = {}
+    for raw in raw_artifacts:
+        if not isinstance(raw, dict):
+            continue
+        stage_id = raw.get("stage_id")
+        if isinstance(stage_id, str):
+            artifacts[stage_id] = raw
+    return artifacts
+
+
 def reuse_cached_stage_artifacts(
     *,
     existing_artifacts: dict[str, dict[str, Any]] | dict[str, NarrativeStageArtifact],
@@ -1327,8 +1406,10 @@ def reuse_cached_stage_artifacts(
         if (
             existing is not None
             and existing.model_name == model_name
+            and existing.prompt_version == _STAGE_PROMPT_VERSIONS[stage_id]
             and existing.input_hash == input_hash
             and existing.status == "ready"
+            and existing.artifact is not None
         ):
             artifacts[stage_id] = existing
             continue
@@ -1342,9 +1423,48 @@ def reuse_cached_stage_artifacts(
             input_hash=input_hash,
             attempt_count=attempt_count,
             error_message=None,
-            artifact=existing.artifact if existing is not None and existing.status == "ready" else None,
+            artifact=None,
         )
+
+    has_pending_section = any(
+        artifacts.get(stage_id) is not None and artifacts[stage_id].status != "ready" for stage_id in _SECTION_STAGE_IDS
+    )
+    if has_pending_section:
+        assembly = artifacts.get("assembly")
+        if assembly is not None and assembly.status == "ready":
+            artifacts["assembly"] = NarrativeStageArtifact(
+                stage_id="assembly",
+                status="pending",
+                prompt_version=assembly.prompt_version,
+                model_name=assembly.model_name,
+                input_hash=assembly.input_hash,
+                attempt_count=assembly.attempt_count,
+                error_message=None,
+                artifact=None,
+            )
     return artifacts
+
+
+def plan_stage_resume(artifacts: dict[NarrativeStageId, NarrativeStageArtifact]) -> StageResumePlan:
+    ordered = [stage_id for stage_id in ("plan", *_SECTION_STAGE_IDS, "assembly") if stage_id in artifacts]
+    reused = [stage_id for stage_id in ordered if artifacts[stage_id].status == "ready"]
+    regenerate = [stage_id for stage_id in ordered if artifacts[stage_id].status != "ready"]
+    stale: list[NarrativeStageId] = []
+    reason = "full_generation"
+    if reused and regenerate:
+        reason = f"failed_stage:{regenerate[0]}"
+    elif reused:
+        reason = "all_stages_reusable"
+    if any(stage_id in regenerate for stage_id in _SECTION_STAGE_IDS) and "assembly" in artifacts:
+        regenerate = [stage_id for stage_id in regenerate if stage_id != "assembly"] + ["assembly"]
+        reused = [stage_id for stage_id in reused if stage_id != "assembly"]
+    return StageResumePlan(
+        resume_mode="resume" if reused and regenerate else "full",
+        reused_stages=reused,
+        regenerated_stages=regenerate,
+        stale_stages=stale,
+        reason=reason,
+    )
 
 
 def get_runnable_stages(artifacts: dict[NarrativeStageId, NarrativeStageArtifact]) -> list[NarrativeStageId]:

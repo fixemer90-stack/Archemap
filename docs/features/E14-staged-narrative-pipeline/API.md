@@ -31,7 +31,12 @@ Suggested enum:
 
 ```ts
 type NarrativeStageStatus =
-  "pending" | "running" | "ready" | "repairing" | "failed" | "skipped";
+  | "pending"
+  | "running"
+  | "ready"
+  | "repairing"
+  | "failed"
+  | "skipped";
 ```
 
 Suggested stage ids:
@@ -98,11 +103,32 @@ type NarrativeStageId =
 
 ## Regenerate request
 
-MVP keeps existing body optional:
+Current shipped MVP keeps existing body optional:
 
 ```http
 POST /api/v1/reports/{report_id}/narrative/regenerate
 ```
+
+Current server-side behavior for staged Self narratives:
+
+```text
+force=true
+  -> matching ReportNarrative row is reused
+  -> status becomes pending
+  -> existing stage_artifacts are preserved
+  -> error_message is cleared
+  -> generation timestamps are cleared
+  -> worker recomputes expected stage hashes
+  -> valid ready stage artifacts are reused
+  -> failed/missing/stale stages and downstream assembly are regenerated
+```
+
+Important current contract:
+
+- regenerate is selective resume for staged Self narratives when reusable `stage_artifacts` exist;
+- deterministic report data is not recomputed by narrative regenerate;
+- non-staged/full legacy generation still clears previous content on force regenerate;
+- persisted `narrative_progress` / `stage_artifacts` must not expose prompts or provider payloads.
 
 Future debug/admin extension:
 
@@ -111,6 +137,38 @@ Future debug/admin extension:
   "scope": "full" | "failed_stages" | "stage",
   "stage_id": "relationship_section",
   "force": true
+}
+```
+
+Implemented S08 behavior and remaining API extension:
+
+- default staged regenerate now performs selective resume when valid stage artifacts exist;
+- failed/missing/stale stages plus downstream `assembly` are regenerated;
+- valid upstream and sibling stages are reused;
+- explicit public request-body scopes (`stage`, `failed_stages`, `full`) remain a follow-up API extension;
+- API progress may expose `resume_mode`, `reused_stages` and `regenerated_stages` in a future response extension, but must never expose raw prompts or provider payloads.
+
+Example selective progress payload:
+
+```json
+{
+  "narrative_progress": {
+    "current_stage": "assembly",
+    "resume_mode": "resume",
+    "reused_stages": [
+      "narrative_plan",
+      "identity_section",
+      "emotional_section",
+      "development_section",
+      "house_scenarios_section"
+    ],
+    "regenerated_stages": [
+      "relationship_section",
+      "assembly",
+      "final_validation"
+    ],
+    "label": "Переиспользуем готовые блоки и пересобираем проблемный шаг"
+  }
 }
 ```
 

@@ -264,12 +264,13 @@ def _section(
     body: str,
     evidence_ids: list[str],
 ) -> NarrativeSection:
+    evidence_notes = [EvidenceNote(claim=body, fact_ids=list(evidence_ids))] if evidence_ids else []
     return NarrativeSection(
         id=section_id,
         title=_SECTION_TITLES[section_id],
         body=body,
         bullets=[],
-        evidence_notes=[EvidenceNote(claim=body, fact_ids=list(evidence_ids))],
+        evidence_notes=evidence_notes,
     )
 
 

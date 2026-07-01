@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from tests.unit.test_report_narratives.test_schemas import make_narrative_input_payload
 
-from app.modules.report_narratives.assembler import assemble_self_narrative
+from app.modules.report_narratives.assembler import _section, assemble_self_narrative
 from app.modules.report_narratives.schemas import (
     AssemblyCheck,
     DevelopmentSectionOutput,
@@ -123,6 +123,16 @@ def _good_stage_outputs() -> dict[str, object]:
             covered_pattern_ids=["house_axis_house_scenario_sun_9"],
         ),
     }
+
+
+def test_assembler_section_allows_empty_evidence_ids_without_empty_evidence_note() -> None:
+    section = _section(
+        "development",
+        "Развитие начинается с устойчивой опоры и внимательного отношения к собственному ритму.",
+        [],
+    )
+
+    assert section.evidence_notes == []
 
 
 def test_assemble_self_narrative_produces_single_report_in_self_order_and_preserves_evidence() -> None:

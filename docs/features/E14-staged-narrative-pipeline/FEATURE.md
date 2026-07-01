@@ -97,7 +97,7 @@ E14 закрыт как shipped staged Self pipeline:
 Non-blocking deferred follow-up:
 
 - richer staged fixtures / additional guardrail tightening могут добавляться дальше без изменения shipped runtime contract;
-- selective resume из persisted stage artifacts реализован для default staged regenerate; explicit public request-body scopes (`stage`, `failed_stages`, `full`) остаются follow-up API extension;
+- selective resume из persisted stage artifacts реализован для default staged regenerate; explicit public request-body scopes (`stage`, `failed_stages`, `full`) тоже реализованы; stage-history table и lease-timeout recovery остаются follow-up;
 - отдельная persisted table для stage artifacts остаётся возможным future refactor, но не нужна для текущего shipped MVP.
 
 ## Stories

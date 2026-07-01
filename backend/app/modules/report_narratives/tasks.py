@@ -15,7 +15,7 @@ from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.llm import LLMProviderUnavailableError, LLMTimeoutError
 from app.modules.report_narratives.models import ReportNarrative
-from app.modules.report_narratives.service import ReportNarrativeService
+from app.modules.report_narratives.service import NarrativeRegenerateScope, ReportNarrativeService
 from app.modules.reports.models import Report
 
 T = TypeVar("T")
@@ -26,9 +26,17 @@ def _run_async(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
     return run_async_in_worker(coro)
 
 
-def generate_report_narrative_task(report_id: str, *, force: bool = False) -> dict[str, str]:
+def generate_report_narrative_task(
+    report_id: str,
+    *,
+    force: bool = False,
+    scope: NarrativeRegenerateScope = "failed_stages",
+    stage_id: str | None = None,
+) -> dict[str, str]:
     """Synchronously invoke the async narrative generation flow."""
-    narrative = _run_async(_generate_report_narrative_async(UUID(report_id), force=force))
+    narrative = _run_async(
+        _generate_report_narrative_async(UUID(report_id), force=force, scope=scope, stage_id=stage_id)
+    )
     return {
         "report_id": report_id,
         "narrative_id": str(narrative.id),
@@ -46,11 +54,17 @@ def should_retry_narrative_task_error(exc: Exception) -> bool:
     return isinstance(exc, (LLMTimeoutError, LLMProviderUnavailableError))
 
 
-async def _generate_report_narrative_async(report_id: UUID, *, force: bool = False) -> ReportNarrative:
+async def _generate_report_narrative_async(
+    report_id: UUID,
+    *,
+    force: bool = False,
+    scope: NarrativeRegenerateScope = "failed_stages",
+    stage_id: str | None = None,
+) -> ReportNarrative:
     async with async_session_factory() as db:
         service = ReportNarrativeService(db)
         try:
-            narrative = await service.generate_for_report(report_id, force=force)
+            narrative = await service.generate_for_report(report_id, force=force, scope=scope, stage_id=stage_id)
             await db.commit()
             return narrative
         except Exception:

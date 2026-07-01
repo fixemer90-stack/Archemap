@@ -568,6 +568,13 @@ async def test_get_report_route_exposes_top_level_narrative_progress(
         "ready": False,
         "stages": narrative_payload["stage_artifacts"],
     }
+    narrative_payload["stage_resume"] = {
+        "resume_mode": "resume",
+        "reused_stages": ["plan", "identity"],
+        "regenerated_stages": ["relationships", "assembly"],
+        "stale_stages": [],
+        "reason": "failed_stage:relationships",
+    }
     narrative = ReportNarrative(
         id=uuid4(),
         report_id=report.id,
@@ -610,6 +617,10 @@ async def test_get_report_route_exposes_top_level_narrative_progress(
 
     assert response.narrative_progress is not None
     assert response.narrative_progress.current_stage == "relationships"
+    assert response.narrative is not None
+    assert response.narrative.stage_resume is not None
+    assert response.narrative.stage_resume["resume_mode"] == "resume"
+    assert response.narrative.stage_resume["regenerated_stages"] == ["relationships", "assembly"]
     assert len(response.narrative_stage_artifacts) == 2
     assert response.narrative_stage_artifacts[1].stage_id == "identity"
 

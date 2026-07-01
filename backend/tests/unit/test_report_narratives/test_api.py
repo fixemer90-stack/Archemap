@@ -421,9 +421,8 @@ class TestReportNarrativeApi:
 
         class NarrativeTaskStub:
             @staticmethod
-            def delay(*, report_id: str, force: bool = False) -> None:
-                captured["report_id"] = report_id
-                captured["force"] = force
+            def delay(**kwargs: object) -> None:
+                captured.update(kwargs)
 
         monkeypatch.setattr(
             "workers.tasks.reports.generate_report_narrative",
@@ -435,7 +434,51 @@ class TestReportNarrativeApi:
         assert response.status_code == 200
         payload = response.json()
         assert payload["status"] == "generating_narrative"
-        assert captured == {"report_id": str(report.id), "force": True}
+        assert captured == {
+            "report_id": str(report.id),
+            "force": True,
+            "scope": "failed_stages",
+            "stage_id": None,
+        }
+
+    @pytest.mark.asyncio
+    async def test_regenerate_endpoint_forwards_explicit_scope_and_stage_id(
+        self,
+        client: AsyncClient,
+        current_user_id: UUID,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        report = make_report(user_id=current_user_id, status="ready")
+        captured: dict[str, object] = {}
+
+        monkeypatch.setattr(ReportService, "get_report", AsyncMock(return_value=report))
+        monkeypatch.setattr(
+            "app.modules.reports.router.get_latest_narrative_for_report",
+            AsyncMock(return_value=None),
+        )
+
+        class NarrativeTaskStub:
+            @staticmethod
+            def delay(**kwargs: object) -> None:
+                captured.update(kwargs)
+
+        monkeypatch.setattr(
+            "workers.tasks.reports.generate_report_narrative",
+            NarrativeTaskStub,
+        )
+
+        response = await client.post(
+            f"/api/v1/reports/{report.id}/narrative/regenerate",
+            json={"scope": "stage", "stage_id": "relationships"},
+        )
+
+        assert response.status_code == 200
+        assert captured == {
+            "report_id": str(report.id),
+            "force": True,
+            "scope": "stage",
+            "stage_id": "relationships",
+        }
 
     @pytest.mark.asyncio
     async def test_regenerate_endpoint_denies_access_to_foreign_report(

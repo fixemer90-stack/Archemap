@@ -106,6 +106,7 @@ class NarrativeResponse(BaseModel):
     content: dict[str, Any] | None = None
     stage_progress: NarrativeStageProgress | None = None
     stage_artifacts: list[NarrativeStageArtifact] = Field(default_factory=list)
+    stage_resume: dict[str, Any] | None = None
     error_message: str | None = None
     generation_started_at: datetime | None = None
     generation_finished_at: datetime | None = None
@@ -182,9 +183,7 @@ def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
         else None
     )
     stage_artifacts = [
-        NarrativeStageArtifact.model_validate(item)
-        for item in staged_artifacts_payload
-        if isinstance(item, dict)
+        NarrativeStageArtifact.model_validate(item) for item in staged_artifacts_payload if isinstance(item, dict)
     ]
     return NarrativeResponse(
         id=narrative.id,
@@ -208,6 +207,7 @@ def build_narrative_response(narrative: ReportNarrative) -> NarrativeResponse:
         content=content or None,
         stage_progress=stage_progress,
         stage_artifacts=stage_artifacts,
+        stage_resume=content.get("stage_resume") if isinstance(content.get("stage_resume"), dict) else None,
         error_message=narrative.error_message,
         generation_started_at=narrative.generation_started_at,
         generation_finished_at=narrative.generation_finished_at,
@@ -235,9 +235,7 @@ def build_report_response(report: Report, narrative: ReportNarrative | None = No
         report_data=report.report_data,
         narrative=serialized_narrative,
         narrative_progress=serialized_narrative.stage_progress if serialized_narrative is not None else None,
-        narrative_stage_artifacts=(
-            serialized_narrative.stage_artifacts if serialized_narrative is not None else []
-        ),
+        narrative_stage_artifacts=(serialized_narrative.stage_artifacts if serialized_narrative is not None else []),
         error_message=report.error_message,
         created_at=report.created_at,
         updated_at=report.updated_at,

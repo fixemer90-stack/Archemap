@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.config import settings
+from app.modules.report_narratives.service import NarrativeRegenerateScope
 from workers.celery_app import app
 
 
@@ -34,7 +35,13 @@ def generate_pdf(self: Any, report_id: str, user_id: str, profile_name: str = ""
     soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4, 600),
     time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720),
 )
-def generate_report_narrative(self: Any, report_id: str, force: bool = False) -> dict[str, Any]:
+def generate_report_narrative(
+    self: Any,
+    report_id: str,
+    force: bool = False,
+    scope: NarrativeRegenerateScope = "failed_stages",
+    stage_id: str | None = None,
+) -> dict[str, Any]:
     """Generate structured narrative for a deterministic report."""
     from app.modules.report_narratives.tasks import (
         finalize_narrative_task_failure,
@@ -43,7 +50,7 @@ def generate_report_narrative(self: Any, report_id: str, force: bool = False) ->
     )
 
     try:
-        return generate_report_narrative_task(report_id, force=force)
+        return generate_report_narrative_task(report_id, force=force, scope=scope, stage_id=stage_id)
     except Exception as exc:
         retries = int(getattr(self.request, "retries", 0))
         if should_retry_narrative_task_error(exc) and retries < settings.LLM_MAX_RETRIES:

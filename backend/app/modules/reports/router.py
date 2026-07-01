@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import Response
+from pydantic import BaseModel, model_validator
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,19 @@ from app.modules.reports.service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 logger = structlog.get_logger()
+
+
+class NarrativeRegenerateRequest(BaseModel):
+    scope: Literal["failed_stages", "stage", "full"] = "failed_stages"
+    stage_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_stage_scope(self) -> NarrativeRegenerateRequest:
+        if self.scope == "stage" and not self.stage_id:
+            raise ValueError("stage_id is required when scope is 'stage'")
+        if self.scope != "stage" and self.stage_id is not None:
+            raise ValueError("stage_id is allowed only when scope is 'stage'")
+        return self
 
 
 async def _commit_report_changes_if_persistent(db: AsyncSession, report: object) -> None:
@@ -165,6 +179,7 @@ async def regenerate_report_narrative(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
+    body: Annotated[NarrativeRegenerateRequest | None, Body()] = None,
 ) -> ReportResponse:
     """Enqueue a fresh LLM narrative attempt without recomputing deterministic report data."""
     service = ReportService(db)
@@ -175,12 +190,18 @@ async def regenerate_report_narrative(
             detail="Narrative regeneration is supported only for self reports",
         )
 
+    regenerate_request = body or NarrativeRegenerateRequest()
     narrative = await _load_current_narrative(db, report)
     if report.status != "generating_narrative":
         try:
             from workers.tasks.reports import generate_report_narrative
 
-            generate_report_narrative.delay(report_id=str(report.id), force=True)
+            cast(Any, generate_report_narrative).delay(
+                report_id=str(report.id),
+                force=True,
+                scope=regenerate_request.scope,
+                stage_id=regenerate_request.stage_id,
+            )
         except Exception as exc:
             logger.warning("narrative_regenerate_enqueue_failed", report_id=str(report.id), error=str(exc))
             raise HTTPException(

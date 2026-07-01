@@ -3,8 +3,8 @@
 > Статус: 🟡 Частично готово
 > Тип: reliability / cost-control / operator UX
 > Feature: E14 — Staged Narrative Pipeline
-> Реализовано: default staged regenerate reuses valid persisted artifacts and reruns failed/missing/stale stages plus downstream `assembly`.
-> Осталось: public request-body scopes (`stage`, `failed_stages`, explicit `full`), stage history table, lease-timeout recovery job.
+> Реализовано: default staged regenerate reuses valid persisted artifacts; `failed_stages`, `stage`, and `full` API scopes are supported; safe `stage_resume` metadata is exposed in the narrative API response.
+> Осталось: stage history table, lease-timeout recovery job.
 
 ## Context
 
@@ -296,19 +296,18 @@ report_narrative_resume_plan_created
 - [x] If `Report.report_data` changes, the narrative input hash changes and old matching narrative rows are not reused.
 - [x] If a stage prompt version changes, the affected artifact is not reused because `prompt_version` must match.
 - [ ] Interrupted `running` stages become retryable after lease timeout instead of leaving report permanently stuck.
-- [ ] API progress can show which stages were reused vs regenerated without exposing raw prompts/provider payloads.
-- [ ] Public request-body scopes for explicit `stage`, `failed_stages`, and full-force regenerate are implemented.
+- [x] API progress can show which stages were reused vs regenerated without exposing raw prompts/provider payloads.
+- [x] Public request-body scopes for explicit `stage`, `failed_stages`, and full-force regenerate are implemented.
 - [x] Tests cover resume planning for failed section and service-level failed assembly selective resume.
 
 ## Fresh verification evidence
 
-- `pytest /app/tests/unit/test_report_narratives/test_staged_service.py::test_plan_stage_resume_reuses_ready_siblings_and_regenerates_failed_stage_plus_assembly -q` → `1 passed`
-- `pytest /app/tests/unit/test_report_narratives/test_tasks.py::TestReportNarrativeService::test_staged_runtime_reuses_ready_stage_artifacts_after_failed_assembly -q` → `1 passed`
-- `pytest /app/tests/unit/test_report_narratives/test_tasks.py::TestReportNarrativeService -q` → `16 passed`
-- `pytest /app/tests/unit/test_report_narratives -q` → `103 passed`
+- `pytest /app/tests/unit/test_report_narratives -q` → `107 passed`
 - `pytest /app/tests/unit/test_reports -q` → `36 passed`
 - `ruff check` for changed backend files/tests → `All checks passed!`
-- `mypy` for changed backend files/tests → `Success: no issues found in 4 source files`
+- `ruff format --check` for changed backend files/tests → `8 files already formatted`
+- `mypy` for changed backend files/tests → `Success: no issues found in 8 source files`
+- `prettier --check` for E14 docs → `All matched files use Prettier code style!`
 
 ## Verification plan
 

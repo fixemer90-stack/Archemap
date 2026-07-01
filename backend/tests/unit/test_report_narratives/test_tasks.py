@@ -931,6 +931,117 @@ class TestReportNarrativeService:
         assert stage_artifacts["assembly"]["status"] == "ready"
 
     @pytest.mark.asyncio
+    async def test_explicit_full_scope_clears_staged_artifacts_on_force_regenerate(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        service = ReportNarrativeService(db=db, llm_provider=ReadyStagedProvider())
+        record = make_narrative_record(report_fixture)
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        async def fake_get_or_create(**kwargs: object) -> ReportNarrative:
+            assert kwargs["force_new"] is True
+            assert kwargs["preserve_content_on_force"] is False
+            return record
+
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", fake_get_or_create)
+
+        await service.generate_for_report(report_fixture.id, force=True, scope="full")
+
+    @pytest.mark.asyncio
+    async def test_explicit_stage_scope_regenerates_selected_stage_and_reuses_siblings(
+        self,
+        report_fixture: Report,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        db = AsyncMock()
+        provider = ReadyStagedProvider()
+        service = ReportNarrativeService(db=db, llm_provider=provider)
+        record = make_narrative_record(report_fixture)
+        narrative_input = build_narrative_input(report_fixture)
+        input_hash = compute_input_hash(narrative_input)
+        synthesis = narrative_input.deep_natal_synthesis
+        assert synthesis is not None
+
+        seed_provider = ReadyStagedProvider()
+        plan = await seed_provider.generate_structured(prompt="", narrative_input=narrative_input, schema=NarrativePlan)
+        stage_hashes = compute_stage_input_hashes(synthesis, plan)
+        section_schemas = {
+            "identity": __import__(
+                "app.modules.report_narratives.schemas", fromlist=["IdentitySectionOutput"]
+            ).IdentitySectionOutput,
+            "emotional": __import__(
+                "app.modules.report_narratives.schemas", fromlist=["EmotionalSectionOutput"]
+            ).EmotionalSectionOutput,
+            "relationships": __import__(
+                "app.modules.report_narratives.schemas", fromlist=["RelationshipSectionOutput"]
+            ).RelationshipSectionOutput,
+            "development": __import__(
+                "app.modules.report_narratives.schemas", fromlist=["DevelopmentSectionOutput"]
+            ).DevelopmentSectionOutput,
+            "house_scenarios": __import__(
+                "app.modules.report_narratives.schemas", fromlist=["HouseScenariosSectionOutput"]
+            ).HouseScenariosSectionOutput,
+        }
+        prompt_versions = {
+            "identity": "self_section_identity_v1",
+            "emotional": "self_section_emotional_v1",
+            "relationships": "self_section_relationships_v1",
+            "development": "self_section_development_v1",
+            "house_scenarios": "self_section_house_scenarios_v1",
+        }
+        artifacts: dict[str, dict[str, Any]] = {
+            "plan": NarrativeStageArtifact(
+                stage_id="plan",
+                status="ready",
+                prompt_version="self_plan_v1",
+                model_name="mock-self-v1",
+                input_hash=stage_hashes["plan"],
+                attempt_count=1,
+                error_message=None,
+                artifact=plan.model_dump(mode="json"),
+            ).model_dump(mode="json")
+        }
+        for stage_id, schema in section_schemas.items():
+            output = await seed_provider.generate_structured(prompt="", narrative_input=narrative_input, schema=schema)
+            artifacts[stage_id] = NarrativeStageArtifact(
+                stage_id=cast(Any, stage_id),
+                status="ready",
+                prompt_version=prompt_versions[stage_id],
+                model_name="mock-self-v1",
+                input_hash=stage_hashes[cast(Any, stage_id)],
+                attempt_count=1,
+                error_message=None,
+                artifact=output.model_dump(mode="json"),
+            ).model_dump(mode="json")
+        record.content = {"stage_artifacts": list(artifacts.values()), "stage_progress": {"ready": False}}
+        record.input_hash = input_hash
+        record.prompt_version = "self_staged_v1"
+
+        monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
+        monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
+        monkeypatch.setattr("app.modules.report_narratives.service.find_cached_narrative", AsyncMock(return_value=None))
+
+        result = await service.generate_for_report(
+            report_fixture.id,
+            force=True,
+            scope="stage",
+            stage_id="relationships",
+        )
+
+        assert result.status == "ready"
+        assert provider.calls == ["RelationshipSectionOutput", "AssemblyCheck"]
+        assert result.content is not None
+        final_artifacts = {artifact["stage_id"]: artifact for artifact in result.content["stage_artifacts"]}
+        assert final_artifacts["identity"]["attempt_count"] == 1
+        assert final_artifacts["relationships"]["status"] == "ready"
+        assert final_artifacts["assembly"]["status"] == "ready"
+
+    @pytest.mark.asyncio
     async def test_staged_runtime_runs_section_generation_in_parallel_after_plan(
         self,
         report_fixture: Report,
@@ -1278,9 +1389,17 @@ class TestNarrativeTasks:
         report_id = uuid4()
         narrative_id = uuid4()
 
-        async def fake_async_task(input_report_id: object, *, force: bool = False) -> SimpleNamespace:
+        async def fake_async_task(
+            input_report_id: object,
+            *,
+            force: bool = False,
+            scope: str = "failed_stages",
+            stage_id: str | None = None,
+        ) -> SimpleNamespace:
             assert input_report_id == report_id
             assert force is False
+            assert scope == "failed_stages"
+            assert stage_id is None
             return SimpleNamespace(id=narrative_id, status="ready")
 
         monkeypatch.setattr("app.modules.report_narratives.tasks._generate_report_narrative_async", fake_async_task)
@@ -1292,6 +1411,34 @@ class TestNarrativeTasks:
             "narrative_id": str(narrative_id),
             "status": "ready",
         }
+
+    def test_sync_task_forwards_regenerate_scope_and_stage_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        report_id = uuid4()
+        narrative_id = uuid4()
+
+        async def fake_async_task(
+            input_report_id: object,
+            *,
+            force: bool = False,
+            scope: str = "failed_stages",
+            stage_id: str | None = None,
+        ) -> SimpleNamespace:
+            assert input_report_id == report_id
+            assert force is True
+            assert scope == "stage"
+            assert stage_id == "relationships"
+            return SimpleNamespace(id=narrative_id, status="ready")
+
+        monkeypatch.setattr("app.modules.report_narratives.tasks._generate_report_narrative_async", fake_async_task)
+
+        result = generate_report_narrative_task(
+            str(report_id),
+            force=True,
+            scope="stage",
+            stage_id="relationships",
+        )
+
+        assert result["narrative_id"] == str(narrative_id)
 
     @pytest.mark.asyncio
     async def test_async_task_rolls_back_on_generation_error(self, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -103,11 +103,26 @@ type NarrativeStageId =
 
 ## Regenerate request
 
-Current shipped MVP keeps existing body optional:
+The request body is optional. Omitting it keeps the default selective resume behavior:
 
 ```http
 POST /api/v1/reports/{report_id}/narrative/regenerate
 ```
+
+Optional body:
+
+```json
+{
+  "scope": "failed_stages" | "stage" | "full",
+  "stage_id": "relationships"
+}
+```
+
+Scope semantics:
+
+- omitted / `failed_stages`: preserve valid `stage_artifacts`, rerun failed/missing/stale stages plus downstream `assembly`;
+- `stage`: invalidate the requested stage and downstream `assembly`, while reusing valid upstream and sibling stages;
+- `full`: clear prior narrative content/stage artifacts and start staged generation from `plan` intentionally.
 
 Current server-side behavior for staged Self narratives:
 
@@ -127,26 +142,16 @@ Important current contract:
 
 - regenerate is selective resume for staged Self narratives when reusable `stage_artifacts` exist;
 - deterministic report data is not recomputed by narrative regenerate;
-- non-staged/full legacy generation still clears previous content on force regenerate;
-- persisted `narrative_progress` / `stage_artifacts` must not expose prompts or provider payloads.
+- explicit `scope: "full"` clears previous narrative content and stage artifacts intentionally;
+- persisted `narrative_progress`, `stage_resume` and `stage_artifacts` must not expose prompts or provider payloads.
 
-Future debug/admin extension:
+Implemented S08 behavior:
 
-```json
-{
-  "scope": "full" | "failed_stages" | "stage",
-  "stage_id": "relationship_section",
-  "force": true
-}
-```
-
-Implemented S08 behavior and remaining API extension:
-
-- default staged regenerate now performs selective resume when valid stage artifacts exist;
-- failed/missing/stale stages plus downstream `assembly` are regenerated;
-- valid upstream and sibling stages are reused;
-- explicit public request-body scopes (`stage`, `failed_stages`, `full`) remain a follow-up API extension;
-- API progress may expose `resume_mode`, `reused_stages` and `regenerated_stages` in a future response extension, but must never expose raw prompts or provider payloads.
+- default staged regenerate performs selective resume when valid stage artifacts exist;
+- `scope: "failed_stages"` reruns failed/missing/stale stages plus downstream `assembly`;
+- `scope: "stage"` reruns the requested stage plus downstream `assembly` while reusing valid upstream and sibling stages;
+- `scope: "full"` starts from scratch intentionally;
+- API response exposes safe `narrative.stage_resume` metadata with `resume_mode`, `reused_stages`, `regenerated_stages`, `stale_stages` and `reason`.
 
 Example selective progress payload:
 

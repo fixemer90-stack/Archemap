@@ -10,7 +10,7 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, Literal, cast
 from uuid import UUID
 
 import structlog
@@ -64,6 +64,7 @@ logger = structlog.get_logger()
 
 _STAGED_SELF_PIPELINE_PROMPT_VERSION = "self_staged_v1"
 _STAGED_INVALID_RESPONSE_MAX_ATTEMPTS = 3
+NarrativeRegenerateScope = Literal["failed_stages", "stage", "full"]
 
 
 class ReportNarrativeService:
@@ -79,7 +80,14 @@ class ReportNarrativeService:
         self.app_settings = app_settings or settings
         self.llm_provider = llm_provider or get_llm_provider(self.app_settings)
 
-    async def generate_for_report(self, report_id: UUID, *, force: bool = False) -> ReportNarrative:
+    async def generate_for_report(
+        self,
+        report_id: UUID,
+        *,
+        force: bool = False,
+        scope: NarrativeRegenerateScope = "failed_stages",
+        stage_id: str | None = None,
+    ) -> ReportNarrative:
         """Generate a narrative layer for a deterministic report."""
         report = await self._get_report(report_id)
         try:
@@ -120,14 +128,17 @@ class ReportNarrativeService:
                 await self.db.flush()
                 return cached
 
+        should_use_staged_pipeline = self._should_use_staged_pipeline(report, narrative_input)
         narrative = await self._get_or_create_narrative_record(
             report=report,
             input_hash=input_hash,
             model_name=model_name,
             prompt_version=prompt_version,
             force_new=force,
-            preserve_content_on_force=force and self._should_use_staged_pipeline(report, narrative_input),
+            preserve_content_on_force=force and should_use_staged_pipeline and scope != "full",
         )
+        if force and should_use_staged_pipeline:
+            _apply_regenerate_scope_to_content(narrative, scope=scope, stage_id=stage_id)
         return await self._generate_and_persist(
             report=report,
             narrative=narrative,
@@ -402,6 +413,15 @@ class ReportNarrativeService:
                 stale_stages=resume_plan.stale_stages,
                 resume_reason=resume_plan.reason,
             )
+            resume_payload = {
+                "resume_mode": resume_plan.resume_mode,
+                "reused_stages": list(resume_plan.reused_stages),
+                "regenerated_stages": list(resume_plan.regenerated_stages),
+                "stale_stages": list(resume_plan.stale_stages),
+                "reason": resume_plan.reason,
+            }
+            base_content = narrative.content if isinstance(narrative.content, dict) else {}
+            narrative.content = {**base_content, "stage_resume": resume_payload}
             stage_outputs: dict[str, dict[str, Any]] = {}
             stage_schemas: list[
                 tuple[
@@ -578,6 +598,7 @@ class ReportNarrativeService:
             payload = assembled.model_dump(mode="json")
             payload["stage_progress"] = progress.model_dump(mode="json")
             payload["stage_artifacts"] = [artifact.model_dump(mode="json") for artifact in artifacts.values()]
+            payload["stage_resume"] = resume_payload
             return await self._save_ready_narrative(
                 report=report,
                 narrative=narrative,
@@ -1369,6 +1390,67 @@ def compute_stage_input_hashes(
         }
     )
     return hashes
+
+
+def _normalize_regenerate_stage_id(stage_id: str | None) -> NarrativeStageId | None:
+    if stage_id is None:
+        return None
+    aliases = {
+        "relationship_section": "relationships",
+        "relationships_section": "relationships",
+        "emotional_section": "emotional",
+        "identity_section": "identity",
+        "development_section": "development",
+        "house_scenarios_section": "house_scenarios",
+        "narrative_plan": "plan",
+        "final_validation": "assembly",
+    }
+    normalized = aliases.get(stage_id, stage_id)
+    if normalized in _STAGE_PROMPT_VERSIONS:
+        return normalized
+    raise ValueError(f"Unknown narrative stage_id: {stage_id}")
+
+
+def _apply_regenerate_scope_to_content(
+    narrative: ReportNarrative,
+    *,
+    scope: NarrativeRegenerateScope,
+    stage_id: str | None,
+) -> None:
+    if scope == "full":
+        narrative.content = None
+        return
+    if scope != "stage":
+        return
+
+    normalized_stage_id = _normalize_regenerate_stage_id(stage_id)
+    if normalized_stage_id is None:
+        raise ValueError("stage_id is required when narrative regenerate scope is 'stage'")
+    if not isinstance(narrative.content, dict):
+        return
+    raw_artifacts = narrative.content.get("stage_artifacts")
+    if not isinstance(raw_artifacts, list):
+        return
+
+    updated_artifacts: list[object] = []
+    invalidate_downstream = normalized_stage_id != "assembly"
+    for raw_artifact in raw_artifacts:
+        if not isinstance(raw_artifact, dict):
+            updated_artifacts.append(raw_artifact)
+            continue
+        current_stage_id = raw_artifact.get("stage_id")
+        should_invalidate = current_stage_id == normalized_stage_id or (
+            invalidate_downstream and current_stage_id == "assembly"
+        )
+        if should_invalidate:
+            artifact = dict(raw_artifact)
+            artifact["status"] = "failed"
+            artifact["error_message"] = f"explicit_regenerate_scope:{scope}"
+            artifact["artifact"] = None
+            updated_artifacts.append(artifact)
+            continue
+        updated_artifacts.append(raw_artifact)
+    narrative.content = {**narrative.content, "stage_artifacts": updated_artifacts}
 
 
 def _extract_stage_artifacts_from_content(content: object) -> dict[str, dict[str, Any]]:

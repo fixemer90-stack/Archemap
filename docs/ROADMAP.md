@@ -20,22 +20,23 @@
 
 ## Статус эпиков
 
-| Эпик | Название                     | Статус                                                    |
-| ---- | ---------------------------- | --------------------------------------------------------- |
-| E1   | Foundation                   | ✅ Готово                                                 |
-| E2   | Identity                     | 🟡 В процессе                                             |
-| E3   | Profile & Chart Engine       | ✅ Готово                                                 |
-| E4   | Rules & Content              | ✅ Готово (S06 CMS — backlog)                             |
-| E5   | Products & Reports           | 🟡 В процессе                                             |
-| E6   | Billing & Subscriptions      | ⬜ Не начато                                              |
-| E7   | Notifications & Admin        | ⬜ Не начато                                              |
-| E8   | Production & Scale           | 🟡 В процессе                                             |
-| E9   | Frontend Self Report         | ✅ Готово                                                 |
-| E10  | Report UX Redesign           | ✅ Готово                                                 |
-| E11  | LLM Report Narrative         | ✅ Готово                                                 |
-| E12  | LLM Report Runtime Readiness | ✅ Готово (PDF delivery без обязательного object storage) |
-| E13  | Report Depth Improvements    | 🟡 В процессе                                             |
-| E14  | Staged Narrative Pipeline    | ✅ Готово                                                 |
+| Эпик | Название                       | Статус                                                    |
+| ---- | ------------------------------ | --------------------------------------------------------- |
+| E1   | Foundation                     | ✅ Готово                                                 |
+| E2   | Identity                       | 🟡 В процессе                                             |
+| E3   | Profile & Chart Engine         | ✅ Готово                                                 |
+| E4   | Rules & Content                | ✅ Готово (S06 CMS — backlog)                             |
+| E5   | Products & Reports             | 🟡 В процессе                                             |
+| E6   | Billing & Subscriptions        | ⬜ Не начато                                              |
+| E7   | Notifications & Admin          | ⬜ Не начато                                              |
+| E8   | Production & Scale             | 🟡 В процессе                                             |
+| E9   | Frontend Self Report           | ✅ Готово                                                 |
+| E10  | Report UX Redesign             | ✅ Готово                                                 |
+| E11  | LLM Report Narrative           | ✅ Готово                                                 |
+| E12  | LLM Report Runtime Readiness   | ✅ Готово (PDF delivery без обязательного object storage) |
+| E13  | Report Depth Improvements      | 🟡 В процессе                                             |
+| E14  | Staged Narrative Pipeline      | ✅ Готово                                                 |
+| E15  | Self Report Human Storytelling | ⬜ Не начато                                              |
 
 ---
 
@@ -276,6 +277,33 @@
 
 ---
 
+## Epic 15: Self Report Human Storytelling
+
+**Статус:** ⬜ Не начато
+**Оценка:** 1–2 недели
+**Зависимости:** E11 ✅, E12 ✅, E13 ✅, E14 ✅
+
+Цель E15 — сделать Self report менее “душным” и более человеческим без потери evidence-backed основы: staged pipeline должен писать не сухую аналитическую справку, а живой портрет с узнаваемыми жизненными проявлениями, плавным ритмом и вторичным раскрытием технических оснований.
+
+Ключевая формула:
+
+```text
+узнавание → личная формула → жизненная сцена → внутреннее напряжение → защитная стратегия → зрелая форма → мягкий вопрос
+```
+
+| #    | Фича                        | Описание                                                           | Документы                                                                                 | Статус |
+| ---- | --------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ------ |
+| 15.1 | Human storytelling contract | Tone guide, banned канцелярит, before/after examples               | `docs/features/E15-self-report-human-storytelling/S01-human-storytelling-contract.md`     | ⬜     |
+| 15.2 | Staged prompts v2           | Humanized prompt family for identity/emotional/relationships/etc.  | `docs/features/E15-self-report-human-storytelling/S02-staged-prompts-v2.md`               | ⬜     |
+| 15.3 | Assembler rhythm            | Preserve section rhythm instead of one-paragraph compression       | `docs/features/E15-self-report-human-storytelling/S03-assembler-narrative-rhythm.md`      | ⬜     |
+| 15.4 | Humanized quality gates     | Validators against generic/soulless/corporate prose                | `docs/features/E15-self-report-human-storytelling/S04-humanized-quality-gates.md`         | ⬜     |
+| 15.5 | Web/PDF readability         | Paragraph rendering, secondary evidence, no wall of text           | `docs/features/E15-self-report-human-storytelling/S05-frontend-pdf-readability.md`        | ⬜     |
+| 15.6 | Live before/after smoke     | Regenerate reference Self report and verify web/PDF before rollout | `docs/features/E15-self-report-human-storytelling/S06-live-before-after-smoke-rollout.md` | ⬜     |
+
+Полный контракт: `docs/SRS/SRS-E15-self-report-human-storytelling.md`.
+
+---
+
 ## Зависимости между эпиками
 
 ```
@@ -287,7 +315,7 @@ E1 (Foundation) ✅
                           ├─► E6 (Billing & Subscriptions)
                           │     └─► E7 (Notifications & Admin) ──► E8 (Production & Scale)
                           ├─► E7 (Notifications & Admin)
-                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative) ✅ ──► E12 (LLM Report Runtime Readiness) ✅ ──► E13 (Report Depth Improvements) 🟡 ──► E14 (Staged Narrative Pipeline)
+                          └─► E10 (Report UX Redesign) ✅ ──► E11 (LLM Report Narrative) ✅ ──► E12 (LLM Report Runtime Readiness) ✅ ──► E13 (Report Depth Improvements) 🟡 ──► E14 (Staged Narrative Pipeline) ✅ ──► E15 (Self Report Human Storytelling)
 ```
 
 **Критический путь:** E2 → E3 → E4 → E5 → E6 → E7 → E8

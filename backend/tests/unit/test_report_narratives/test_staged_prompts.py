@@ -139,13 +139,13 @@ def _fake_synthesis() -> DeepNatalSynthesis:
 
 def test_staged_prompt_versions_are_file_backed_and_guardrailed() -> None:
     required_versions = {
-        "plan": "self_plan_v1",
-        "identity": "self_section_identity_v1",
-        "emotional": "self_section_emotional_v1",
-        "relationships": "self_section_relationships_v1",
-        "development": "self_section_development_v1",
-        "house_scenarios": "self_section_house_scenarios_v1",
-        "assembly": "self_assemble_v1",
+        "plan": "self_plan_v2",
+        "identity": "self_section_identity_v2",
+        "emotional": "self_section_emotional_v2",
+        "relationships": "self_section_relationships_v2",
+        "development": "self_section_development_v2",
+        "house_scenarios": "self_section_house_scenarios_v2",
+        "assembly": "self_assemble_v2",
     }
     assert required_versions == STAGED_SELF_PROMPT_VERSIONS
 
@@ -159,6 +159,15 @@ def test_staged_prompt_versions_are_file_backed_and_guardrailed() -> None:
         assert "no career deep dive" in template
         assert "no diagnostic" in template
         assert "no fatalistic" in template
+        assert "self_human_storytelling_v1" in template
+        assert "recognition-first" in template
+        assert "lived manifestation" in template
+        assert "inner tension" in template
+        assert "protective strategy" in template
+        assert "mature expression" in template
+        assert "progressive evidence" in template
+        assert "no bureaucratic abstraction" in template
+        assert "no generic horoscope prose" in template
 
 
 def test_stage_prompt_builders_include_only_relevant_synthesis_slices() -> None:

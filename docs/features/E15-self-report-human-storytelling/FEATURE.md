@@ -85,7 +85,7 @@ E15 не добавляет “ещё больше блоков” ради об
 | Story | Название                                   | Статус       | Документ                                 |
 | ----- | ------------------------------------------ | ------------ | ---------------------------------------- |
 | S01   | Human storytelling contract and tone guide | ✅ Готово    | `S01-human-storytelling-contract.md`     |
-| S02   | Staged prompt family v2                    | ⬜ Не начато | `S02-staged-prompts-v2.md`               |
+| S02   | Staged prompt family v2                    | ✅ Готово    | `S02-staged-prompts-v2.md`               |
 | S03   | Assembler expansion and narrative rhythm   | ⬜ Не начато | `S03-assembler-narrative-rhythm.md`      |
 | S04   | Humanized quality gates                    | ⬜ Не начато | `S04-humanized-quality-gates.md`         |
 | S05   | Frontend/PDF readability and pacing        | ⬜ Не начато | `S05-frontend-pdf-readability.md`        |

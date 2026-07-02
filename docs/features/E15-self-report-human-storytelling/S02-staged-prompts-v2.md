@@ -7,6 +7,8 @@
 
 E14 shipped staged prompts, but current v1 section prompts are too terse. They mostly ask the model to “render section JSON” and protect evidence/safety, but they do not strongly ask for human storytelling.
 
+S02 must use the S01 contract from `backend/app/modules/report_narratives/human_storytelling.py` (`self_human_storytelling_v1`) as the source for tone requirements: recognition-first opening, lived manifestation, inner tension/protection, mature expression, soft question, and progressive evidence disclosure.
+
 ## Что сделать
 
 1. Add v2 prompt files:

@@ -50,15 +50,19 @@ meaning -> scenario -> tension/risk -> mature expression
 
 Порядок может быть естественным в прозе, но смысловые элементы должны присутствовать.
 
-### FR-4. Staged prompt v2
+### FR-4. Human storytelling contract
+
+The system must expose a versioned contract (`self_human_storytelling_v1`) for recognition-first prose, progressive evidence disclosure, banned dry/generic language, and before/after examples. Staged prompt v2 and later tone validators must reference this contract instead of duplicating ad-hoc wording.
+
+### FR-5. Staged prompt v2
 
 Система должна использовать file-backed staged prompt family v2 для humanized Self generation and assembly. v1 prompts must not be silently mutated.
 
-### FR-5. Assembler rhythm
+### FR-6. Assembler rhythm
 
 Assembler должен сохранять достаточный объём секционных stage outputs и не сжимать по умолчанию каждую секцию до одного параграфа.
 
-### FR-6. Tone quality gates
+### FR-7. Tone quality gates
 
 Validators должны обнаруживать:
 
@@ -68,15 +72,15 @@ Validators должны обнаруживать:
 - technical-first hero;
 - unsupported therapy/diagnostic/fatalistic language.
 
-### FR-7. Evidence discipline
+### FR-8. Evidence discipline
 
 Humanization must not weaken evidence validation. Unknown evidence refs, unsupported aspects and Self/Career boundary violations remain invalid.
 
-### FR-8. Frontend/PDF readability
+### FR-9. Frontend/PDF readability
 
 Web and PDF must preserve paragraph rhythm, narrative-first order and secondary evidence disclosure.
 
-### FR-9. Runtime smoke
+### FR-10. Runtime smoke
 
 The reference local Self report must be regenerated and inspected before closing the feature.
 

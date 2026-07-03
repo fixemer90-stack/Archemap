@@ -94,68 +94,13 @@ class ReportService:
             chart_summary = _build_chart_summary(snapshot.chart_data, features.to_dict())
 
             # Build full report data
-            report_data = {
-                "product": product,
-                "source_chart": {
-                    "snapshot_id": str(snapshot.id),
-                    "engine_version": snapshot.engine_version,
-                },
-                "profile": {
-                    "name": profile.name,
-                    "birth_date": profile.birth_date.isoformat(),
-                    "birth_time": profile.birth_time.strftime("%H:%M") if profile.birth_time else None,
-                    "birth_time_accuracy": profile.birth_time_accuracy,
-                    "birth_place": profile.birth_place,
-                    "timezone": profile.timezone,
-                },
-                "archetype": {
-                    "primary": interpretation.primary_archetype,
-                    "score": interpretation.primary_score,
-                    "confidence": {
-                        "value": interpretation.primary_confidence.value,
-                        "label": interpretation.primary_confidence.label,
-                        "reason_codes": interpretation.primary_confidence.reason_codes,
-                    },
-                },
-                "claims": [
-                    {
-                        "claim_id": c.claim_id,
-                        "section": c.section,
-                        "archetype": c.archetype,
-                        "score": c.score,
-                        "confidence": {
-                            "value": c.confidence.value,
-                            "label": c.confidence.label,
-                            "reason_codes": c.confidence.reason_codes,
-                        },
-                        "message": c.message,
-                        "basis": [
-                            {
-                                "rule_id": b.rule_id,
-                                "feature": b.feature,
-                                "value": b.value,
-                                "contribution": b.contribution,
-                            }
-                            for b in c.basis
-                        ],
-                        "counter_evidence": [
-                            {
-                                "rule_id": e.rule_id,
-                                "feature": e.feature,
-                                "value": e.value,
-                                "contribution": e.contribution,
-                            }
-                            for e in c.counter_evidence
-                        ],
-                        "provenance": c.provenance,
-                    }
-                    for c in interpretation.claims
-                ],
-                "all_archetype_scores": interpretation.all_archetype_scores,
-                "chart": chart_summary,
-                "quality_warning": interpretation.quality_warning,
-                "provenance": interpretation.provenance,
-            }
+            report_data = _build_report_data(
+                product=product,
+                snapshot=snapshot,
+                profile=profile,
+                interpretation=interpretation,
+                chart_summary=chart_summary,
+            )
 
             # Update report
             report.report_data = report_data
@@ -312,6 +257,86 @@ class ReportService:
         return not _report_matches_snapshot(report.report_data, snapshot)
 
 
+def _build_report_data(
+    *,
+    product: str,
+    snapshot: ChartSnapshot,
+    profile: Any,
+    interpretation: Any,
+    chart_summary: dict[str, Any],
+) -> dict[str, Any]:
+    """Build persisted report payload, including cross-layer chart metadata."""
+    chart_payload = {
+        **chart_summary,
+        "socionics": snapshot.socionics or {},
+        "function_strengths": snapshot.function_strengths or {},
+    }
+    return {
+        "product": product,
+        "source_chart": {
+            "snapshot_id": str(snapshot.id),
+            "engine_version": snapshot.engine_version,
+        },
+        "profile": {
+            "name": profile.name,
+            "birth_date": profile.birth_date.isoformat(),
+            "birth_time": profile.birth_time.strftime("%H:%M") if profile.birth_time else None,
+            "birth_time_accuracy": profile.birth_time_accuracy,
+            "birth_place": profile.birth_place,
+            "timezone": profile.timezone,
+        },
+        "archetype": {
+            "primary": interpretation.primary_archetype,
+            "score": interpretation.primary_score,
+            "confidence": {
+                "value": interpretation.primary_confidence.value,
+                "label": interpretation.primary_confidence.label,
+                "reason_codes": interpretation.primary_confidence.reason_codes,
+            },
+        },
+        "claims": [
+            {
+                "claim_id": c.claim_id,
+                "section": c.section,
+                "archetype": c.archetype,
+                "score": c.score,
+                "confidence": {
+                    "value": c.confidence.value,
+                    "label": c.confidence.label,
+                    "reason_codes": c.confidence.reason_codes,
+                },
+                "message": c.message,
+                "basis": [
+                    {
+                        "rule_id": b.rule_id,
+                        "feature": b.feature,
+                        "value": b.value,
+                        "contribution": b.contribution,
+                    }
+                    for b in c.basis
+                ],
+                "counter_evidence": [
+                    {
+                        "rule_id": e.rule_id,
+                        "feature": e.feature,
+                        "value": e.value,
+                        "contribution": e.contribution,
+                    }
+                    for e in c.counter_evidence
+                ],
+                "provenance": c.provenance,
+            }
+            for c in interpretation.claims
+        ],
+        "all_archetype_scores": interpretation.all_archetype_scores,
+        "chart": chart_payload,
+        "socionics": snapshot.socionics or {},
+        "function_strengths": snapshot.function_strengths or {},
+        "quality_warning": interpretation.quality_warning,
+        "provenance": interpretation.provenance,
+    }
+
+
 def _dict_to_chart(data: dict[str, Any]) -> Any:
     """Convert a chart dict back to ChartData for feature extraction."""
     from datetime import datetime
@@ -378,6 +403,23 @@ def _dict_to_chart(data: dict[str, Any]) -> Any:
     )
 
 
+def _report_has_snapshot_socionics(report_data: dict[str, Any], snapshot: ChartSnapshot) -> bool:
+    chart = report_data.get("chart")
+    chart_payload = chart if isinstance(chart, dict) else {}
+
+    has_expected_socionics = (
+        not snapshot.socionics
+        or report_data.get("socionics") == snapshot.socionics
+        or chart_payload.get("socionics") == snapshot.socionics
+    )
+    has_expected_function_strengths = (
+        not snapshot.function_strengths
+        or report_data.get("function_strengths") == snapshot.function_strengths
+        or chart_payload.get("function_strengths") == snapshot.function_strengths
+    )
+    return has_expected_socionics and has_expected_function_strengths
+
+
 def _report_matches_snapshot(report_data: dict[str, Any], snapshot: ChartSnapshot) -> bool:
     """Return True when stored report data already reflects the latest chart snapshot."""
 
@@ -386,7 +428,7 @@ def _report_matches_snapshot(report_data: dict[str, Any], snapshot: ChartSnapsho
         snapshot_id = source_chart.get("snapshot_id")
         engine_version = source_chart.get("engine_version")
         if snapshot_id == str(snapshot.id) and engine_version == snapshot.engine_version:
-            return True
+            return _report_has_snapshot_socionics(report_data, snapshot)
 
     chart = report_data.get("chart")
     if not isinstance(chart, dict):
@@ -396,6 +438,7 @@ def _report_matches_snapshot(report_data: dict[str, Any], snapshot: ChartSnapsho
         chart.get("planets") == snapshot.chart_data.get("planets")
         and chart.get("houses") == snapshot.chart_data.get("houses")
         and chart.get("aspects") == snapshot.chart_data.get("aspects")
+        and _report_has_snapshot_socionics(report_data, snapshot)
     )
 
 

@@ -24,7 +24,12 @@ from app.modules.reports.schemas import (
     build_narrative_response,
     build_report_response,
 )
-from app.modules.reports.service import ReportService, _build_chart_summary, _report_matches_snapshot
+from app.modules.reports.service import (
+    ReportService,
+    _build_chart_summary,
+    _build_report_data,
+    _report_matches_snapshot,
+)
 from app.modules.reports.tasks import _run_async as _run_async_pdf_task
 from tests.unit.test_report_narratives.test_schemas import make_self_narrative_payload
 
@@ -179,6 +184,66 @@ class TestBuildChartSummary:
         assert summary["modalities"]["cardinal"] == 0
 
 
+class TestBuildReportData:
+    def test_includes_snapshot_socionics_contract(self) -> None:
+        snapshot = ChartSnapshot(
+            id=uuid4(),
+            profile_id=uuid4(),
+            user_id=uuid4(),
+            engine_version="0.1.4",
+            birth_data={},
+            chart_data=make_chart_data(),
+            features={},
+            function_strengths={"Te": 0.94, "Si": 0.89},
+            socionics={
+                "top3": [
+                    {
+                        "type": "ЛСЭ",
+                        "name": "Администратор",
+                        "score": 0.803,
+                        "confidence": 0.639,
+                        "functions": "Te+Si",
+                        "model_a": 0.635,
+                    }
+                ]
+            },
+        )
+        profile = SimpleNamespace(
+            name="Balthier",
+            birth_date=datetime(1992, 12, 24, tzinfo=UTC).date(),
+            birth_time=datetime(1992, 12, 24, 15, 30, tzinfo=UTC).time(),
+            birth_time_accuracy="exact",
+            birth_place="Москва",
+            timezone="Europe/Moscow",
+        )
+        interpretation = SimpleNamespace(
+            primary_archetype="Стратег",
+            primary_score=0.78,
+            primary_confidence=SimpleNamespace(
+                value=0.72,
+                label="средняя",
+                reason_codes=["balanced"],
+            ),
+            claims=[],
+            all_archetype_scores={"Стратег": 0.78},
+            quality_warning=None,
+            provenance={"engine_version": "rules-v1"},
+        )
+
+        report_data = _build_report_data(
+            product="self",
+            snapshot=snapshot,
+            profile=profile,
+            interpretation=interpretation,
+            chart_summary=_build_chart_summary(snapshot.chart_data, make_features()),
+        )
+
+        assert report_data["socionics"] == snapshot.socionics
+        assert report_data["function_strengths"] == snapshot.function_strengths
+        assert report_data["chart"]["socionics"] == snapshot.socionics
+        assert report_data["chart"]["function_strengths"] == snapshot.function_strengths
+
+
 class TestReportMatchesSnapshot:
     def test_accepts_matching_source_chart_metadata(self) -> None:
         snapshot = ChartSnapshot(
@@ -199,6 +264,64 @@ class TestReportMatchesSnapshot:
                 "engine_version": snapshot.engine_version,
             },
             "chart": {
+                "planets": [{"name": "Sun", "house": 7}],
+                "houses": [{"number": 1, "sign": "Leo", "longitude": 100}],
+                "aspects": [],
+            },
+        }
+
+        assert _report_matches_snapshot(report_data, snapshot) is True
+
+    def test_detects_current_snapshot_report_missing_socionics_payload(self) -> None:
+        snapshot = ChartSnapshot(
+            id=uuid4(),
+            profile_id=uuid4(),
+            user_id=uuid4(),
+            engine_version="0.1.4",
+            birth_data={},
+            chart_data=make_chart_data(),
+            features={},
+            function_strengths={"Te": 0.94},
+            socionics={"top3": [{"type": "ЛСЭ", "name": "Администратор"}]},
+        )
+
+        report_data = {
+            "source_chart": {
+                "snapshot_id": str(snapshot.id),
+                "engine_version": snapshot.engine_version,
+            },
+            "chart": {
+                "planets": snapshot.chart_data["planets"],
+                "houses": snapshot.chart_data["houses"],
+                "aspects": snapshot.chart_data["aspects"],
+            },
+        }
+
+        assert _report_matches_snapshot(report_data, snapshot) is False
+
+    def test_accepts_current_snapshot_report_with_socionics_payload(self) -> None:
+        snapshot = ChartSnapshot(
+            id=uuid4(),
+            profile_id=uuid4(),
+            user_id=uuid4(),
+            engine_version="0.1.4",
+            birth_data={},
+            chart_data=make_chart_data(),
+            features={},
+            function_strengths={"Te": 0.94},
+            socionics={"top3": [{"type": "ЛСЭ", "name": "Администратор"}]},
+        )
+
+        report_data = {
+            "source_chart": {
+                "snapshot_id": str(snapshot.id),
+                "engine_version": snapshot.engine_version,
+            },
+            "socionics": snapshot.socionics,
+            "function_strengths": snapshot.function_strengths,
+            "chart": {
+                "socionics": snapshot.socionics,
+                "function_strengths": snapshot.function_strengths,
                 "planets": [{"name": "Sun", "house": 7}],
                 "houses": [{"number": 1, "sign": "Leo", "longitude": 100}],
                 "aspects": [],

@@ -125,6 +125,16 @@ const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${houseSce
 const allUiSource = `${page}\n${componentSources}`;
 const adapter = readFileSync(resolve("src/lib/report/view-model.ts"), "utf8");
 
+for (const marker of [
+  "snapshot.socionics ?? snapshot.chart_data.socionics",
+  "generatedReport?.report_data.socionics",
+  "generatedReport?.report_data.function_strengths",
+]) {
+  if (!adapter.includes(marker)) {
+    throw new Error(`Missing socionics report-data fallback marker: ${marker}`);
+  }
+}
+
 if (!page.includes("<ReportNarrativePage")) {
   throw new Error("Ready Self report must render through ReportNarrativePage");
 }

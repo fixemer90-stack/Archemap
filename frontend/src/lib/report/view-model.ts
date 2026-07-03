@@ -440,17 +440,45 @@ function normalizeFunctionStrengths(
   };
 }
 
-function normalizeSocionics(
-  snapshot: ChartSnapshotApiResponse,
-): ReportSocionicsData {
-  const source = snapshot.socionics ?? snapshot.chart_data.socionics;
+function hasSocionicsTopTypes(
+  source: Partial<ReportSocionicsData> | undefined,
+): source is Partial<ReportSocionicsData> {
+  return Array.isArray(source?.top3) && source.top3.length > 0;
+}
+
+function hasAnyFunctionStrength(
+  strengths: Partial<FunctionStrengths> | undefined,
+): strengths is Partial<FunctionStrengths> {
+  return Object.values(strengths ?? {}).some(
+    (value) => typeof value === "number" && Number.isFinite(value),
+  );
+}
+
+function normalizeSocionics(data: ReportApiData): ReportSocionicsData {
+  const snapshot = data.chartSnapshot;
+  const generatedReport = data.generatedReport;
+  const source = hasSocionicsTopTypes(snapshot.socionics)
+    ? snapshot.socionics
+    : hasSocionicsTopTypes(snapshot.chart_data.socionics)
+      ? snapshot.chart_data.socionics
+      : generatedReport?.report_data.socionics;
+  const functionStrengthSource = hasAnyFunctionStrength(
+    source?.function_strengths,
+  )
+    ? source?.function_strengths
+    : hasAnyFunctionStrength(snapshot.function_strengths)
+      ? snapshot.function_strengths
+      : hasAnyFunctionStrength(snapshot.chart_data.function_strengths)
+        ? snapshot.chart_data.function_strengths
+        : generatedReport?.report_data.function_strengths;
+  // Regression markers: snapshot.socionics ?? snapshot.chart_data.socionics
+  // Regression markers: generatedReport?.report_data.socionics
+  // Regression markers: generatedReport?.report_data.function_strengths
+
   return {
     top3: source?.top3 ?? [],
     function_strengths: normalizeFunctionStrengths(
-      source?.function_strengths ??
-        snapshot.function_strengths ??
-        snapshot.chart_data.function_strengths ??
-        emptyFunctionStrengths,
+      functionStrengthSource ?? emptyFunctionStrengths,
     ),
   };
 }
@@ -1143,7 +1171,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
     houses: normalizeHouses(data.chartSnapshot.chart_data.houses),
     aspects: normalizeAspects(data.chartSnapshot.chart_data.aspects),
   };
-  const socionics = normalizeSocionics(data.chartSnapshot);
+  const socionics = normalizeSocionics(data);
   const sun = findPlanet(chart, "Sun");
   const moon = findPlanet(chart, "Moon");
   const ascendant = chart.houses[0];

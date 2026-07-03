@@ -1,8 +1,10 @@
 import { api } from "@/lib/api-client";
 import type {
   ChartSnapshotApiResponse,
+  FunctionStrengths,
   ProfileApiResponse,
   ReportApiData,
+  ReportSocionicsData,
 } from "@/lib/report/view-model";
 
 export type ReportStatus =
@@ -110,6 +112,8 @@ export interface GeneratedReportApiResponse {
       message: string;
     }>;
     all_archetype_scores?: Record<string, number>;
+    socionics?: Partial<ReportSocionicsData>;
+    function_strengths?: Partial<FunctionStrengths>;
     quality_warning?: string | null;
     [key: string]: unknown;
   };

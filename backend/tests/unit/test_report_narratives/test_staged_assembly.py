@@ -163,6 +163,22 @@ def test_assemble_self_narrative_produces_single_report_in_self_order_and_preser
     assert "профес" not in narrative.final_summary.lower()
 
 
+def test_assemble_self_narrative_expands_each_section_into_substantial_human_block() -> None:
+    narrative = assemble_self_narrative(
+        narrative_input=_narrative_input(),
+        plan=_plan(),
+        stage_outputs=_good_stage_outputs(),
+        final_check=AssemblyCheck(),
+    )
+
+    for section in narrative.sections:
+        assert len(section.body) >= 480, section.id
+        assert section.body.count(".") >= 4, section.id
+
+    assert len(narrative.hero.body) >= 900
+    assert len(narrative.final_summary) >= 450
+
+
 def test_validate_assembled_self_narrative_rejects_duplicate_generic_career_and_fatalist_prose() -> None:
     narrative = assemble_self_narrative(
         narrative_input=_narrative_input(),

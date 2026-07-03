@@ -62,7 +62,7 @@ from app.modules.reports.models import Report
 
 logger = structlog.get_logger()
 
-_STAGED_SELF_PIPELINE_PROMPT_VERSION = "self_staged_v1"
+_STAGED_SELF_PIPELINE_PROMPT_VERSION = "self_staged_v2"
 _STAGED_INVALID_RESPONSE_MAX_ATTEMPTS = 3
 NarrativeRegenerateScope = Literal["failed_stages", "stage", "full"]
 
@@ -1296,13 +1296,13 @@ async def find_cached_narrative(
 
 
 _STAGE_PROMPT_VERSIONS: dict[NarrativeStageId, str] = {
-    "plan": "self_plan_v1",
-    "identity": "self_section_identity_v1",
-    "emotional": "self_section_emotional_v1",
-    "relationships": "self_section_relationships_v1",
-    "development": "self_section_development_v1",
-    "house_scenarios": "self_section_house_scenarios_v1",
-    "assembly": "self_assemble_v1",
+    "plan": "self_plan_v2",
+    "identity": "self_section_identity_v2",
+    "emotional": "self_section_emotional_v2",
+    "relationships": "self_section_relationships_v2",
+    "development": "self_section_development_v2",
+    "house_scenarios": "self_section_house_scenarios_v2",
+    "assembly": "self_assemble_v2",
 }
 _SECTION_STAGE_IDS: tuple[NarrativeStageId, ...] = (
     "identity",

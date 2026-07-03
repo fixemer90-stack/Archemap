@@ -133,7 +133,7 @@ def _fake_synthesis() -> DeepNatalSynthesis:
 def _fake_plan() -> NarrativePlan:
     return NarrativePlan.model_validate(
         {
-            "prompt_version": "self_plan_v1",
+            "prompt_version": "self_plan_v2",
             "sections": [
                 {
                     "section_id": "identity",
@@ -172,7 +172,7 @@ def test_reuse_cached_stage_artifacts_preserves_ready_stages_and_reopens_only_fa
         "plan": {
             "stage_id": "plan",
             "status": "ready",
-            "prompt_version": "self_plan_v1",
+            "prompt_version": "self_plan_v2",
             "model_name": "gpt-5.4",
             "input_hash": hashes["plan"],
             "attempt_count": 1,
@@ -182,7 +182,7 @@ def test_reuse_cached_stage_artifacts_preserves_ready_stages_and_reopens_only_fa
         "identity": {
             "stage_id": "identity",
             "status": "ready",
-            "prompt_version": "self_section_identity_v1",
+            "prompt_version": "self_section_identity_v2",
             "model_name": "gpt-5.4",
             "input_hash": hashes["identity"],
             "attempt_count": 1,
@@ -192,7 +192,7 @@ def test_reuse_cached_stage_artifacts_preserves_ready_stages_and_reopens_only_fa
         "emotional": {
             "stage_id": "emotional",
             "status": "failed",
-            "prompt_version": "self_section_emotional_v1",
+            "prompt_version": "self_section_emotional_v2",
             "model_name": "gpt-5.4",
             "input_hash": hashes["emotional"],
             "attempt_count": 2,
@@ -202,7 +202,7 @@ def test_reuse_cached_stage_artifacts_preserves_ready_stages_and_reopens_only_fa
         "assembly": {
             "stage_id": "assembly",
             "status": "pending",
-            "prompt_version": "self_assemble_v1",
+            "prompt_version": "self_assemble_v2",
             "model_name": "gpt-5.4",
             "input_hash": hashes["assembly"],
             "attempt_count": 0,

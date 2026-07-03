@@ -206,7 +206,7 @@ class TestReportNarrativeApi:
                         {
                             "stage_id": "plan",
                             "status": "ready",
-                            "prompt_version": "self_plan_v1",
+                            "prompt_version": "self_plan_v2",
                             "model_name": "mock-self-v1",
                             "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                             "attempt_count": 1,
@@ -216,7 +216,7 @@ class TestReportNarrativeApi:
                         {
                             "stage_id": "emotional",
                             "status": "running",
-                            "prompt_version": "self_section_emotional_v1",
+                            "prompt_version": "self_section_emotional_v2",
                             "model_name": "mock-self-v1",
                             "input_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                             "attempt_count": 1,
@@ -229,7 +229,7 @@ class TestReportNarrativeApi:
                     {
                         "stage_id": "plan",
                         "status": "ready",
-                        "prompt_version": "self_plan_v1",
+                        "prompt_version": "self_plan_v2",
                         "model_name": "mock-self-v1",
                         "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                         "attempt_count": 1,
@@ -239,7 +239,7 @@ class TestReportNarrativeApi:
                     {
                         "stage_id": "emotional",
                         "status": "running",
-                        "prompt_version": "self_section_emotional_v1",
+                        "prompt_version": "self_section_emotional_v2",
                         "model_name": "mock-self-v1",
                         "input_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                         "attempt_count": 1,
@@ -249,7 +249,7 @@ class TestReportNarrativeApi:
                 ],
             },
         )
-        narrative.prompt_version = "self_staged_v1"
+        narrative.prompt_version = "self_staged_v2"
 
         monkeypatch.setattr(ReportService, "get_report", AsyncMock(return_value=report))
         monkeypatch.setattr(
@@ -262,7 +262,7 @@ class TestReportNarrativeApi:
         assert response.status_code == 200
         payload = response.json()
         assert payload["status"] == "generating_narrative"
-        assert payload["narrative"]["prompt_version"] == "self_staged_v1"
+        assert payload["narrative"]["prompt_version"] == "self_staged_v2"
         assert payload["narrative_progress"]["current_stage"] == "emotional"
         assert payload["narrative_stage_artifacts"][1]["stage_id"] == "emotional"
 
@@ -333,7 +333,7 @@ class TestReportNarrativeApi:
                     {
                         "stage_id": "plan",
                         "status": "ready",
-                        "prompt_version": "self_plan_v1",
+                        "prompt_version": "self_plan_v2",
                         "model_name": "mock-self-v1",
                         "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                         "attempt_count": 1,

@@ -27,7 +27,7 @@ def _narrative_input() -> NarrativeInput:
 def _plan() -> NarrativePlan:
     return NarrativePlan.model_validate(
         {
-            "prompt_version": "self_plan_v1",
+            "prompt_version": "self_plan_v2",
             "sections": [
                 {
                     "section_id": "identity",

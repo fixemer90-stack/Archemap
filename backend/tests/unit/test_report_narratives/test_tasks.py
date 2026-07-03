@@ -101,7 +101,7 @@ class ReadyStagedProvider:
             evidence_ids = list(synthesis.evidence_map.keys())[:3]
             return schema.model_validate(
                 {
-                    "prompt_version": "self_plan_v1",
+                    "prompt_version": "self_plan_v2",
                     "sections": [
                         {
                             "section_id": "identity",
@@ -425,7 +425,7 @@ def test_assemble_self_narrative_avoids_duplicate_sexuality_when_relationships_h
     narrative_input = NarrativeInput.model_validate(make_narrative_input_payload())
     plan = NarrativePlan.model_validate(
         {
-            "prompt_version": "self_plan_v1",
+            "prompt_version": "self_plan_v2",
             "sections": [
                 {
                     "section_id": section_id,
@@ -503,7 +503,7 @@ def test_assemble_self_narrative_sanitizes_invalid_identity_stage_output() -> No
     narrative_input = NarrativeInput.model_validate(make_narrative_input_payload())
     plan = NarrativePlan.model_validate(
         {
-            "prompt_version": "self_plan_v1",
+            "prompt_version": "self_plan_v2",
             "sections": [
                 {
                     "section_id": section_id,
@@ -739,7 +739,7 @@ class TestReportNarrativeService:
             assert report is report_fixture
             assert input_hash
             assert model_name == "mock-self-v1"
-            assert prompt_version in {"self_story_v5", "self_staged_v1"}
+            assert prompt_version in {"self_story_v5", "self_staged_v2"}
             assert force_new is False
             assert preserve_content_on_force is False
             return record
@@ -868,7 +868,7 @@ class TestReportNarrativeService:
             "plan": NarrativeStageArtifact(
                 stage_id="plan",
                 status="ready",
-                prompt_version="self_plan_v1",
+                prompt_version="self_plan_v2",
                 model_name="mock-self-v1",
                 input_hash=stage_hashes["plan"],
                 attempt_count=1,
@@ -877,11 +877,11 @@ class TestReportNarrativeService:
             ).model_dump(mode="json"),
         }
         section_prompt_versions = {
-            "identity": "self_section_identity_v1",
-            "emotional": "self_section_emotional_v1",
-            "relationships": "self_section_relationships_v1",
-            "development": "self_section_development_v1",
-            "house_scenarios": "self_section_house_scenarios_v1",
+            "identity": "self_section_identity_v2",
+            "emotional": "self_section_emotional_v2",
+            "relationships": "self_section_relationships_v2",
+            "development": "self_section_development_v2",
+            "house_scenarios": "self_section_house_scenarios_v2",
         }
         for stage_id, output in section_outputs.items():
             ready_artifacts[stage_id] = NarrativeStageArtifact(
@@ -897,7 +897,7 @@ class TestReportNarrativeService:
         ready_artifacts["assembly"] = NarrativeStageArtifact(
             stage_id="assembly",
             status="failed",
-            prompt_version="self_assemble_v1",
+            prompt_version="self_assemble_v2",
             model_name="mock-self-v1",
             input_hash=stage_hashes["assembly"],
             attempt_count=1,
@@ -914,7 +914,7 @@ class TestReportNarrativeService:
             "stage_progress": {"ready": False},
         }
         record.input_hash = input_hash
-        record.prompt_version = "self_staged_v1"
+        record.prompt_version = "self_staged_v2"
 
         monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
         monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))
@@ -988,17 +988,17 @@ class TestReportNarrativeService:
             ).HouseScenariosSectionOutput,
         }
         prompt_versions = {
-            "identity": "self_section_identity_v1",
-            "emotional": "self_section_emotional_v1",
-            "relationships": "self_section_relationships_v1",
-            "development": "self_section_development_v1",
-            "house_scenarios": "self_section_house_scenarios_v1",
+            "identity": "self_section_identity_v2",
+            "emotional": "self_section_emotional_v2",
+            "relationships": "self_section_relationships_v2",
+            "development": "self_section_development_v2",
+            "house_scenarios": "self_section_house_scenarios_v2",
         }
         artifacts: dict[str, dict[str, Any]] = {
             "plan": NarrativeStageArtifact(
                 stage_id="plan",
                 status="ready",
-                prompt_version="self_plan_v1",
+                prompt_version="self_plan_v2",
                 model_name="mock-self-v1",
                 input_hash=stage_hashes["plan"],
                 attempt_count=1,
@@ -1020,7 +1020,7 @@ class TestReportNarrativeService:
             ).model_dump(mode="json")
         record.content = {"stage_artifacts": list(artifacts.values()), "stage_progress": {"ready": False}}
         record.input_hash = input_hash
-        record.prompt_version = "self_staged_v1"
+        record.prompt_version = "self_staged_v2"
 
         monkeypatch.setattr(service, "_get_report", AsyncMock(return_value=report_fixture))
         monkeypatch.setattr(service, "_get_or_create_narrative_record", AsyncMock(return_value=record))

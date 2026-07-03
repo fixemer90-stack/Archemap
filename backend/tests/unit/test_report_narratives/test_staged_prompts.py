@@ -18,6 +18,7 @@ from app.modules.report_narratives.schemas import (
     NarrativePlan,
     RelationshipSectionOutput,
 )
+from app.modules.report_narratives.service import _STAGE_PROMPT_VERSIONS, _STAGED_SELF_PIPELINE_PROMPT_VERSION
 
 
 def _fake_synthesis() -> DeepNatalSynthesis:
@@ -148,6 +149,8 @@ def test_staged_prompt_versions_are_file_backed_and_guardrailed() -> None:
         "assembly": "self_assemble_v2",
     }
     assert required_versions == STAGED_SELF_PROMPT_VERSIONS
+    assert required_versions == _STAGE_PROMPT_VERSIONS
+    assert _STAGED_SELF_PIPELINE_PROMPT_VERSION == "self_staged_v2"
 
     for version in required_versions.values():
         template = load_prompt_template(version).lower()
@@ -202,7 +205,7 @@ def test_stage_prompt_builders_include_only_relevant_synthesis_slices() -> None:
 def test_stage_output_schemas_validate_minimal_contracts() -> None:
     plan = NarrativePlan.model_validate(
         {
-            "prompt_version": "self_plan_v1",
+            "prompt_version": "self_plan_v2",
             "sections": [
                 {
                     "section_id": "identity",

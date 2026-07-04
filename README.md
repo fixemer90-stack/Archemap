@@ -262,6 +262,7 @@ Astrotype/
 │   └── scripts/                 # UX regression checks
 ├── contracts/                   # OpenAPI and AsyncAPI contracts
 ├── docs/
+│   ├── architecture/            # Current data-flow and system maps
 │   ├── design/                  # UX and narrative architecture
 │   ├── features/                # Epic/story documentation
 │   ├── SRS/                     # Software Requirements Specs
@@ -295,6 +296,7 @@ Astrotype/
 | [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                                       | Narrative‑first UX отчёта                              |
 | [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                                           | Сторителлинг Self‑отчёта                               |
 | [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)                         | Архитектура LLM/staged narrative layer                 |
+| [`docs/architecture/report-generation-data-flow.md`](docs/architecture/report-generation-data-flow.md)                         | Data Flow сборки отчёта от profile до web/PDF          |
 | [`docs/features/E2-identity/CURRENT-AUTH-FLOW.md`](docs/features/E2-identity/CURRENT-AUTH-FLOW.md)                             | Текущий процесс авторизации                            |
 | [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md)             | Улучшение глубины Self report                          |
 | [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                               | SRS для E13 depth-layer отчёта                         |

@@ -12,6 +12,7 @@ Astrotype — full-stack narrative-first платформа для астрол�
 - OpenAPI: `contracts/openapi.yaml`
 - AsyncAPI: `contracts/asyncapi.yaml`
 - LLM design: `docs/design/llm-report-narrative-architecture.md`
+- Report generation data flow: `docs/architecture/report-generation-data-flow.md`
 - E11 feature pack: `docs/features/E11-llm-report-narrative/FEATURE.md`
 - E13 report depth improvements: `docs/features/E13-report-depth-improvements/FEATURE.md`
 - E14 staged narrative pipeline: `docs/features/E14-staged-narrative-pipeline/FEATURE.md`
@@ -214,6 +215,7 @@ docker compose up -d --build
 - `docs/design/report-ux-redesign.md`
 - `docs/design/self-report-storytelling.md`
 - `docs/design/llm-report-narrative-architecture.md`
+- `docs/architecture/report-generation-data-flow.md`
 - `docs/features/E11-llm-report-narrative/FEATURE.md`
 - `docs/features/E13-report-depth-improvements/FEATURE.md`
 - `docs/features/E14-staged-narrative-pipeline/FEATURE.md`

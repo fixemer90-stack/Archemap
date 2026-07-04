@@ -11,6 +11,7 @@
 - `docs/SRS/SRS-E11-llm-report-narrative.md`
 - `docs/features/E14-staged-narrative-pipeline/FEATURE.md`
 - `docs/SRS/SRS-E14-staged-narrative-pipeline.md`
+- `docs/architecture/report-generation-data-flow.md`
 
 ## 1. Главная идея
 

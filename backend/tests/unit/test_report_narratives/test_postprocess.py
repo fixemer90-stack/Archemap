@@ -62,3 +62,21 @@ def test_hardening_sanitizes_forbidden_language() -> None:
     assert "обреч" not in hardened.sections[0].body.lower()
     assert "неизбеж" not in hardened.sections[1].bullets[0].lower()
     assert validate_self_narrative(hardened, narrative_input) == []
+
+
+def test_hardening_converts_informal_second_person_without_truncating_text() -> None:
+    narrative_input = make_narrative_input()
+    candidate = build_deterministic_self_fallback(narrative_input)
+    marker = "маркер-сохранённого-длинного-текста"
+    long_text = " ".join(["ты видишь свой ритм и тебе важно не терять себя"] * 140)
+    candidate.sections[0].body = f"{long_text} {marker}."
+
+    hardened = harden_self_narrative(candidate, narrative_input)
+
+    lowered = hardened.sections[0].body.lower()
+    assert marker in lowered
+    assert len(hardened.sections[0].body) > 4000
+    assert " ты " not in f" {lowered} "
+    assert " тебе " not in f" {lowered} "
+    assert " свой " not in f" {lowered} "
+    assert validate_self_narrative(hardened, narrative_input) == []

@@ -538,11 +538,14 @@ class ReportNarrativeService:
                 ),
             )
             assembly_validation_started_at = time.perf_counter()
-            assembled = assemble_self_narrative(
-                narrative_input=narrative_input,
-                plan=plan,
-                stage_outputs=cast(dict[str, object], stage_outputs),
-                final_check=final_check,
+            assembled = harden_self_narrative(
+                assemble_self_narrative(
+                    narrative_input=narrative_input,
+                    plan=plan,
+                    stage_outputs=cast(dict[str, object], stage_outputs),
+                    final_check=final_check,
+                ),
+                narrative_input,
             )
             errors = validate_assembled_self_narrative(assembled, narrative_input)
             if final_check.needs_retry or errors:

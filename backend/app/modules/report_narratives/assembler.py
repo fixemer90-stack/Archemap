@@ -123,7 +123,7 @@ def assemble_self_narrative(
     ]
 
     title = f"Ваш внутренний портрет — {narrative_input.profile.name}"
-    hero_body = _bounded_body(
+    hero_body = _join_body(
         part
         for part in [
             _compose_main_formula_body(identity.paragraphs, narrative_input),
@@ -165,7 +165,7 @@ def assemble_self_narrative(
             bullets=["Профроли", "среда", "стратегия роста"],
             button_label="Открыть Career",
         ),
-        final_summary=_bounded_body((part for part in summary_parts if part), max_chars=1800),
+        final_summary=_join_body(part for part in summary_parts if part),
     )
 
 
@@ -202,6 +202,7 @@ def _compose_main_formula_body(paragraphs: list[str], narrative_input: Narrative
         *steps,
         contradiction.tension,
         contradiction.mature_expression,
+        *_shared_depth_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
@@ -218,6 +219,7 @@ def _compose_emotional_body(paragraphs: list[str], narrative_input: NarrativeInp
         risk.trigger,
         risk.manifestation,
         risk.supportive_reframe,
+        *_shared_depth_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
@@ -232,6 +234,8 @@ def _compose_world_perception_body(paragraphs: list[str], narrative_input: Narra
         scenario.shadow,
         scenario.mature_expression,
         *facts,
+        narrative_input.inner_mechanism.summary,
+        *_maturity_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
@@ -248,6 +252,7 @@ def _compose_relationships_body(paragraphs: list[str], narrative_input: Narrativ
         contradiction.mature_expression,
         failure.trigger,
         failure.supportive_reframe,
+        *_shared_depth_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
@@ -267,6 +272,7 @@ def _compose_development_body(paragraphs: list[str], narrative_input: NarrativeI
         failure.supportive_reframe,
         f"Зрелая форма: {contradiction.mature_expression}",
         narrative_input.maturity_levels.medium.body,
+        *_maturity_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
@@ -281,6 +287,7 @@ def _compose_strengths_body(paragraphs: list[str], narrative_input: NarrativeInp
         maturity,
         narrative_input.inner_mechanism.steps[1].body,
         narrative_input.contradictions[0].mature_expression,
+        *_shared_depth_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
@@ -297,6 +304,8 @@ def _compose_vulnerabilities_body(paragraphs: list[str], narrative_input: Narrat
         failure.manifestation,
         failure.supportive_reframe,
         narrative_input.maturity_levels.low.body,
+        *_maturity_parts(narrative_input),
+        narrative_input.inner_mechanism.summary,
     ]
     return _substantial_body(parts)
 
@@ -312,17 +321,39 @@ def _compose_sexuality_body(paragraphs: list[str], narrative_input: NarrativeInp
         contradiction.mature_expression,
         failure_mode.manifestation,
         failure_mode.supportive_reframe,
+        narrative_input.relationship_patterns[0].claim if narrative_input.relationship_patterns else "",
+        narrative_input.maturity_levels.medium.body,
+        narrative_input.inner_mechanism.summary,
+        *_maturity_parts(narrative_input),
     ]
     return _substantial_body(parts)
 
 
-def _bounded_body(parts: Iterable[str], *, max_chars: int = 3800) -> str:
-    body = " ".join(_dedupe_parts(parts))
-    return body if len(body) <= max_chars else body[:max_chars].rsplit(" ", 1)[0].rstrip(".,;:") + "."
+def _shared_depth_parts(narrative_input: NarrativeInput) -> list[str]:
+    return [
+        narrative_input.house_scenarios[0].manifestation,
+        narrative_input.house_scenarios[0].shadow,
+        narrative_input.house_scenarios[0].mature_expression,
+        narrative_input.maturity_levels.low.body,
+        narrative_input.maturity_levels.medium.body,
+        narrative_input.maturity_levels.high.body,
+    ]
+
+
+def _maturity_parts(narrative_input: NarrativeInput) -> list[str]:
+    return [
+        narrative_input.maturity_levels.low.body,
+        narrative_input.maturity_levels.medium.body,
+        narrative_input.maturity_levels.high.body,
+    ]
+
+
+def _join_body(parts: Iterable[str]) -> str:
+    return " ".join(_dedupe_parts(parts))
 
 
 def _substantial_body(parts: Sequence[str]) -> str:
-    return _bounded_body(parts, max_chars=3600)
+    return _join_body(parts)
 
 
 def _dedupe_parts(parts: Iterable[str]) -> list[str]:
@@ -341,7 +372,7 @@ def _dedupe_parts(parts: Iterable[str]) -> list[str]:
 
 
 def _evidence_claim(body: str) -> str:
-    return body if len(body) <= 1400 else body[:1400].rsplit(" ", 1)[0].rstrip(".,;:") + "."
+    return body
 
 
 def _section(

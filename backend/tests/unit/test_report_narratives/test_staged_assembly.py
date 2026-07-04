@@ -172,11 +172,33 @@ def test_assemble_self_narrative_expands_each_section_into_substantial_human_blo
     )
 
     for section in narrative.sections:
-        assert len(section.body) >= 480, section.id
+        assert len(section.body) >= 1000, section.id
         assert section.body.count(".") >= 4, section.id
 
     assert len(narrative.hero.body) >= 900
     assert len(narrative.final_summary) >= 450
+
+
+def test_assemble_self_narrative_preserves_full_long_stage_text_without_truncation() -> None:
+    stage_outputs = _good_stage_outputs()
+    marker = "маркер-полного-текста-после-старого-лимита"
+    long_paragraph = " ".join(["Это полный длинный фрагмент секции без искусственного обрезания."] * 90)
+    long_paragraph = f"{long_paragraph} {marker}."
+    identity = stage_outputs["identity"]
+    assert isinstance(identity, IdentitySectionOutput)
+    identity.paragraphs[0] = long_paragraph
+
+    narrative = assemble_self_narrative(
+        narrative_input=_narrative_input(),
+        plan=_plan(),
+        stage_outputs=stage_outputs,
+        final_check=AssemblyCheck(),
+    )
+
+    main_formula = next(section for section in narrative.sections if section.id == "main_formula")
+    assert len(main_formula.body) > 4000
+    assert marker in main_formula.body
+    assert marker in narrative.hero.body
 
 
 def test_validate_assembled_self_narrative_rejects_duplicate_generic_career_and_fatalist_prose() -> None:

@@ -308,10 +308,10 @@ class NarrativeInput(BaseModel):
 class EvidenceNote(BaseModel):
     """Visible narrative claim with evidence references and optional limitation."""
 
-    claim: str = Field(..., min_length=1, max_length=1500)
+    claim: str = Field(..., min_length=1, max_length=20000)
     fact_ids: list[str] = Field(..., min_length=1)
-    interpretation: str | None = Field(default=None, max_length=1500)
-    limitation: str | None = Field(default=None, max_length=1500)
+    interpretation: str | None = Field(default=None, max_length=20000)
+    limitation: str | None = Field(default=None, max_length=20000)
     limitation_fact_ids: list[str] = Field(default_factory=list)
 
 
@@ -320,7 +320,7 @@ class HeroSection(BaseModel):
 
     id: Literal["hero"]
     title: str = Field(..., min_length=1, max_length=200)
-    body: str = Field(..., min_length=1, max_length=4000)
+    body: str = Field(..., min_length=1, max_length=20000)
     bullets: list[str] = Field(default_factory=list)
     evidence_notes: list[EvidenceNote] = Field(default_factory=list)
 
@@ -330,7 +330,7 @@ class NarrativeSection(BaseModel):
 
     id: SelfSectionId
     title: str = Field(..., min_length=1, max_length=200)
-    body: str = Field(..., min_length=1, max_length=4000)
+    body: str = Field(..., min_length=1, max_length=20000)
     bullets: list[str] = Field(default_factory=list)
     evidence_notes: list[EvidenceNote] = Field(default_factory=list)
 
@@ -339,7 +339,7 @@ class CareerCTA(BaseModel):
     """Optional career upsell block for Self narrative."""
 
     title: str = Field(..., min_length=1, max_length=200)
-    body: str = Field(..., min_length=1, max_length=1500)
+    body: str = Field(..., min_length=1, max_length=5000)
     bullets: list[str] = Field(default_factory=list)
     button_label: str = Field(..., min_length=1, max_length=100)
 
@@ -444,4 +444,4 @@ class SelfNarrative(BaseModel):
     maturity_levels: MaturityLevels
     sections: list[NarrativeSection] = Field(..., min_length=1)
     career_cta: CareerCTA | None = None
-    final_summary: str = Field(..., min_length=1, max_length=2000)
+    final_summary: str = Field(..., min_length=1, max_length=12000)

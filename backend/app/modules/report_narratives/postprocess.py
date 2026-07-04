@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001
 """Deterministic post-processing for LLM self narratives before validation."""
 
 from __future__ import annotations
@@ -19,6 +20,18 @@ _SECTION_TITLES: dict[str, str] = {
 }
 
 _FORBIDDEN_TEXT_REPLACEMENTS: tuple[tuple[str, str], ...] = (
+    (r"\bты\b", "вы"),
+    (r"\bтебе\b", "вам"),
+    (r"\bтебя\b", "вас"),
+    (r"\bтобой\b", "вами"),
+    (r"\bтвой\b", "ваш"),
+    (r"\bтвоя\b", "ваша"),
+    (r"\bтвои\b", "ваши"),
+    (r"\bтвою\b", "вашу"),
+    (r"\bсвой\b", "ваш"),
+    (r"\bсвоя\b", "ваша"),
+    (r"\bсвои\b", "ваши"),
+    (r"\bсвою\b", "вашу"),
     (r"полов(?:ому|ой)?\s+акту", "сексуальной близости"),
     (r"половой\s+акт", "сексуальная близость"),
     (r"проникнов\w*", "сексуальная близость"),

@@ -123,14 +123,11 @@ def assemble_self_narrative(
     ]
 
     title = f"Ваш внутренний портрет — {narrative_input.profile.name}"
-    hero_body = _join_body(
-        part
-        for part in [
-            _compose_main_formula_body(identity.paragraphs, narrative_input),
-            _compose_emotional_body(emotional.paragraphs, narrative_input),
-            _compose_relationships_body(relationships.paragraphs, narrative_input),
-        ]
-        if part
+    hero_body = _compose_hero_body(
+        identity.paragraphs,
+        emotional.paragraphs,
+        relationships.paragraphs,
+        narrative_input,
     )
     summary_parts = [
         _compose_development_body(development.paragraphs, narrative_input),
@@ -189,144 +186,197 @@ def narrative_input_to_hero(
 
 
 def _compose_main_formula_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
-    primary = paragraphs[0] if paragraphs else ""
     dominant = narrative_input.dominants[0]
-    mechanism = narrative_input.inner_mechanism.summary
     steps = [step.body for step in narrative_input.inner_mechanism.steps[:3]]
     contradiction = narrative_input.contradictions[0]
-    parts = [
-        primary if _is_stage_paragraph_usable(primary) else "",
-        *paragraphs[1:2],
-        dominant.body,
-        mechanism,
-        *steps,
-        contradiction.tension,
-        contradiction.mature_expression,
-        *_shared_depth_parts(narrative_input),
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=3),
+        [
+            [dominant.body, narrative_input.inner_mechanism.summary, *steps],
+            [contradiction.tension, contradiction.mature_expression, *_shared_depth_parts(narrative_input)],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_emotional_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
-    primary = paragraphs[0] if paragraphs else ""
     contradiction = narrative_input.contradictions[0].manifestation
     risk = narrative_input.failure_modes[0]
-    parts = [
-        primary if _is_stage_paragraph_usable(primary) else "",
-        *paragraphs[1:2],
-        narrative_input.key_aspects[0].meaning if narrative_input.key_aspects else "",
-        contradiction,
-        risk.trigger,
-        risk.manifestation,
-        risk.supportive_reframe,
-        *_shared_depth_parts(narrative_input),
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=2),
+        [
+            [narrative_input.key_aspects[0].meaning if narrative_input.key_aspects else "", contradiction],
+            [risk.trigger, risk.manifestation, risk.supportive_reframe, *_shared_depth_parts(narrative_input)],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_world_perception_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
     scenario = narrative_input.house_scenarios[0]
     facts = [fact.meaning for fact in narrative_input.key_facts[:2]]
-    parts = [
-        *(paragraph for paragraph in paragraphs[:2] if _is_stage_paragraph_usable(paragraph)),
-        scenario.need,
-        scenario.manifestation,
-        scenario.shadow,
-        scenario.mature_expression,
-        *facts,
-        narrative_input.inner_mechanism.summary,
-        *_maturity_parts(narrative_input),
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=2),
+        [
+            [scenario.need, scenario.manifestation, scenario.shadow, scenario.mature_expression],
+            [*facts, narrative_input.inner_mechanism.summary, *_maturity_parts(narrative_input)],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_relationships_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
     claims = [item.claim for item in narrative_input.relationship_patterns[:2]]
     contradiction = narrative_input.contradictions[1]
     failure = narrative_input.failure_modes[2]
-    parts = [
-        *(paragraph for paragraph in paragraphs[:2] if _is_stage_paragraph_usable(paragraph)),
-        *claims,
-        contradiction.tension,
-        contradiction.manifestation,
-        contradiction.mature_expression,
-        failure.trigger,
-        failure.supportive_reframe,
-        *_shared_depth_parts(narrative_input),
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=3),
+        [
+            [*claims, contradiction.tension, contradiction.manifestation, contradiction.mature_expression],
+            [failure.trigger, failure.supportive_reframe, *_shared_depth_parts(narrative_input)],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_development_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
-    primary = paragraphs[0] if paragraphs else ""
     recommendation = " ".join(item.claim for item in narrative_input.development_recommendations[:2])
     failure = narrative_input.failure_modes[0]
     contradiction = narrative_input.contradictions[0]
-    parts = [
-        primary if _is_stage_paragraph_usable(primary) and not _contains_career_language(primary) else "",
-        *(paragraph for paragraph in paragraphs[1:2] if _is_stage_paragraph_usable(paragraph)),
-        recommendation,
-        f"Механизм: {narrative_input.inner_mechanism.summary}",
-        f"Риск: {failure.manifestation}",
-        failure.trigger,
-        failure.supportive_reframe,
-        f"Зрелая форма: {contradiction.mature_expression}",
-        narrative_input.maturity_levels.medium.body,
-        *_maturity_parts(narrative_input),
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=3, reject_career=True),
+        [
+            [recommendation, narrative_input.inner_mechanism.summary],
+            [
+                failure.manifestation,
+                failure.trigger,
+                failure.supportive_reframe,
+                contradiction.mature_expression,
+                narrative_input.maturity_levels.medium.body,
+                *_maturity_parts(narrative_input),
+            ],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_strengths_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
     strengths = "; ".join(item.claim for item in narrative_input.strengths[:2])
     maturity = narrative_input.maturity_levels.high.body
-    parts = [
-        *(paragraph for paragraph in paragraphs if _is_stage_paragraph_usable(paragraph)),
-        strengths,
-        narrative_input.dominants[0].body,
-        maturity,
-        narrative_input.inner_mechanism.steps[1].body,
-        narrative_input.contradictions[0].mature_expression,
-        *_shared_depth_parts(narrative_input),
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=3),
+        [
+            [strengths, narrative_input.dominants[0].body, maturity],
+            [
+                narrative_input.inner_mechanism.steps[1].body,
+                narrative_input.contradictions[0].mature_expression,
+                *_shared_depth_parts(narrative_input),
+            ],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_vulnerabilities_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
     risks = "; ".join(item.claim for item in narrative_input.risks[:2])
     failure = narrative_input.failure_modes[0]
     contradiction = narrative_input.contradictions[0]
-    parts = [
-        paragraphs[-1] if paragraphs and _is_stage_paragraph_usable(paragraphs[-1]) else "",
-        risks,
-        contradiction.manifestation,
-        failure.trigger,
-        failure.manifestation,
-        failure.supportive_reframe,
-        narrative_input.maturity_levels.low.body,
-        *_maturity_parts(narrative_input),
-        narrative_input.inner_mechanism.summary,
-    ]
-    return _substantial_body(parts)
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=2, prefer_tail=True),
+        [
+            [risks, contradiction.manifestation, failure.trigger],
+            [
+                failure.manifestation,
+                failure.supportive_reframe,
+                narrative_input.maturity_levels.low.body,
+                *_maturity_parts(narrative_input),
+                narrative_input.inner_mechanism.summary,
+            ],
+        ],
+        max_paragraphs=3,
+    )
 
 
 def _compose_sexuality_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
     contradiction = narrative_input.contradictions[0]
     failure_mode = narrative_input.failure_modes[0]
     intimacy_claims = [item.claim for item in narrative_input.sexuality_patterns[:2]]
-    parts = [
-        paragraphs[-1] if paragraphs and _is_stage_paragraph_usable(paragraphs[-1]) else "",
-        *intimacy_claims,
-        contradiction.manifestation,
-        contradiction.mature_expression,
-        failure_mode.manifestation,
-        failure_mode.supportive_reframe,
-        narrative_input.relationship_patterns[0].claim if narrative_input.relationship_patterns else "",
-        narrative_input.maturity_levels.medium.body,
-        narrative_input.inner_mechanism.summary,
-        *_maturity_parts(narrative_input),
+    return _section_body(
+        _usable_stage_paragraphs(paragraphs, limit=2, prefer_tail=True),
+        [
+            [*intimacy_claims, contradiction.manifestation, contradiction.mature_expression],
+            [
+                failure_mode.manifestation,
+                failure_mode.supportive_reframe,
+                narrative_input.relationship_patterns[0].claim if narrative_input.relationship_patterns else "",
+                narrative_input.maturity_levels.medium.body,
+                narrative_input.inner_mechanism.summary,
+                *_maturity_parts(narrative_input),
+            ],
+        ],
+        max_paragraphs=3,
+    )
+
+
+def _compose_hero_body(
+    identity_paragraphs: list[str],
+    emotional_paragraphs: list[str],
+    relationship_paragraphs: list[str],
+    narrative_input: NarrativeInput,
+) -> str:
+    identity = _join_inline(_usable_stage_paragraphs(identity_paragraphs, limit=2))
+    emotional = _join_inline(_usable_stage_paragraphs(emotional_paragraphs, limit=2))
+    relationships = _join_inline(_usable_stage_paragraphs(relationship_paragraphs, limit=2))
+    dominant = narrative_input.dominants[0].body
+    mechanism = narrative_input.inner_mechanism.summary
+    scenario = narrative_input.house_scenarios[0].manifestation
+    mature = narrative_input.contradictions[0].mature_expression
+    maturity = narrative_input.maturity_levels.medium.body
+    return _body_from_paragraphs(
+        [
+            _join_inline([identity, dominant, mechanism]),
+            _join_inline([emotional, relationships, scenario, mature, maturity]),
+        ]
+    )
+
+
+def _usable_stage_paragraphs(
+    paragraphs: Sequence[str],
+    *,
+    limit: int,
+    reject_career: bool = False,
+    prefer_tail: bool = False,
+) -> list[str]:
+    selected = [
+        paragraph
+        for paragraph in paragraphs
+        if _is_stage_paragraph_usable(paragraph) and not (reject_career and _contains_career_language(paragraph))
     ]
-    return _substantial_body(parts)
+    selected = selected[-limit:] if prefer_tail else selected[:limit]
+    return [_strip_mechanical_prefixes(paragraph) for paragraph in selected]
+
+
+def _section_body(
+    stage_paragraphs: Sequence[str],
+    support_groups: Sequence[Sequence[str]],
+    *,
+    max_paragraphs: int,
+) -> str:
+    paragraphs = [_join_inline(stage_paragraphs)] if stage_paragraphs else []
+    paragraphs.extend(_join_inline(group) for group in support_groups)
+    return _body_from_paragraphs(paragraphs[:max_paragraphs])
+
+
+def _join_inline(parts: Iterable[str]) -> str:
+    return " ".join(_dedupe_parts(_strip_mechanical_prefixes(part) for part in parts))
+
+
+def _body_from_paragraphs(paragraphs: Iterable[str]) -> str:
+    return "\n\n".join(_dedupe_parts(paragraphs))
+
+
+def _strip_mechanical_prefixes(text: str) -> str:
+    return re.sub(r"(?m)(^|(?<=[.!?])\s+)(?:Механизм|Риск|Зрелая форма):\s*", r"\1", text.strip())
 
 
 def _shared_depth_parts(narrative_input: NarrativeInput) -> list[str]:

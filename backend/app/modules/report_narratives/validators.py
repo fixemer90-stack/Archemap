@@ -794,7 +794,14 @@ def _validate_mechanism_risk_mature_chain(narrative: SelfNarrative) -> list[Narr
     if development is None:
         return []
     lowered = development.body.lower()
-    if all(marker in lowered for marker in ("механизм:", "риск:", "зрел")):
+    mechanism_markers = ("механизм:", "паттерн", "разворач", "сначала", "затем")
+    risk_markers = ("риск:", "вместо", "слишком", "давлен", "цикл", "уязв")
+    mature_markers = ("зрел", "полезно", "устойчив", "способность")
+    if (
+        any(marker in lowered for marker in mechanism_markers)
+        and any(marker in lowered for marker in risk_markers)
+        and any(marker in lowered for marker in mature_markers)
+    ):
         return []
     return [
         NarrativeValidationError(

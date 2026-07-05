@@ -54,6 +54,68 @@ _TECHNICAL_PIPELINE_MARKERS = (
     "retry",
     "section output",
 )
+_SERVICE_WORD_MARKERS = (
+    "паттерн",
+    "динамика",
+    "формирует",
+    "обработка",
+    "механизм",
+    "идентичность",
+)
+_LIVED_MANIFESTATION_MARKERS = (
+    "когда ",
+    "в разговор",
+    "в спор",
+    "в близости",
+    "в отношениях",
+    "в момент",
+    "в ситуации",
+    "на встрече",
+    "перед ответом",
+    "собеседник",
+    "пауза",
+    "голос",
+    "тело",
+    "делаете",
+    "говорите",
+    "выбираете",
+    "замечаете",
+    "сначала",
+    "потом",
+)
+_SCENARIO_MARKERS = (
+    "когда ",
+    "в разговор",
+    "в спор",
+    "в близости",
+    "в отношениях",
+    "в ситуации",
+    "сначала",
+    "потом",
+)
+_RISK_MARKERS = (
+    "риск",
+    "напряж",
+    "давлен",
+    "слишком",
+    "уязв",
+    "перепроверк",
+    "уходить",
+    "избег",
+)
+_MATURE_EXPRESSION_MARKERS = (
+    "зрел",
+    "устойчив",
+    "полезно",
+    "способность",
+    "простыми словами",
+    "мягче",
+)
+_KEY_HUMANIZED_SECTION_IDS = {
+    "main_formula",
+    "relationships",
+    "development",
+}
 _CROSS_SECTION_CONTRADICTION_MARKERS: dict[str, dict[str, tuple[str, ...]]] = {
     "depth": {
         "positive": (
@@ -235,6 +297,7 @@ def validate_assembled_self_narrative(
     errors.extend(_validate_mechanism_risk_mature_chain(candidate))
     errors.extend(_validate_cross_section_contradictions(candidate))
     errors.extend(_validate_tone_drift(candidate))
+    errors.extend(_validate_humanized_quality(candidate))
     return errors
 
 
@@ -862,6 +925,61 @@ def _validate_tone_drift(narrative: SelfNarrative) -> list[NarrativeValidationEr
                 )
             )
     return errors
+
+
+def _validate_humanized_quality(narrative: SelfNarrative) -> list[NarrativeValidationError]:
+    errors: list[NarrativeValidationError] = []
+    for location, section_id, text in _iter_visible_section_texts(narrative):
+        lowered = f" {text.casefold()} "
+        service_word_hits = sum(lowered.count(marker) for marker in _SERVICE_WORD_MARKERS)
+        has_lived_manifestation = _has_any_marker(lowered, _LIVED_MANIFESTATION_MARKERS)
+        if service_word_hits >= 6 and not has_lived_manifestation:
+            errors.append(
+                NarrativeValidationError(
+                    code="soulless_service_word_overuse",
+                    message="Final assembled narrative overuses abstract service words without concrete behavior.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+        if section_id in _KEY_HUMANIZED_SECTION_IDS and not has_lived_manifestation:
+            errors.append(
+                NarrativeValidationError(
+                    code="missing_lived_manifestation",
+                    message="Key Self section lacks a concrete lived manifestation.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+        if section_id in _KEY_HUMANIZED_SECTION_IDS and not _has_density_chain(lowered):
+            errors.append(
+                NarrativeValidationError(
+                    code="thin_claim_density",
+                    message="Key Self section is claim-heavy and misses scenario/risk/mature-expression density.",
+                    location=location,
+                    recoverable=True,
+                )
+            )
+    return errors
+
+
+def _iter_visible_section_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str, str]]:
+    yield ("hero.body", "hero", narrative.hero.body)
+    yield ("final_summary", "final_summary", narrative.final_summary)
+    for section in narrative.sections:
+        yield (f"sections[{section.id}].body", section.id, section.body)
+
+
+def _has_density_chain(lowered: str) -> bool:
+    return (
+        _has_any_marker(lowered, _SCENARIO_MARKERS)
+        and _has_any_marker(lowered, _RISK_MARKERS)
+        and _has_any_marker(lowered, _MATURE_EXPRESSION_MARKERS)
+    )
+
+
+def _has_any_marker(lowered: str, markers: Iterable[str]) -> bool:
+    return any(marker in lowered for marker in markers)
 
 
 def _iter_non_cta_texts(narrative: SelfNarrative) -> Iterable[tuple[str, str]]:

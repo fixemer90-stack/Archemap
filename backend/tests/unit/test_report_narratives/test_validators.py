@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, E501
 """Unit tests for narrative validation and repair policy."""
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from app.modules.report_narratives.exceptions import NarrativeValidationError
 from app.modules.report_narratives.schemas import SelfNarrative
 from app.modules.report_narratives.validators import (
     choose_narrative_recovery_action,
+    validate_assembled_self_narrative,
     validate_self_narrative,
 )
 
@@ -199,6 +200,61 @@ class TestValidateSelfNarrative:
         errors = validate_self_narrative(narrative, narrative_input_payload)
 
         assert any(error.code == "unsupported_domain_term" for error in errors)
+
+
+class TestHumanizedQualityGates:
+    def test_rejects_soulless_service_word_overuse_without_lived_manifestation(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.sections[0].body = (
+            "Паттерн формирует динамику, где идентичность запускает механизм обработки. "
+            "Этот паттерн формирует динамику, а динамика формирует механизм идентичности. "
+            "В результате обработка формирует внутренний паттерн без конкретного поведения."
+        )
+
+        errors = validate_assembled_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "soulless_service_word_overuse" for error in errors)
+
+    def test_rejects_key_section_without_lived_manifestation(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.sections[0].body = (
+            "Ваша личная формула связана со смыслом, внутренним выбором и устойчивым направлением. "
+            "Есть напряжение между ясностью и чувствительностью, а зрелая форма появляется через осознанность."
+        )
+
+        errors = validate_assembled_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "missing_lived_manifestation" for error in errors)
+
+    def test_allows_concrete_human_prose_with_necessary_terms(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        concrete_body = (
+            "Когда вы входите в разговор, сначала ищете опору в смысле: уточняете детали, смотрите на реакцию собеседника "
+            "и только потом формулируете позицию вслух. В споре это может выглядеть как пауза перед ответом, но внутри "
+            "в этот момент собирается ясный каркас выбора. Если давления становится слишком много, появляется риск уйти "
+            "в перепроверку; зрелая форма — назвать главное простыми словами и оставить пространство для живого ответа."
+        )
+        for section in narrative.sections:
+            if section.id in {"main_formula", "relationships", "development"}:
+                section.body = concrete_body
+
+        errors = validate_assembled_self_narrative(narrative, narrative_input_payload)
+
+        assert not any(
+            error.code in {"soulless_service_word_overuse", "missing_lived_manifestation", "thin_claim_density"}
+            for error in errors
+        )
+
+    def test_rejects_thin_claim_density_without_scenario_risk_or_mature_expression(self) -> None:
+        narrative, narrative_input_payload = make_validated_inputs()
+        narrative.sections[0].body = (
+            "Вы стремитесь к смыслу, глубине и внутренней целостности. "
+            "Ваша сила связана с вниманием, честностью и способностью видеть больше других."
+        )
+
+        errors = validate_assembled_self_narrative(narrative, narrative_input_payload)
+
+        assert any(error.code == "thin_claim_density" for error in errors)
 
 
 class TestNarrativeRecoveryPolicy:

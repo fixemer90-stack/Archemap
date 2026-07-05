@@ -154,6 +154,7 @@ export interface NarrativeHeroViewModel {
   id: "hero";
   title: string;
   body: string;
+  body_paragraphs: string[];
   bullets: string[];
   evidence_notes: NarrativeEvidenceNote[];
 }
@@ -162,6 +163,7 @@ export interface NarrativeSectionViewModel {
   id: SelfNarrativeSectionId;
   title: string;
   body: string;
+  body_paragraphs: string[];
   bullets: string[];
   evidence_notes: NarrativeEvidenceNote[];
 }
@@ -268,6 +270,7 @@ export interface ReportNarrativeViewModel {
   sections: NarrativeSectionViewModel[];
   career_cta: CareerCTAViewModel | null;
   final_summary: string;
+  final_summary_paragraphs: string[];
   unknownSectionIds: string[];
 }
 
@@ -653,6 +656,31 @@ function toStringValue(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function normalizeTextParagraphs(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return toStringValue(value)
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function normalizeTextBody(value: unknown): {
+  body: string;
+  body_paragraphs: string[];
+} {
+  const body_paragraphs = normalizeTextParagraphs(value);
+  return {
+    body: body_paragraphs.join("\n\n"),
+    body_paragraphs,
+  };
+}
+
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -692,7 +720,7 @@ function normalizeHero(value: unknown): NarrativeHeroViewModel | null {
     return null;
   }
   const title = toStringValue(value.title).trim();
-  const body = toStringValue(value.body).trim();
+  const { body, body_paragraphs } = normalizeTextBody(value.body);
   if (!title || !body) {
     return null;
   }
@@ -700,6 +728,7 @@ function normalizeHero(value: unknown): NarrativeHeroViewModel | null {
     id: "hero",
     title,
     body,
+    body_paragraphs,
     bullets: toStringArray(value.bullets),
     evidence_notes: normalizeEvidenceNotes(value.evidence_notes),
   };
@@ -719,7 +748,7 @@ function normalizeNarrativeSection(
   }
   const id = toStringValue(value.id);
   const title = toStringValue(value.title).trim();
-  const body = toStringValue(value.body).trim();
+  const { body, body_paragraphs } = normalizeTextBody(value.body);
   if (!isAllowedSelfSectionId(id) || !title || !body) {
     return null;
   }
@@ -727,6 +756,7 @@ function normalizeNarrativeSection(
     id,
     title,
     body,
+    body_paragraphs,
     bullets: toStringArray(value.bullets),
     evidence_notes: normalizeEvidenceNotes(value.evidence_notes),
   };
@@ -1068,7 +1098,8 @@ function normalizeNarrative(
   }
 
   const content = isRecord(narrative.content) ? narrative.content : {};
-  const finalSummary = toStringValue(content.final_summary).trim();
+  const { body: finalSummary, body_paragraphs: finalSummaryParagraphs } =
+    normalizeTextBody(content.final_summary);
   const dominants = normalizeDominants(
     narrative.dominants ?? content.dominants,
   );
@@ -1109,6 +1140,7 @@ function normalizeNarrative(
     sections,
     career_cta: normalizeCareerCTA(narrative.career_cta),
     final_summary: finalSummary,
+    final_summary_paragraphs: finalSummaryParagraphs,
     unknownSectionIds,
   };
 }

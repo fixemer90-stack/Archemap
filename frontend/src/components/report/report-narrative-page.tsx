@@ -5,6 +5,7 @@ import { HouseScenariosSection } from "@/components/report/house-scenarios-secti
 import {
   NarrativeHero,
   NarrativeSection,
+  renderNarrativeParagraphs,
 } from "@/components/report/narrative-section";
 import { PatternTensionsSection } from "@/components/report/pattern-tensions-section";
 import { ReportPdfActions } from "@/components/report/report-pdf-actions";
@@ -49,8 +50,8 @@ const SELF_SECTION_ORDER: SelfNarrativeSectionId[] =
     allowedSelfSectionIds.includes(marker as SelfNarrativeSectionId),
   );
 
-function FinalSummary({ text }: { text: string }) {
-  if (!text) {
+function FinalSummary({ paragraphs }: { paragraphs: string[] }) {
+  if (paragraphs.length === 0) {
     return null;
   }
 
@@ -59,8 +60,8 @@ function FinalSummary({ text }: { text: string }) {
       <CardHeader>
         <CardTitle>Финальное резюме</CardTitle>
       </CardHeader>
-      <CardContent className="text-sm leading-6 text-muted-foreground">
-        {text}
+      <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
+        {renderNarrativeParagraphs(paragraphs)}
       </CardContent>
     </Card>
   );
@@ -170,7 +171,7 @@ export function ReportNarrativePage({
       {narrative.career_cta && (
         <CareerCTA cta={narrative.career_cta} profileId={profileId} />
       )}
-      <FinalSummary text={narrative.final_summary} />
+      <FinalSummary paragraphs={narrative.final_summary_paragraphs} />
       <ReportPdfActions
         isDownloading={isDownloadingPdf}
         onDownload={onDownloadPdf}

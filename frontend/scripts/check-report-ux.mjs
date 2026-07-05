@@ -238,6 +238,41 @@ if (
   throw new Error("Evidence notes must render as a collapsed disclosure");
 }
 
+for (const marker of [
+  "renderNarrativeParagraphs",
+  "body_paragraphs",
+  "final_summary_paragraphs",
+]) {
+  if (!reportNarrativeSource.includes(marker) && !adapter.includes(marker)) {
+    throw new Error(`Missing paragraph-preserving narrative marker: ${marker}`);
+  }
+}
+
+for (const flattenedBodyMarker of [
+  "<p>{hero.body}</p>",
+  "<p>{section.body}</p>",
+]) {
+  if (narrativeSection.includes(flattenedBodyMarker)) {
+    throw new Error(
+      `Narrative body must not be flattened into one paragraph: ${flattenedBodyMarker}`,
+    );
+  }
+}
+
+const heroIndex = reportNarrativeSource.indexOf("<NarrativeHero");
+const pdfActionIndex = reportNarrativeSource.indexOf("<ReportPdfActions");
+const firstEvidenceIndex = reportNarrativeSource.indexOf("<EvidenceNotes");
+if (pdfActionIndex !== -1 && pdfActionIndex < heroIndex) {
+  throw new Error(
+    "Self PDF action must stay below the first meaningful narrative flow",
+  );
+}
+if (firstEvidenceIndex !== -1 && firstEvidenceIndex < heroIndex) {
+  throw new Error(
+    "Evidence notes must not interrupt the recognition-first hero flow",
+  );
+}
+
 for (const requiredEvidenceTrace of [
   "interpretation",
   "limitation",

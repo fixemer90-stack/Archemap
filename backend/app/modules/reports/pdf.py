@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,14 @@ def _zodiac_label(chart: dict[str, Any]) -> str:
     if zodiac == "sidereal":
         return "сидерический"
     return "тропический"
+
+
+def _split_paragraphs(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+    if not isinstance(value, str):
+        return []
+    return [paragraph.strip() for paragraph in re.split(r"\n{2,}", value) if paragraph.strip()]
 
 
 def _calculation_parameters(report_data: dict[str, Any]) -> dict[str, str]:
@@ -127,6 +136,7 @@ def render_report_html(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
         autoescape=True,
     )
+    env.filters["paragraphs"] = _split_paragraphs
     template = env.get_template("report.html")
 
     has_ready_narrative = bool(narrative_content) and narrative_status == "ready"

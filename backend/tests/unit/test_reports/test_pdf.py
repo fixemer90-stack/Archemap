@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -149,6 +150,30 @@ def test_render_report_html_prefers_saved_narrative_before_technical_appendix() 
     assert "Техническое приложение" in html
     assert html.index("Главное о вас") < html.index("Техническое приложение")
     assert html.index("Главное о вас") < html.index("Планеты")
+
+
+def test_render_report_html_preserves_narrative_paragraph_breaks() -> None:
+    narrative = cast(dict[str, Any], make_self_narrative_payload())
+    hero = cast(dict[str, Any], narrative["hero"])
+    sections = cast(list[dict[str, Any]], narrative["sections"])
+    hero["body"] = "Первый абзац узнавания.\n\nВторой абзац мягко продолжает чтение."
+    sections[0]["body"] = "Сцена первого абзаца.\n\nСцена второго абзаца."
+    narrative["final_summary"] = "Итоговый первый абзац.\n\nИтоговый второй абзац."
+
+    html = render_report_html(
+        make_report_data(),
+        profile_name="Алексей",
+        narrative_content=narrative,
+        narrative_status="ready",
+        narrative_error=None,
+    )
+
+    assert "<p>Первый абзац узнавания.</p>" in html
+    assert "<p>Второй абзац мягко продолжает чтение.</p>" in html
+    assert "<p>Сцена первого абзаца.</p>" in html
+    assert "<p>Сцена второго абзаца.</p>" in html
+    assert "<p>Итоговый первый абзац.</p>" in html
+    assert "<p>Итоговый второй абзац.</p>" in html
 
 
 def test_render_report_html_shows_deterministic_fallback_warning_when_narrative_failed() -> None:

@@ -177,7 +177,9 @@
   <section>
     <div class="narrative-hero">
       <h2>{{ narrative.hero.title }}</h2>
-      <p>{{ narrative.hero.body }}</p>
+      {% for paragraph in narrative.hero.body|paragraphs %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
       {% if narrative.hero.bullets %}
       <ul>
         {% for bullet in narrative.hero.bullets %}
@@ -335,7 +337,9 @@
     {% for section in narrative.sections %}
     <div class="card">
       <h2>{{ section.title }}</h2>
-      <p>{{ section.body }}</p>
+      {% for paragraph in section.body|paragraphs %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
       {% if section.bullets %}
       <ul>
         {% for bullet in section.bullets %}
@@ -373,7 +377,9 @@
 
     <div class="card">
       <h2>Финальное резюме</h2>
-      <p>{{ narrative.final_summary }}</p>
+      {% for paragraph in narrative.final_summary|paragraphs %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
     </div>
   </section>
   {% endif %}

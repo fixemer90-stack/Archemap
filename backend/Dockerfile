@@ -22,7 +22,8 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.1.2" \
+    && pip install --no-cache-dir -e ".[dev]"
 
 # Copy application code
 COPY . .

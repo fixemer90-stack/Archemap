@@ -1,8 +1,6 @@
-name: Deploy
+name: Deploy Placeholder
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -27,15 +25,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Deploy
+      - name: Explain deployment placeholder
         run: |
-          echo "=== Deployment placeholder ==="
-          echo "Environment: ${{ github.event.inputs.environment || 'staging' }}"
+          echo "=== Manual deployment placeholder ==="
+          echo "Environment: ${{ github.event.inputs.environment }}"
           echo "Commit: ${{ github.sha }}"
           echo ""
-          echo "TODO: Configure deployment steps for your target platform."
-          echo "Options:"
-          echo "  - Docker Compose on a VPS"
-          echo "  - Kubernetes (Helm / kustomize)"
-          echo "  - AWS ECS / Fargate"
-          echo "  - Fly.io / Railway / Render"
+          echo "This workflow is manual-only and does not deploy on push."
+          echo "Configure a real deployment target before using this as release evidence."
+          echo "Real image build/deploy wiring lives in build-push-deploy.yml and is gated by ENABLE_YCR_BUILD."

@@ -1,6 +1,6 @@
 # E15 — Self Report Human Storytelling
 
-> Статус: ⬜ Не начато
+> Статус: ✅ Готово
 > Дата подготовки: 2026-07-02
 > Источник: пользовательский фидбек по живому Self report `/report/877508cc-3e32-4fab-ab64-a939afc01fac`: “отчёт очень плох по сторитейлингу и скуповат”, нужно сделать “менее душным, чуть более человечным”.
 > Зависимости: E11 ✅, E12 ✅, E13 ✅, E14 ✅
@@ -82,27 +82,27 @@ E15 не добавляет “ещё больше блоков” ради об
 
 ## Stories
 
-| Story | Название                                   | Статус       | Документ                                 |
-| ----- | ------------------------------------------ | ------------ | ---------------------------------------- |
-| S01   | Human storytelling contract and tone guide | ✅ Готово    | `S01-human-storytelling-contract.md`     |
-| S02   | Staged prompt family v2                    | ✅ Готово    | `S02-staged-prompts-v2.md`               |
-| S03   | Assembler expansion and narrative rhythm   | ✅ Готово    | `S03-assembler-narrative-rhythm.md`      |
-| S04   | Humanized quality gates                    | ✅ Готово    | `S04-humanized-quality-gates.md`         |
-| S05   | Frontend/PDF readability and pacing        | ✅ Готово    | `S05-frontend-pdf-readability.md`        |
-| S06   | Live before/after smoke and rollout        | ⬜ Не начато | `S06-live-before-after-smoke-rollout.md` |
+| Story | Название                                   | Статус    | Документ                                 |
+| ----- | ------------------------------------------ | --------- | ---------------------------------------- |
+| S01   | Human storytelling contract and tone guide | ✅ Готово | `S01-human-storytelling-contract.md`     |
+| S02   | Staged prompt family v2                    | ✅ Готово | `S02-staged-prompts-v2.md`               |
+| S03   | Assembler expansion and narrative rhythm   | ✅ Готово | `S03-assembler-narrative-rhythm.md`      |
+| S04   | Humanized quality gates                    | ✅ Готово | `S04-humanized-quality-gates.md`         |
+| S05   | Frontend/PDF readability and pacing        | ✅ Готово | `S05-frontend-pdf-readability.md`        |
+| S06   | Live before/after smoke and rollout        | ✅ Готово | `S06-live-before-after-smoke-rollout.md` |
 
 ## Acceptance criteria
 
-- [ ] Hero opens with recognition-first prose, not raw placements or typology labels.
-- [ ] Every key Self section includes at least one concrete lived manifestation.
-- [ ] Key sections follow the chain: meaning → scenario → tension/risk → mature expression.
-- [ ] Stage prompts explicitly ban канцелярит and overused abstract markers unless grounded in concrete behavior.
+- [x] Hero opens with recognition-first prose, not raw placements or typology labels.
+- [x] Every key Self section includes at least one concrete lived manifestation.
+- [x] Key sections follow the chain: meaning → scenario → tension/risk → mature expression.
+- [x] Stage prompts explicitly ban канцелярит and overused abstract markers unless grounded in concrete behavior.
 - [x] Assembler preserves enough stage prose to avoid one-paragraph compression while still keeping sections readable.
 - [x] Validators/quality gates detect generic horoscope prose and “служебный” tone markers.
 - [x] Evidence notes remain present but secondary/collapsed in UI and PDF.
 - [x] Frontend/PDF render longer narrative with rhythm: paragraphs, emphasis, collapsible support blocks, no wall of text.
-- [ ] Fresh live Self report regeneration for the reference profile produces a visibly more human report and still reaches `report.status=ready`, `narrative.status=ready`, PDF `200`.
-- [ ] Backend and frontend regression gates pass.
+- [x] Fresh live Self report regeneration for the reference profile produces a visibly more human report and still reaches `report.status=ready`, `narrative.status=ready`, PDF `200`.
+- [x] Backend and frontend regression gates pass.
 
 ## Implementation order
 

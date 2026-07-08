@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001
 """Unit tests for deterministic self narrative hardening."""
 
 from __future__ import annotations
@@ -80,3 +81,16 @@ def test_hardening_converts_informal_second_person_without_truncating_text() -> 
     assert " тебе " not in f" {lowered} "
     assert " свой " not in f" {lowered} "
     assert validate_self_narrative(hardened, narrative_input) == []
+
+
+def test_hardening_preserves_paragraph_breaks_in_visible_prose() -> None:
+    narrative_input = make_narrative_input()
+    candidate = build_deterministic_self_fallback(narrative_input)
+    candidate.hero.body = "Первый абзац с обращением к вам.\n\nВторой абзац сохраняет ритм чтения."
+    candidate.sections[0].body = "Первый смысловой блок.\n\nВторой смысловой блок."
+
+    hardened = harden_self_narrative(candidate, narrative_input)
+
+    assert "Первый абзац с обращением" in hardened.hero.body
+    assert "\n\nВторой абзац сохраняет" in hardened.hero.body
+    assert "Первый смысловой блок.\n\nВторой смысловой блок." in hardened.sections[0].body

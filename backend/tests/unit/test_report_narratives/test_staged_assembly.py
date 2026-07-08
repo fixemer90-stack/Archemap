@@ -175,7 +175,7 @@ def test_assemble_self_narrative_expands_each_section_into_substantial_human_blo
         assert len(section.body) >= 1000, section.id
         assert section.body.count(".") >= 4, section.id
 
-    assert len(narrative.hero.body) >= 900
+    assert len(narrative.hero.body) >= 650
     assert len(narrative.final_summary) >= 450
 
 
@@ -198,7 +198,8 @@ def test_assemble_self_narrative_preserves_full_long_stage_text_without_truncati
     main_formula = next(section for section in narrative.sections if section.id == "main_formula")
     assert len(main_formula.body) > 4000
     assert marker in main_formula.body
-    assert marker in narrative.hero.body
+    assert marker not in narrative.hero.body
+    assert len(narrative.hero.body) <= 2200
 
 
 def test_validate_assembled_self_narrative_rejects_duplicate_generic_career_and_fatalist_prose() -> None:

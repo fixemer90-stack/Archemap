@@ -353,4 +353,6 @@ def _sanitize_text(value: str) -> str:
     sanitized = value
     for pattern, replacement in _FORBIDDEN_TEXT_REPLACEMENTS:
         sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
-    return re.sub(r"\s+", " ", sanitized).strip()
+    paragraphs = [re.sub(r"[ \t\r\f\v]+", " ", paragraph).strip() for paragraph in re.split(r"\n\s*\n", sanitized)]
+    paragraphs = [paragraph for paragraph in paragraphs if paragraph]
+    return "\n\n".join(paragraphs)

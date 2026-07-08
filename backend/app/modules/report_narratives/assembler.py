@@ -324,20 +324,44 @@ def _compose_hero_body(
     relationship_paragraphs: list[str],
     narrative_input: NarrativeInput,
 ) -> str:
-    identity = _join_inline(_usable_stage_paragraphs(identity_paragraphs, limit=2))
-    emotional = _join_inline(_usable_stage_paragraphs(emotional_paragraphs, limit=2))
-    relationships = _join_inline(_usable_stage_paragraphs(relationship_paragraphs, limit=2))
-    dominant = narrative_input.dominants[0].body
-    mechanism = narrative_input.inner_mechanism.summary
-    scenario = narrative_input.house_scenarios[0].manifestation
-    mature = narrative_input.contradictions[0].mature_expression
-    maturity = narrative_input.maturity_levels.medium.body
-    return _body_from_paragraphs(
+    identity = _compact_stage_summary(_usable_stage_paragraphs(identity_paragraphs, limit=1), max_sentences=3)
+    emotional = _compact_stage_summary(_usable_stage_paragraphs(emotional_paragraphs, limit=1), max_sentences=2)
+    relationships = _compact_stage_summary(_usable_stage_paragraphs(relationship_paragraphs, limit=1), max_sentences=1)
+
+    first_paragraph = _join_inline(
         [
-            _join_inline([identity, dominant, mechanism]),
-            _join_inline([emotional, relationships, scenario, mature, maturity]),
+            identity,
+            _compact_stage_summary([narrative_input.dominants[0].body], max_sentences=1),
         ]
     )
+    second_paragraph = _join_inline(
+        [
+            emotional,
+            relationships,
+            _compact_stage_summary([narrative_input.contradictions[0].mature_expression], max_sentences=1),
+        ]
+    )
+
+    body = _body_from_paragraphs([first_paragraph, second_paragraph])
+    if len(body) < 900:
+        body = _body_from_paragraphs(
+            [
+                _join_inline(
+                    [
+                        first_paragraph,
+                        _compact_stage_summary([narrative_input.inner_mechanism.summary], max_sentences=1),
+                        _compact_stage_summary([narrative_input.house_scenarios[0].manifestation], max_sentences=1),
+                    ]
+                ),
+                _join_inline(
+                    [
+                        second_paragraph,
+                        _compact_stage_summary([narrative_input.maturity_levels.medium.body], max_sentences=1),
+                    ]
+                ),
+            ]
+        )
+    return body
 
 
 def _usable_stage_paragraphs(
@@ -369,6 +393,17 @@ def _section_body(
 
 def _join_inline(parts: Iterable[str]) -> str:
     return " ".join(_dedupe_parts(_strip_mechanical_prefixes(part) for part in parts))
+
+
+def _compact_stage_summary(parts: Sequence[str], *, max_sentences: int) -> str:
+    """Keep the hero readable when a provider returns oversized stage paragraphs."""
+    text = _join_inline(parts)
+    if not text:
+        return ""
+    sentences = [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", text) if sentence.strip()]
+    if not sentences:
+        return text
+    return " ".join(sentences[:max_sentences])
 
 
 def _body_from_paragraphs(paragraphs: Iterable[str]) -> str:

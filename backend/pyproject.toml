@@ -20,8 +20,9 @@ dependencies = [
     "redis>=5.2,<9",
     "celery[redis]>=5.4,<6",
     "httpx>=0.28,<1",
-    "pydantic-settings>=2.7,<3",
-    "python-jose[cryptography]>=3.3,<4",
+    "pydantic-settings>=2.14.2,<3",
+    "PyJWT>=2.10,<3",
+    "msgpack>=1.2.1,<2",
     "cryptography>=46.0.7",
     "cffi>=2.0",
     "bcrypt>=4.1,<6",
@@ -92,7 +93,7 @@ warn_unused_configs = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "jose.*", "sentry_sdk.*", "redis.*", "bcrypt.*", "yaml.*", "swisseph.*", "pyswisseph.*", "weasyprint.*", "jinja2.*"]
+module = ["celery.*", "sentry_sdk.*", "redis.*", "bcrypt.*", "yaml.*", "swisseph.*", "pyswisseph.*", "weasyprint.*", "jinja2.*"]
 ignore_missing_imports = true
 
 # ── Pytest ────────────────────────────────────────────────────────────

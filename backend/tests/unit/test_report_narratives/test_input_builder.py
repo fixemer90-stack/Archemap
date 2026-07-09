@@ -207,6 +207,29 @@ class TestNarrativeInputBuilder:
         assert result.socionics.type == "unknown"
         assert result.socionics.type_ru == "Не определено"
 
+    def test_missing_relationship_claims_get_grounded_chart_fallbacks(self, report_fixture: SimpleNamespace) -> None:
+        report = deepcopy(report_fixture)
+        report.report_data["claims"] = [
+            claim
+            for claim in report.report_data["claims"]
+            if claim["section"] not in {"relationships", "sexuality"}
+        ]
+        report.report_data["chart"]["planets"].extend(
+            [
+                {"name": "Venus", "sign": "Leo", "house": 9},
+                {"name": "Mars", "sign": "Taurus", "house": 7},
+            ]
+        )
+
+        result = build_narrative_input(report)
+
+        assert result.relationship_patterns
+        assert result.sexuality_patterns
+        assert "диалог" in result.relationship_patterns[0].claim
+        assert "границ" in result.sexuality_patterns[0].claim
+        assert "mars_taurus_house_7" in result.relationship_patterns[0].evidence_ids
+        assert "mars_taurus_house_7" in result.sexuality_patterns[0].evidence_ids
+
 
 class TestNarrativeInputHash:
     def test_hash_is_stable_for_semantically_identical_input(self, report_fixture: SimpleNamespace) -> None:

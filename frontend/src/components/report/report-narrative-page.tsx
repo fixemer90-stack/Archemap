@@ -1,5 +1,4 @@
 import { CalculationParameters } from "@/components/report/calculation-parameters";
-import { CalibrationQuestionsSection } from "@/components/report/calibration-questions-section";
 import { CareerCTA } from "@/components/report/career-cta";
 import { HouseScenariosSection } from "@/components/report/house-scenarios-section";
 import {
@@ -28,7 +27,6 @@ interface ReportNarrativePageProps {
 const NARRATIVE_RENDER_ORDER = [
   "<NarrativeHero",
   "<HouseScenariosSection",
-  "<CalibrationQuestionsSection",
   "<PatternTensionsSection",
   "main_formula",
   "world_perception",
@@ -157,9 +155,6 @@ export function ReportNarrativePage({
         />
       )}
       <HouseScenariosSection scenarios={narrative.house_scenarios} />
-      <CalibrationQuestionsSection
-        questions={narrative.calibration_questions}
-      />
       <PatternTensionsSection
         contradictions={narrative.contradictions}
         failureModes={narrative.failure_modes}

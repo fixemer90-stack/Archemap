@@ -46,7 +46,7 @@ def test_assembler_preserves_useful_second_and_third_stage_paragraphs() -> None:
     assert development_marker in sections["development"]
 
 
-def test_assembler_keeps_hero_compact_while_sections_keep_rhythm() -> None:
+def test_assembler_keeps_full_stage_rhythm_without_length_caps() -> None:
     narrative = assemble_self_narrative(
         narrative_input=_narrative_input(),
         plan=_plan(),
@@ -55,19 +55,18 @@ def test_assembler_keeps_hero_compact_while_sections_keep_rhythm() -> None:
     )
 
     hero_paragraphs = [paragraph for paragraph in narrative.hero.body.split("\n\n") if paragraph.strip()]
-    assert 1 <= len(hero_paragraphs) <= 2
-    assert 650 <= len(narrative.hero.body) <= 2200
+    assert hero_paragraphs
 
     paragraph_counts = {
         section.id: len([paragraph for paragraph in section.body.split("\n\n") if paragraph.strip()])
         for section in narrative.sections
     }
-    assert paragraph_counts["main_formula"] in {2, 3}
-    assert paragraph_counts["relationships"] in {2, 3}
-    assert paragraph_counts["development"] in {2, 3}
+    assert paragraph_counts["main_formula"] >= 2
+    assert paragraph_counts["relationships"] >= 2
+    assert paragraph_counts["development"] >= 2
 
 
-def test_assembler_compacts_live_like_long_stage_output_in_hero() -> None:
+def test_assembler_preserves_live_like_long_stage_output_in_hero() -> None:
     stage_outputs = _good_stage_outputs()
     identity = stage_outputs["identity"]
     assert isinstance(identity, IdentitySectionOutput)
@@ -101,12 +100,11 @@ def test_assembler_compacts_live_like_long_stage_output_in_hero() -> None:
     )
 
     hero_paragraphs = [paragraph for paragraph in narrative.hero.body.split("\n\n") if paragraph.strip()]
-    assert len(hero_paragraphs) == 2
-    assert len(narrative.hero.body) <= 2200
+    assert hero_paragraphs
     assert "Это вход через узнавание" in narrative.hero.body
     assert "Эта живая сцена" in narrative.hero.body
-    assert "Лишний длинный хвост" not in narrative.hero.body
-    assert "Лишний эмоциональный хвост" not in narrative.hero.body
+    assert "Лишний длинный хвост" in narrative.hero.body
+    assert "Лишний эмоциональный хвост" in narrative.hero.body
 
 
 def test_assembler_does_not_expose_mechanical_prefixes_in_user_prose() -> None:
@@ -124,3 +122,42 @@ def test_assembler_does_not_expose_mechanical_prefixes_in_user_prose() -> None:
     assert "Механизм:" not in visible_text
     assert "Риск:" not in visible_text
     assert "Зрелая форма:" not in visible_text
+
+
+def test_assembler_repairs_final_summary_when_dedupe_strips_it_to_one_question() -> None:
+    stage_outputs = _good_stage_outputs()
+    development = stage_outputs["development"]
+    assert isinstance(development, DevelopmentSectionOutput)
+    stage_outputs["development"] = development.model_copy(
+        update={"paragraphs": [*development.paragraphs, "Когда напряжение растёт, замечаете ли вы, что сначала сдерживаете реакцию?"]}
+    )
+
+    narrative = assemble_self_narrative(
+        narrative_input=_narrative_input(),
+        plan=_plan(),
+        stage_outputs=stage_outputs,
+        final_check=AssemblyCheck(),
+    )
+
+    assert narrative.final_summary.strip()
+    assert "?" not in narrative.final_summary
+
+
+def test_assembler_replaces_relationship_placeholder_with_substantial_grounded_body() -> None:
+    stage_outputs = _good_stage_outputs()
+    relationships = stage_outputs["relationships"]
+    assert isinstance(relationships, RelationshipSectionOutput)
+    stage_outputs["relationships"] = relationships.model_copy(
+        update={"paragraphs": ["Отношения требуют дополнительной сборки."]}
+    )
+
+    narrative = assemble_self_narrative(
+        narrative_input=_narrative_input(),
+        plan=_plan(),
+        stage_outputs=stage_outputs,
+        final_check=AssemblyCheck(),
+    )
+
+    relationships_section = next(section for section in narrative.sections if section.id == "relationships")
+    assert "дополнительной сборки" not in relationships_section.body
+    assert "довер" in relationships_section.body.lower() or "контакт" in relationships_section.body.lower()

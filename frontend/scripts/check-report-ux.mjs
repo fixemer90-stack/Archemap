@@ -161,7 +161,6 @@ for (const marker of [
 const narrativeOrder = [
   "<NarrativeHero",
   "<HouseScenariosSection",
-  "<CalibrationQuestionsSection",
   "<PatternTensionsSection",
   "main_formula",
   "world_perception",

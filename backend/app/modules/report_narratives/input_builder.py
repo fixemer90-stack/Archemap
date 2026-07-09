@@ -261,6 +261,7 @@ def build_narrative_input(report: Any, *, include_deep_synthesis: bool = True) -
         _aspect_fact(aspect) for aspect in chart.get("aspects", []) if aspect.get("planet_a") and aspect.get("planet_b")
     ]
     grouped_claims = _group_claims(claims)
+    _ensure_self_intimacy_claims(grouped_claims, chart, key_facts)
     dominants = _build_dominants(chart, key_facts, key_aspects)
     if not dominants:
         dominants = _fallback_dominants_from_claims(grouped_claims)
@@ -336,7 +337,7 @@ def build_narrative_input(report: Any, *, include_deep_synthesis: bool = True) -
         development_recommendations=grouped_claims["development_recommendations"],
         product_boundaries=ProductBoundaries(
             career_policy=(
-                "В Self-отчёте карьеру затрагивать кратко и завершать CTA на Career. "
+                "В Self-отчёте карьеру можно затрагивать только как часть общего жизненного контекста и завершать CTA на Career. "
                 "Не давать список профессий, деньги, стратегию роста и управленческий разбор."
             ),
             allowed_sections=SELF_ALLOWED_SECTIONS,
@@ -386,6 +387,113 @@ def _aspect_fact(aspect: dict[str, Any]) -> AspectFact:
     orb = f"{orb_value:.2f}°" if isinstance(orb_value, int | float) else str(orb_value)
     meaning = f"Аспект {left.lower()} и {right.lower()} показывает связь между двумя психологическими акцентами."
     return AspectFact(id=fact_id, label=f"{left} {aspect_name} {right}", orb=orb, meaning=meaning)
+
+
+def _ensure_self_intimacy_claims(
+    grouped_claims: dict[str, list[EvidenceBackedClaim]],
+    chart: dict[str, Any],
+    key_facts: list[AstroFact],
+) -> None:
+    """Ensure Self always has grounded relationship/intimacy material.
+
+    Some deterministic report versions have no explicit claims with section="relationships"
+    or section="sexuality" even when the chart contains clear relationship houses/planets.
+    The staged pipeline must not produce an empty or placeholder block in that case.
+    """
+    if grouped_claims["relationship_patterns"] and grouped_claims["sexuality_patterns"]:
+        return
+
+    planets = [planet for planet in chart.get("planets", []) if planet.get("name") and planet.get("sign")]
+    fact_ids_by_planet = _fact_ids_by_planet(key_facts)
+    relationship_planets = _relationship_relevant_planets(planets)
+    relationship_evidence = _planet_evidence_ids(relationship_planets, fact_ids_by_planet)
+    fallback_evidence = relationship_evidence or [fact.id for fact in key_facts[:2]]
+
+    if not grouped_claims["relationship_patterns"] and fallback_evidence:
+        grouped_claims["relationship_patterns"].append(
+            EvidenceBackedClaim(
+                id="relationship_fallback_from_chart",
+                claim=_relationship_fallback_claim(relationship_planets),
+                evidence_ids=fallback_evidence[:6],
+            )
+        )
+
+    if not grouped_claims["sexuality_patterns"] and fallback_evidence:
+        grouped_claims["sexuality_patterns"].append(
+            EvidenceBackedClaim(
+                id="sexuality_fallback_from_chart",
+                claim=_sexuality_fallback_claim(relationship_planets),
+                evidence_ids=fallback_evidence[:6],
+            )
+        )
+
+
+def _relationship_relevant_planets(planets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    priority = {"Venus": 0, "Mars": 1, "Moon": 2, "Jupiter": 3, "Sun": 4, "Mercury": 5}
+    relationship_houses = {5, 7, 8, 11}
+    candidates = [
+        planet
+        for planet in planets
+        if planet.get("name") in priority or planet.get("house") in relationship_houses
+    ]
+    return sorted(
+        candidates,
+        key=lambda planet: (
+            0 if planet.get("house") in relationship_houses else 1,
+            priority.get(str(planet.get("name")), 99),
+        ),
+    )[:4]
+
+
+def _planet_evidence_ids(planets: list[dict[str, Any]], fact_ids_by_planet: dict[str, str]) -> list[str]:
+    evidence_ids: list[str] = []
+    for planet in planets:
+        fact_id = fact_ids_by_planet.get(str(planet.get("name")))
+        if fact_id and fact_id not in evidence_ids:
+            evidence_ids.append(fact_id)
+    return evidence_ids
+
+
+def _relationship_fallback_claim(planets: list[dict[str, Any]]) -> str:
+    house_numbers = {planet.get("house") for planet in planets if isinstance(planet.get("house"), int)}
+    if 7 in house_numbers:
+        return (
+            "В отношениях ключевой становится встреча с другим: диалог, договорённость, "
+            "баланс собственной позиции и живого отклика партнёра."
+        )
+    if 8 in house_numbers:
+        return (
+            "В близости важны доверие, эмоциональная глубина и способность выдерживать интенсивность "
+            "контакта без ухода в контроль или драматизацию."
+        )
+    if 11 in house_numbers:
+        return (
+            "Контакт часто раскрывается через дружбу, общие идеи, сообщества и чувство, что рядом есть "
+            "человек, с которым можно смотреть в одну перспективу."
+        )
+    return (
+        "В отношениях важна не формальная совместимость, а понятный ритм контакта: где можно быть собой, "
+        "слышать другого и не терять внутреннюю опору."
+    )
+
+
+def _sexuality_fallback_claim(planets: list[dict[str, Any]]) -> str:
+    planet_names = {str(planet.get("name")) for planet in planets}
+    house_numbers = {planet.get("house") for planet in planets if isinstance(planet.get("house"), int)}
+    if "Mars" in planet_names or 7 in house_numbers:
+        return (
+            "Близость раскрывается через прямое согласование желания, темпа и границ: телесный импульс "
+            "становится безопаснее, когда он не отрывается от диалога."
+        )
+    if "Venus" in planet_names or 8 in house_numbers:
+        return (
+            "Сексуальность здесь связана с доверием, вкусом к живому отклику и способностью не торопить "
+            "интенсивность раньше, чем появилась внутренняя безопасность."
+        )
+    return (
+        "Интимность лучше раскрывается через постепенное доверие, ясные границы и право выбирать собственный "
+        "ритм сближения."
+    )
 
 
 def _build_house_scenarios(chart: dict[str, Any], key_facts: list[AstroFact]) -> list[HouseScenario]:

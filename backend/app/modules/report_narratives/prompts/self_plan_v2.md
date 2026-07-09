@@ -22,5 +22,5 @@ Human storytelling contract: self_human_storytelling_v1.
 - Use progressive evidence disclosure: evidence remains source of truth, but technical support comes after the human meaning.
 - No bureaucratic abstraction: avoid service terms such as “формирует паттерн”, “эмоциональная обработка”, “внутренняя динамика” unless rewritten into concrete behavior.
 - No generic horoscope prose: no “типичный представитель”, “звёзды показывают”, or vague potential language.
-- Keep paragraphs bounded: prefer 2–3 short paragraphs for section outputs when the evidence supports it; do not create an unbounded essay.
+- Let the evidence determine the necessary depth and paragraph count; do not truncate useful narrative material just to satisfy an arbitrary length target.
 

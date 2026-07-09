@@ -803,6 +803,64 @@ async def test_get_report_route_enqueues_narrative_for_current_deterministic_rep
 
 
 @pytest.mark.asyncio
+async def test_get_report_route_marks_report_ready_when_current_narrative_is_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = make_report(status="deterministic_ready")
+    report.created_at = report.updated_at = datetime.now(UTC)
+    narrative = ReportNarrative(
+        id=uuid4(),
+        report_id=report.id,
+        product="self",
+        prompt_version="self_staged_v2",
+        model_provider="deepseek",
+        model_name="deepseek-v4-flash",
+        status="ready",
+        content={"title": "Готовый отчёт", "sections": []},
+        input_hash="current-hash",
+        generation_attempts=1,
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+    )
+
+    class FakeDB:
+        def __init__(self) -> None:
+            self.flush_calls = 0
+            self.commit_calls = 0
+            self.refresh_calls = 0
+
+        async def flush(self) -> None:
+            self.flush_calls += 1
+
+        async def commit(self) -> None:
+            self.commit_calls += 1
+
+        async def refresh(self, _report: Report) -> None:
+            self.refresh_calls += 1
+
+    db = FakeDB()
+
+    async def fake_get_report(self: ReportService, report_id: UUID, user_id: UUID) -> Report:
+        assert report_id == report.id
+        assert user_id == report.user_id
+        return report
+
+    async def fake_get_latest_narrative_for_report(**_kwargs: Any) -> ReportNarrative:
+        return narrative
+
+    monkeypatch.setattr(ReportService, "get_report", fake_get_report)
+    monkeypatch.setattr(reports_router, "get_latest_narrative_for_report", fake_get_latest_narrative_for_report)
+
+    response = await reports_router.get_report(report.id, cast(Any, db), report.user_id)
+
+    assert response.status == "ready"
+    assert response.narrative is not None
+    assert report.status == "ready"
+    assert db.commit_calls == 1
+    assert db.refresh_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_get_or_create_narrative_record_recovers_from_insert_race(monkeypatch: pytest.MonkeyPatch) -> None:
     report = make_report(status="deterministic_ready")
     narrative = ReportNarrative(

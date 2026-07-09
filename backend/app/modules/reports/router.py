@@ -75,6 +75,10 @@ async def _ensure_self_narrative_generation(
     if report.product != "self":
         return narrative
     if narrative is not None:
+        if narrative.status == "ready" and report.status != "ready":
+            report.status = "ready"
+            report.error_message = None
+            await _commit_report_changes_if_persistent(db, report)
         return narrative
     if report.status != "deterministic_ready":
         return None

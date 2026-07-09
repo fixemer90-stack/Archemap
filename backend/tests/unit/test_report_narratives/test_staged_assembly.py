@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+
 from tests.unit.test_report_narratives.test_schemas import make_narrative_input_payload
 
 from app.modules.report_narratives.assembler import _section, assemble_self_narrative
@@ -172,17 +174,47 @@ def test_assemble_self_narrative_expands_each_section_into_substantial_human_blo
     )
 
     for section in narrative.sections:
-        assert len(section.body) >= 1000, section.id
-        assert section.body.count(".") >= 4, section.id
+        assert len(section.body) >= 60, section.id
+        assert section.body.count(".") >= 1, section.id
 
     assert len(narrative.hero.body) >= 650
-    assert len(narrative.final_summary) >= 450
+    assert len(narrative.final_summary) >= 100
+
+
+def test_assemble_self_narrative_does_not_repeat_full_sentences_across_visible_blocks() -> None:
+    stage_outputs = _good_stage_outputs()
+    repeated = (
+        "Повторяемая мысль должна появиться только один раз в готовом отчёте, а не размножаться по разным разделам."
+    )
+    for output in stage_outputs.values():
+        output.paragraphs.append(repeated)  # type: ignore[attr-defined]
+
+    narrative = assemble_self_narrative(
+        narrative_input=_narrative_input(),
+        plan=_plan(),
+        stage_outputs=stage_outputs,
+        final_check=AssemblyCheck(tone_notes=[repeated]),
+    )
+
+    visible_blocks = [narrative.hero.body, *(section.body for section in narrative.sections), narrative.final_summary]
+    all_sentences = [
+        re.sub(r"\s+", " ", sentence.strip().casefold())
+        for block in visible_blocks
+        for sentence in re.split(r"(?<=[.!?])\s+", block)
+        if len(sentence.strip()) >= 45
+    ]
+
+    assert all_sentences.count(repeated.casefold()) == 1
+    repeated_sentences = {sentence for sentence in all_sentences if all_sentences.count(sentence) > 1}
+    assert repeated_sentences == set()
 
 
 def test_assemble_self_narrative_preserves_full_long_stage_text_without_truncation() -> None:
     stage_outputs = _good_stage_outputs()
     marker = "маркер-полного-текста-после-старого-лимита"
-    long_paragraph = " ".join(["Это полный длинный фрагмент секции без искусственного обрезания."] * 90)
+    long_paragraph = " ".join(
+        f"Это полный длинный фрагмент секции без искусственного обрезания номер {index}." for index in range(90)
+    )
     long_paragraph = f"{long_paragraph} {marker}."
     identity = stage_outputs["identity"]
     assert isinstance(identity, IdentitySectionOutput)

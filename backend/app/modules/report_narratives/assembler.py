@@ -80,7 +80,7 @@ def assemble_self_narrative(
             _compose_strengths_body(identity.paragraphs, narrative_input),
             _select_valid_evidence_ids(
                 identity.evidence_ids,
-                allowed_fact_ids,
+                allowed_fact_ids=_allowed_fact_ids(narrative_input),
                 fallback_ids=_claim_evidence_ids(narrative_input.strengths),
             ),
         ),
@@ -129,25 +129,26 @@ def assemble_self_narrative(
         relationships.paragraphs,
         narrative_input,
     )
-    summary_parts = [
-        _compose_development_body(development.paragraphs, narrative_input),
-        _compose_relationships_body(relationships.paragraphs, narrative_input),
-        development.paragraphs[-1],
-        house_scenarios.paragraphs[-1],
-        *final_check.tone_notes[:1],
-    ]
+    hero = narrative_input_to_hero(
+        narrative_input,
+        hero_body,
+        _select_valid_evidence_ids(
+            identity.evidence_ids,
+            allowed_fact_ids,
+            fallback_ids=_claim_evidence_ids(narrative_input.strengths),
+        ),
+    )
+    sections = _dedupe_visible_sections(hero, sections, narrative_input)
+    final_summary = _dedupe_final_summary(
+        _compose_final_summary_body(development.paragraphs, house_scenarios.paragraphs, final_check, narrative_input),
+        hero,
+        sections,
+        fallback=narrative_input.maturity_levels.high.body,
+    )
 
     return SelfNarrative(
         title=title,
-        hero=narrative_input_to_hero(
-            narrative_input,
-            hero_body,
-            _select_valid_evidence_ids(
-                identity.evidence_ids,
-                allowed_fact_ids,
-                fallback_ids=_claim_evidence_ids(narrative_input.strengths),
-            ),
-        ),
+        hero=hero,
         dominants=narrative_input.dominants,
         inner_mechanism=narrative_input.inner_mechanism,
         house_scenarios=narrative_input.house_scenarios,
@@ -162,7 +163,7 @@ def assemble_self_narrative(
             bullets=["Профроли", "среда", "стратегия роста"],
             button_label="Открыть Career",
         ),
-        final_summary=_join_body(part for part in summary_parts if part),
+        final_summary=final_summary,
     )
 
 
@@ -193,7 +194,7 @@ def _compose_main_formula_body(paragraphs: list[str], narrative_input: Narrative
         _usable_stage_paragraphs(paragraphs, limit=3),
         [
             [dominant.body, narrative_input.inner_mechanism.summary, *steps],
-            [contradiction.tension, contradiction.mature_expression, *_shared_depth_parts(narrative_input)],
+            [contradiction.tension, contradiction.mature_expression],
         ],
         max_paragraphs=3,
     )
@@ -206,7 +207,7 @@ def _compose_emotional_body(paragraphs: list[str], narrative_input: NarrativeInp
         _usable_stage_paragraphs(paragraphs, limit=2),
         [
             [narrative_input.key_aspects[0].meaning if narrative_input.key_aspects else "", contradiction],
-            [risk.trigger, risk.manifestation, risk.supportive_reframe, *_shared_depth_parts(narrative_input)],
+            [risk.trigger, risk.manifestation, risk.supportive_reframe],
         ],
         max_paragraphs=3,
     )
@@ -219,7 +220,7 @@ def _compose_world_perception_body(paragraphs: list[str], narrative_input: Narra
         _usable_stage_paragraphs(paragraphs, limit=2),
         [
             [scenario.need, scenario.manifestation, scenario.shadow, scenario.mature_expression],
-            [*facts, narrative_input.inner_mechanism.summary, *_maturity_parts(narrative_input)],
+            [*facts, narrative_input.inner_mechanism.summary],
         ],
         max_paragraphs=3,
     )
@@ -233,7 +234,7 @@ def _compose_relationships_body(paragraphs: list[str], narrative_input: Narrativ
         _usable_stage_paragraphs(paragraphs, limit=3),
         [
             [*claims, contradiction.tension, contradiction.manifestation, contradiction.mature_expression],
-            [failure.trigger, failure.supportive_reframe, *_shared_depth_parts(narrative_input)],
+            [failure.trigger, failure.supportive_reframe],
         ],
         max_paragraphs=3,
     )
@@ -263,14 +264,19 @@ def _compose_development_body(paragraphs: list[str], narrative_input: NarrativeI
 def _compose_strengths_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
     strengths = "; ".join(item.claim for item in narrative_input.strengths[:2])
     maturity = narrative_input.maturity_levels.high.body
+    high_note = " ".join(
+        part
+        for note in narrative_input.maturity_levels.high.evidence_notes[:1]
+        for part in (note.claim, note.interpretation or "")
+        if part
+    )
     return _section_body(
         _usable_stage_paragraphs(paragraphs, limit=3),
         [
-            [strengths, narrative_input.dominants[0].body, maturity],
+            [strengths, maturity, high_note],
             [
                 narrative_input.inner_mechanism.steps[1].body,
                 narrative_input.contradictions[0].mature_expression,
-                *_shared_depth_parts(narrative_input),
             ],
         ],
         max_paragraphs=3,
@@ -298,23 +304,17 @@ def _compose_vulnerabilities_body(paragraphs: list[str], narrative_input: Narrat
 
 
 def _compose_sexuality_body(paragraphs: list[str], narrative_input: NarrativeInput) -> str:
-    contradiction = narrative_input.contradictions[0]
-    failure_mode = narrative_input.failure_modes[0]
     intimacy_claims = [item.claim for item in narrative_input.sexuality_patterns[:2]]
     return _section_body(
-        _usable_stage_paragraphs(paragraphs, limit=2, prefer_tail=True),
+        [],
         [
-            [*intimacy_claims, contradiction.manifestation, contradiction.mature_expression],
+            [*intimacy_claims],
             [
-                failure_mode.manifestation,
-                failure_mode.supportive_reframe,
-                narrative_input.relationship_patterns[0].claim if narrative_input.relationship_patterns else "",
-                narrative_input.maturity_levels.medium.body,
-                narrative_input.inner_mechanism.summary,
-                *_maturity_parts(narrative_input),
+                "Близость здесь лучше раскрывается через прямое проговаривание желания, темпа и границ, а не через повторение общей динамики отношений.",
+                "Так сексуальность остаётся отдельной темой телесного доверия и выбранного ритма, не дублируя раздел о партнёрстве.",
             ],
         ],
-        max_paragraphs=3,
+        max_paragraphs=2,
     )
 
 
@@ -408,6 +408,169 @@ def _compact_stage_summary(parts: Sequence[str], *, max_sentences: int) -> str:
 
 def _body_from_paragraphs(paragraphs: Iterable[str]) -> str:
     return "\n\n".join(_dedupe_parts(paragraphs))
+
+
+def _compose_final_summary_body(
+    development_paragraphs: list[str],
+    house_scenario_paragraphs: list[str],
+    final_check: AssemblyCheck,
+    narrative_input: NarrativeInput,
+) -> str:
+    """Build a concise closing note without reusing full section bodies."""
+    parts = [
+        _compact_stage_summary(
+            _usable_stage_paragraphs(development_paragraphs, limit=1, prefer_tail=True), max_sentences=2
+        ),
+        _compact_stage_summary(
+            _usable_stage_paragraphs(house_scenario_paragraphs, limit=1, prefer_tail=True), max_sentences=1
+        ),
+        narrative_input.development_recommendations[0].claim if narrative_input.development_recommendations else "",
+        narrative_input.maturity_levels.high.body,
+        *final_check.tone_notes[:1],
+    ]
+    return _body_from_paragraphs([_join_inline(parts)])
+
+
+def _dedupe_visible_sections(
+    hero: HeroSection,
+    sections: Sequence[NarrativeSection],
+    narrative_input: NarrativeInput,
+) -> list[NarrativeSection]:
+    """Remove exact repeated sentences across visible narrative blocks.
+
+    The staged assembler intentionally reuses deterministic insights across sections, but repeating the same full
+    sentence in many blocks makes the final report feel padded. Keep the first visible occurrence, then remove later
+    exact sentence repeats while preserving paragraph rhythm and evidence notes.
+    """
+    seen = _sentence_keys(hero.body)
+    deduped: list[NarrativeSection] = []
+    for section in sections:
+        body = _dedupe_text_against(section.body, seen)
+        body = _ensure_section_quality(section.id, body, narrative_input, seen)
+        deduped.append(section.model_copy(update={"body": body or section.body}))
+    return deduped
+
+
+def _ensure_section_quality(
+    section_id: str,
+    body: str,
+    narrative_input: NarrativeInput,
+    seen: set[str],
+) -> str:
+    """Restore key quality markers when sentence de-duplication removes shared support prose."""
+    additions: list[str] = []
+    lowered = body.casefold()
+    if section_id == "main_formula":
+        if not (_has_lived_marker(lowered) and _has_risk_marker(lowered) and _has_mature_marker(lowered)):
+            additions.append(
+                "В ситуации выбора это проявляется так: сначала вы ищете понятную опору, потом замечаете риск внутреннего напряжения и переводите его в более зрелую, устойчивую форму действия."
+            )
+        if not _has_lived_marker(lowered):
+            additions.append(
+                "В ситуации выбора это проявляется очень конкретно: сначала вы ищете понятную опору, потом проверяете, как она выдерживает контакт с другим человеком."
+            )
+        if not _has_risk_marker(lowered):
+            additions.append(
+                "Риск здесь — застрять в напряжении между внутренней точностью и необходимостью действовать до полной уверенности."
+            )
+        if not _has_mature_marker(lowered):
+            additions.append(narrative_input.contradictions[0].mature_expression)
+    elif section_id == "development":
+        if not (
+            _has_mechanism_marker(lowered)
+            and _has_lived_marker(lowered)
+            and _has_risk_marker(lowered)
+            and _has_mature_marker(lowered)
+        ):
+            additions.append(
+                "Практически это означает: сначала заметить механизм напряжения, затем назвать риск старого цикла и выбрать более зрелую, устойчивую форму действия."
+            )
+        if not _has_risk_marker(lowered):
+            additions.append(narrative_input.failure_modes[0].trigger)
+        if not _has_mature_marker(lowered):
+            additions.append(narrative_input.failure_modes[0].supportive_reframe)
+    if not additions:
+        return body
+    addition_text = _dedupe_text_against(_join_inline(additions), seen)
+    return _append_to_last_paragraph(body, addition_text) if addition_text else body
+
+
+def _append_to_last_paragraph(body: str, addition: str) -> str:
+    if not body:
+        return addition
+    paragraphs = body.split("\n\n")
+    paragraphs[-1] = _join_inline([paragraphs[-1], addition])
+    return "\n\n".join(paragraphs)
+
+
+def _has_lived_marker(text: str) -> bool:
+    return any(marker in text for marker in ("когда ", "в ситуации", "сначала", "потом", "замечаете", "выбираете"))
+
+
+def _has_mechanism_marker(text: str) -> bool:
+    return any(marker in text for marker in ("механизм", "паттерн", "разворач", "сначала", "затем"))
+
+
+def _has_risk_marker(text: str) -> bool:
+    return any(marker in text for marker in ("риск", "напряж", "давлен", "слишком", "уязв", "цикл"))
+
+
+def _has_mature_marker(text: str) -> bool:
+    return any(marker in text for marker in ("зрел", "устойчив", "полезно", "способность"))
+
+
+def _dedupe_final_summary(
+    summary: str,
+    hero: HeroSection,
+    sections: Sequence[NarrativeSection],
+    *,
+    fallback: str,
+) -> str:
+    seen = _sentence_keys(hero.body)
+    for section in sections:
+        seen.update(_sentence_keys(section.body))
+    deduped = _dedupe_text_against(summary, seen)
+    if deduped:
+        return deduped
+    fallback_seen = _sentence_keys(hero.body)
+    for section in sections:
+        fallback_seen.update(_sentence_keys(section.body))
+    return (
+        _dedupe_text_against(fallback, fallback_seen)
+        or "Финальная опора здесь — не усиливать уже названные темы, а собрать их в спокойное действие: замечать напряжение, выбирать ясный следующий шаг и не терять собственный центр в контакте."
+    )
+
+
+def _dedupe_text_against(text: str, seen: set[str]) -> str:
+    paragraphs: list[str] = []
+    accepted_keys: set[str] = set()
+    for paragraph in re.split(r"\n\s*\n", text):
+        kept: list[str] = []
+        for sentence in _split_sentences(paragraph):
+            key = _sentence_key(sentence)
+            if key and key in seen:
+                continue
+            if key:
+                accepted_keys.add(key)
+            kept.append(sentence.strip())
+        joined = " ".join(part for part in kept if part)
+        if joined:
+            paragraphs.append(joined)
+    seen.update(accepted_keys)
+    return _body_from_paragraphs(paragraphs)
+
+
+def _sentence_keys(text: str) -> set[str]:
+    return {key for sentence in _split_sentences(text) if (key := _sentence_key(sentence))}
+
+
+def _sentence_key(sentence: str) -> str | None:
+    key = re.sub(r"\s+", " ", sentence.strip().casefold())
+    return key if len(key) >= 45 else None
+
+
+def _split_sentences(text: str) -> list[str]:
+    return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", text) if sentence.strip()]
 
 
 def _strip_mechanical_prefixes(text: str) -> str:

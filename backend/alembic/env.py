@@ -26,6 +26,7 @@ from app.core.audit import AuditLog
 from app.core.models import BaseModel
 from app.infrastructure.database import Base
 from app.modules.admin.models import *
+from app.modules.astrotype_v2.models import *
 from app.modules.auth.models import *
 from app.modules.authorization.models import *
 from app.modules.billing.models import *

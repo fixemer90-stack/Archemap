@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 FORBIDDEN_COLUMN_FRAGMENTS = (
     "socionics",
     "function_strength",
@@ -25,7 +27,7 @@ def test_report_artifact_models_use_isolated_v2_tables() -> None:
 
     for model, table_name in expected.items():
         assert model.__tablename__ == table_name
-        assert model.__table__.name.startswith("astrotype_v2_")
+        assert cast(Any, model).__table__.name.startswith("astrotype_v2_")
 
 
 def test_report_artifact_models_do_not_contain_legacy_socionics_fields() -> None:

@@ -129,7 +129,12 @@ def test_assembler_repairs_final_summary_when_dedupe_strips_it_to_one_question()
     development = stage_outputs["development"]
     assert isinstance(development, DevelopmentSectionOutput)
     stage_outputs["development"] = development.model_copy(
-        update={"paragraphs": [*development.paragraphs, "Когда напряжение растёт, замечаете ли вы, что сначала сдерживаете реакцию?"]}
+        update={
+            "paragraphs": [
+                *development.paragraphs,
+                "Когда напряжение растёт, замечаете ли вы, что сначала сдерживаете реакцию?",
+            ]
+        }
     )
 
     narrative = assemble_self_narrative(

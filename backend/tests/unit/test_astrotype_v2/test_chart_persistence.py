@@ -66,6 +66,7 @@ async def test_persist_natal_chart_rows_adds_chart_then_all_child_collections_an
 
     assert persisted is rows
     repository.add.assert_awaited_once_with(rows.chart)
+    assert repository.add.await_args is not None
     assert isinstance(repository.add.await_args.args[0], NatalChart)
 
     assert repository.add_many.await_count == 5

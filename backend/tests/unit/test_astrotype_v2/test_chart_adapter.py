@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from app.chart_engine.types import Aspect, ChartData, HousePosition, PlanetPosition
 
@@ -163,8 +164,8 @@ def test_chart_adapter_generates_balance_and_pattern_rows_without_legacy_fields(
     assert all(pattern.pattern_code.startswith("emphasis_") for pattern in rows.patterns)
     for collection in (rows.planet_positions, rows.houses, rows.aspects, rows.balances, rows.patterns):
         for row in collection:
-            assert row.__table__.name.startswith("astrotype_v2_")
-            assert not any(fragment in row.__table__.name for fragment in FORBIDDEN_ADAPTER_FRAGMENTS)
+            assert cast(Any, row).__table__.name.startswith("astrotype_v2_")
+            assert not any(fragment in cast(Any, row).__table__.name for fragment in FORBIDDEN_ADAPTER_FRAGMENTS)
 
 
 def test_chart_adapter_source_does_not_import_legacy_v1_or_socionics_modules() -> None:

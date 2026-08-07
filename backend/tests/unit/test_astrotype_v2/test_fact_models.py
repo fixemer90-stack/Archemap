@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 FORBIDDEN_COLUMN_FRAGMENTS = (
     "socionics",
     "function_strength",
@@ -18,8 +20,8 @@ def test_natal_fact_models_use_isolated_v2_tables() -> None:
     assert models.NatalFact.__tablename__ == "astrotype_v2_natal_facts"
     assert models.NatalFactEvidence.__tablename__ == "astrotype_v2_natal_fact_evidence"
 
-    assert models.NatalFact.__table__.name.startswith("astrotype_v2_")
-    assert models.NatalFactEvidence.__table__.name.startswith("astrotype_v2_")
+    assert cast(Any, models.NatalFact).__table__.name.startswith("astrotype_v2_")
+    assert cast(Any, models.NatalFactEvidence).__table__.name.startswith("astrotype_v2_")
 
 
 def test_natal_fact_model_has_deterministic_report_building_columns() -> None:

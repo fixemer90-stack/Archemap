@@ -196,7 +196,7 @@ def _compose_main_formula_body(paragraphs: list[str], narrative_input: Narrative
         [
             [dominant.body, narrative_input.inner_mechanism.summary, *steps],
             [contradiction.tension, contradiction.mature_expression],
-        ]
+        ],
     )
 
 
@@ -208,7 +208,7 @@ def _compose_emotional_body(paragraphs: list[str], narrative_input: NarrativeInp
         [
             [narrative_input.key_aspects[0].meaning if narrative_input.key_aspects else "", contradiction],
             [risk.trigger, risk.manifestation, risk.supportive_reframe],
-        ]
+        ],
     )
 
 
@@ -220,7 +220,7 @@ def _compose_world_perception_body(paragraphs: list[str], narrative_input: Narra
         [
             [scenario.need, scenario.manifestation, scenario.shadow, scenario.mature_expression],
             [*facts, narrative_input.inner_mechanism.summary],
-        ]
+        ],
     )
 
 
@@ -233,7 +233,7 @@ def _compose_relationships_body(paragraphs: list[str], narrative_input: Narrativ
         [
             [*claims, contradiction.tension, contradiction.manifestation, contradiction.mature_expression],
             [failure.trigger, failure.manifestation, failure.supportive_reframe],
-        ]
+        ],
     )
 
 
@@ -253,7 +253,7 @@ def _compose_development_body(paragraphs: list[str], narrative_input: NarrativeI
                 narrative_input.maturity_levels.medium.body,
                 *_maturity_parts(narrative_input),
             ],
-        ]
+        ],
     )
 
 
@@ -274,7 +274,7 @@ def _compose_strengths_body(paragraphs: list[str], narrative_input: NarrativeInp
                 narrative_input.inner_mechanism.steps[1].body,
                 narrative_input.contradictions[0].mature_expression,
             ],
-        ]
+        ],
     )
 
 
@@ -293,7 +293,7 @@ def _compose_vulnerabilities_body(paragraphs: list[str], narrative_input: Narrat
                 *_maturity_parts(narrative_input),
                 narrative_input.inner_mechanism.summary,
             ],
-        ]
+        ],
     )
 
 
@@ -307,7 +307,7 @@ def _compose_sexuality_body(paragraphs: list[str], narrative_input: NarrativeInp
                 "Близость здесь лучше раскрывается через прямое проговаривание желания, темпа и границ, а не через повторение общей динамики отношений.",
                 "Так сексуальность остаётся отдельной темой телесного доверия и выбранного ритма, не дублируя раздел о партнёрстве.",
             ],
-        ]
+        ],
     )
 
 
@@ -396,14 +396,10 @@ def _compose_final_summary_body(
     primary_contradiction = narrative_input.contradictions[0]
 
     stage_tail = _non_question_text(
-        _compact_stage_summary(
-            _usable_stage_paragraphs(development_paragraphs, prefer_tail=True)
-        )
+        _compact_stage_summary(_usable_stage_paragraphs(development_paragraphs, prefer_tail=True))
     )
     house_tail = _non_question_text(
-        _compact_stage_summary(
-            _usable_stage_paragraphs(house_scenario_paragraphs, prefer_tail=True)
-        )
+        _compact_stage_summary(_usable_stage_paragraphs(house_scenario_paragraphs, prefer_tail=True))
     )
     tone_note = _non_question_text(_compact_stage_summary(final_check.tone_notes))
 
@@ -419,7 +415,9 @@ def _compose_final_summary_body(
                 f"В жизненных сценариях особенно важна тема «{primary_scenario.title}»: она показывает, где этот механизм становится не теорией, а повторяющимся выбором, реакцией и способом держать направление.",
                 stage_tail,
                 house_tail,
-                primary_relationship.claim if primary_relationship else "В отношениях это требует не формальной совместимости, а ясного ритма контакта, доверия и права не терять собственную позицию рядом с другим человеком.",
+                primary_relationship.claim
+                if primary_relationship
+                else "В отношениях это требует не формальной совместимости, а ясного ритма контакта, доверия и права не терять собственную позицию рядом с другим человеком.",
             ]
         ),
         _join_inline(
@@ -427,7 +425,9 @@ def _compose_final_summary_body(
                 f"Практический смысл отчёта — замечать момент, когда включается старый риск: {primary_failure.trigger.lower()}",
                 f"В этот момент важно не усиливать давление на себя, а выбрать зрелую форму: {primary_failure.supportive_reframe.lower()}",
                 f"Так напряжение «{primary_contradiction.title.lower()}» превращается не в стопор, а в навык саморегуляции.",
-                primary_development.claim if primary_development else "Следующий шаг лучше делать не рывком, а через маленькое устойчивое действие, которое возвращает ясность и контакт с реальностью.",
+                primary_development.claim
+                if primary_development
+                else "Следующий шаг лучше делать не рывком, а через маленькое устойчивое действие, которое возвращает ясность и контакт с реальностью.",
                 tone_note,
             ]
         ),
@@ -563,11 +563,7 @@ def _dedupe_final_summary(
     for section in sections:
         fallback_seen.update(_sentence_keys(section.body))
     repaired_fallback = _dedupe_text_against(_join_inline([deduped, fallback, expansion]), fallback_seen)
-    return (
-        repaired_fallback
-        if _is_usable_final_summary(repaired_fallback)
-        else expansion
-    )
+    return repaired_fallback if _is_usable_final_summary(repaired_fallback) else expansion
 
 
 def _is_usable_final_summary(summary: str) -> bool:
@@ -593,7 +589,9 @@ def _final_summary_repair(prefix: str, narrative_input: NarrativeInput) -> str:
             _join_inline(
                 [
                     f"Тема «{scenario.title}» показывает, где этот маршрут чаще всего становится видимым в жизни.",
-                    relationship.claim if relationship else "В отношениях важны доверие, ясный темп сближения и способность не терять собственную позицию рядом с другим человеком.",
+                    relationship.claim
+                    if relationship
+                    else "В отношениях важны доверие, ясный темп сближения и способность не терять собственную позицию рядом с другим человеком.",
                     "Поэтому финальный смысл Self-разбора — не только понять себя, но и увидеть, в каких местах контакт, выбор и внутренняя опора требуют особенно внимательного обращения.",
                 ]
             ),
@@ -601,7 +599,9 @@ def _final_summary_repair(prefix: str, narrative_input: NarrativeInput) -> str:
                 [
                     f"Главный риск включается там, где появляется {failure.trigger.lower()}",
                     f"Зрелая стратегия — {failure.supportive_reframe.lower()}",
-                    development.claim if development else "Следующий шаг лучше делать через небольшой устойчивый эксперимент, а не через попытку сразу идеально пересобрать весь сценарий.",
+                    development.claim
+                    if development
+                    else "Следующий шаг лучше делать через небольшой устойчивый эксперимент, а не через попытку сразу идеально пересобрать весь сценарий.",
                     maturity.body,
                 ]
             ),

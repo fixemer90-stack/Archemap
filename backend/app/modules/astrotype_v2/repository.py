@@ -45,9 +45,7 @@ class AstrotypeV2Repository:
 
     async def get_aspect_definition(self, code: str) -> models.AspectDefinition | None:
         """Return one canonical v2 aspect type definition by code."""
-        result = await self.session.execute(
-            select(models.AspectDefinition).where(models.AspectDefinition.code == code)
-        )
+        result = await self.session.execute(select(models.AspectDefinition).where(models.AspectDefinition.code == code))
         return result.scalar_one_or_none()
 
     async def get_aspect_pair_interpretation(

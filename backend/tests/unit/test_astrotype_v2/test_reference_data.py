@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -69,7 +70,7 @@ def test_build_aspect_definition_rows_returns_v2_orm_rows_without_duplicates() -
 
     assert {row.code for row in rows} == set(EXPECTED_MAJOR_ASPECTS)
     assert all(isinstance(row, models.AspectDefinition) for row in rows)
-    assert all(row.__table__.name == "astrotype_v2_aspect_definitions" for row in rows)
+    assert all(cast(Any, row).__table__.name == "astrotype_v2_aspect_definitions" for row in rows)
     assert len({row.code for row in rows}) == len(rows)
 
 

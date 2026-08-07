@@ -88,9 +88,7 @@ class NatalPlanetPosition(BaseModel):
     """One normalized planet/body position within a v2 natal chart."""
 
     __tablename__ = "astrotype_v2_natal_planet_positions"
-    __table_args__ = (
-        UniqueConstraint("chart_id", "body", name="uq_astrotype_v2_natal_planet_positions_chart_body"),
-    )
+    __table_args__ = (UniqueConstraint("chart_id", "body", name="uq_astrotype_v2_natal_planet_positions_chart_body"),)
 
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("astrotype_v2_natal_charts.id", ondelete="CASCADE"), nullable=False, index=True
@@ -304,9 +302,7 @@ class NatalReport(BaseModel):
     """Versioned v2 report artifact with deterministic and narrative payloads separated."""
 
     __tablename__ = "astrotype_v2_natal_reports"
-    __table_args__ = (
-        UniqueConstraint("chart_id", "version", name="uq_astrotype_v2_natal_reports_chart_version"),
-    )
+    __table_args__ = (UniqueConstraint("chart_id", "version", name="uq_astrotype_v2_natal_reports_chart_version"),)
 
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("astrotype_v2_natal_charts.id", ondelete="CASCADE"), nullable=False, index=True

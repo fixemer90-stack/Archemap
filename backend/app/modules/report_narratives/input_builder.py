@@ -432,9 +432,7 @@ def _relationship_relevant_planets(planets: list[dict[str, Any]]) -> list[dict[s
     priority = {"Venus": 0, "Mars": 1, "Moon": 2, "Jupiter": 3, "Sun": 4, "Mercury": 5}
     relationship_houses = {5, 7, 8, 11}
     candidates = [
-        planet
-        for planet in planets
-        if planet.get("name") in priority or planet.get("house") in relationship_houses
+        planet for planet in planets if planet.get("name") in priority or planet.get("house") in relationship_houses
     ]
     return sorted(
         candidates,

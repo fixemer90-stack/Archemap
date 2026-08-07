@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -48,7 +49,7 @@ def test_aspect_pair_interpretation_model_has_versioned_enabled_contract() -> No
     assert columns["enabled"].nullable is False
     index_names = {
         index.name.split("ix_astrotype_v2_aspect_pair_interpretations_")[-1]
-        for index in models.AspectPairInterpretation.__table__.indexes
+        for index in cast(Any, models.AspectPairInterpretation).__table__.indexes
     }
     assert "enabled" in index_names
 
@@ -78,7 +79,7 @@ def test_build_aspect_pair_interpretation_rows_returns_v2_orm_rows() -> None:
         (row.aspect_code, row.planet_a, row.planet_b, row.locale, row.source_version) for row in rows
     } == EXPECTED_PAIR_KEYS
     assert all(isinstance(row, models.AspectPairInterpretation) for row in rows)
-    assert all(row.__table__.name == "astrotype_v2_aspect_pair_interpretations" for row in rows)
+    assert all(cast(Any, row).__table__.name == "astrotype_v2_aspect_pair_interpretations" for row in rows)
     assert all(row.enabled is True for row in rows)
 
 

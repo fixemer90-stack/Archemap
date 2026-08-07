@@ -210,9 +210,7 @@ class TestNarrativeInputBuilder:
     def test_missing_relationship_claims_get_grounded_chart_fallbacks(self, report_fixture: SimpleNamespace) -> None:
         report = deepcopy(report_fixture)
         report.report_data["claims"] = [
-            claim
-            for claim in report.report_data["claims"]
-            if claim["section"] not in {"relationships", "sexuality"}
+            claim for claim in report.report_data["claims"] if claim["section"] not in {"relationships", "sexuality"}
         ]
         report.report_data["chart"]["planets"].extend(
             [

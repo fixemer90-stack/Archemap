@@ -1,0 +1,473 @@
+{
+  "report_id": "2915215b-8b37-4fb3-b333-68b5d10603ff",
+  "profile_id": "f4448557-5a6a-432a-8758-84091f0f256c",
+  "status": "demo_from_saved_db_report",
+  "chart": {
+    "birth_datetime": "1990-08-24T10:22:00+00:00",
+    "timezone": "Europe/Moscow",
+    "house_system": "P",
+    "zodiac": "tropical"
+  },
+  "placements": [
+    {
+      "name": "Sun",
+      "longitude": 151.0052,
+      "latitude": -0.0002,
+      "speed": 0.9645,
+      "sign": "Virgo",
+      "sign_degree": 1.01,
+      "house": 9,
+      "is_retrograde": false
+    },
+    {
+      "name": "Moon",
+      "longitude": 197.9199,
+      "latitude": -4.9395,
+      "speed": 12.4211,
+      "sign": "Libra",
+      "sign_degree": 17.92,
+      "house": 11,
+      "is_retrograde": false
+    },
+    {
+      "name": "Mercury",
+      "longitude": 173.5052,
+      "latitude": -3.9016,
+      "speed": 0.1075,
+      "sign": "Virgo",
+      "sign_degree": 23.51,
+      "house": 10,
+      "is_retrograde": false
+    },
+    {
+      "name": "Venus",
+      "longitude": 132.865,
+      "latitude": 0.7664,
+      "speed": 1.2272,
+      "sign": "Leo",
+      "sign_degree": 12.87,
+      "house": 9,
+      "is_retrograde": false
+    },
+    {
+      "name": "Mars",
+      "longitude": 56.3524,
+      "latitude": -1.831,
+      "speed": 0.5352,
+      "sign": "Taurus",
+      "sign_degree": 26.35,
+      "house": 7,
+      "is_retrograde": false
+    },
+    {
+      "name": "Jupiter",
+      "longitude": 121.2869,
+      "latitude": 0.2981,
+      "speed": 0.2079,
+      "sign": "Leo",
+      "sign_degree": 1.29,
+      "house": 8,
+      "is_retrograde": false
+    },
+    {
+      "name": "Saturn",
+      "longitude": 289.4067,
+      "latitude": 0.0154,
+      "speed": -0.0454,
+      "sign": "Capricorn",
+      "sign_degree": 19.41,
+      "house": 2,
+      "is_retrograde": true
+    },
+    {
+      "name": "Uranus",
+      "longitude": 275.7882,
+      "latitude": -0.3273,
+      "speed": -0.0173,
+      "sign": "Capricorn",
+      "sign_degree": 5.79,
+      "house": 2,
+      "is_retrograde": true
+    },
+    {
+      "name": "Neptune",
+      "longitude": 282.0395,
+      "latitude": 0.8563,
+      "speed": -0.0154,
+      "sign": "Capricorn",
+      "sign_degree": 12.04,
+      "house": 2,
+      "is_retrograde": true
+    },
+    {
+      "name": "Pluto",
+      "longitude": 225.2134,
+      "latitude": 15.2377,
+      "speed": 0.0165,
+      "sign": "Scorpio",
+      "sign_degree": 15.21,
+      "house": 12,
+      "is_retrograde": false
+    }
+  ],
+  "aspects": [
+    {
+      "planet_a": "Venus",
+      "planet_b": "Neptune",
+      "aspect_type": "quincunx",
+      "angle": 149.17,
+      "orb": 0.83,
+      "is_applying": false
+    },
+    {
+      "planet_a": "Moon",
+      "planet_b": "Saturn",
+      "aspect_type": "square",
+      "angle": 91.49,
+      "orb": 1.49,
+      "is_applying": false
+    },
+    {
+      "planet_a": "Venus",
+      "planet_b": "Pluto",
+      "aspect_type": "square",
+      "angle": 92.35,
+      "orb": 2.35,
+      "is_applying": true
+    },
+    {
+      "planet_a": "Mercury",
+      "planet_b": "Mars",
+      "aspect_type": "trine",
+      "angle": 117.15,
+      "orb": 2.85,
+      "is_applying": false
+    },
+    {
+      "planet_a": "Neptune",
+      "planet_b": "Pluto",
+      "aspect_type": "sextile",
+      "angle": 56.83,
+      "orb": 3.17,
+      "is_applying": false
+    },
+    {
+      "planet_a": "Mercury",
+      "planet_b": "Saturn",
+      "aspect_type": "trine",
+      "angle": 115.9,
+      "orb": 4.1,
+      "is_applying": false
+    },
+    {
+      "planet_a": "Saturn",
+      "planet_b": "Pluto",
+      "aspect_type": "sextile",
+      "angle": 64.19,
+      "orb": 4.19,
+      "is_applying": true
+    },
+    {
+      "planet_a": "Jupiter",
+      "planet_b": "Uranus",
+      "aspect_type": "quincunx",
+      "angle": 154.5,
+      "orb": 4.5,
+      "is_applying": true
+    },
+    {
+      "planet_a": "Sun",
+      "planet_b": "Mars",
+      "aspect_type": "square",
+      "angle": 94.65,
+      "orb": 4.65,
+      "is_applying": false
+    },
+    {
+      "planet_a": "Sun",
+      "planet_b": "Uranus",
+      "aspect_type": "trine",
+      "angle": 124.78,
+      "orb": 4.78,
+      "is_applying": true
+    }
+  ],
+  "element_balance": {
+    "Огонь": 15,
+    "Земля": 53,
+    "Воздух": 15,
+    "Вода": 17
+  },
+  "modality_balance": {
+    "Кардинальная": 28,
+    "Фиксированная": 41,
+    "Мутабельная": 31
+  },
+  "house_emphasis": {
+    "1": 0,
+    "2": 80,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 48,
+    "8": 32,
+    "9": 100,
+    "10": 44,
+    "11": 56,
+    "12": 22
+  },
+  "source_note": "Built from saved chart_snapshot natal chart fields only. Non-natal legacy fields are intentionally excluded from this infographic sample.",
+  "angles": {
+    "ascendant": {
+      "sign": "Scorpio",
+      "sign_ru": "Скорпион",
+      "degree": 19.98,
+      "longitude": 229.9817,
+      "house": 1
+    },
+    "mc": {
+      "sign": "Virgo",
+      "sign_ru": "Дева",
+      "degree": 14.32,
+      "longitude": 164.3199,
+      "house": 10
+    },
+    "ascendant_ruler": {
+      "planet": "Mars",
+      "planet_ru": "Марс",
+      "sign": "Taurus",
+      "sign_ru": "Телец",
+      "house": 7
+    }
+  },
+  "balance_calculation": {
+    "method": "weighted_chart_points_v1_personality_heuristic",
+    "description": "Astrotype v2 product heuristic for report UI. The same chart point weights are used for both element and modality balance. Weights are not a universal astrology canon.",
+    "weight_policy": "Angles are included as chart angles, not planets. Ascendant is weighted highly for personality presentation; MC is included moderately because this is a personality report, not a career-only report.",
+    "weights": {
+      "Sun": 2.0,
+      "Moon": 2.0,
+      "Ascendant": 1.8,
+      "Mercury": 1.2,
+      "Venus": 1.2,
+      "Mars": 1.2,
+      "MC": 1.0,
+      "Jupiter": 0.8,
+      "Saturn": 0.8,
+      "Uranus": 0.5,
+      "Neptune": 0.5,
+      "Pluto": 0.5
+    },
+    "included_points": [
+      "Sun",
+      "Moon",
+      "Mercury",
+      "Venus",
+      "Mars",
+      "Jupiter",
+      "Saturn",
+      "Uranus",
+      "Neptune",
+      "Pluto",
+      "Ascendant",
+      "MC"
+    ],
+    "contributions": [
+      {
+        "point": "Sun",
+        "sign": "Virgo",
+        "weight": 2.0,
+        "element": "Земля",
+        "modality": "Мутабельная"
+      },
+      {
+        "point": "Moon",
+        "sign": "Libra",
+        "weight": 2.0,
+        "element": "Воздух",
+        "modality": "Кардинальная"
+      },
+      {
+        "point": "Mercury",
+        "sign": "Virgo",
+        "weight": 1.2,
+        "element": "Земля",
+        "modality": "Мутабельная"
+      },
+      {
+        "point": "Venus",
+        "sign": "Leo",
+        "weight": 1.2,
+        "element": "Огонь",
+        "modality": "Фиксированная"
+      },
+      {
+        "point": "Mars",
+        "sign": "Taurus",
+        "weight": 1.2,
+        "element": "Земля",
+        "modality": "Фиксированная"
+      },
+      {
+        "point": "Jupiter",
+        "sign": "Leo",
+        "weight": 0.8,
+        "element": "Огонь",
+        "modality": "Фиксированная"
+      },
+      {
+        "point": "Saturn",
+        "sign": "Capricorn",
+        "weight": 0.8,
+        "element": "Земля",
+        "modality": "Кардинальная"
+      },
+      {
+        "point": "Uranus",
+        "sign": "Capricorn",
+        "weight": 0.5,
+        "element": "Земля",
+        "modality": "Кардинальная"
+      },
+      {
+        "point": "Neptune",
+        "sign": "Capricorn",
+        "weight": 0.5,
+        "element": "Земля",
+        "modality": "Кардинальная"
+      },
+      {
+        "point": "Pluto",
+        "sign": "Scorpio",
+        "weight": 0.5,
+        "element": "Вода",
+        "modality": "Фиксированная"
+      },
+      {
+        "point": "Ascendant",
+        "sign": "Scorpio",
+        "weight": 1.8,
+        "element": "Вода",
+        "modality": "Фиксированная"
+      },
+      {
+        "point": "MC",
+        "sign": "Virgo",
+        "weight": 1.0,
+        "element": "Земля",
+        "modality": "Мутабельная"
+      }
+    ],
+    "element_scores": {
+      "Огонь": 2.0,
+      "Земля": 7.2,
+      "Воздух": 2.0,
+      "Вода": 2.3
+    },
+    "element_percentages_raw": {
+      "Огонь": 14.81,
+      "Земля": 53.33,
+      "Воздух": 14.81,
+      "Вода": 17.04
+    },
+    "modality_scores": {
+      "Кардинальная": 3.8,
+      "Фиксированная": 5.5,
+      "Мутабельная": 4.2
+    },
+    "modality_percentages_raw": {
+      "Кардинальная": 28.15,
+      "Фиксированная": 40.74,
+      "Мутабельная": 31.11
+    }
+  },
+  "derived_calculations": {
+    "house_mode_balance": {
+      "method": "house_mode_balance_v1_weighted_points",
+      "scores": {
+        "Угловые": 5.2,
+        "Последующие": 4.6,
+        "Падающие": 3.7
+      },
+      "percentages": {
+        "Угловые": 39,
+        "Последующие": 34,
+        "Падающие": 27
+      }
+    },
+    "hemisphere_balance": {
+      "method": "hemisphere_balance_v1_weighted_points",
+      "upper_lower": {
+        "scores": {
+          "Верхняя": 9.9,
+          "Нижняя": 3.6
+        },
+        "percentages": {
+          "Верхняя": 73,
+          "Нижняя": 27
+        }
+      },
+      "east_west": {
+        "scores": {
+          "Восточная": 8.3,
+          "Западная": 5.2
+        },
+        "percentages": {
+          "Восточная": 61,
+          "Западная": 39
+        }
+      }
+    },
+    "quadrant_balance": {
+      "method": "quadrant_balance_v1_weighted_points",
+      "scores": {
+        "Q1": 3.6,
+        "Q2": 0,
+        "Q3": 5.2,
+        "Q4": 4.7
+      },
+      "percentages": {
+        "Q1": 27,
+        "Q2": 0,
+        "Q3": 38,
+        "Q4": 35
+      }
+    },
+    "aspect_profile": {
+      "method": "aspect_profile_v1_major_aspects",
+      "counts": {
+        "Ресурс": 5,
+        "Напряжение": 5,
+        "Соединения": 0
+      },
+      "average_orb": 3.29,
+      "most_exact_aspects": [
+        {
+          "planet_a": "Venus",
+          "planet_b": "Neptune",
+          "aspect_type": "quincunx",
+          "angle": 149.17,
+          "orb": 0.83,
+          "is_applying": false
+        },
+        {
+          "planet_a": "Moon",
+          "planet_b": "Saturn",
+          "aspect_type": "square",
+          "angle": 91.49,
+          "orb": 1.49,
+          "is_applying": false
+        },
+        {
+          "planet_a": "Venus",
+          "planet_b": "Pluto",
+          "aspect_type": "square",
+          "angle": 92.35,
+          "orb": 2.35,
+          "is_applying": true
+        }
+      ]
+    }
+  }
+}

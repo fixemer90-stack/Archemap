@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Astrotype v2 — пример инфографики</title>
+<style>
+:root{--bg:#0d0f16;--panel:#151924;--panel2:#1c2230;--text:#f2eadf;--muted:#aeb3c3;--gold:#d8b46a;--blue:#70a7ff;--green:#7bd88f;--red:#ff6b7b;--violet:#b48cff;--line:#2e3548}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0,#26314d 0,#0d0f16 38%,#090a0e 100%);font:15px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--text)}
+.page{max-width:1440px;margin:0 auto;padding:36px} .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;margin-bottom:22px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.32)}
+h1{font-size:42px;line-height:1.02;margin:0 0 12px} h2{font-size:22px;margin:0 0 16px} h3{font-size:16px;margin:0 0 12px;color:var(--gold);text-transform:uppercase;letter-spacing:.08em} .muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:420px 1fr 1fr;gap:18px} .wide{grid-column:span 2} .full{grid-column:1/-1}
+.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px} .metric{background:#101520;border:1px solid #252d3d;border-radius:18px;padding:14px} .metric b{display:block;font-size:26px;color:var(--gold)}
+svg{max-width:100%;height:auto} .wheel{display:flex;justify-content:center} .tick{stroke:#3b4358;stroke-width:1} .house{stroke:#605846;stroke-width:1.1;stroke-dasharray:4 5} .sign{fill:#9ea5b8;font-size:11px;text-anchor:middle;dominant-baseline:middle} .planet circle,.node circle{fill:#171d2a;stroke:var(--gold);stroke-width:1.4} .planet text,.node text{fill:#f6ead6;text-anchor:middle;font-size:11px;font-weight:700} .asp-tension{stroke:var(--red)} .asp-resource{stroke:var(--blue)} .asp-mixed{stroke:var(--violet)}
+table{width:100%;border-collapse:collapse} td,th{border-bottom:1px solid #2a3143;padding:9px;text-align:left} th{color:#c5c9d6;font-size:12px;text-transform:uppercase;letter-spacing:.06em} .pill{display:inline-block;border-radius:999px;padding:3px 9px;font-size:12px} .pill.tension{background:rgba(255,107,123,.13);color:#ff9aa5} .pill.resource{background:rgba(112,167,255,.14);color:#a9c9ff} .pill.mixed{background:rgba(180,140,255,.14);color:#ceb6ff}
+.barrow{display:grid;grid-template-columns:110px 1fr 48px;gap:10px;align-items:center;margin:11px 0} .bar{height:12px;background:#0b0f18;border-radius:99px;overflow:hidden;border:1px solid #2b3345} .bar span{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#f4dc95)} .barlabel{color:#d9dce6} .barval{color:var(--muted);font-variant-numeric:tabular-nums}
+.housebars{height:180px;display:flex;align-items:flex-end;gap:9px;border-bottom:1px solid #394052;padding-top:16px} .housebar{height:150px;flex:1;display:flex;align-items:flex-end;position:relative;background:#101520;border-radius:9px 9px 0 0;overflow:hidden} .housebar span{width:100%;background:linear-gradient(180deg,#d8b46a,#806633);border-radius:9px 9px 0 0;min-height:4px} .housebar b{position:absolute;bottom:-27px;left:0;right:0;text-align:center;color:#aeb3c3;font-size:12px}
+.theme{display:grid;gap:6px;border:1px solid #2b3345;border-radius:16px;padding:14px;background:#101520;margin:10px 0} .theme em{float:right;color:#8fa4d6;font-style:normal;font-size:12px} .theme p{margin:0;color:#d7d9e2} .theme small{color:#949bad} .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px} .fact{border:1px solid #293246;background:#111722;border-radius:14px;padding:11px} .fact b{display:block;color:#fff4dc} .fact span{display:block;color:#aeb3c3;font-size:12px;margin-top:4px}
+.note{border-left:3px solid var(--gold);padding-left:14px;color:#d9dce6} @media(max-width:1000px){.hero,.grid{grid-template-columns:1fr}.wide{grid-column:auto}.facts{grid-template-columns:1fr}.page{padding:18px}h1{font-size:32px}}
+</style>
+</head>
+<body><main class="page">
+<section class="hero">
+  <div class="card"><h1>Пример v2-инфографики натальной карты</h1><p class="muted">Случайные демонстрационные данные. Это не реальный человек и не реальный расчёт. Цель — показать, как пользователь может видеть карту, факты, связи аспектов и основания большого LLM-отчёта.</p><div class="metric-row"><div class="metric"><b>24%</b>Земля</div><div class="metric"><b>38%</b>Фиксированность</div><div class="metric"><b>60%</b>10 дом</div><div class="metric"><b>7</b>аспектов</div></div></div>
+  <div class="card"><h3>Главная идея UI</h3><p class="note">Инфографика объясняет не “что красиво нарисовала система”, а из каких сохранённых фактов был собран отчёт: положения, дома, аспекты → факты → темы → секции.</p></div>
+</section>
+<section class="grid">
+  <div class="card"><h2>Натальное колесо, preview</h2><div class="wheel"><svg width="420" height="420" viewBox="0 0 420 420"><circle cx="210" cy="210" r="180" fill="none" stroke="#394052"/><circle cx="210" cy="210" r="122" fill="none" stroke="#2a3143"/><circle cx="210" cy="210" r="90" fill="none" stroke="#252b3a"/><line x1="210.0" y1="88.0" x2="210.0" y2="30.0" class="tick"/><text x="251.4" y="55.5" class="sign">Ове</text><line x1="271.0" y1="104.3" x2="300.0" y2="54.1" class="tick"/><text x="323.1" y="96.9" class="sign">Тел</text><line x1="315.7" y1="149.0" x2="365.9" y2="120.0" class="tick"/><text x="364.5" y="168.6" class="sign">Бли</text><line x1="332.0" y1="210.0" x2="390.0" y2="210.0" class="tick"/><text x="364.5" y="251.4" class="sign">Рак</text><line x1="315.7" y1="271.0" x2="365.9" y2="300.0" class="tick"/><text x="323.1" y="323.1" class="sign">Лев</text><line x1="271.0" y1="315.7" x2="300.0" y2="365.9" class="tick"/><text x="251.4" y="364.5" class="sign">Дев</text><line x1="210.0" y1="332.0" x2="210.0" y2="390.0" class="tick"/><text x="168.6" y="364.5" class="sign">Вес</text><line x1="149.0" y1="315.7" x2="120.0" y2="365.9" class="tick"/><text x="96.9" y="323.1" class="sign">Ско</text><line x1="104.3" y1="271.0" x2="54.1" y2="300.0" class="tick"/><text x="55.5" y="251.4" class="sign">Стр</text><line x1="88.0" y1="210.0" x2="30.0" y2="210.0" class="tick"/><text x="55.5" y="168.6" class="sign">Коз</text><line x1="104.3" y1="149.0" x2="54.1" y2="120.0" class="tick"/><text x="96.9" y="96.9" class="sign">Вод</text><line x1="149.0" y1="104.3" x2="120.0" y2="54.1" class="tick"/><text x="168.6" y="55.5" class="sign">Рыб</text><line x1="210.9" y1="115.0" x2="219.4" y2="30.2" class="house"/><line x1="254.6" y1="126.1" x2="311.2" y2="61.1" class="house"/><line x1="295.3" y1="168.1" x2="373.1" y2="133.8" class="house"/><line x1="304.8" y1="203.5" x2="389.7" y2="199.2" class="house"/><line x1="293.3" y1="255.6" x2="361.1" y2="307.8" class="house"/><line x1="254.8" y1="293.7" x2="288.5" y2="372.0" class="house"/><line x1="204.7" y1="304.9" x2="207.2" y2="390.0" class="house"/><line x1="158.1" y1="289.6" x2="126.2" y2="369.3" class="house"/><line x1="126.9" y1="256.0" x2="55.5" y2="302.4" class="house"/><line x1="115.3" y1="217.9" x2="30.0" y2="214.0" class="house"/><line x1="131.0" y1="157.2" x2="48.9" y2="129.8" class="house"/><line x1="159.0" y1="129.9" x2="109.0" y2="61.0" class="house"/><line x1="197.2" y1="299.1" x2="125.4" y2="240.6" class="asp-resource" opacity="0.75"/><line x1="277.3" y1="150.2" x2="140.5" y2="267.1" class="asp-tension" opacity="0.73"/><line x1="181.4" y1="124.7" x2="172.1" y2="291.6" class="asp-tension" opacity="0.67"/><line x1="271.1" y1="144.0" x2="208.1" y2="120.0" class="asp-resource" opacity="0.66"/><line x1="186.7" y1="123.1" x2="277.3" y2="150.2" class="asp-tension" opacity="0.62"/><line x1="133.8" y1="258.0" x2="125.4" y2="240.6" class="asp-resource" opacity="0.67"/><line x1="197.2" y1="299.1" x2="172.1" y2="291.6" class="asp-mixed" opacity="0.61"/><g class="planet"><circle cx="181.0" cy="101.8" r="13"/><text x="181.0" y="105.8">С</text></g><g class="planet"><circle cx="174.5" cy="103.8" r="13"/><text x="174.5" y="107.8">Л</text></g><g class="planet"><circle cx="194.0" cy="320.9" r="13"/><text x="194.0" y="324.9">М</text></g><g class="planet"><circle cx="286.1" cy="127.8" r="13"/><text x="286.1" y="131.8">В</text></g><g class="planet"><circle cx="293.8" cy="135.6" r="13"/><text x="293.8" y="139.6">М</text></g><g class="planet"><circle cx="115.2" cy="269.7" r="13"/><text x="115.2" y="273.7">Ю</text></g><g class="planet"><circle cx="104.7" cy="248.1" r="13"/><text x="104.7" y="252.1">С</text></g><g class="planet"><circle cx="123.5" cy="281.1" r="13"/><text x="123.5" y="285.1">У</text></g><g class="planet"><circle cx="207.7" cy="98.0" r="13"/><text x="207.7" y="102.0">Н</text></g><g class="planet"><circle cx="162.8" cy="311.6" r="13"/><text x="162.8" y="315.6">П</text></g></svg></div></div>
+  <div class="card wide"><h2>Таблица положений планет</h2><table><thead><tr><th>Планета</th><th>Знак</th><th>Дом</th><th>Градус</th><th>R</th><th>Ключевые аспекты</th></tr></thead><tbody><tr><td>Солнце</td><td>Рыбы</td><td>11</td><td>15.0°</td><td>—</td><td>Марс оппозиция</td></tr>
+<tr><td>Луна</td><td>Рыбы</td><td>1</td><td>11.5°</td><td>—</td><td>Плутон квадрат</td></tr>
+<tr><td>Меркурий</td><td>Весы</td><td>3</td><td>8.2°</td><td>—</td><td>Сатурн секстиль, Плутон соединение</td></tr>
+<tr><td>Венера</td><td>Телец</td><td>5</td><td>12.8°</td><td>—</td><td>Нептун трин</td></tr>
+<tr><td>Марс</td><td>Телец</td><td>10</td><td>18.4°</td><td>R</td><td>Уран оппозиция, Солнце оппозиция</td></tr>
+<tr><td>Юпитер</td><td>Скорпион</td><td>4</td><td>27.8°</td><td>R</td><td>Сатурн секстиль</td></tr>
+<tr><td>Сатурн</td><td>Стрелец</td><td>5</td><td>10.1°</td><td>—</td><td>Меркурий секстиль, Юпитер секстиль</td></tr>
+<tr><td>Уран</td><td>Скорпион</td><td>4</td><td>20.6°</td><td>R</td><td>Марс оппозиция</td></tr>
+<tr><td>Нептун</td><td>Рыбы</td><td>8</td><td>28.8°</td><td>R</td><td>Венера трин</td></tr>
+<tr><td>Плутон</td><td>Весы</td><td>1</td><td>24.9°</td><td>—</td><td>Луна квадрат, Меркурий соединение</td></tr></tbody></table></div>
+  <div class="card"><h2>Баланс стихий</h2><div class='barrow'><div class='barlabel'>Огонь</div><div class='bar'><span style='width:9%'></span></div><div class='barval'>9%</div></div>
+<div class='barrow'><div class='barlabel'>Земля</div><div class='bar'><span style='width:24%'></span></div><div class='barval'>24%</div></div>
+<div class='barrow'><div class='barlabel'>Воздух</div><div class='bar'><span style='width:17%'></span></div><div class='barval'>17%</div></div>
+<div class='barrow'><div class='barlabel'>Вода</div><div class='bar'><span style='width:49%'></span></div><div class='barval'>49%</div></div></div>
+  <div class="card"><h2>Баланс модальностей</h2><div class='barrow'><div class='barlabel'>Кардинальная</div><div class='bar'><span style='width:17%'></span></div><div class='barval'>17%</div></div>
+<div class='barrow'><div class='barlabel'>Фиксированная</div><div class='bar'><span style='width:38%'></span></div><div class='barval'>38%</div></div>
+<div class='barrow'><div class='barlabel'>Мутабельная</div><div class='bar'><span style='width:45%'></span></div><div class='barval'>45%</div></div></div>
+  <div class="card"><h2>Акцент домов</h2><div class="housebars"><div class='housebar' title='1 дом: 98%'><span style='height:98%'></span><b>1</b></div>
+<div class='housebar' title='2 дом: 0%'><span style='height:0%'></span><b>2</b></div>
+<div class='housebar' title='3 дом: 55%'><span style='height:55%'></span><b>3</b></div>
+<div class='housebar' title='4 дом: 68%'><span style='height:68%'></span><b>4</b></div>
+<div class='housebar' title='5 дом: 100%'><span style='height:100%'></span><b>5</b></div>
+<div class='housebar' title='6 дом: 0%'><span style='height:0%'></span><b>6</b></div>
+<div class='housebar' title='7 дом: 0%'><span style='height:0%'></span><b>7</b></div>
+<div class='housebar' title='8 дом: 28%'><span style='height:28%'></span><b>8</b></div>
+<div class='housebar' title='9 дом: 0%'><span style='height:0%'></span><b>9</b></div>
+<div class='housebar' title='10 дом: 60%'><span style='height:60%'></span><b>10</b></div>
+<div class='housebar' title='11 дом: 70%'><span style='height:70%'></span><b>11</b></div>
+<div class='housebar' title='12 дом: 0%'><span style='height:0%'></span><b>12</b></div></div></div>
+  <div class="card wide"><h2>Сеть аспектов</h2><svg width="540" height="360" viewBox="0 0 420 420"><circle cx="210" cy="210" r="150" fill="none" stroke="#202738"/><line x1="342.9" y1="186.6" x2="116.2" y2="307.1" class="asp-resource" stroke-width="4.5"/><line x1="273.4" y1="329.2" x2="77.1" y2="233.4" class="asp-tension" stroke-width="4.4"/><line x1="303.8" y1="112.9" x2="146.6" y2="90.8" class="asp-tension" stroke-width="3.9"/><line x1="331.3" y1="269.2" x2="88.7" y2="150.8" class="asp-resource" stroke-width="3.8"/><line x1="228.8" y1="76.3" x2="273.4" y2="329.2" class="asp-tension" stroke-width="3.4"/><line x1="191.2" y1="343.7" x2="116.2" y2="307.1" class="asp-resource" stroke-width="3.8"/><line x1="342.9" y1="186.6" x2="146.6" y2="90.8" class="asp-mixed" stroke-width="3.3"/><g class="node"><circle cx="228.8" cy="76.3" r="22"/><text x="228.8" y="80.3">Сол</text></g><g class="node"><circle cx="303.8" cy="112.9" r="22"/><text x="303.8" y="116.9">Лун</text></g><g class="node"><circle cx="342.9" cy="186.6" r="22"/><text x="342.9" y="190.6">Мер</text></g><g class="node"><circle cx="331.3" cy="269.2" r="22"/><text x="331.3" y="273.2">Вен</text></g><g class="node"><circle cx="273.4" cy="329.2" r="22"/><text x="273.4" y="333.2">Мар</text></g><g class="node"><circle cx="191.2" cy="343.7" r="22"/><text x="191.2" y="347.7">Юпи</text></g><g class="node"><circle cx="116.2" cy="307.1" r="22"/><text x="116.2" y="311.1">Сат</text></g><g class="node"><circle cx="77.1" cy="233.4" r="22"/><text x="77.1" y="237.4">Ура</text></g><g class="node"><circle cx="88.7" cy="150.8" r="22"/><text x="88.7" y="154.8">Неп</text></g><g class="node"><circle cx="146.6" cy="90.8" r="22"/><text x="146.6" y="94.8">Плу</text></g></svg></div>
+  <div class="card"><h2>Аспекты как факты</h2><table><thead><tr><th>Связка</th><th>Аспект</th><th>Orb</th><th>Тип</th></tr></thead><tbody><tr><td>Меркурий — Сатурн</td><td>секстиль</td><td>1.9°</td><td><span class='pill resource'>ресурс</span></td></tr>
+<tr><td>Марс — Уран</td><td>оппозиция</td><td>2.2°</td><td><span class='pill tension'>напряжение</span></td></tr>
+<tr><td>Луна — Плутон</td><td>квадрат</td><td>3.1°</td><td><span class='pill tension'>напряжение</span></td></tr>
+<tr><td>Венера — Нептун</td><td>трин</td><td>2.8°</td><td><span class='pill resource'>ресурс</span></td></tr>
+<tr><td>Солнце — Марс</td><td>оппозиция</td><td>4.0°</td><td><span class='pill tension'>напряжение</span></td></tr>
+<tr><td>Юпитер — Сатурн</td><td>секстиль</td><td>2.5°</td><td><span class='pill resource'>ресурс</span></td></tr>
+<tr><td>Меркурий — Плутон</td><td>соединение</td><td>4.4°</td><td><span class='pill mixed'>смешанный</span></td></tr></tbody></table></div>
+  <div class="card wide"><h2>Карта тем отчёта</h2><div class='theme'><div><b>Структурное мышление</b><em>perception_and_mind</em></div><p>Мысль стремится к форме, проверке и точной формулировке.</p><small>evidence: fact_20, fact_03</small></div>
+<div class='theme'><div><b>Свобода действия vs давление</b><em>agency_and_desire</em></div><p>Воля включается резко, когда появляется ощущение ограничения.</p><small>evidence: fact_21, fact_05</small></div>
+<div class='theme'><div><b>Глубокая эмоциональная переработка</b><em>emotional_regulation</em></div><p>Эмоции проживаются не поверхностно, а через внутреннюю трансформацию.</p><small>evidence: fact_22</small></div>
+<div class='theme'><div><b>Тонкая романтическая восприимчивость</b><em>relationships_and_intimacy</em></div><p>В близости важны образ, тонкость, эстетика и идеал.</p><small>evidence: fact_23</small></div>
+<div class='theme'><div><b>Упорство и телесная устойчивость</b><em>core_pattern</em></div><p>Психика опирается на устойчивый темп и сопротивление хаосу.</p><small>evidence: fact_05</small></div></div>
+  <div class="card full"><h2>Фактическая основа, которую можно показать пользователю</h2><div class="facts"><div class='fact'><b>Солнце в знаке Рыбы</b><span>Sun in Pisces 15.0°</span></div>
+<div class='fact'><b>Луна в знаке Рыбы</b><span>Moon in Pisces 11.5°</span></div>
+<div class='fact'><b>Меркурий в знаке Весы</b><span>Mercury in Libra 8.2°</span></div>
+<div class='fact'><b>Венера в знаке Телец</b><span>Venus in Taurus 12.8°</span></div>
+<div class='fact'><b>Марс в знаке Телец</b><span>Mars in Taurus 18.4°</span></div>
+<div class='fact'><b>Юпитер в знаке Скорпион</b><span>Jupiter in Scorpio 27.8°</span></div>
+<div class='fact'><b>Сатурн в знаке Стрелец</b><span>Saturn in Sagittarius 10.1°</span></div>
+<div class='fact'><b>Уран в знаке Скорпион</b><span>Uranus in Scorpio 20.6°</span></div>
+<div class='fact'><b>Нептун в знаке Рыбы</b><span>Neptune in Pisces 28.8°</span></div>
+<div class='fact'><b>Плутон в знаке Весы</b><span>Pluto in Libra 24.9°</span></div>
+<div class='fact'><b>Меркурий секстиль Сатурн</b><span>Mercury sextile Saturn, orb 1.9°</span></div>
+<div class='fact'><b>Марс оппозиция Уран</b><span>Mars opposition Uranus, orb 2.2°</span></div>
+<div class='fact'><b>Луна квадрат Плутон</b><span>Moon square Pluto, orb 3.1°</span></div>
+<div class='fact'><b>Венера трин Нептун</b><span>Venus trine Neptune, orb 2.8°</span></div>
+<div class='fact'><b>Солнце оппозиция Марс</b><span>Sun opposition Mars, orb 4.0°</span></div>
+<div class='fact'><b>Юпитер секстиль Сатурн</b><span>Jupiter sextile Saturn, orb 2.5°</span></div>
+<div class='fact'><b>Меркурий соединение Плутон</b><span>Mercury conjunction Pluto, orb 4.4°</span></div></div></div>
+</section>
+</main></body></html>

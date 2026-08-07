@@ -1,0 +1,348 @@
+{
+  "generated_at": "2026-08-02T09:05:44.120960Z",
+  "placements": [
+    {
+      "planet": "Sun",
+      "planet_ru": "Солнце",
+      "sign": "Pisces",
+      "sign_ru": "Рыбы",
+      "degree": 15.0,
+      "longitude": 345.0,
+      "house": 11,
+      "retro": false
+    },
+    {
+      "planet": "Moon",
+      "planet_ru": "Луна",
+      "sign": "Pisces",
+      "sign_ru": "Рыбы",
+      "degree": 11.5,
+      "longitude": 341.5,
+      "house": 1,
+      "retro": false
+    },
+    {
+      "planet": "Mercury",
+      "planet_ru": "Меркурий",
+      "sign": "Libra",
+      "sign_ru": "Весы",
+      "degree": 8.2,
+      "longitude": 188.2,
+      "house": 3,
+      "retro": false
+    },
+    {
+      "planet": "Venus",
+      "planet_ru": "Венера",
+      "sign": "Taurus",
+      "sign_ru": "Телец",
+      "degree": 12.8,
+      "longitude": 42.8,
+      "house": 5,
+      "retro": false
+    },
+    {
+      "planet": "Mars",
+      "planet_ru": "Марс",
+      "sign": "Taurus",
+      "sign_ru": "Телец",
+      "degree": 18.4,
+      "longitude": 48.4,
+      "house": 10,
+      "retro": true
+    },
+    {
+      "planet": "Jupiter",
+      "planet_ru": "Юпитер",
+      "sign": "Scorpio",
+      "sign_ru": "Скорпион",
+      "degree": 27.8,
+      "longitude": 237.8,
+      "house": 4,
+      "retro": true
+    },
+    {
+      "planet": "Saturn",
+      "planet_ru": "Сатурн",
+      "sign": "Sagittarius",
+      "sign_ru": "Стрелец",
+      "degree": 10.1,
+      "longitude": 250.1,
+      "house": 5,
+      "retro": false
+    },
+    {
+      "planet": "Uranus",
+      "planet_ru": "Уран",
+      "sign": "Scorpio",
+      "sign_ru": "Скорпион",
+      "degree": 20.6,
+      "longitude": 230.6,
+      "house": 4,
+      "retro": true
+    },
+    {
+      "planet": "Neptune",
+      "planet_ru": "Нептун",
+      "sign": "Pisces",
+      "sign_ru": "Рыбы",
+      "degree": 28.8,
+      "longitude": 358.8,
+      "house": 8,
+      "retro": true
+    },
+    {
+      "planet": "Pluto",
+      "planet_ru": "Плутон",
+      "sign": "Libra",
+      "sign_ru": "Весы",
+      "degree": 24.9,
+      "longitude": 204.9,
+      "house": 1,
+      "retro": false
+    }
+  ],
+  "aspects": [
+    {
+      "a": "Mercury",
+      "b": "Saturn",
+      "type": "sextile",
+      "type_ru": "секстиль",
+      "orb": 1.9,
+      "strength": 0.88,
+      "group": "resource"
+    },
+    {
+      "a": "Mars",
+      "b": "Uranus",
+      "type": "opposition",
+      "type_ru": "оппозиция",
+      "orb": 2.2,
+      "strength": 0.84,
+      "group": "tension"
+    },
+    {
+      "a": "Moon",
+      "b": "Pluto",
+      "type": "square",
+      "type_ru": "квадрат",
+      "orb": 3.1,
+      "strength": 0.72,
+      "group": "tension"
+    },
+    {
+      "a": "Venus",
+      "b": "Neptune",
+      "type": "trine",
+      "type_ru": "трин",
+      "orb": 2.8,
+      "strength": 0.69,
+      "group": "resource"
+    },
+    {
+      "a": "Sun",
+      "b": "Mars",
+      "type": "opposition",
+      "type_ru": "оппозиция",
+      "orb": 4.0,
+      "strength": 0.61,
+      "group": "tension"
+    },
+    {
+      "a": "Jupiter",
+      "b": "Saturn",
+      "type": "sextile",
+      "type_ru": "секстиль",
+      "orb": 2.5,
+      "strength": 0.7,
+      "group": "resource"
+    },
+    {
+      "a": "Mercury",
+      "b": "Pluto",
+      "type": "conjunction",
+      "type_ru": "соединение",
+      "orb": 4.4,
+      "strength": 0.57,
+      "group": "mixed"
+    }
+  ],
+  "element_balance": {
+    "Fire": 9,
+    "Earth": 24,
+    "Air": 17,
+    "Water": 49
+  },
+  "modality_balance": {
+    "Cardinal": 17,
+    "Fixed": 38,
+    "Mutable": 45
+  },
+  "house_emphasis": {
+    "1": 98,
+    "2": 0,
+    "3": 55,
+    "4": 68,
+    "5": 100,
+    "6": 0,
+    "7": 0,
+    "8": 28,
+    "9": 0,
+    "10": 60,
+    "11": 70,
+    "12": 0
+  },
+  "facts": [
+    {
+      "id": "fact_01",
+      "label": "Солнце в знаке Рыбы",
+      "technical": "Sun in Pisces 15.0°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_02",
+      "label": "Луна в знаке Рыбы",
+      "technical": "Moon in Pisces 11.5°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_03",
+      "label": "Меркурий в знаке Весы",
+      "technical": "Mercury in Libra 8.2°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_04",
+      "label": "Венера в знаке Телец",
+      "technical": "Venus in Taurus 12.8°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_05",
+      "label": "Марс в знаке Телец",
+      "technical": "Mars in Taurus 18.4°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_06",
+      "label": "Юпитер в знаке Скорпион",
+      "technical": "Jupiter in Scorpio 27.8°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_07",
+      "label": "Сатурн в знаке Стрелец",
+      "technical": "Saturn in Sagittarius 10.1°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_08",
+      "label": "Уран в знаке Скорпион",
+      "technical": "Uranus in Scorpio 20.6°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_09",
+      "label": "Нептун в знаке Рыбы",
+      "technical": "Neptune in Pisces 28.8°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_10",
+      "label": "Плутон в знаке Весы",
+      "technical": "Pluto in Libra 24.9°",
+      "section": "technical_basis"
+    },
+    {
+      "id": "fact_20",
+      "label": "Меркурий секстиль Сатурн",
+      "technical": "Mercury sextile Saturn, orb 1.9°",
+      "section": "aspect_network"
+    },
+    {
+      "id": "fact_21",
+      "label": "Марс оппозиция Уран",
+      "technical": "Mars opposition Uranus, orb 2.2°",
+      "section": "aspect_network"
+    },
+    {
+      "id": "fact_22",
+      "label": "Луна квадрат Плутон",
+      "technical": "Moon square Pluto, orb 3.1°",
+      "section": "aspect_network"
+    },
+    {
+      "id": "fact_23",
+      "label": "Венера трин Нептун",
+      "technical": "Venus trine Neptune, orb 2.8°",
+      "section": "aspect_network"
+    },
+    {
+      "id": "fact_24",
+      "label": "Солнце оппозиция Марс",
+      "technical": "Sun opposition Mars, orb 4.0°",
+      "section": "aspect_network"
+    },
+    {
+      "id": "fact_25",
+      "label": "Юпитер секстиль Сатурн",
+      "technical": "Jupiter sextile Saturn, orb 2.5°",
+      "section": "aspect_network"
+    },
+    {
+      "id": "fact_26",
+      "label": "Меркурий соединение Плутон",
+      "technical": "Mercury conjunction Pluto, orb 4.4°",
+      "section": "aspect_network"
+    }
+  ],
+  "themes": [
+    {
+      "id": "theme_structured_mind",
+      "title": "Структурное мышление",
+      "section": "perception_and_mind",
+      "facts": [
+        "fact_20",
+        "fact_03"
+      ],
+      "summary": "Мысль стремится к форме, проверке и точной формулировке."
+    },
+    {
+      "id": "theme_explosive_agency",
+      "title": "Свобода действия vs давление",
+      "section": "agency_and_desire",
+      "facts": [
+        "fact_21",
+        "fact_05"
+      ],
+      "summary": "Воля включается резко, когда появляется ощущение ограничения."
+    },
+    {
+      "id": "theme_private_intensity",
+      "title": "Глубокая эмоциональная переработка",
+      "section": "emotional_regulation",
+      "facts": [
+        "fact_22"
+      ],
+      "summary": "Эмоции проживаются не поверхностно, а через внутреннюю трансформацию."
+    },
+    {
+      "id": "theme_soft_idealization",
+      "title": "Тонкая романтическая восприимчивость",
+      "section": "relationships_and_intimacy",
+      "facts": [
+        "fact_23"
+      ],
+      "summary": "В близости важны образ, тонкость, эстетика и идеал."
+    },
+    {
+      "id": "theme_fixed_earth",
+      "title": "Упорство и телесная устойчивость",
+      "section": "core_pattern",
+      "facts": [
+        "fact_05"
+      ],
+      "summary": "Психика опирается на устойчивый темп и сопротивление хаосу."
+    }
+  ]
+}

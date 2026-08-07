@@ -23,91 +23,89 @@
 
 ## ✨ Что такое Astrotype
 
-Astrotype — это full‑stack SaaS для персональных астрологических отчётов. Платформа соединяет натальную карту, rule‑based интерпретации, соционический движок и narrative‑first UX, чтобы пользователь получал не набор графиков, а понятную историю о себе.
+Astrotype — это full‑stack SaaS для персональных натальных отчётов. Активное направление v2 — natal‑only cloud‑core платформа: после регистрации/заполнения профиля backend рассчитывает проверяемую deterministic foundation, сразу показывает пользователю базовую натальную карту/факты/синтез, а LLM‑нарратив догружается асинхронно поверх сохранённых evidence‑backed данных.
 
-Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым, а пользовательский интерфейс показывает смысл до raw math, confidence и technical evidence.
+Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым; LLM не рассчитывает карту, не добавляет факты и не блокирует первый полезный экран.
 
 ```text
-birth data → chart snapshot → normalized features → rules → claims + evidence → deep synthesis → staged narrative pipeline → PDF / UI
+birth/profile data → deterministic_ready foundation → async LLM segments → partial/complete report → PDF / UI
 ```
 
 ---
 
 ## 🧭 Продукт
 
-| Вертикаль            | Что получает пользователь                                             | Статус                  |
-| -------------------- | --------------------------------------------------------------------- | ----------------------- |
-| **Astrotype Self**   | Натальная карта, личностный портрет, соционика, narrative‑first отчёт | ✅ Реализовано          |
-| **Astrotype Career** | Сильные стороны, профессиональные роли, сценарии развития             | ✅ Реализовано          |
-| **Astrotype Love**   | Совместимость, паттерны отношений, триггеры конфликтов                | 🧭 Запланировано        |
-| **Astrotype Child**  | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию   | 🧭 Запланировано        |
-| **LLM Narrative**    | Staged structured JSON narrative pipeline поверх deterministic report | ✅ Реализовано для Self |
+| Вертикаль | Что получает пользователь | Статус |
+|---|---|---|
+| **Astrotype Self v2** | Натальная карта, deterministic foundation, progressive LLM‑нарратив без соционики | 🟡 Документация готова, реализация начинается |
+| **Astrotype v1 archive** | Исторические Self/Career/LLM narrative документы и идеи для справки | 📦 Архив, не активный контракт |
+| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов | 🧭 После v2 foundation |
+| **Astrotype Child** | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию | 🧭 После v2 foundation |
 
 ### Почему это не «астро‑гадалка»
 
 - Расчёт строится от исходных данных рождения и астрологических объектов.
-- Каждый вывод имеет `evidence trail`: факты → правила → claim.
-- Соционический профиль считается отдельным engine‑слоем, а не придумывается текстом.
-- Технические детали доступны, но спрятаны в progressive disclosure.
-- LLM‑слой пишет валидируемый staged narrative JSON поверх deterministic report и deep synthesis, но не рассчитывает карту и не добавляет факты.
+- Каждый вывод имеет `evidence trail`: chart rows → facts → synthesis → section evidence ids.
+- v2 natal‑only: соционика, Model A, information functions и MBTI не входят в активный v2 отчёт.
+- Технические детали доступны, но не превращаются в отдельный dashboard: deterministic foundation — первый полезный экран, LLM‑нарратив догружается позже.
+- LLM‑слой пишет валидируемые personality sections поверх persisted facts/synthesis/outline, но не рассчитывает карту и не добавляет факты.
 
 ---
 
 ## 🖼️ UX отчёта
 
-Self‑report проектируется как связное чтение, а не debug view.
+Self v2 проектируется как progressive report, а не debug view и не ожидание пустого экрана.
 
 Порядок пользовательского восприятия:
 
-1. **Главное о вас** — 3–5 понятных выводов.
-2. **Астрологическая основа** — Солнце, Луна, Асцендент, стихии, модальности, аспекты.
-3. **Жизненные проявления** — мышление, эмоции, общение, отношения, фокус.
-4. **Сильные стороны и уязвимости** — мягко, без диагнозов и фатализма.
-5. **Близость и сексуальность** — как часть Self‑портрета.
-6. **Развитие** — практические рекомендации.
-7. **Career CTA** — работа затрагивается кратко, глубокий разбор вынесен в Career.
-8. **Технические детали** — chart wheel, Model A, raw scores, confidence, evidence.
+1. **Deterministic foundation** — карта, ASC/MC/chart ruler, планеты, дома, аспекты, балансы, акценты домов.
+2. **Факты и синтез** — evidence‑backed natal facts, темы, tensions/resources/growth vectors.
+3. **Статус нарратива** — `narrative_generating` / `partial` / `complete` без скрытия базовых расчётов.
+4. **LLM‑главы** — core pattern, perception/mind, emotions, agency/desire, relationships/intimacy, growth vector.
+5. **Компактная техническая база** — calculation details остаются доступны, но не выглядят как отдельный dashboard.
 
 Подробнее:
 
-- [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)
-- [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)
-- [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)
+- [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)
+- [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)
+- [`docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md`](docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md)
 
 ---
 
 ## 🏗️ Архитектура
 
-Astrotype — модульный монолит с domain boundaries и contract‑first подходом.
+Astrotype v2 — cloud‑core bounded context поверх существующей платформенной авторизации/профилей. v2 не реиспользует legacy report/socionics REST методы и не импортирует v1 narrative DTO.
 
 ```mermaid
 graph LR
-    U[User] --> FE[Next.js Frontend]
+    U[User] --> FE[Web / PWA / Thin clients]
     FE --> API[FastAPI API]
-    API --> AUTH[Auth & Users]
-    API --> PROF[Profiles]
-    PROF --> CHART[Chart Engine]
-    CHART --> RULES[Rules Engine]
-    RULES --> REPORTS[Reports]
-    REPORTS --> NARR[LLM Narrative Worker]
-    REPORTS --> PDF[PDF on demand]
-    REPORTS --> PG[(PostgreSQL)]
-    API --> PG
-    API --> REDIS[(Redis)]
-    NARR --> REDIS
+    API --> AUTH[Existing Auth & Profiles]
+    API --> V2[astrotype_v2 bounded context]
+    V2 --> CHART[Deterministic Chart Adapter]
+    V2 --> FACTS[Facts + Synthesis + Outline]
+    V2 --> FOUNDATION[deterministic_ready foundation]
+    V2 --> JOBS[Celery LLM segment jobs]
+    JOBS --> LLM[LLM Provider]
+    JOBS --> SEGMENTS[ReportSegmentV2]
+    V2 --> REPORT[NatalReportV2]
+    V2 --> PG[(PostgreSQL source of truth)]
+    JOBS --> REDIS[(Redis broker only)]
+    FOUNDATION --> FE
+    REPORT --> FE
 ```
 
 ### Backend
 
 - **FastAPI** + Pydantic v2
+- existing auth/profile infrastructure remains the platform layer
+- `backend/app/modules/astrotype_v2/` is the new natal‑only bounded context
 - **SQLAlchemy 2.0 async** + Alembic
-- **PostgreSQL 16** for users, profiles, reports, payments
-- **Redis 7** for cache, rate limiting, Celery broker
-- **Swiss Ephemeris / Flatlib** for chart calculations
-- **Rule engine** for explainable interpretations
-- **Celery** for LLM narrative generation and long‑running tasks
-- **WeasyPrint + Jinja2** for PDF rendering
-- Report JSON and narrative JSON persisted in PostgreSQL; PDF renders on demand from stored JSON
+- **PostgreSQL 16** for canonical v2 chart/fact/report artifacts
+- **Redis 7** as broker/runtime only, not durable report storage
+- deterministic chart adapter over the existing low-level chart calculator
+- **Celery** for async LLM segment generation
+- report/calculation JSON persisted in PostgreSQL; PDF renders on demand from stored JSON
 
 ### Frontend
 
@@ -116,11 +114,11 @@ graph LR
 - **TanStack Query** for server state
 - **Zustand** for client state
 - **React Hook Form + Zod** for forms
-- Narrative report components, glossary popovers and technical disclosure blocks
+- progressive report reader: deterministic foundation first, LLM sections inserted when ready
 
 ### Integrations
 
-- Email/password auth with verification
+- Existing email/password auth, verification and OAuth remain platform capabilities
 - Yandex OAuth with HttpOnly cookies
 - Password reset and account linking
 - YooKassa / Yandex Pay payment architecture
@@ -262,11 +260,13 @@ Astrotype/
 │   └── scripts/                 # UX regression checks
 ├── contracts/                   # OpenAPI and AsyncAPI contracts
 ├── docs/
-│   ├── architecture/            # Current data-flow and system maps
-│   ├── design/                  # UX and narrative architecture
-│   ├── features/                # Epic/story documentation
-│   ├── SRS/                     # Software Requirements Specs
-│   └── reviews/                 # Review findings and remediation docs
+│   ├── ROADMAP-v2.md             # Active v2 roadmap
+│   ├── SRS/                      # Software Requirements Specs
+│   ├── architecture/             # v2 C4, DB, cloud-core and calculation docs
+│   ├── design/                   # v2 report samples/mockups
+│   ├── features/                 # Active v2 epic/story documentation
+│   ├── archive/                  # Historical v1 docs, reference-only
+│   └── reviews/                  # Review findings and remediation docs
 ├── docker-compose.yml
 └── README.md
 ```
@@ -287,29 +287,24 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ                                                                                                                       | Назначение                                             |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| [`PROJECT_INDEX.md`](PROJECT_INDEX.md)                                                                                         | Индекс проекта: код, API, docs                         |
-| [`docs/SPEC.md`](docs/SPEC.md)                                                                                                 | Полная спецификация продукта                           |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md)                                                                                           | Дорожная карта                                         |
-| [`docs/astrotype_design_code.md`](docs/astrotype_design_code.md)                                                               | Дизайн‑код и визуальная система                        |
-| [`docs/design/report-ux-redesign.md`](docs/design/report-ux-redesign.md)                                                       | Narrative‑first UX отчёта                              |
-| [`docs/design/self-report-storytelling.md`](docs/design/self-report-storytelling.md)                                           | Сторителлинг Self‑отчёта                               |
-| [`docs/design/llm-report-narrative-architecture.md`](docs/design/llm-report-narrative-architecture.md)                         | Архитектура LLM/staged narrative layer                 |
-| [`docs/architecture/report-generation-data-flow.md`](docs/architecture/report-generation-data-flow.md)                         | Data Flow сборки отчёта от profile до web/PDF          |
-| [`docs/features/E2-identity/CURRENT-AUTH-FLOW.md`](docs/features/E2-identity/CURRENT-AUTH-FLOW.md)                             | Текущий процесс авторизации                            |
-| [`docs/features/E13-report-depth-improvements/FEATURE.md`](docs/features/E13-report-depth-improvements/FEATURE.md)             | Улучшение глубины Self report                          |
-| [`docs/SRS/SRS-E13-report-depth-improvements.md`](docs/SRS/SRS-E13-report-depth-improvements.md)                               | SRS для E13 depth-layer отчёта                         |
-| [`docs/features/E14-staged-narrative-pipeline/FEATURE.md`](docs/features/E14-staged-narrative-pipeline/FEATURE.md)             | E14: shipped staged pipeline для глубокого Self report |
-| [`docs/features/E14-staged-narrative-pipeline/WORKFLOW.md`](docs/features/E14-staged-narrative-pipeline/WORKFLOW.md)           | Workflow staged generate → progress → ready → PDF      |
-| [`docs/features/E14-staged-narrative-pipeline/API.md`](docs/features/E14-staged-narrative-pipeline/API.md)                     | API/state machine staged narrative pipeline            |
-| [`docs/SRS/SRS-E14-staged-narrative-pipeline.md`](docs/SRS/SRS-E14-staged-narrative-pipeline.md)                               | SRS для staged narrative pipeline                      |
-| [`docs/features/E15-self-report-human-storytelling/FEATURE.md`](docs/features/E15-self-report-human-storytelling/FEATURE.md)   | E15: humanized Self report storytelling                |
-| [`docs/features/E15-self-report-human-storytelling/WORKFLOW.md`](docs/features/E15-self-report-human-storytelling/WORKFLOW.md) | Workflow humanized staged storytelling                 |
-| [`docs/SRS/SRS-E15-self-report-human-storytelling.md`](docs/SRS/SRS-E15-self-report-human-storytelling.md)                     | SRS для humanized Self storytelling                    |
-| [`docs/features/`](docs/features/)                                                                                             | Feature/story документация                             |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                             | REST API contract                                      |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                           | Async/event contract                                   |
+| Документ | Назначение |
+|---|---|
+| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md) | Активная дорожная карта v2 |
+| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md) | Umbrella SRS для v2 cloud-core natal platform |
+| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md) | C4 architecture, progressive delivery, v1 quarantine |
+| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md) | v2 PostgreSQL source-of-truth schema |
+| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md) | Natal report pipeline and section architecture |
+| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy |
+| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md) | Derived deterministic calculation references |
+| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md) | Balance calculation rules |
+| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html) | Canonical v2 report visual sample |
+| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json) | Sample data for v2 report visual contract |
+| [`docs/features/README.md`](docs/features/README.md) | Active v2 feature/story index |
+| [`docs/features/E16-v2-e1-architecture-contracts/FEATURE.md`](docs/features/E16-v2-e1-architecture-contracts/FEATURE.md) | V2-E1 architecture/contracts feature |
+| [`docs/archive/README.md`](docs/archive/README.md) | Archive rules: v1 is reference-only |
+| [`docs/archive/v1/`](docs/archive/v1/) | Historical v1 docs retained away from active contracts |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml) | REST API contract, when present |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml) | Async/event contract, when present |
 
 ---
 

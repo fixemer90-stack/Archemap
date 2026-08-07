@@ -62,3 +62,7 @@ docker-compose.override.yml
 .DS_Store
 Desktop.ini
 backend/.venv
+
+# ── Local agent/runtime artifacts ───────────────────────────────────────────
+.hermes/
+backups/

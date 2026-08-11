@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Goal
 
@@ -23,7 +23,6 @@ Related architecture:
 - `docs/architecture/astrotype-v2-derived-calculations/README.md`
 - `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 
-
 ## Scope
 
 This feature covers the `V2-E9` slice from `docs/ROADMAP-v2.md`.
@@ -37,21 +36,21 @@ This feature covers the `V2-E9` slice from `docs/ROADMAP-v2.md`.
 
 ## Acceptance criteria
 
-- [ ] Infographics are generated from stored chart/fact rows only.
-- [ ] User-visible calculation layer matches the canonical sample: key indicators, planet table, balance bars, house accents, aspect network/table and calculation matrix.
-- [ ] Evidence/provenance is available through compact/progressive disclosure, not as a separate dashboard block.
-- [ ] Data is reusable by web and Android clients.
-- [ ] No LLM prose is used as source for chart visuals.
-- [ ] Deferred blocks are absent from MVP UI: archetypes, theme maps, standalone factual-basis cards, most-aspected rankings.
+- [x] Infographics are generated from stored chart/fact rows only.
+- [x] User-visible calculation layer matches the canonical sample: key indicators, planet table, balance bars, house accents, aspect network/table and calculation matrix.
+- [x] Evidence/provenance is available through compact/progressive disclosure, not as a separate dashboard block.
+- [x] Data is reusable by web and Android clients.
+- [x] No LLM prose is used as source for chart visuals.
+- [x] Deferred blocks are absent from MVP UI: archetypes, theme maps, standalone factual-basis cards, most-aspected rankings.
 
 ## Stories
 
-| ID | Story | Status |
-|---|---|---|
-| S01 | [Build infographic data builder](./S01-infographic-data-builder.md) | ⬜ Не начато |
-| S02 | [Build evidence card model](./S02-evidence-card-model.md) | ⬜ Не начато |
-| S03 | [Expose infographic API contract](./S03-infographic-api-contract.md) | ⬜ Не начато |
-| S04 | [Render infographics and facts](./S04-frontend-infographic-rendering.md) | ⬜ Не начато |
+| ID  | Story                                                                    | Status       |
+| --- | ------------------------------------------------------------------------ | ------------ |
+| S01 | [Build infographic data builder](./S01-infographic-data-builder.md)      | ✅ Завершено |
+| S02 | [Build evidence card model](./S02-evidence-card-model.md)                | ✅ Завершено |
+| S03 | [Expose infographic API contract](./S03-infographic-api-contract.md)     | ✅ Завершено |
+| S04 | [Render infographics and facts](./S04-frontend-infographic-rendering.md) | ✅ Завершено |
 
 ## Implementation order
 
@@ -68,3 +67,17 @@ git diff --check -- docs/features/E16-v2-e9-infographics-factual-basis
 ```
 
 For implementation stories, add targeted tests to the active story before marking it complete.
+
+Implementation verification evidence:
+
+```bash
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_infographic_data.py -v --tb=short
+cd backend && uv run pytest tests/unit/test_astrotype_v2 -v --tb=short
+cd backend && uv run ruff check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd backend && uv run ruff format --check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd backend && uv run mypy app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd frontend && node scripts/check-report-ux.mjs
+cd frontend && npx tsc --noEmit --pretty false
+cd frontend && npx eslint src/components/report/v2-calculation-layer.tsx src/components/report/report-narrative-page.tsx src/lib/report/view-model.ts scripts/check-report-ux.mjs
+git diff --check -- backend/app/modules/astrotype_v2 backend/tests/unit/test_astrotype_v2 frontend/src/components/report frontend/src/lib/report frontend/scripts docs/features/E16-v2-e9-infographics-factual-basis
+```

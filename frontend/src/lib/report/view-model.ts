@@ -283,9 +283,23 @@ export interface CalculationParametersViewModel {
   zodiac: string;
 }
 
+export interface V2CalculationLayerViewModel {
+  contract_version: "natal_infographic_data_v2" | string;
+  key_indicators: Record<string, unknown>;
+  planet_positions: Array<Record<string, unknown>>;
+  balance_bars: Array<Record<string, unknown>>;
+  house_accents: Array<Record<string, unknown>>;
+  aspect_network: Array<Record<string, unknown>>;
+  aspect_table: Array<Record<string, unknown>>;
+  calculation_matrix: Record<string, unknown>;
+  evidence_cards: Array<Record<string, unknown>>;
+  progressive_disclosure: Record<string, unknown>;
+}
+
 export interface ReportViewModel {
   product: string;
   narrative?: ReportNarrativeViewModel;
+  v2_calculation_layer?: V2CalculationLayerViewModel;
   calculation_params: CalculationParametersViewModel;
   generated_report?: {
     id: string;
@@ -1197,6 +1211,55 @@ function buildCalculationParameters(
   };
 }
 
+function normalizeV2CalculationLayer(
+  report: GeneratedReportApiResponse | undefined,
+): V2CalculationLayerViewModel | undefined {
+  const reportData = report?.report_data;
+  const directLayer = reportData?.calculation_layer;
+  const nestedLayer =
+    typeof reportData?.v2_infographic === "object" && reportData.v2_infographic
+      ? (reportData.v2_infographic as Record<string, unknown>).calculation_layer
+      : undefined;
+  const layer = directLayer ?? nestedLayer;
+
+  if (!layer || typeof layer !== "object") {
+    return undefined;
+  }
+
+  const record = layer as Record<string, unknown>;
+  if (record.contract_version !== "natal_infographic_data_v2") {
+    return undefined;
+  }
+
+  return {
+    contract_version: String(record.contract_version),
+    key_indicators: asRecord(record.key_indicators),
+    planet_positions: asRecordArray(record.planet_positions),
+    balance_bars: asRecordArray(record.balance_bars),
+    house_accents: asRecordArray(record.house_accents),
+    aspect_network: asRecordArray(record.aspect_network),
+    aspect_table: asRecordArray(record.aspect_table),
+    calculation_matrix: asRecord(record.calculation_matrix),
+    evidence_cards: asRecordArray(record.evidence_cards),
+    progressive_disclosure: asRecord(record.progressive_disclosure),
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function asRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+}
+
 export function toReportViewModel(data: ReportApiData): ReportViewModel {
   const chart: ReportChartData = {
     planets: normalizePlanets(data.chartSnapshot.chart_data.planets),
@@ -1240,6 +1303,7 @@ export function toReportViewModel(data: ReportApiData): ReportViewModel {
       : "self",
     generated_report: generatedReport,
     narrative: normalizeNarrative(data.generatedReport),
+    v2_calculation_layer: normalizeV2CalculationLayer(data.generatedReport),
     calculation_params: buildCalculationParameters(data),
     chart,
     socionics,

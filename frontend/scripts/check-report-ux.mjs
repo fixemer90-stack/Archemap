@@ -21,6 +21,9 @@ const careerCtaPath = resolve("src/components/report/career-cta.tsx");
 const calculationParametersPath = resolve(
   "src/components/report/calculation-parameters.tsx",
 );
+const v2CalculationLayerPath = resolve(
+  "src/components/report/v2-calculation-layer.tsx",
+);
 const evidenceNotesPath = resolve("src/components/report/evidence-notes.tsx");
 const narrativePage = existsSync(narrativePagePath)
   ? readFileSync(narrativePagePath, "utf8")
@@ -36,6 +39,9 @@ const careerCta = existsSync(careerCtaPath)
   : "";
 const calculationParameters = existsSync(calculationParametersPath)
   ? readFileSync(calculationParametersPath, "utf8")
+  : "";
+const v2CalculationLayer = existsSync(v2CalculationLayerPath)
+  ? readFileSync(v2CalculationLayerPath, "utf8")
   : "";
 const evidenceNotes = existsSync(evidenceNotesPath)
   ? readFileSync(evidenceNotesPath, "utf8")
@@ -77,6 +83,7 @@ const requiredFiles = [
   "src/components/report/report-narrative-page.tsx",
   "src/components/report/report-pdf-actions.tsx",
   "src/components/report/calculation-parameters.tsx",
+  "src/components/report/v2-calculation-layer.tsx",
   "src/components/report/narrative-section.tsx",
   "src/components/report/career-cta.tsx",
   "src/components/report/house-scenarios-section.tsx",
@@ -121,7 +128,7 @@ const componentSources = requiredFiles
   .filter((file) => file.endsWith(".tsx"))
   .map((file) => readFileSync(resolve(file), "utf8"))
   .join("\n");
-const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${houseScenarios}\n${careerCta}\n${calculationParameters}\n${evidenceNotes}`;
+const reportNarrativeSource = `${narrativePage}\n${narrativeSection}\n${houseScenarios}\n${careerCta}\n${calculationParameters}\n${v2CalculationLayer}\n${evidenceNotes}`;
 const allUiSource = `${page}\n${componentSources}`;
 const adapter = readFileSync(resolve("src/lib/report/view-model.ts"), "utf8");
 
@@ -173,6 +180,7 @@ const narrativeOrder = [
   "<CareerCTA",
   "<FinalSummary",
   "<ReportPdfActions",
+  "<V2CalculationLayer",
   "<CalculationParameters",
   "<TechnicalDetailsAccordion",
 ];
@@ -677,6 +685,47 @@ if (!registerPage.includes("renderOAuthNameField")) {
   throw new Error(
     "OAuth step 2 must render a required display-name field before birth data",
   );
+}
+
+for (const requiredV2CalculationMarker of [
+  "V2CalculationLayer",
+  "v2_calculation_layer",
+  "natal_infographic_data_v2",
+  "Расчётная карта и факты",
+  "Положения планет",
+  "Балансы",
+  "Акценты домов",
+  "Аспекты",
+  "Матрица расчёта и источники",
+  "planet_positions",
+  "balance_bars",
+  "house_accents",
+  "aspect_network",
+  "aspect_table",
+  "calculation_matrix",
+  "evidence_cards",
+  "progressive_disclosure",
+]) {
+  if (
+    !adapter.includes(requiredV2CalculationMarker) &&
+    !reportNarrativeSource.includes(requiredV2CalculationMarker)
+  ) {
+    throw new Error(
+      `Missing v2 calculation-layer marker: ${requiredV2CalculationMarker}`,
+    );
+  }
+}
+
+for (const deferredV2Block of [
+  "theme_map",
+  "factual-basis dashboard",
+  "most_aspected",
+]) {
+  if (v2CalculationLayer.includes(deferredV2Block)) {
+    throw new Error(
+      `Deferred v2 calculation block rendered: ${deferredV2Block}`,
+    );
+  }
 }
 
 console.log("Report UX structure check passed");

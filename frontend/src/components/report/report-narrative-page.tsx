@@ -9,6 +9,7 @@ import {
 import { PatternTensionsSection } from "@/components/report/pattern-tensions-section";
 import { ReportPdfActions } from "@/components/report/report-pdf-actions";
 import { TechnicalDetailsAccordion } from "@/components/report/technical-details-accordion";
+import { V2CalculationLayer } from "@/components/report/v2-calculation-layer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TermHelp } from "@/components/glossary/term-help";
 import {
@@ -39,6 +40,7 @@ const NARRATIVE_RENDER_ORDER = [
   "<CareerCTA",
   "<FinalSummary",
   "<ReportPdfActions",
+  "<V2CalculationLayer",
   "<CalculationParameters",
   "<TechnicalDetailsAccordion",
 ] as const;
@@ -171,6 +173,7 @@ export function ReportNarrativePage({
         isDownloading={isDownloadingPdf}
         onDownload={onDownloadPdf}
       />
+      <V2CalculationLayer layer={data.v2_calculation_layer} />
       <CalculationParameters params={data.calculation_params} />
       <TechnicalDetailsAccordion data={data} />
       <span className="sr-only">{allowedSelfSectionIds.join(",")}</span>

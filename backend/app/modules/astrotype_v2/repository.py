@@ -200,6 +200,34 @@ class AstrotypeV2Repository:
         result = await self.session.execute(select(models.NatalReport).where(models.NatalReport.id == report_id))
         return result.scalar_one_or_none()
 
+    async def get_report_for_user(self, *, report_id: uuid.UUID, user_id: uuid.UUID) -> models.NatalReport | None:
+        """Return one report only when its v2 chart belongs to the user."""
+        result = await self.session.execute(
+            select(models.NatalReport)
+            .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
+            .where(
+                models.NatalReport.id == report_id,
+                models.NatalChart.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_latest_report_for_profile(
+        self, *, profile_id: uuid.UUID, user_id: uuid.UUID
+    ) -> models.NatalReport | None:
+        """Return latest v2 report for a profile owned by the user."""
+        result = await self.session.execute(
+            select(models.NatalReport)
+            .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
+            .where(
+                models.NatalChart.profile_id == profile_id,
+                models.NatalChart.user_id == user_id,
+            )
+            .order_by(models.NatalReport.version.desc(), models.NatalReport.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def get_latest_report_for_chart(self, chart_id: uuid.UUID) -> models.NatalReport | None:
         """Return the newest versioned v2 report artifact for one chart."""
         result = await self.session.execute(

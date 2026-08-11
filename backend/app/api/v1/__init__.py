@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1.health import router as health_router
 from app.modules.admin.router import router as admin_router
+from app.modules.astrotype_v2.router import router as astrotype_v2_router
 from app.modules.auth.router import router as auth_router
 from app.modules.authorization.router import router as authorization_router
 from app.modules.billing.router import router as billing_router
@@ -37,5 +38,6 @@ api_router.include_router(notifications_router)
 api_router.include_router(admin_router)
 api_router.include_router(profiles_router)
 api_router.include_router(charts_router)
+api_router.include_router(astrotype_v2_router)
 api_router.include_router(rules_router)
 api_router.include_router(reports_router)

@@ -4,6 +4,6 @@ Import task modules so Celery autodiscovery against `workers.tasks`
 registers concrete task definitions.
 """
 
-from workers.tasks import notifications, reconciliation, renewals, reports
+from workers.tasks import astrotype_v2, notifications, reconciliation, renewals, reports
 
-__all__ = ["notifications", "reconciliation", "renewals", "reports"]
+__all__ = ["astrotype_v2", "notifications", "reconciliation", "renewals", "reports"]

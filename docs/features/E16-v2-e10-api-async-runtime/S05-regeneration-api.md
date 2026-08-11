@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Context
 
@@ -19,7 +19,6 @@ Related architecture:
 - `docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`
 - `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 
-
 ## What to do
 
 1. Read the related architecture and roadmap documents.
@@ -30,23 +29,21 @@ Related architecture:
 
 ## Files likely affected
 
-| Path | Action |
-|---|---|
-| `backend/app/modules/astrotype_v2/` | Add/update v2 backend module code when implementation starts. |
-| `docs/features/E16-v2-e10-api-async-runtime/` | Keep feature/story docs synchronized. |
-| `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md` | Update if functional/API/data contract changes. |
+| Path                                          | Action                                                        |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| `backend/app/modules/astrotype_v2/`           | Add/update v2 backend module code when implementation starts. |
+| `docs/features/E16-v2-e10-api-async-runtime/` | Keep feature/story docs synchronized.                         |
+| `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md` | Update if functional/API/data contract changes.               |
 
 ## Acceptance criteria
 
-- [ ] Scope is implemented without crossing into unrelated v2 epics.
-- [ ] v2 remains natal-only and does not depend on socionics/Model A/function strengths.
-- [ ] Behavior is backed by tests or documented verification evidence.
-- [ ] Relevant parent `FEATURE.md` row is updated when the story status changes.
+- [x] Scope is implemented without crossing into unrelated v2 epics.
+- [x] v2 remains natal-only and does not depend on socionics/Model A/function strengths.
+- [x] Behavior is backed by tests or documented verification evidence.
+- [x] Relevant parent `FEATURE.md` row is updated when the story status changes.
 
 ## Verification commands
 
-Fill this when implementation starts:
-
 ```bash
-# targeted tests/verification for this story
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_api_runtime.py::test_router_is_registered_with_authenticated_multi_client_endpoints tests/unit/test_astrotype_v2/test_api_runtime.py::test_repository_ownership_queries_join_v2_chart_user_and_profile -v --tb=short
 ```

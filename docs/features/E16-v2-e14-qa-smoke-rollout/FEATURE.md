@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Goal
 
@@ -21,7 +21,6 @@ Related architecture:
 - `docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`
 - `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 
-
 ## Scope
 
 This feature covers the `V2-E14` slice from `docs/ROADMAP-v2.md`.
@@ -35,21 +34,21 @@ This feature covers the `V2-E14` slice from `docs/ROADMAP-v2.md`.
 
 ## Acceptance criteria
 
-- [ ] A smoke profile generates complete v2 report.
-- [ ] Facts shown to user match report evidence ids.
-- [ ] Infographics render from deterministic data.
-- [ ] No socionics appears in v2 payloads/prompts/UI.
-- [ ] Runtime proof includes actual report readiness, not infra health only.
+- [x] A smoke profile generates complete v2 report.
+- [x] Facts shown to user match report evidence ids.
+- [x] Infographics render from deterministic data.
+- [x] No socionics appears in v2 payloads/prompts/UI.
+- [x] Runtime proof includes actual report readiness, not infra health only.
 
 ## Stories
 
-| ID | Story | Status |
-|---|---|---|
-| S01 | [Add backend contract tests](./S01-backend-contract-tests.md) | ⬜ Не начато |
-| S02 | [Add quality regression suite](./S02-quality-regression-suite.md) | ⬜ Не начато |
-| S03 | [Run live runtime smoke](./S03-runtime-smoke.md) | ⬜ Не начато |
-| S04 | [Run multi-client smoke](./S04-multi-client-smoke.md) | ⬜ Не начато |
-| S05 | [Add observability and rollout checklist](./S05-observability-rollout.md) | ⬜ Не начато |
+| ID  | Story                                                                     | Status       |
+| --- | ------------------------------------------------------------------------- | ------------ |
+| S01 | [Add backend contract tests](./S01-backend-contract-tests.md)             | ✅ Завершено |
+| S02 | [Add quality regression suite](./S02-quality-regression-suite.md)         | ✅ Завершено |
+| S03 | [Run live runtime smoke](./S03-runtime-smoke.md)                          | ✅ Завершено |
+| S04 | [Run multi-client smoke](./S04-multi-client-smoke.md)                     | ✅ Завершено |
+| S05 | [Add observability and rollout checklist](./S05-observability-rollout.md) | ✅ Завершено |
 
 ## Implementation order
 

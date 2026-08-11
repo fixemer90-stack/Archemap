@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Context
 
@@ -40,21 +40,21 @@ The runner must not silently truncate long output. No artificial caps may be use
 
 ## Files likely affected
 
-| Path | Action |
-|---|---|
+| Path                                               | Action                                           |
+| -------------------------------------------------- | ------------------------------------------------ |
 | `backend/app/modules/astrotype_v2/llm_segments.py` | Provider call, continuation and retry lifecycle. |
-| `backend/app/modules/astrotype_v2/repositories.py` | Persist segment generation artifacts. |
-| `backend/app/modules/astrotype_v2/schemas.py` | Segment status/continuation schemas. |
-| `backend/tests/unit/test_astrotype_v2/` | Runner tests when implementation starts. |
+| `backend/app/modules/astrotype_v2/repositories.py` | Persist segment generation artifacts.            |
+| `backend/app/modules/astrotype_v2/schemas.py`      | Segment status/continuation schemas.             |
+| `backend/tests/unit/test_astrotype_v2/`            | Runner tests when implementation starts.         |
 
 ## Acceptance criteria
 
-- [ ] Each segment request/response is persisted.
-- [ ] Provider failures retry at segment level.
-- [ ] Output-limit stops trigger continuation instead of final truncation.
-- [ ] Long valid sections are preserved, not capped.
-- [ ] Runner records prompt/input/model/provider/version/hash metadata.
-- [ ] Runner never reruns the full report just because one segment failed.
+- [x] Each segment request/response is persisted.
+- [x] Provider failures retry at segment level.
+- [x] Output-limit stops trigger continuation instead of final truncation.
+- [x] Long valid sections are preserved, not capped.
+- [x] Runner records prompt/input/model/provider/version/hash metadata.
+- [x] Runner never reruns the full report just because one segment failed.
 
 ## Verification commands
 

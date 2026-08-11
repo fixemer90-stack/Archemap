@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Context
 
@@ -44,20 +44,20 @@ If output is cut by provider token limits, the runner should request continuatio
 
 ## Files likely affected
 
-| Path | Action |
-|---|---|
-| `backend/app/modules/astrotype_v2/llm_segments.py` | Prompt construction / provider call. |
-| `backend/app/modules/astrotype_v2/prompts/` | Prompt templates if split into files. |
-| `backend/tests/unit/test_astrotype_v2/` | Prompt contract tests when implementation starts. |
+| Path                                               | Action                                            |
+| -------------------------------------------------- | ------------------------------------------------- |
+| `backend/app/modules/astrotype_v2/llm_segments.py` | Prompt construction / provider call.              |
+| `backend/app/modules/astrotype_v2/prompts/`        | Prompt templates if split into files.             |
+| `backend/tests/unit/test_astrotype_v2/`            | Prompt contract tests when implementation starts. |
 
 ## Acceptance criteria
 
-- [ ] Prompt contracts exist for every upper narrative section.
-- [ ] Prompts require expanded, specific, non-summary prose.
-- [ ] Prompts do not include artificial low length caps.
-- [ ] Prompts require typed JSON output.
-- [ ] Prompts forbid invented chart facts and forbidden themes.
-- [ ] Prompts exclude lower deterministic calculation-layer rendering.
+- [x] Prompt contracts exist for every upper narrative section.
+- [x] Prompts require expanded, specific, non-summary prose.
+- [x] Prompts do not include artificial low length caps.
+- [x] Prompts require typed JSON output.
+- [x] Prompts forbid invented chart facts and forbidden themes.
+- [x] Prompts exclude lower deterministic calculation-layer rendering.
 
 ## Verification commands
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Context
 
@@ -42,22 +42,24 @@ continuation_policy
 
 ## Files likely affected
 
-| Path | Action |
-|---|---|
-| `backend/app/modules/astrotype_v2/segment_inputs.py` | Build section JSON inputs. |
-| `backend/app/modules/astrotype_v2/schemas.py` | Define `SectionRenderInputV2`. |
-| `backend/tests/unit/test_astrotype_v2/` | Contract tests when implementation starts. |
-| `docs/features/E16-v2-e7-modular-llm-generation/` | Keep feature/story docs synchronized. |
+| Path                                                 | Action                                     |
+| ---------------------------------------------------- | ------------------------------------------ |
+| `backend/app/modules/astrotype_v2/segment_inputs.py` | Build section JSON inputs.                 |
+| `backend/app/modules/astrotype_v2/schemas.py`        | Define `SectionRenderInputV2`.             |
+| `backend/tests/unit/test_astrotype_v2/`              | Contract tests when implementation starts. |
+| `docs/features/E16-v2-e7-modular-llm-generation/`    | Keep feature/story docs synchronized.      |
 
 ## Acceptance criteria
 
-- [ ] One input JSON is produced per upper report section.
-- [ ] Input contains owned/reference/forbidden theme boundaries.
-- [ ] Input includes enough evidence for long section prose.
-- [ ] Input contains a depth contract and continuation policy.
-- [ ] No artificial low section-size cap is encoded in the input contract.
-- [ ] v2 remains natal-only and does not depend on socionics/Model A/function strengths.
+- [x] One input JSON is produced per upper report section.
+- [x] Input contains owned/reference/forbidden theme boundaries.
+- [x] Input includes enough evidence for long section prose.
+- [x] Input contains a depth contract and continuation policy.
+- [x] No artificial low section-size cap is encoded in the input contract.
+- [x] v2 remains natal-only and does not depend on socionics/Model A/function strengths.
 
 ## Verification commands
 
-Fill with targeted tests when implementation starts.
+```bash
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_segment_inputs.py -v --tb=short
+```

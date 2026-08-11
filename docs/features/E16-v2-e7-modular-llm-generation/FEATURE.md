@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Goal
 
@@ -57,23 +57,23 @@ In scope:
 
 ## Acceptance criteria
 
-- [ ] Each segment request is persisted.
-- [ ] Each segment output links to evidence ids.
-- [ ] Failed segments can be retried individually.
-- [ ] The report is not artificially length-capped; section completeness follows owned evidence.
-- [ ] Prompt contracts explicitly ask for deep, expanded, non-summary prose.
-- [ ] Segment runner supports continuation/chunking when provider output is cut by token limits.
-- [ ] Validators reject shallow/generic/underdeveloped sections, but do not reject a valid section merely because it is long.
-- [ ] Final assembly preserves long validated section text.
+- [x] Each segment request is persisted.
+- [x] Each segment output links to evidence ids.
+- [x] Failed segments can be retried individually.
+- [x] The report is not artificially length-capped; section completeness follows owned evidence.
+- [x] Prompt contracts explicitly ask for deep, expanded, non-summary prose.
+- [x] Segment runner supports continuation/chunking when provider output is cut by token limits.
+- [x] Validators reject shallow/generic/underdeveloped sections, but do not reject a valid section merely because it is long.
+- [x] Final assembly preserves long validated section text.
 
 ## Stories
 
-| ID | Story | Status |
-|---|---|---|
-| S01 | [Build SectionRenderInputV2](./S01-section-render-inputs.md) | ⬜ Не начато |
-| S02 | [Write segment prompt contracts](./S02-segment-prompt-contracts.md) | ⬜ Не начато |
-| S03 | [Implement segment runner](./S03-llm-segment-runner.md) | ⬜ Не начато |
-| S04 | [Validate segment outputs](./S04-segment-validation.md) | ⬜ Не начато |
+| ID  | Story                                                               | Status       |
+| --- | ------------------------------------------------------------------- | ------------ |
+| S01 | [Build SectionRenderInputV2](./S01-section-render-inputs.md)        | ✅ Завершено |
+| S02 | [Write segment prompt contracts](./S02-segment-prompt-contracts.md) | ✅ Завершено |
+| S03 | [Implement segment runner](./S03-llm-segment-runner.md)             | ✅ Завершено |
+| S04 | [Validate segment outputs](./S04-segment-validation.md)             | ✅ Завершено |
 
 ## Implementation order
 
@@ -90,3 +90,14 @@ git diff --check -- docs/features/E16-v2-e7-modular-llm-generation docs/SRS/SRS-
 ```
 
 For implementation stories, add targeted tests to the active story before marking it complete.
+
+Implementation verification evidence:
+
+```bash
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_segment_inputs.py tests/unit/test_astrotype_v2/test_llm_segments.py -v --tb=short
+cd backend && uv run pytest tests/unit/test_astrotype_v2 -v --tb=short
+cd backend && uv run ruff check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd backend && uv run ruff format --check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd backend && uv run mypy app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+git diff --check -- backend/app/modules/astrotype_v2 backend/tests/unit/test_astrotype_v2 docs/features/E16-v2-e7-modular-llm-generation
+```

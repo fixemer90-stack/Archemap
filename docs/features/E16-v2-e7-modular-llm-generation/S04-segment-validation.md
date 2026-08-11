@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Context
 
@@ -58,21 +58,21 @@ Disallowed as product validators:
 
 ## Files likely affected
 
-| Path | Action |
-|---|---|
-| `backend/app/modules/astrotype_v2/segment_validation.py` | Segment validation logic. |
-| `backend/app/modules/astrotype_v2/schemas.py` | `ReportSegmentOutputV2` schema. |
-| `backend/tests/unit/test_astrotype_v2/` | Validation tests when implementation starts. |
+| Path                                                     | Action                                       |
+| -------------------------------------------------------- | -------------------------------------------- |
+| `backend/app/modules/astrotype_v2/segment_validation.py` | Segment validation logic.                    |
+| `backend/app/modules/astrotype_v2/schemas.py`            | `ReportSegmentOutputV2` schema.              |
+| `backend/tests/unit/test_astrotype_v2/`                  | Validation tests when implementation starts. |
 
 ## Acceptance criteria
 
-- [ ] Invalid JSON fails validation.
-- [ ] Unknown evidence ids fail validation.
-- [ ] Forbidden theme expansion fails validation.
-- [ ] Invented chart facts fail validation.
-- [ ] Shallow/generic sections fail validation.
-- [ ] Long grounded sections pass validation.
-- [ ] No artificial max-length validator is introduced.
+- [x] Invalid JSON fails validation.
+- [x] Unknown evidence ids fail validation.
+- [x] Forbidden theme expansion fails validation.
+- [x] Invented chart facts fail validation.
+- [x] Shallow/generic sections fail validation.
+- [x] Long grounded sections pass validation.
+- [x] No artificial max-length validator is introduced.
 
 ## Verification commands
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Context
 
@@ -19,7 +19,6 @@ Related architecture:
 - `docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`
 - `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 
-
 ## What to do
 
 1. Read the related architecture and roadmap documents.
@@ -30,23 +29,25 @@ Related architecture:
 
 ## Files likely affected
 
-| Path | Action |
-|---|---|
-| `backend/app/modules/astrotype_v2/` | Add/update v2 backend module code when implementation starts. |
-| `docs/features/E16-v2-e13-desktop-thin-client-decision/` | Keep feature/story docs synchronized. |
-| `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md` | Update if functional/API/data contract changes. |
+| Path                                                     | Action                                                        |
+| -------------------------------------------------------- | ------------------------------------------------------------- |
+| `backend/app/modules/astrotype_v2/`                      | Add/update v2 backend module code when implementation starts. |
+| `docs/features/E16-v2-e13-desktop-thin-client-decision/` | Keep feature/story docs synchronized.                         |
+| `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`            | Update if functional/API/data contract changes.               |
 
 ## Acceptance criteria
 
-- [ ] Scope is implemented without crossing into unrelated v2 epics.
-- [ ] v2 remains natal-only and does not depend on socionics/Model A/function strengths.
-- [ ] Behavior is backed by tests or documented verification evidence.
-- [ ] Relevant parent `FEATURE.md` row is updated when the story status changes.
+- [x] Scope is implemented without crossing into unrelated v2 epics.
+- [x] v2 remains natal-only and does not depend on socionics/Model A/function strengths.
+- [x] Behavior is backed by tests or documented verification evidence.
+- [x] Relevant parent `FEATURE.md` row is updated when the story status changes.
 
 ## Verification commands
 
-Fill this when implementation starts:
+Decision recorded: `.exe` is not required for v2 core launch; desktop is optional and must not block web/PWA/Android.
+
+Decision artifact: `docs/architecture/astrotype-v2-desktop-thin-client-decision.md`
 
 ```bash
-# targeted tests/verification for this story
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_desktop_thin_client_decision.py::test_desktop_decision_artifact_exists_and_defers_exe_from_core_launch -v --tb=short
 ```

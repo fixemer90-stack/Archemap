@@ -55,7 +55,7 @@ Feature contracts:
 - `V2-E10` — `API & async runtime`: `docs/features/E16-v2-e10-api-async-runtime/FEATURE.md`
 - `V2-E11` — `Web responsive reader`: `docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md`
 - `V2-E12` — `Android MVP path`: `docs/features/E16-v2-e12-android-mvp-path/FEATURE.md`
-- `V2-E13` — `Desktop thin client decision`: `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md`
+- `V2-E13` — `Desktop thin client decision`: `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md`; decision artifact: `docs/architecture/astrotype-v2-desktop-thin-client-decision.md`.
 - `V2-E14` — `QA, smoke, rollout`: `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`
 
 ---
@@ -68,18 +68,19 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 
 ### System functions
 
-| Function | Description |
-|---|---|
-| Natal calculation | Calculate chart placements, houses, aspects and balances without LLM after registration/profile completion provides enough birth data. |
-| Persistence | Save chart entities/facts/reports in PostgreSQL. |
-| Fact extraction | Convert chart rows into evidence-backed facts. |
-| Synthesis | Build themes, tensions, resources and growth vectors from facts. |
-| Outline | Assign themes to sections with owned/reference/forbidden semantics. |
-| Deterministic foundation delivery | Return chart/facts/synthesis/outline/calculation-layer data as `deterministic_ready` before LLM completion. |
-| LLM generation | Generate detailed section prose asynchronously from builder-created JSON input for one personality segment. |
-| Assembly | Progressively assemble upper narrative sections over the deterministic foundation. |
-| Calculation layer | Generate report calculation data without LLM. |
-| Multi-client API | Serve same report to web, Android and desktop clients. |
+| Function                          | Description                                                                                                                            |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Natal calculation                 | Calculate chart placements, houses, aspects and balances without LLM after registration/profile completion provides enough birth data. |
+| Persistence                       | Save chart entities/facts/reports in PostgreSQL.                                                                                       |
+| Fact extraction                   | Convert chart rows into evidence-backed facts.                                                                                         |
+| Synthesis                         | Build themes, tensions, resources and growth vectors from facts.                                                                       |
+| Outline                           | Assign themes to sections with owned/reference/forbidden semantics.                                                                    |
+| Deterministic foundation delivery | Return chart/facts/synthesis/outline/calculation-layer data as `deterministic_ready` before LLM completion.                            |
+| LLM generation                    | Generate detailed section prose asynchronously from builder-created JSON input for one personality segment.                            |
+| Assembly                          | Progressively assemble upper narrative sections over the deterministic foundation.                                                     |
+| Calculation layer                 | Generate report calculation data without LLM.                                                                                          |
+| Multi-client API                  | Serve same report to web, Android and desktop clients.                                                                                 |
+| Desktop thin-client decision      | Windows `.exe` is optional for v2 core launch; if pursued, it uses the same backend API/report ids and cache-only local storage.       |
 
 ---
 
@@ -154,16 +155,16 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 
 ## 4. Non-functional requirements
 
-| Category | Requirement |
-|---|---|
-| Reliability | Report jobs are resumable/retryable at segment boundary. |
-| Data safety | v2 foundation migrations preserve platform identity/access and current profile input data. Legacy v1 product artifacts may be purged from active storage only through an explicit inventory + backup/snapshot + staging-verified cleanup runbook. |
-| Traceability | Every generated claim must map to evidence ids or be rejected by validation. |
-| Security | LLM keys and billing entitlements are backend-owned. |
-| Portability | Web, Android and desktop clients share the same API/report ids. |
-| Performance | Status/progress APIs should be cheap to poll from mobile. |
-| Maintainability | Reference data is versioned and not hardcoded across pipeline code. |
-| Testability | Each stage can be tested from stored upstream artifacts. |
+| Category        | Requirement                                                                                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reliability     | Report jobs are resumable/retryable at segment boundary.                                                                                                                                                                                          |
+| Data safety     | v2 foundation migrations preserve platform identity/access and current profile input data. Legacy v1 product artifacts may be purged from active storage only through an explicit inventory + backup/snapshot + staging-verified cleanup runbook. |
+| Traceability    | Every generated claim must map to evidence ids or be rejected by validation.                                                                                                                                                                      |
+| Security        | LLM keys and billing entitlements are backend-owned.                                                                                                                                                                                              |
+| Portability     | Web, Android and desktop clients share the same API/report ids.                                                                                                                                                                                   |
+| Performance     | Status/progress APIs should be cheap to poll from mobile.                                                                                                                                                                                         |
+| Maintainability | Reference data is versioned and not hardcoded across pipeline code.                                                                                                                                                                               |
+| Testability     | Each stage can be tested from stored upstream artifacts.                                                                                                                                                                                          |
 
 ---
 
@@ -204,7 +205,6 @@ API details are refined in `V2-E10: API & async runtime`.
 Endpoint note: old separate `/facts` and `/infographics` endpoint names are not the current MVP naming preference for the user-facing report. If debug/provenance endpoints are introduced later, they must remain internal/progressive disclosure and must not recreate a visible “factual basis” dashboard.
 
 Legacy API note: old v1 report/socionics REST methods must not appear as v2 compatibility endpoints. If any old endpoint remains temporarily reachable during migration, it must be outside the v2 namespace, unlinked from v2 clients and covered by a separate deprecation/removal story.
-
 
 ---
 

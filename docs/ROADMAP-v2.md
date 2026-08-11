@@ -49,22 +49,22 @@ v2 foundation is not:
 
 ## Roadmap overview
 
-| Epic | Name | Status | Goal | Feature doc |
-|---|---|---|---|---|
-| V2-E1 | Architecture & contracts | ✅ Contract docs aligned | Freeze boundaries, contracts, storage, progressive delivery and multi-client strategy. | `docs/features/E16-v2-e1-architecture-contracts/FEATURE.md` |
-| V2-E2 | Database foundation | ⬜ Planned | Add normalized v2 PostgreSQL tables and migrations. | `docs/features/E16-v2-e2-database-foundation/FEATURE.md` |
-| V2-E3 | Natal chart adapter | ⬜ Planned | Convert chart engine output into v2 rows/contracts without socionics. | `docs/features/E16-v2-e3-natal-chart-adapter/FEATURE.md` |
-| V2-E4 | Reference data | ⬜ Planned | Add aspect/sign/planet/house meaning reference data. | `docs/features/E16-v2-e4-reference-data/FEATURE.md` |
-| V2-E5 | Fact extraction | ⬜ Planned | Generate persisted evidence-backed natal facts. | `docs/features/E16-v2-e5-fact-extraction/FEATURE.md` |
-| V2-E6 | Synthesis & outline | ⬜ Planned | Build themes and ownership-based section plans. | `docs/features/E16-v2-e6-synthesis-outline/FEATURE.md` |
-| V2-E7 | Modular LLM generation | ⬜ Planned | Generate long detailed personality segments from curated facts. | `docs/features/E16-v2-e7-modular-llm-generation/FEATURE.md` |
-| V2-E8 | Final report assembly | ⬜ Planned | Assemble full report and validate evidence/duplication boundaries. | `docs/features/E16-v2-e8-final-report-assembly/FEATURE.md` |
-| V2-E9 | Infographics & calculation layer | ⬜ Planned | Show deterministic natal visuals and calculation/fact data without LLM. | `docs/features/E16-v2-e9-infographics-factual-basis/FEATURE.md` |
-| V2-E10 | API & async runtime | ⬜ Planned | Expose deterministic readiness, generation status and report APIs. | `docs/features/E16-v2-e10-api-async-runtime/FEATURE.md` |
-| V2-E11 | Web responsive reader | ⬜ Planned | Build mobile-friendly web report UX. | `docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md` |
-| V2-E12 | Android MVP path | ⬜ Planned | Prepare PWA/Capacitor Android shell. | `docs/features/E16-v2-e12-android-mvp-path/FEATURE.md` |
-| V2-E13 | Desktop thin client decision | ⬜ Planned | Decide whether `.exe` is needed and define thin-client packaging. | `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md` |
-| V2-E14 | QA, smoke, rollout | ⬜ Planned | Verify generation quality, runtime reliability and rollout safety. | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md` |
+| Epic   | Name                             | Status                   | Goal                                                                                                    | Feature doc                                                        |
+| ------ | -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| V2-E1  | Architecture & contracts         | ✅ Contract docs aligned | Freeze boundaries, contracts, storage, progressive delivery and multi-client strategy.                  | `docs/features/E16-v2-e1-architecture-contracts/FEATURE.md`        |
+| V2-E2  | Database foundation              | ⬜ Planned               | Add normalized v2 PostgreSQL tables and migrations.                                                     | `docs/features/E16-v2-e2-database-foundation/FEATURE.md`           |
+| V2-E3  | Natal chart adapter              | ⬜ Planned               | Convert chart engine output into v2 rows/contracts without socionics.                                   | `docs/features/E16-v2-e3-natal-chart-adapter/FEATURE.md`           |
+| V2-E4  | Reference data                   | ⬜ Planned               | Add aspect/sign/planet/house meaning reference data.                                                    | `docs/features/E16-v2-e4-reference-data/FEATURE.md`                |
+| V2-E5  | Fact extraction                  | ⬜ Planned               | Generate persisted evidence-backed natal facts.                                                         | `docs/features/E16-v2-e5-fact-extraction/FEATURE.md`               |
+| V2-E6  | Synthesis & outline              | ⬜ Planned               | Build themes and ownership-based section plans.                                                         | `docs/features/E16-v2-e6-synthesis-outline/FEATURE.md`             |
+| V2-E7  | Modular LLM generation           | ⬜ Planned               | Generate long detailed personality segments from curated facts.                                         | `docs/features/E16-v2-e7-modular-llm-generation/FEATURE.md`        |
+| V2-E8  | Final report assembly            | ⬜ Planned               | Assemble full report and validate evidence/duplication boundaries.                                      | `docs/features/E16-v2-e8-final-report-assembly/FEATURE.md`         |
+| V2-E9  | Infographics & calculation layer | ⬜ Planned               | Show deterministic natal visuals and calculation/fact data without LLM.                                 | `docs/features/E16-v2-e9-infographics-factual-basis/FEATURE.md`    |
+| V2-E10 | API & async runtime              | ⬜ Planned               | Expose deterministic readiness, generation status and report APIs.                                      | `docs/features/E16-v2-e10-api-async-runtime/FEATURE.md`            |
+| V2-E11 | Web responsive reader            | ⬜ Planned               | Build mobile-friendly web report UX.                                                                    | `docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md`        |
+| V2-E12 | Android MVP path                 | ⬜ Planned               | Prepare PWA/Capacitor Android shell.                                                                    | `docs/features/E16-v2-e12-android-mvp-path/FEATURE.md`             |
+| V2-E13 | Desktop thin client decision     | ✅ Completed             | `.exe` is not required for core launch; if built, it remains a thin API client with cache-only storage. | `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md` |
+| V2-E14 | QA, smoke, rollout               | ⬜ Planned               | Verify generation quality, runtime reliability and rollout safety.                                      | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`             |
 
 ---
 
@@ -87,12 +87,12 @@ Deliverables:
 
 Tasks:
 
-| # | Task | Output | Acceptance criteria |
-|---|---|---|---|
-| 1.1 | Align architecture docs | `docs/architecture/astrotype-v2-*.md` | Docs agree on cloud-core, LLM boundaries, infographics and facts. |
-| 1.2 | Define domain contracts | contract draft | `NatalChartV2`, `NatalFactV2`, `NatalSynthesisV2`, `ReportOutlineV2`, `NatalReportV2`. |
-| 1.3 | Define segment taxonomy | section spec | Sections have owned/reference/forbidden semantics. |
-| 1.4 | Define mobile/desktop strategy | strategy doc | Android is client-first; `.exe` is thin client if needed. |
+| #   | Task                           | Output                                | Acceptance criteria                                                                    |
+| --- | ------------------------------ | ------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1.1 | Align architecture docs        | `docs/architecture/astrotype-v2-*.md` | Docs agree on cloud-core, LLM boundaries, infographics and facts.                      |
+| 1.2 | Define domain contracts        | contract draft                        | `NatalChartV2`, `NatalFactV2`, `NatalSynthesisV2`, `ReportOutlineV2`, `NatalReportV2`. |
+| 1.3 | Define segment taxonomy        | section spec                          | Sections have owned/reference/forbidden semantics.                                     |
+| 1.4 | Define mobile/desktop strategy | strategy doc                          | Android is client-first; `.exe` is thin client if needed.                              |
 
 ---
 
@@ -137,13 +137,13 @@ Goal: convert existing chart calculation output into v2 normalized entities.
 
 Tasks:
 
-| # | Task | Acceptance criteria |
-|---|---|---|
-| 3.1 | Build `chart_adapter.py` | Produces `NatalChartV2` without socionics/function strengths. |
-| 3.2 | Persist planet positions | Mars/Taurus/10/retrograde style rows saved. |
-| 3.3 | Persist houses | 12 house cusps saved with signs/longitudes. |
-| 3.4 | Persist aspects | Aspects saved with canonical planet order, orb, angle, strength. |
-| 3.5 | Persist balances/patterns | Elements/modalities/house emphasis/pattern rows saved. |
+| #   | Task                      | Acceptance criteria                                              |
+| --- | ------------------------- | ---------------------------------------------------------------- |
+| 3.1 | Build `chart_adapter.py`  | Produces `NatalChartV2` without socionics/function strengths.    |
+| 3.2 | Persist planet positions  | Mars/Taurus/10/retrograde style rows saved.                      |
+| 3.3 | Persist houses            | 12 house cusps saved with signs/longitudes.                      |
+| 3.4 | Persist aspects           | Aspects saved with canonical planet order, orb, angle, strength. |
+| 3.5 | Persist balances/patterns | Elements/modalities/house emphasis/pattern rows saved.           |
 
 Verification:
 
@@ -376,14 +376,14 @@ Goal: ship Android as a client to the same backend API, likely via Capacitor fir
 
 Tasks:
 
-| # | Task | Acceptance criteria |
-|---|---|---|
-| 12.1 | PWA readiness | App metadata, icons, mobile nav, installability baseline. |
-| 12.2 | Capacitor shell | Android project opens Astrotype UI and authenticates. |
-| 12.3 | Secure session handling | Tokens/session handled using platform-safe storage/cookies strategy. |
-| 12.4 | Report status UX | Android can start report and return later to ready report. |
-| 12.5 | Push notification foundation | Optional: report-ready notification through FCM. |
-| 12.6 | Google Play Billing bridge | Mobile receipt verification maps to backend entitlements. |
+| #    | Task                         | Acceptance criteria                                                  |
+| ---- | ---------------------------- | -------------------------------------------------------------------- |
+| 12.1 | PWA readiness                | App metadata, icons, mobile nav, installability baseline.            |
+| 12.2 | Capacitor shell              | Android project opens Astrotype UI and authenticates.                |
+| 12.3 | Secure session handling      | Tokens/session handled using platform-safe storage/cookies strategy. |
+| 12.4 | Report status UX             | Android can start report and return later to ready report.           |
+| 12.5 | Push notification foundation | Optional: report-ready notification through FCM.                     |
+| 12.6 | Google Play Billing bridge   | Mobile receipt verification maps to backend entitlements.            |
 
 Acceptance criteria:
 
@@ -396,9 +396,11 @@ Acceptance criteria:
 
 ## V2-E13: Desktop thin client decision
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: decide whether a Windows `.exe` is worth building and, if yes, keep it thin.
+
+Decision: `.exe` is not required for v2 core launch; desktop is optional and must use the same backend API/report ids with cache-only local storage. See `docs/architecture/astrotype-v2-desktop-thin-client-decision.md`.
 
 Recommended approach:
 

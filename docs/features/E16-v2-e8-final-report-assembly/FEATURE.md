@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Goal
 
@@ -21,7 +21,6 @@ Related architecture:
 - `docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`
 - `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 
-
 ## Scope
 
 This feature covers the `V2-E8` slice from `docs/ROADMAP-v2.md`.
@@ -35,19 +34,19 @@ This feature covers the `V2-E8` slice from `docs/ROADMAP-v2.md`.
 
 ## Acceptance criteria
 
-- [ ] Final report includes all required personality segments.
-- [ ] Evidence index is included.
-- [ ] Technical details are present but not mixed into narrative-first sections.
-- [ ] Regeneration does not silently overwrite prior artifacts.
+- [x] Final report includes all required personality segments.
+- [x] Evidence index is included.
+- [x] Technical details are present but not mixed into narrative-first sections.
+- [x] Regeneration does not silently overwrite prior artifacts.
 
 ## Stories
 
-| ID | Story | Status |
-|---|---|---|
-| S01 | [Build report assembler](./S01-report-assembler.md) | ⬜ Не начато |
-| S02 | [Add duplication/evidence quality gates](./S02-duplication-quality-gates.md) | ⬜ Не начато |
-| S03 | [Persist report versions](./S03-report-versioning.md) | ⬜ Не начато |
-| S04 | [Assemble technical basis](./S04-technical-basis-section.md) | ⬜ Не начато |
+| ID  | Story                                                                        | Status       |
+| --- | ---------------------------------------------------------------------------- | ------------ |
+| S01 | [Build report assembler](./S01-report-assembler.md)                          | ✅ Завершено |
+| S02 | [Add duplication/evidence quality gates](./S02-duplication-quality-gates.md) | ✅ Завершено |
+| S03 | [Persist report versions](./S03-report-versioning.md)                        | ✅ Завершено |
+| S04 | [Assemble technical basis](./S04-technical-basis-section.md)                 | ✅ Завершено |
 
 ## Implementation order
 
@@ -64,3 +63,14 @@ git diff --check -- docs/features/E16-v2-e8-final-report-assembly
 ```
 
 For implementation stories, add targeted tests to the active story before marking it complete.
+
+Implementation verification evidence:
+
+```bash
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_report_assembler.py -v --tb=short
+cd backend && uv run pytest tests/unit/test_astrotype_v2 -v --tb=short
+cd backend && uv run ruff check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd backend && uv run ruff format --check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+cd backend && uv run mypy app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+git diff --check -- backend/app/modules/astrotype_v2 backend/tests/unit/test_astrotype_v2 docs/features/E16-v2-e8-final-report-assembly
+```

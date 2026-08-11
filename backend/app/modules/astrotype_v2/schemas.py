@@ -58,3 +58,29 @@ class ReportSegmentOutputV2(BaseModel):
     continuation_complete: bool = True
     continuation_cursor: str | None = None
     notes: list[str] = Field(default_factory=list)
+
+
+class NatalReportSectionV2(BaseModel):
+    """Final user-facing narrative section assembled from one validated segment."""
+
+    section_id: str
+    title: str
+    body: str
+    covered_theme_ids: list[str]
+    evidence_ids: list[str]
+    source_segment_hash: str | None = None
+
+
+class NatalReportV2(BaseModel):
+    """Final v2 natal report contract with narrative and technical layers separated."""
+
+    contract_version: str = "natal_report_v2"
+    chart_id: uuid.UUID
+    version: int
+    status: str
+    narrative_sections: list[NatalReportSectionV2]
+    evidence_index: dict[str, dict[str, Any]]
+    technical_basis: dict[str, Any]
+    deterministic_payload: dict[str, Any]
+    narrative_payload: dict[str, Any]
+    assembled_payload: dict[str, Any]

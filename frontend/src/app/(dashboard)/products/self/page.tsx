@@ -43,7 +43,7 @@ export default function SelfProductPage() {
           Astrotype Self
         </h1>
         <p className="text-sm text-[#D8DCE8] mt-1">
-          Натальная карта, соционический тип, архетипический профиль.
+          Натальная карта, факты, синтез и V2 natal-only отчёт.
         </p>
       </div>
 
@@ -55,9 +55,9 @@ export default function SelfProductPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {[
             "Натальная карта: 12 планет в знаках и домах, аспекты",
-            "Соционический тип: 16 типов, 8 функций, радар профиля",
-            "Архетипический профиль: 8 архетипов с показателем и уверенностью",
-            "Цепочка доказательств: факты → правила → выводы для каждого утверждения",
+            "Факты карты: положения, дома, аспекты и балансы",
+            "Синтез: темы, напряжения и смысловая структура",
+            "Цепочка доказательств: факты → синтез → разделы отчёта",
           ].map((item) => (
             <div key={item} className="flex items-start gap-2">
               <span className="text-[#D8B45A] mt-0.5 text-xs">✦</span>
@@ -77,7 +77,7 @@ export default function SelfProductPage() {
             {profiles.map((profile) => (
               <Link
                 key={profile.id}
-                href={`/report/${profile.id}`}
+                href={`/report/v2/${profile.id}`}
                 className="glass p-5 space-y-2 hover:border-[rgba(91,63,214,0.40)] transition-all group"
               >
                 <div className="flex items-center justify-between">

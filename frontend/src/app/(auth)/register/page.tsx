@@ -230,8 +230,8 @@ function RegisterForm() {
         return;
       }
 
-      // Redirect OAuth users with completed profiles to the report page.
-      router.push(`/report/${result.profile_id}`);
+      // Redirect OAuth users with completed profiles to the V2 natal-only report page.
+      router.push(`/report/v2/${result.profile_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Что-то пошло не так");
     } finally {
@@ -472,7 +472,7 @@ function RegisterForm() {
 
       <p className="text-xs text-muted-foreground">
         После регистрации сразу будет рассчитана ваша натальная карта и
-        соционический тип.
+        подготовлен V2 natal-only отчёт.
       </p>
 
       <div className="flex gap-2">

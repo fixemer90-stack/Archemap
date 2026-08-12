@@ -49,7 +49,7 @@ for (const marker of [
   'searchParams.get("birth_date")',
   'searchParams.get("email")',
   'credentials: "include"',
-  "router.push(`/report/${result.profile_id}`)",
+  "router.push(`/report/v2/${result.profile_id}`)",
 ]) {
   if (!registerPage.includes(marker)) {
     throw new Error(`Register OAuth flow missing marker: ${marker}`);

@@ -19,7 +19,7 @@ const products = [
     id: "self",
     title: "Astrotype Self",
     description:
-      "Натальная карта, соционический тип, архетипический профиль с цепочкой доказательств.",
+      "Натальная карта, факты, синтез и V2 natal-only отчёт с цепочкой доказательств.",
     icon: User,
     color: "#5B3FD6",
     accent: "#D8B45A",
@@ -124,7 +124,7 @@ export default function DashboardPage() {
             {profiles.map((profile) => (
               <Link
                 key={profile.id}
-                href={`/report/${profile.id}`}
+                href={`/report/v2/${profile.id}`}
                 className="glass p-5 space-y-2 hover:border-[rgba(91,63,214,0.40)] transition-all group"
               >
                 <div className="flex items-center justify-between">

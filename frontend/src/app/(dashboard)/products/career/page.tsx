@@ -86,7 +86,7 @@ export default function CareerProductPage() {
         throw new Error("Backend не вернул готовый Career-отчёт.");
       }
 
-      window.location.assign(`/report/${profileId}?product=career`);
+      window.location.assign(`/report/v2/${profileId}`);
     } catch (generateError) {
       const message =
         generateError instanceof DOMException &&

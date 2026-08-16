@@ -43,11 +43,14 @@ def test_v2_smoke_has_no_excluded_typology_leakage_in_payloads_prompts_or_ui_con
 
 
 def test_v2_multi_client_smoke_uses_same_report_id_for_web_android_and_desktop() -> None:
+    from uuid import UUID
+
     from app.modules.astrotype_v2.qa_smoke import build_smoke_report_bundle_v2, validate_v2_smoke_bundle
 
     result = validate_v2_smoke_bundle(build_smoke_report_bundle_v2())
 
     assert result["checks"]["multi_client_same_report_id"] is True
+    UUID(result["report_id"])
     assert set(result["client_report_ids"]) == {result["report_id"]}
     assert result["client_endpoints"]["web"].endswith(result["report_id"])
     assert result["client_endpoints"]["android_pwa"].endswith(result["report_id"])

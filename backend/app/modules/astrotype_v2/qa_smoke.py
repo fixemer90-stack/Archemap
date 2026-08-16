@@ -96,6 +96,8 @@ def build_smoke_report_bundle_v2() -> dict[str, Any]:
         segment_rows=segment_rows,
         previous_version=0,
     )
+    if report_row.id is None:
+        report_row.id = uuid.uuid4()
     report_row.status = "ready"
     progress = build_report_progress_v2(report=report_row, outline=outline_row, segments=segment_rows)
     fact_cards = _fact_cards(facts, evidence)

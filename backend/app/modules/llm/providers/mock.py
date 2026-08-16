@@ -27,6 +27,142 @@ class MockLLMProvider:
     ) -> StructuredSchemaT:
         del prompt
 
+        schema_name = schema.__name__
+        synthesis = narrative_input.deep_natal_synthesis
+        evidence_ids = list(synthesis.evidence_map.keys())[:3] if synthesis is not None else ["moon_trine_mercury"]
+        if schema_name == "NarrativePlan":
+            return schema.model_validate(
+                {
+                    "prompt_version": "self_plan_v2",
+                    "sections": [
+                        {
+                            "section_id": "identity",
+                            "title": "Как собирается ваша идентичность",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Главная формула и сильные стороны.",
+                        },
+                        {
+                            "section_id": "emotional",
+                            "title": "Как вы переживаете и выражаете напряжение",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Эмоции, речь и уязвимости.",
+                        },
+                        {
+                            "section_id": "relationships",
+                            "title": "Как вы строите близость",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Отношения и доверие.",
+                        },
+                        {
+                            "section_id": "development",
+                            "title": "Вектор развития",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Рост и зрелая интеграция напряжений.",
+                        },
+                        {
+                            "section_id": "house_scenarios",
+                            "title": "Жизненные сценарии",
+                            "required_evidence_ids": evidence_ids,
+                            "focus": "Дома и практическое проявление карты.",
+                        },
+                    ],
+                    "global_guardrails": ["Только evidence-backed claims"],
+                    "assembly_notes": "Собери единый narrative-first Self report без соционики.",
+                }
+            )
+        if schema_name == "IdentitySectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "identity",
+                    "title": "Как собирается ваша идентичность",
+                    "paragraphs": [
+                        (
+                            "Вы строите идентичность через сочетание внутренней собранности "
+                            "и внимательности к смыслу происходящего."
+                        ),
+                        "В сильной форме это даёт способность держать личную линию и не терять нюансы ситуации.",
+                    ],
+                    "evidence_ids": evidence_ids,
+                    "covered_pattern_ids": ["identity_pattern"],
+                }
+            )
+        if schema_name == "EmotionalSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "emotional",
+                    "title": "Как вы переживаете и выражаете напряжение",
+                    "paragraphs": [
+                        (
+                            "Эмоции быстро связываются с мыслью, поэтому переживание почти сразу "
+                            "требует языка, объяснения и формы."
+                        ),
+                        (
+                            "Уязвимость появляется там, где хочется немедленно назвать и проконтролировать "
+                            "то, что ещё созревает внутри."
+                        ),
+                    ],
+                    "evidence_ids": evidence_ids,
+                    "covered_pattern_ids": ["emotional_pattern"],
+                }
+            )
+        if schema_name == "RelationshipSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "relationships",
+                    "title": "Как вы строите близость",
+                    "paragraphs": [
+                        (
+                            "В отношениях вам важна не формальная близость, а ощущение живого контакта "
+                            "и эмоциональной достоверности."
+                        ),
+                        (
+                            "Доверие растёт там, где другой человек выдерживает глубину "
+                            "и не обесценивает ваши тонкие реакции."
+                        ),
+                    ],
+                    "evidence_ids": evidence_ids,
+                    "covered_pattern_ids": ["relationship_pattern"],
+                }
+            )
+        if schema_name == "DevelopmentSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "development",
+                    "title": "Вектор развития",
+                    "paragraphs": [
+                        (
+                            "Рост начинается там, где вы не пытаетесь мгновенно исправить "
+                            "внутреннее напряжение, а выдерживаете паузу."
+                        ),
+                        "Зрелая форма — превращать чувствительность в наблюдение, выбор и ясное действие.",
+                    ],
+                    "evidence_ids": evidence_ids,
+                    "covered_pattern_ids": ["development_pattern"],
+                }
+            )
+        if schema_name == "HouseScenariosSectionOutput":
+            return schema.model_validate(
+                {
+                    "section_id": "house_scenarios",
+                    "title": "Жизненные сценарии",
+                    "paragraphs": [
+                        "Ключевые сферы жизни включаются через поиск смысла, глубины и внутренней честности.",
+                        "Практический ресурс появляется, когда карта становится не диагнозом, а языком выбора.",
+                    ],
+                    "evidence_ids": evidence_ids,
+                    "covered_pattern_ids": ["house_pattern"],
+                }
+            )
+        if schema_name == "AssemblyCheck":
+            return schema.model_validate(
+                {
+                    "duplicate_claim_ids": [],
+                    "missing_required_evidence_ids": [],
+                    "tone_notes": ["Собранный текст держит плотный Self-first тон."],
+                    "needs_retry": False,
+                }
+            )
+
         payload = {
             "title": "Ваш внутренний портрет",
             "hero": {

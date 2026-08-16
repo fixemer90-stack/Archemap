@@ -34,7 +34,9 @@ def build_natal_chart_rows(
     input_hash: str,
 ) -> NatalChartRows:
     """Convert chart-engine data into v2 natal-only ORM rows without persisting them."""
+    chart_id = uuid.uuid4()
     chart = models.NatalChart(
+        id=chart_id,
         user_id=user_id,
         profile_id=profile_id,
         engine_version=engine_version,
@@ -49,7 +51,7 @@ def build_natal_chart_rows(
 
     planet_positions = [
         models.NatalPlanetPosition(
-            chart_id=chart.id,
+            chart_id=chart_id,
             body=planet.name,
             longitude=planet.longitude,
             latitude=planet.latitude,
@@ -64,7 +66,7 @@ def build_natal_chart_rows(
 
     houses = [
         models.NatalHouse(
-            chart_id=chart.id,
+            chart_id=chart_id,
             house_number=house.number,
             longitude=house.longitude,
             sign=house.sign,
@@ -74,7 +76,7 @@ def build_natal_chart_rows(
 
     aspects = [
         models.NatalAspect(
-            chart_id=chart.id,
+            chart_id=chart_id,
             body_a=body_a,
             body_b=body_b,
             aspect_code=aspect.aspect_type,
@@ -87,8 +89,8 @@ def build_natal_chart_rows(
         for body_a, body_b in [canonicalize_body_pair(aspect.planet_a, aspect.planet_b)]
     ]
 
-    balances = _build_balance_rows(chart.id, chart_data)
-    patterns = _build_pattern_rows(chart.id, balances)
+    balances = _build_balance_rows(chart_id, chart_data)
+    patterns = _build_pattern_rows(chart_id, balances)
 
     return NatalChartRows(
         chart=chart,

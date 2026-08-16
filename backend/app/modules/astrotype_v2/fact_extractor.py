@@ -21,8 +21,10 @@ def build_placement_fact_rows(
     evidence_rows: list[models.NatalFactEvidence] = []
 
     for position in positions:
+        fact_id = uuid.uuid4()
         fact_key = _placement_fact_key(position)
         fact = models.NatalFact(
+            id=fact_id,
             chart_id=chart_id,
             fact_type="placement",
             fact_key=fact_key,
@@ -45,7 +47,7 @@ def build_placement_fact_rows(
         facts.append(fact)
         evidence_rows.append(
             models.NatalFactEvidence(
-                fact_id=fact.id,
+                fact_id=fact_id,
                 chart_id=chart_id,
                 source_table=models.NatalPlanetPosition.__tablename__,
                 source_id=position.id,
@@ -74,8 +76,10 @@ def build_balance_pattern_fact_rows(
     evidence_rows: list[models.NatalFactEvidence] = []
 
     for balance in balances:
+        fact_id = uuid.uuid4()
         fact_key = f"balance:{_slug(balance.category)}:{_slug(balance.key)}"
         fact = models.NatalFact(
+            id=fact_id,
             chart_id=chart_id,
             fact_type="balance",
             fact_key=fact_key,
@@ -91,7 +95,7 @@ def build_balance_pattern_fact_rows(
         facts.append(fact)
         evidence_rows.append(
             models.NatalFactEvidence(
-                fact_id=fact.id,
+                fact_id=fact_id,
                 chart_id=chart_id,
                 source_table=models.NatalChartBalance.__tablename__,
                 source_id=balance.id,
@@ -101,8 +105,10 @@ def build_balance_pattern_fact_rows(
         )
 
     for pattern in patterns:
+        fact_id = uuid.uuid4()
         fact_key = f"pattern:{_slug(pattern.pattern_code)}"
         fact = models.NatalFact(
+            id=fact_id,
             chart_id=chart_id,
             fact_type="pattern",
             fact_key=fact_key,
@@ -123,7 +129,7 @@ def build_balance_pattern_fact_rows(
         facts.append(fact)
         evidence_rows.append(
             models.NatalFactEvidence(
-                fact_id=fact.id,
+                fact_id=fact_id,
                 chart_id=chart_id,
                 source_table=models.NatalChartPattern.__tablename__,
                 source_id=pattern.id,
@@ -165,6 +171,7 @@ async def build_aspect_fact_rows(
     evidence_rows: list[models.NatalFactEvidence] = []
 
     for aspect in aspects:
+        fact_id = uuid.uuid4()
         body_a, body_b = canonicalize_body_pair(aspect.body_a, aspect.body_b)
         interpretation = await resolve_aspect_interpretation(
             repository,
@@ -177,6 +184,7 @@ async def build_aspect_fact_rows(
         fact_key = _aspect_fact_key(body_a, body_b, aspect.aspect_code)
         reference_payload = _aspect_reference_payload(interpretation)
         fact = models.NatalFact(
+            id=fact_id,
             chart_id=chart_id,
             fact_type="aspect",
             fact_key=fact_key,
@@ -201,7 +209,7 @@ async def build_aspect_fact_rows(
         facts.append(fact)
         evidence_rows.append(
             models.NatalFactEvidence(
-                fact_id=fact.id,
+                fact_id=fact_id,
                 chart_id=chart_id,
                 source_table=models.NatalAspect.__tablename__,
                 source_id=aspect.id,

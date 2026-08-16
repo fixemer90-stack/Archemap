@@ -31,6 +31,7 @@ async def persist_natal_chart_rows(
 ) -> NatalChartRows:
     """Persist one complete normalized v2 natal chart row bundle through the repository."""
     await repository.add(rows.chart)
+    await repository.flush()
     await repository.add_many(rows.planet_positions)
     await repository.add_many(rows.houses)
     await repository.add_many(rows.aspects)

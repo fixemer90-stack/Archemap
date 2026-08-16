@@ -82,7 +82,7 @@ async def test_persist_natal_chart_rows_adds_chart_then_all_child_collections_an
         assert collection
         assert all(row.__table__.name.startswith("astrotype_v2_") for row in collection)
 
-    repository.flush.assert_awaited_once_with()
+    assert repository.flush.await_count == 2
 
 
 def test_chart_persistence_source_does_not_import_legacy_v1_or_socionics_modules() -> None:

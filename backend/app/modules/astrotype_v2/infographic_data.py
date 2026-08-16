@@ -222,9 +222,7 @@ def _mc_from_houses(houses: list[dict[str, Any]]) -> dict[str, Any] | None:
     }
 
 
-def _ascendant_ruler(
-    *, ascendant: dict[str, Any] | None, by_body: dict[str, dict[str, Any]]
-) -> dict[str, Any] | None:
+def _ascendant_ruler(*, ascendant: dict[str, Any] | None, by_body: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
     if ascendant is None:
         return None
     ruler_body = _SIGN_RULERS.get(str(ascendant.get("sign")))
@@ -374,9 +372,7 @@ def _aspect_profile(aspects: Sequence[models.NatalAspect]) -> dict[str, Any]:
             "tension": sum(1 for aspect in aspects if aspect.aspect_code in tension),
             "conjunction": sum(1 for aspect in aspects if aspect.aspect_code == "conjunction"),
         },
-        "average_orb_degrees": round(
-            sum(float(aspect.orb_degrees) for aspect in aspects) / len(aspects), 2
-        )
+        "average_orb_degrees": round(sum(float(aspect.orb_degrees) for aspect in aspects) / len(aspects), 2)
         if aspects
         else None,
     }

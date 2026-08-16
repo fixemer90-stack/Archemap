@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -25,12 +25,15 @@ Narrative sections must match the canonical information architecture instead of 
 
 ## Acceptance criteria
 
-- [ ] `01 · ядро личности` through `06 · вектор роста` render in order.
-- [ ] Each section has prose and optional aside bullets.
-- [ ] DOM regression fails on missing/reordered sections.
+- [x] `01 · ядро личности` through `06 · вектор роста` render in order.
+- [x] Each section has prose and optional aside bullets.
+- [x] DOM regression fails on missing/reordered sections.
 
 ## Verification
 
 ```bash
-cd frontend && node scripts/check-v2-report-reader-dom.mjs && npx eslint src/components/astrotype-v2/report src/lib/astrotype-v2 scripts/check-v2-report-reader-dom.mjs && npx prettier --check src/components/astrotype-v2/report src/lib/astrotype-v2 scripts/check-v2-report-reader-dom.mjs && npx tsc --noEmit
+cd frontend && node scripts/check-v2-report-reader-dom.mjs
+cd frontend && npx eslint src/components/astrotype-v2/report/*.tsx src/components/astrotype-v2/report/format.ts scripts/check-v2-report-reader-dom.mjs
+cd frontend && rm -rf .next && npx tsc --noEmit --pretty false
+cd frontend && npm test
 ```

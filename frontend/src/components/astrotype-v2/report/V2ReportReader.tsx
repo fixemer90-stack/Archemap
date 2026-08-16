@@ -1,4 +1,5 @@
 import type { V2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
+import { V2CalculationLayer } from "./V2CalculationLayer";
 import { V2NarrativeSectionCard } from "./V2NarrativeSectionCard";
 import { V2ReportHero } from "./V2ReportHero";
 
@@ -34,22 +35,7 @@ export function V2ReportReader({
           ))}
         </section>
 
-        <section
-          data-v2-reader-block="calculation_layer"
-          className="rounded-[1.75rem] border border-[#D8B45A]/20 bg-[#0F172A] p-6 text-[#F5E9D0] md:p-8"
-        >
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D8B45A]">
-            Карта и ключевые показатели
-          </div>
-          <h2 className="mt-3 text-2xl font-semibold md:text-4xl">
-            Расчётный слой будет раскрыт ниже текста
-          </h2>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-[#BFC6D8]">
-            Данные уже приходят из canonical V2 API contract. Следующий slice
-            заменит этот placeholder на таблицы положений, балансы, дома, сеть
-            аспектов и расчётную матрицу из эталонного HTML.
-          </p>
-        </section>
+        <V2CalculationLayer layer={viewModel.calculationLayer} />
       </div>
     </main>
   );

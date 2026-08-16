@@ -226,7 +226,13 @@ function RegisterForm() {
       const result = await res.json();
 
       if (!isOAuthCompleteProfile) {
-        router.push("/verify");
+        const next = result.profile_id
+          ? `/report/v2/${result.profile_id}`
+          : "/dashboard";
+        const verifyParams = new URLSearchParams();
+        verifyParams.set("email", email);
+        verifyParams.set("next", next);
+        router.push(`/verify?${verifyParams.toString()}`);
         return;
       }
 

@@ -10,6 +10,7 @@ function VerifyContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const emailParam = searchParams.get("email");
+  const nextPath = searchParams.get("next") || "/dashboard";
 
   const [status, setStatus] = useState<
     "loading" | "success" | "error" | "no-token"
@@ -18,6 +19,7 @@ function VerifyContent() {
   const [email, setEmail] = useState(emailParam || "");
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const loginHref = `/login?next=${encodeURIComponent(nextPath)}${email ? `&email=${encodeURIComponent(email)}` : ""}`;
 
   useEffect(() => {
     if (!token) return;
@@ -90,7 +92,7 @@ function VerifyContent() {
             <h1 className="text-2xl font-bold">Email подтверждён</h1>
             <p className="text-muted-foreground">{message}</p>
             <Button asChild>
-              <Link href="/login">Войти</Link>
+              <Link href={loginHref}>Войти</Link>
             </Button>
           </>
         )}
@@ -131,7 +133,7 @@ function VerifyContent() {
               </div>
             ) : (
               <Button variant="outline" asChild>
-                <Link href="/login">Вернуться к входу</Link>
+                <Link href={loginHref}>Вернуться к входу</Link>
               </Button>
             )}
           </>
@@ -168,7 +170,7 @@ function VerifyContent() {
               )}
             </div>
             <Button variant="outline" asChild>
-              <Link href="/login">Вернуться к входу</Link>
+              <Link href={loginHref}>Вернуться к входу</Link>
             </Button>
           </>
         )}

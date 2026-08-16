@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
+import { V2ReportReader } from "@/components/astrotype-v2/report/V2ReportReader";
 import {
   Card,
   CardContent,
@@ -17,6 +18,7 @@ import {
   generateAstrotypeV2Report,
   type AstrotypeV2ReportResponse,
 } from "@/lib/api/astrotype-v2";
+import { buildV2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -32,30 +34,6 @@ function getErrorMessage(error: unknown): string {
   return "Не удалось загрузить отчёт";
 }
 
-function extractTitle(report: AstrotypeV2ReportResponse): string {
-  const assembled = report.report.assembled_payload;
-  if (assembled && typeof assembled.title === "string") {
-    return assembled.title;
-  }
-  return "Astrotype V2 natal report";
-}
-
-function extractSections(report: AstrotypeV2ReportResponse) {
-  const narrative = report.report.narrative_payload;
-  const sections = narrative?.sections;
-  return Array.isArray(sections) ? sections : [];
-}
-
-function textFromValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.filter((item) => typeof item === "string").join("\n\n");
-  }
-  return "";
-}
-
 function ReportReady({
   report,
   onRegenerate,
@@ -65,63 +43,13 @@ function ReportReady({
   onRegenerate: () => void;
   isRegenerating: boolean;
 }) {
-  const sections = extractSections(report);
+  const viewModel = buildV2ReportReaderViewModel(report);
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <Card className="border-[#D8B45A]/30 bg-[#D8B45A]/5">
-        <CardHeader>
-          <CardDescription>Astrotype V2 · natal-only</CardDescription>
-          <CardTitle className="text-3xl">{extractTitle(report)}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm leading-6 text-[#D8DCE8]">
-          <p>Статус: {report.progress.status}</p>
-          <p>
-            Сегменты: {report.progress.ready_segments}/
-            {report.progress.total_segments || report.segments.length}
-          </p>
-          <Button onClick={onRegenerate} disabled={isRegenerating}>
-            <RefreshCw className="h-4 w-4" />
-            {isRegenerating ? "Перегенерируем..." : "Перегенерировать V2 отчёт"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {sections.length > 0 ? (
-        sections.map((section, index) => {
-          if (!section || typeof section !== "object") {
-            return null;
-          }
-          const item = section as Record<string, unknown>;
-          const title = textFromValue(item.title) || `Раздел ${index + 1}`;
-          const body =
-            textFromValue(item.body) ||
-            textFromValue(item.content) ||
-            textFromValue(item.paragraphs);
-          return (
-            <Card key={`${title}-${index}`}>
-              <CardHeader>
-                <CardTitle>{title}</CardTitle>
-              </CardHeader>
-              {body && (
-                <CardContent className="whitespace-pre-line text-sm leading-7 text-[#D8DCE8]">
-                  {body}
-                </CardContent>
-              )}
-            </Card>
-          );
-        })
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Данные V2 готовы</CardTitle>
-            <CardDescription>
-              Полная сборка отчёта сохранена в API. Интерфейс V2 подключён к
-              новому natal-only runtime и не использует legacy Self-report.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
-    </div>
+    <V2ReportReader
+      viewModel={viewModel}
+      onRegenerate={onRegenerate}
+      isRegenerating={isRegenerating}
+    />
   );
 }
 

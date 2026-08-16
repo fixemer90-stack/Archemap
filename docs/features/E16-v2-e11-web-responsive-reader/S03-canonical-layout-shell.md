@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -27,13 +27,15 @@ The current V2 page is a minimal card reader. It needs dedicated report componen
 
 ## Acceptance criteria
 
-- [ ] Ready state begins with a hero cover.
-- [ ] Narrative area follows the hero.
-- [ ] Calculation layer placeholder follows narrative.
-- [ ] No legacy report components are imported.
+- [x] Ready state begins with a hero cover.
+- [x] Narrative area follows the hero.
+- [x] Calculation layer placeholder follows narrative.
+- [x] No legacy report components are imported.
 
 ## Verification
 
 ```bash
-cd frontend && npx eslint src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/components/astrotype-v2/report && npx prettier --check src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/components/astrotype-v2/report && npx tsc --noEmit
+cd frontend && npx prettier --check src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/components/astrotype-v2/report/*.tsx src/lib/astrotype-v2/report-view-model.ts
+cd frontend && npx eslint src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/components/astrotype-v2/report/*.tsx src/lib/astrotype-v2/report-view-model.ts
+cd frontend && rm -rf .next && npx tsc --noEmit --pretty false
 ```

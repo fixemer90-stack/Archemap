@@ -12,6 +12,8 @@ from app.chart_engine.types import ChartData
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.reference_data import canonicalize_body_pair
 
+_BALANCE_BODIES_EXCLUDED = frozenset({"Ascendant", "MC"})
+
 
 @dataclass(frozen=True, slots=True)
 class NatalChartRows:
@@ -114,6 +116,8 @@ def _build_balance_rows(chart_id: uuid.UUID, chart_data: ChartData) -> list[mode
     house_counts: Counter[int] = Counter()
 
     for planet in chart_data.planets:
+        if planet.name in _BALANCE_BODIES_EXCLUDED:
+            continue
         element_counts[SIGN_ELEMENTS.get(planet.sign, "unknown")] += 1
         modality_counts[SIGN_MODALITIES.get(planet.sign, "unknown")] += 1
         if planet.house is not None:

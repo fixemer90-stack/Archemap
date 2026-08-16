@@ -33,7 +33,12 @@ The sample’s lower layer is required product UI, not a debug accordion. It mus
 - [x] All seven deterministic blocks render.
 - [x] Calculation layer appears after narrative.
 - [x] Missing required data fails tests or DOM checks.
+- [x] ASC and MC from house calculation are preserved as chart points for key indicators.
 - [x] No standalone factual-basis dashboard is introduced.
+
+## Regression notes
+
+- 2026-08-16: fixed ASC/MC loss at source. `compute_houses()` returned ASC/MC, but `build_chart()` discarded them before v2 persistence, so `key_indicators.ascendant` could be `null` even though house 1 was available. Engine version was bumped to `0.1.5`; regenerated reports create a fresh v2 chart with `Ascendant` and `MC` in `astrotype_v2_natal_planet_positions`.
 
 ## Verification
 

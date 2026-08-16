@@ -41,6 +41,8 @@ def _sample_chart() -> ChartData:
         planets=[
             PlanetPosition("Mars", 45.25, 0.1, -0.24, "Taurus", 15.25, 10),
             PlanetPosition("Venus", 165.5, -0.2, 1.1, "Virgo", 15.5, 2),
+            PlanetPosition("Ascendant", 10.0, 0.0, 0.0, "Aries", 10.0, 1),
+            PlanetPosition("MC", 280.0, 0.0, 0.0, "Capricorn", 10.0, 10),
         ],
         houses=[HousePosition(1, 10.0, "Aries"), HousePosition(10, 280.0, "Capricorn")],
         aspects=[Aspect("Venus", "Mars", "trine", 120.0, 1.5, True)],
@@ -91,3 +93,20 @@ def test_chart_persistence_source_does_not_import_legacy_v1_or_socionics_modules
 
     for fragment in FORBIDDEN_PERSISTENCE_FRAGMENTS:
         assert fragment not in persistence_text
+
+
+def test_v2_chart_rows_persist_ascendant_and_mc_points() -> None:
+    rows = build_natal_chart_rows(
+        chart_data=_sample_chart(),
+        user_id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        engine_version="v2-test",
+        input_hash="abc123",
+    )
+
+    by_body = {row.body: row for row in rows.planet_positions}
+
+    assert by_body["Ascendant"].longitude == 10.0
+    assert by_body["Ascendant"].house_number == 1
+    assert by_body["MC"].longitude == 280.0
+    assert by_body["MC"].house_number == 10

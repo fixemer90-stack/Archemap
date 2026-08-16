@@ -84,7 +84,7 @@ def build_chart(
 
     # Compute houses
     jd = datetime_to_julian_day(birth_datetime)
-    house_cusps, (_asc_lon, _mc_lon) = compute_houses(jd, latitude, longitude, house_system)
+    house_cusps, (asc_lon, mc_lon) = compute_houses(jd, latitude, longitude, house_system)
 
     # Build house positions
     houses: list[HousePosition] = []
@@ -97,6 +97,18 @@ def build_chart(
 
     # Find aspects
     aspects = find_aspects(planets)
+
+    # Preserve chart angles as deterministic points for v2 key indicators.
+    # They are appended after aspect calculation because ASC/MC are not planets
+    # in the existing aspect engine, but downstream report payloads still need
+    # their exact positions from the house calculation.
+    asc_sign, asc_degree = longitude_to_sign(asc_lon)
+    mc_sign, mc_degree = longitude_to_sign(mc_lon)
+    planets = [
+        *planets,
+        PlanetPosition("Ascendant", asc_lon, 0.0, 0.0, asc_sign, asc_degree, 1),
+        PlanetPosition("MC", mc_lon, 0.0, 0.0, mc_sign, mc_degree, 10),
+    ]
 
     return ChartData(
         birth_datetime=birth_datetime,

@@ -32,7 +32,7 @@ class TestChartToDict:
         assert "planets" in d
         assert "houses" in d
         assert "aspects" in d
-        assert len(d["planets"]) == 12
+        assert len(d["planets"]) == 14
         assert len(d["houses"]) == 12
         assert d["timezone"] == "Europe/Moscow"
 

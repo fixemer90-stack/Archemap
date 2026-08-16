@@ -119,7 +119,7 @@ class TestBuildChart:
         dt = datetime(1990, 5, 15, 12, 30, tzinfo=UTC)
         chart = build_chart(dt, 55.75, 37.62, "Europe/Moscow")
 
-        assert len(chart.planets) == 12
+        assert len(chart.planets) == 14
         assert len(chart.houses) == 12
         assert chart.timezone == "Europe/Moscow"
         assert chart.house_system == "P"
@@ -128,6 +128,18 @@ class TestBuildChart:
         for p in chart.planets:
             assert p.house is not None
             assert 1 <= p.house <= 12
+
+    def test_full_chart_includes_angles_as_chart_points(self) -> None:
+        """ASC/MC from house calculation must not be discarded."""
+        dt = datetime(1990, 5, 15, 12, 30, tzinfo=UTC)
+        chart = build_chart(dt, 55.75, 37.62, "Europe/Moscow")
+
+        by_name = {point.name: point for point in chart.planets}
+
+        assert by_name["Ascendant"].longitude == chart.houses[0].longitude
+        assert by_name["Ascendant"].house == 1
+        assert by_name["MC"].longitude == chart.houses[9].longitude
+        assert by_name["MC"].house == 10
 
     def test_deterministic(self) -> None:
         """Same input → identical chart."""

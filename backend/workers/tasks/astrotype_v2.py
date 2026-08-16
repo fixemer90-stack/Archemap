@@ -33,7 +33,7 @@ from app.modules.profiles.models import PersonProfile
 from workers.celery_app import app
 
 _SOURCE_VERSION = "v2.0"
-_ENGINE_VERSION = "0.1.4"
+_ENGINE_VERSION = "0.1.5"
 _PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
 _PROVIDER = "deterministic"
 _MODEL = "v2-local-runtime"

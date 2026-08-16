@@ -16,6 +16,7 @@ docs/features/
 ## Feature (FEATURE.md)
 
 Фича = конкретная ценность для пользователя или платформы. Содержит:
+
 - **Цель**: что даёт эта фича
 - **Критерии приёмки**: что считается «сделано»
 - **Зависимости**: от каких фич зависит
@@ -24,6 +25,7 @@ docs/features/
 ## Story (S01-*.md)
 
 Story = атомарный шаг реализации. Содержит:
+
 - **Контекст**: зачем этот шаг нужен
 - **Что сделать**: конкретные изменения
 - **Файлы**: какие файлы затрагиваются
@@ -35,7 +37,6 @@ Story = атомарный шаг реализации. Содержит:
 1. Без документации — нет кода. Каждый PR должен ссылаться на Story.
 2. Story не делается «частично» — либо все критерии выполнены, либо Story не закрыта.
 3. Фича закрывается только когда все Stories выполнены.
-
 
 ---
 
@@ -67,5 +68,6 @@ Active v2 features:
 - `V2-E12` — [Android MVP path](./E16-v2-e12-android-mvp-path/FEATURE.md)
 - `V2-E13` — [Desktop thin client decision](./E16-v2-e13-desktop-thin-client-decision/FEATURE.md)
 - `V2-E14` — [QA, smoke, rollout](./E16-v2-e14-qa-smoke-rollout/FEATURE.md)
+- `V2-E15` — [LLM runtime integration](./E16-v2-e15-llm-runtime-integration/FEATURE.md)
 
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`

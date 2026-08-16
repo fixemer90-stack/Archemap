@@ -28,15 +28,28 @@ def build_natal_infographic_data_v2(
     house_payloads = [_house_payload(house) for house in sorted(houses, key=lambda row: row.house_number)]
     balance_payloads = [_balance_payload(balance) for balance in sorted(balances, key=_balance_sort_key)]
     aspect_rows = sorted(aspects, key=lambda row: (row.body_a, row.body_b, row.aspect_code))
+    aspect_table = [_aspect_table_row(aspect) for aspect in aspect_rows]
+    aspect_edges = [_aspect_network_edge(aspect) for aspect in aspect_rows]
+    positions_with_aspects = _attach_sampled_aspects(position_payloads, aspect_table)
+    house_accents = _house_accents(house_payloads, positions_with_aspects)
     return {
         "contract_version": INFOGRAPHIC_CONTRACT_VERSION,
         "chart_id": str(chart_id),
-        "key_indicators": _key_indicators(position_payloads),
-        "planet_positions": position_payloads,
-        "balance_bars": balance_payloads,
-        "house_accents": _house_accents(house_payloads, position_payloads),
-        "aspect_network": [_aspect_network_edge(aspect) for aspect in aspect_rows],
-        "aspect_table": [_aspect_table_row(aspect) for aspect in aspect_rows],
+        "reader_blocks": [
+            "key_indicators",
+            "planet_positions",
+            "balance_bars",
+            "house_emphasis",
+            "aspect_network",
+            "key_aspects",
+            "calculation_matrix",
+        ],
+        "key_indicators": _key_indicators(positions=positions_with_aspects, houses=house_payloads),
+        "planet_positions": positions_with_aspects,
+        "balance_bars": _balance_bars(balance_payloads),
+        "house_emphasis": _house_emphasis(house_accents),
+        "aspect_network": {"nodes": _aspect_nodes(positions_with_aspects), "edges": aspect_edges},
+        "key_aspects": aspect_table,
         "calculation_matrix": _calculation_matrix(
             positions=positions,
             houses=houses,
@@ -44,6 +57,8 @@ def build_natal_infographic_data_v2(
             facts=facts,
             balances=balances,
         ),
+        "house_accents": house_accents,
+        "aspect_table": aspect_table,
         "evidence_cards": build_evidence_cards_v2(facts=facts, evidence=evidence),
         "progressive_disclosure": {
             "mode": "compact_inline",
@@ -176,9 +191,111 @@ def _aspect_table_row(row: models.NatalAspect) -> dict[str, Any]:
     }
 
 
-def _key_indicators(position_payloads: list[dict[str, Any]]) -> dict[str, dict[str, Any] | None]:
-    by_body = {str(position["body"]).lower(): position for position in position_payloads}
-    return {"sun": by_body.get("sun"), "moon": by_body.get("moon"), "ascendant": by_body.get("ascendant")}
+def _key_indicators(
+    *, positions: list[dict[str, Any]], houses: list[dict[str, Any]]
+) -> dict[str, dict[str, Any] | None]:
+    by_body = {str(position["body"]).lower(): position for position in positions}
+    ascendant = by_body.get("ascendant")
+    mc = by_body.get("mc") or _mc_from_houses(houses)
+    ruler = _ascendant_ruler(ascendant=ascendant, by_body=by_body)
+    return {
+        "sun": by_body.get("sun"),
+        "moon": by_body.get("moon"),
+        "ascendant": ascendant,
+        "mc": mc,
+        "ascendant_ruler": ruler,
+    }
+
+
+def _mc_from_houses(houses: list[dict[str, Any]]) -> dict[str, Any] | None:
+    house_ten = next((house for house in houses if house.get("house_number") == 10), None)
+    if house_ten is None:
+        return None
+    return {
+        "body": "MC",
+        "longitude": house_ten.get("longitude"),
+        "sign": house_ten.get("sign"),
+        "sign_degree": None,
+        "degree_label": f"MC · {house_ten.get('sign')}",
+        "house_number": 10,
+        "retrograde": False,
+    }
+
+
+def _ascendant_ruler(
+    *, ascendant: dict[str, Any] | None, by_body: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    if ascendant is None:
+        return None
+    ruler_body = _SIGN_RULERS.get(str(ascendant.get("sign")))
+    if ruler_body is None:
+        return None
+    ruler_position = by_body.get(ruler_body.lower())
+    return {"planet": ruler_body, "position": ruler_position}
+
+
+_SIGN_RULERS = {
+    "Aries": "Mars",
+    "Taurus": "Venus",
+    "Gemini": "Mercury",
+    "Cancer": "Moon",
+    "Leo": "Sun",
+    "Virgo": "Mercury",
+    "Libra": "Venus",
+    "Scorpio": "Mars",
+    "Sagittarius": "Jupiter",
+    "Capricorn": "Saturn",
+    "Aquarius": "Saturn",
+    "Pisces": "Jupiter",
+}
+
+
+def _attach_sampled_aspects(
+    positions: list[dict[str, Any]], aspect_table: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    aspects_by_body: dict[str, list[dict[str, Any]]] = {}
+    for aspect in aspect_table:
+        for body_key in ("body_a", "body_b"):
+            body = str(aspect[body_key])
+            aspects_by_body.setdefault(body, []).append(aspect)
+    return [
+        {
+            **position,
+            "sampled_aspects": sorted(
+                aspects_by_body.get(str(position["body"]), []),
+                key=lambda row: (row["orb_degrees"], row["body_a"], row["body_b"]),
+            )[:3],
+        }
+        for position in positions
+    ]
+
+
+def _balance_bars(balance_payloads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for balance in balance_payloads:
+        grouped.setdefault(str(balance["category"]), []).append(balance)
+    return {
+        category: sorted(rows, key=lambda row: (row.get("rank") or 999, row["key"]))
+        for category, rows in grouped.items()
+    }
+
+
+def _house_emphasis(house_accents: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    bars = sorted(house_accents, key=lambda row: int(row["house_number"]))
+    top_houses = sorted(bars, key=lambda row: (-int(row["accent_weight"]), int(row["house_number"])))[:3]
+    return {"bars": bars, "top_houses": top_houses}
+
+
+def _aspect_nodes(positions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": position["body"],
+            "label": position["body"],
+            "sign": position.get("sign"),
+            "house_number": position.get("house_number"),
+        }
+        for position in positions
+    ]
 
 
 def _house_accents(
@@ -214,8 +331,54 @@ def _calculation_matrix(
             "aspects": len(aspects),
             "facts": len(facts),
         },
+        "house_mode": _house_mode_summary(positions),
+        "hemispheres": _hemisphere_summary(positions),
+        "quadrants": _quadrant_summary(positions),
+        "aspect_profile": _aspect_profile(aspects),
         "balance_categories": sorted({balance.category for balance in balances}),
         "fact_types": sorted({fact.fact_type for fact in facts}),
+    }
+
+
+def _house_mode_summary(positions: Sequence[models.NatalPlanetPosition]) -> dict[str, int]:
+    modes = {"angular": {1, 4, 7, 10}, "succedent": {2, 5, 8, 11}, "cadent": {3, 6, 9, 12}}
+    return {
+        mode: sum(1 for position in positions if position.house_number in house_numbers)
+        for mode, house_numbers in modes.items()
+    }
+
+
+def _hemisphere_summary(positions: Sequence[models.NatalPlanetPosition]) -> dict[str, int]:
+    return {
+        "upper": sum(1 for position in positions if position.house_number in {7, 8, 9, 10, 11, 12}),
+        "lower": sum(1 for position in positions if position.house_number in {1, 2, 3, 4, 5, 6}),
+        "eastern": sum(1 for position in positions if position.house_number in {10, 11, 12, 1, 2, 3}),
+        "western": sum(1 for position in positions if position.house_number in {4, 5, 6, 7, 8, 9}),
+    }
+
+
+def _quadrant_summary(positions: Sequence[models.NatalPlanetPosition]) -> dict[str, int]:
+    quadrants = {"q1": {1, 2, 3}, "q2": {4, 5, 6}, "q3": {7, 8, 9}, "q4": {10, 11, 12}}
+    return {
+        quadrant: sum(1 for position in positions if position.house_number in house_numbers)
+        for quadrant, house_numbers in quadrants.items()
+    }
+
+
+def _aspect_profile(aspects: Sequence[models.NatalAspect]) -> dict[str, Any]:
+    tension = {"square", "opposition", "quincunx"}
+    resource = {"trine", "sextile"}
+    return {
+        "counts": {
+            "resource": sum(1 for aspect in aspects if aspect.aspect_code in resource),
+            "tension": sum(1 for aspect in aspects if aspect.aspect_code in tension),
+            "conjunction": sum(1 for aspect in aspects if aspect.aspect_code == "conjunction"),
+        },
+        "average_orb_degrees": round(
+            sum(float(aspect.orb_degrees) for aspect in aspects) / len(aspects), 2
+        )
+        if aspects
+        else None,
     }
 
 

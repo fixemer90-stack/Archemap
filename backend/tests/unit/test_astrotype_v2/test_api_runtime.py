@@ -158,6 +158,74 @@ def test_build_report_read_payload_v2_includes_report_facts_infographics_segment
     assert "socionics" not in str(payload).lower()
 
 
+def test_v2_report_payload_exposes_canonical_reader_hero_and_narrative_contract() -> None:
+    from app.modules.astrotype_v2.qa_smoke import build_smoke_report_bundle_v2
+
+    payload = build_smoke_report_bundle_v2()["report_payload"]
+    assembled = payload["report"]["assembled_payload"]
+    narrative = payload["report"]["narrative_payload"]
+
+    assert assembled["reader_view"]["hero"] == {
+        "eyebrow": "Astrotype v2 · натальный отчёт",
+        "title": "Натальный портрет личности",
+        "status_label": "Полный отчёт готов",
+        "calculation_label": "Карта и расчёт ниже",
+        "pdf_label": "Предпросмотр PDF",
+    }
+    assert assembled["reader_view"]["layout_order"] == ["hero", "narrative", "calculation_layer"]
+    assert narrative["section_order"] == [
+        "core_pattern",
+        "perception_and_mind",
+        "emotional_regulation",
+        "agency_and_desire",
+        "relationships_and_intimacy",
+        "growth_vector",
+    ]
+    for index, section in enumerate(narrative["sections"], start=1):
+        assert section["reader_display"]["eyebrow"].startswith(f"{index:02d} · ")
+        assert section["reader_display"]["subtitle"]
+        assert section["reader_display"]["aside_title"]
+        assert section["reader_display"]["aside_bullets"]
+
+
+def test_v2_infographic_payload_exposes_canonical_calculation_layer_contract() -> None:
+    from app.modules.astrotype_v2.qa_smoke import build_smoke_report_bundle_v2
+
+    calculation_layer = build_smoke_report_bundle_v2()["report_payload"]["infographic"]["calculation_layer"]
+
+    assert calculation_layer["reader_blocks"] == [
+        "key_indicators",
+        "planet_positions",
+        "balance_bars",
+        "house_emphasis",
+        "aspect_network",
+        "key_aspects",
+        "calculation_matrix",
+    ]
+    assert set(calculation_layer["key_indicators"]) >= {"ascendant", "mc", "ascendant_ruler"}
+    assert calculation_layer["planet_positions"][0].keys() >= {
+        "body",
+        "sign",
+        "house_number",
+        "sign_degree",
+        "degree_label",
+        "retrograde",
+        "sampled_aspects",
+    }
+    assert set(calculation_layer["balance_bars"]) >= {"elements", "modalities"}
+    assert len(calculation_layer["house_emphasis"]["bars"]) == 12
+    assert calculation_layer["house_emphasis"]["top_houses"]
+    assert calculation_layer["aspect_network"]["nodes"]
+    assert calculation_layer["aspect_network"]["edges"]
+    assert calculation_layer["key_aspects"]
+    assert set(calculation_layer["calculation_matrix"]) >= {
+        "house_mode",
+        "hemispheres",
+        "quadrants",
+        "aspect_profile",
+    }
+
+
 def test_router_is_registered_with_authenticated_multi_client_endpoints() -> None:
     api_init = (ROOT / "app" / "api" / "v1" / "__init__.py").read_text()
     router_source = (ROOT / "app" / "modules" / "astrotype_v2" / "router.py").read_text()
@@ -198,6 +266,8 @@ def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pip
 
     assert '@app.task(name="astrotype_v2.generate_natal_report"' in task_source
     assert "def generate_natal_report_v2" in task_source
-    assert "asyncio.run" in task_source
+    assert "run_async_in_worker" in task_source
+    assert "build_natal_chart_rows" in task_source
+    assert "build_natal_report_row" in task_source
     for fragment in ("report_narratives", "socionics", "model_a", "function_strength"):
         assert fragment not in runtime_source

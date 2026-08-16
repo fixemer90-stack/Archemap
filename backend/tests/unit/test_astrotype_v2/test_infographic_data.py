@@ -166,12 +166,25 @@ def test_build_natal_infographic_data_v2_matches_canonical_lower_layer_blocks() 
     assert payload["key_indicators"]["moon"]["sign"] == "Libra"
     assert payload["planet_positions"][0]["body"] == "Sun"
     assert payload["planet_positions"][0]["degree_label"] == "12.50° Aries"
-    assert payload["balance_bars"][0] == {"category": "element", "key": "fire", "value": 0.6, "rank": 1}
-    assert payload["house_accents"][0]["house_number"] == 1
-    assert payload["aspect_network"][0]["source"] == "Sun"
-    assert payload["aspect_network"][0]["target"] == "Moon"
+    assert payload["reader_blocks"] == [
+        "key_indicators",
+        "planet_positions",
+        "balance_bars",
+        "house_emphasis",
+        "aspect_network",
+        "key_aspects",
+        "calculation_matrix",
+    ]
+    assert payload["planet_positions"][0]["sampled_aspects"][0]["body_b"] == "Moon"
+    assert payload["balance_bars"]["element"][0] == {"category": "element", "key": "fire", "value": 0.6, "rank": 1}
+    assert payload["house_emphasis"]["bars"][0]["house_number"] == 1
+    assert payload["house_emphasis"]["top_houses"][0]["body_count"] > 0
+    assert payload["aspect_network"]["edges"][0]["source"] == "Sun"
+    assert payload["aspect_network"]["edges"][0]["target"] == "Moon"
     assert payload["aspect_table"][0]["orb_degrees"] == 3.75
+    assert payload["key_aspects"][0]["orb_degrees"] == 3.75
     assert payload["calculation_matrix"]["counts"] == {"positions": 3, "houses": 2, "aspects": 1, "facts": 2}
+    assert set(payload["calculation_matrix"]) >= {"house_mode", "hemispheres", "quadrants", "aspect_profile"}
 
     forbidden = ("archetype", "theme_map", "factual_basis_dashboard", "most_aspected", "socionics", "model_a")
     payload_text = str(payload).lower()

@@ -1,5 +1,7 @@
 """Assemble final Astrotype v2 natal reports from validated segment artifacts."""
 
+# ruff: noqa: RUF001
+
 from __future__ import annotations
 
 import hashlib
@@ -12,6 +14,45 @@ from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.schemas import NatalReportSectionV2, NatalReportV2, ReportSegmentOutputV2
 
 REPORT_CONTRACT_VERSION = "natal_report_v2"
+
+_SECTION_DISPLAY_METADATA: dict[str, dict[str, Any]] = {
+    "core_pattern": {
+        "label": "ядро личности",
+        "subtitle": "центральная сборка карты",
+        "aside_title": "На что обратить внимание",
+        "aside_bullets": ["ведущий мотив", "тон проявления", "устойчивые опоры"],
+    },
+    "perception_and_mind": {
+        "label": "мышление и восприятие",
+        "subtitle": "как собирается смысл",
+        "aside_title": "Ментальный ритм",
+        "aside_bullets": ["темп анализа", "фильтр деталей", "способ проверки"],
+    },
+    "emotional_regulation": {
+        "label": "эмоциональная регуляция",
+        "subtitle": "как перерабатывается переживание",
+        "aside_title": "Эмоциональная опора",
+        "aside_bullets": ["потребность в безопасности", "реакция на напряжение", "восстановление"],
+    },
+    "agency_and_desire": {
+        "label": "воля и действие",
+        "subtitle": "как включается инициатива",
+        "aside_title": "Режим действия",
+        "aside_bullets": ["импульс", "выдержка", "способ добиваться"],
+    },
+    "relationships_and_intimacy": {
+        "label": "близость и отношения",
+        "subtitle": "как строится контакт",
+        "aside_title": "В отношениях",
+        "aside_bullets": ["доверие", "границы", "язык привязанности"],
+    },
+    "growth_vector": {
+        "label": "вектор роста",
+        "subtitle": "куда направлена интеграция",
+        "aside_title": "Точка развития",
+        "aside_bullets": ["главное напряжение", "ресурс интеграции", "следующий шаг"],
+    },
+}
 
 
 class ReportAssemblyError(ValueError):
@@ -45,7 +86,7 @@ def assemble_natal_report_v2(
         "technical_basis": technical_basis,
     }
     narrative_payload = {
-        "sections": [section.model_dump(mode="json") for section in sections],
+        "sections": [_section_payload(section, index) for index, section in enumerate(sections, start=1)],
         "section_order": required_section_keys,
         "evidence_index": evidence_index,
     }
@@ -54,6 +95,7 @@ def assemble_natal_report_v2(
         "chart_id": str(chart_id),
         "version": version,
         "status": "complete",
+        "reader_view": _reader_view_payload(),
         "input_hashes": _input_hashes(
             synthesis_row=synthesis_row,
             outline_row=outline_row,
@@ -154,6 +196,42 @@ def _section_from_segment(segment_row: models.ReportSegmentGeneration) -> NatalR
         evidence_ids=list(response.evidence_ids),
         source_segment_hash=segment_row.payload.get("response_hash"),
     )
+
+
+def _section_payload(section: NatalReportSectionV2, index: int) -> dict[str, Any]:
+    payload = section.model_dump(mode="json")
+    payload["reader_display"] = _section_reader_display(section=section, index=index)
+    return payload
+
+
+def _section_reader_display(*, section: NatalReportSectionV2, index: int) -> dict[str, Any]:
+    metadata = _SECTION_DISPLAY_METADATA.get(section.section_id, {})
+    label = metadata.get("label") or section.title.lower()
+    return {
+        "eyebrow": f"{index:02d} · {label}",
+        "subtitle": metadata.get("subtitle") or "главная линия раздела",
+        "aside_title": metadata.get("aside_title") or "В фокусе",
+        "aside_bullets": metadata.get("aside_bullets") or _fallback_aside_bullets(section.body),
+    }
+
+
+def _reader_view_payload() -> dict[str, Any]:
+    return {
+        "contract_version": "astrotype_v2_reader_view_v1",
+        "layout_order": ["hero", "narrative", "calculation_layer"],
+        "hero": {
+            "eyebrow": "Astrotype v2 · натальный отчёт",
+            "title": "Натальный портрет личности",
+            "status_label": "Полный отчёт готов",
+            "calculation_label": "Карта и расчёт ниже",
+            "pdf_label": "Предпросмотр PDF",
+        },
+    }
+
+
+def _fallback_aside_bullets(body: str) -> list[str]:
+    sentences = [sentence.strip(" .") for sentence in body.replace("\n", " ").split(".") if sentence.strip()]
+    return sentences[:3] or ["ключевой мотив раздела"]
 
 
 def _validate_sections(*, sections: list[NatalReportSectionV2], synthesis_row: models.NatalSynthesis) -> None:

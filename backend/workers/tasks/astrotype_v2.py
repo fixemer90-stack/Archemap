@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import uuid
@@ -85,6 +86,20 @@ async def _generate_natal_report_v2_async(
                     status="already_exists",
                     force=force,
                 )
+            if not force:
+                existing_report = await _wait_for_existing_report(
+                    repository=repository,
+                    profile_id=profile_uuid,
+                    user_id=user_uuid,
+                )
+                if existing_report is not None:
+                    return _task_payload(
+                        generation_id=generation_id,
+                        profile_id=profile_uuid,
+                        report=existing_report,
+                        status="already_exists",
+                        force=force,
+                    )
 
             profile = await _load_profile(db, profile_id=profile_uuid, user_id=user_uuid)
             chart = await _get_or_create_chart(repository=repository, profile=profile, user_id=user_uuid)
@@ -180,6 +195,22 @@ async def _load_profile(db: Any, *, profile_id: uuid.UUID, user_id: uuid.UUID) -
     if profile is None:
         raise ValueError("Profile not found")
     return cast(PersonProfile, profile)
+
+
+async def _wait_for_existing_report(
+    *,
+    repository: AstrotypeV2Repository,
+    profile_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> models.NatalReport | None:
+    """Give an in-flight force generation a chance to commit before non-force work starts."""
+
+    for _ in range(10):
+        await asyncio.sleep(0.25)
+        existing_report = await repository.get_latest_report_for_profile(profile_id=profile_id, user_id=user_id)
+        if existing_report is not None:
+            return existing_report
+    return None
 
 
 async def _get_or_create_chart(

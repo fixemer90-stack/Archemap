@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -25,13 +25,17 @@ UI components should consume a typed view-model, not raw nested API JSON. This k
 
 ## Acceptance criteria
 
-- [ ] Mapper returns hero, narrative, calculation layer groups.
-- [ ] Canonical section order is stable.
-- [ ] Missing required deterministic data is visible to tests.
-- [ ] Forbidden typology markers are rejected.
+- [x] Mapper returns hero, narrative, calculation layer groups.
+- [x] Canonical section order is stable.
+- [x] Missing required deterministic data is visible to tests.
+- [x] Forbidden typology markers are rejected.
 
 ## Verification
 
 ```bash
-cd frontend && npx eslint src/lib/astrotype-v2 && npx prettier --check src/lib/astrotype-v2 && npx tsc --noEmit && npm test -- report-view-model
+cd frontend && node scripts/check-v2-report-view-model.mjs
+cd frontend && npx eslint src/lib/astrotype-v2/report-view-model.ts scripts/check-v2-report-view-model.mjs
+cd frontend && rm -rf .next && npx tsc --noEmit --pretty false
+cd frontend && npx prettier --check src/lib/astrotype-v2/report-view-model.ts scripts/check-v2-report-view-model.mjs package.json
+cd frontend && npm test
 ```

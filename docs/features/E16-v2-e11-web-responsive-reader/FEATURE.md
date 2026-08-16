@@ -71,7 +71,7 @@ The sample overrides the current product report/dashboard design. Existing front
 | ID  | Story                                                                                   | Status       |
 | --- | --------------------------------------------------------------------------------------- | ------------ |
 | S01 | [Lock reader data contract](./S01-reader-data-contract.md)                              | ✅ Готово    |
-| S02 | [Add frontend view-model mappers](./S02-view-model-mappers.md)                          | ⬜ Не начато |
+| S02 | [Add frontend view-model mappers](./S02-view-model-mappers.md)                          | ✅ Готово    |
 | S03 | [Build canonical layout shell](./S03-canonical-layout-shell.md)                         | ⬜ Не начато |
 | S04 | [Render narrative section cards](./S04-narrative-section-rendering.md)                  | ⬜ Не начато |
 | S05 | [Render deterministic calculation layer](./S05-deterministic-calculation-layer.md)      | ⬜ Не начато |

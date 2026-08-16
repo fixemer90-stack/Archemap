@@ -83,6 +83,24 @@ for (const block of [
   );
 }
 
+const aspectNetwork = read(
+  "src/components/astrotype-v2/report/V2AspectNetwork.tsx",
+);
+for (const marker of [
+  'viewBox="0 0 420 420"',
+  "asp-tension",
+  "asp-resource",
+  "<line",
+  "<g",
+  "network.nodes.slice",
+]) {
+  assert.match(
+    aspectNetwork,
+    new RegExp(marker),
+    `missing aspect SVG marker: ${marker}`,
+  );
+}
+
 for (const forbidden of [
   "socionics",
   "Соционика",

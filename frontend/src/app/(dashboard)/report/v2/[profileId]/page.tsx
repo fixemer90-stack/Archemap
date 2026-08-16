@@ -41,8 +41,8 @@ function extractTitle(report: AstrotypeV2ReportResponse): string {
 }
 
 function extractSections(report: AstrotypeV2ReportResponse) {
-  const assembled = report.report.assembled_payload;
-  const sections = assembled?.sections;
+  const narrative = report.report.narrative_payload;
+  const sections = narrative?.sections;
   return Array.isArray(sections) ? sections : [];
 }
 
@@ -56,7 +56,15 @@ function textFromValue(value: unknown): string {
   return "";
 }
 
-function ReportReady({ report }: { report: AstrotypeV2ReportResponse }) {
+function ReportReady({
+  report,
+  onRegenerate,
+  isRegenerating,
+}: {
+  report: AstrotypeV2ReportResponse;
+  onRegenerate: () => void;
+  isRegenerating: boolean;
+}) {
   const sections = extractSections(report);
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -71,6 +79,10 @@ function ReportReady({ report }: { report: AstrotypeV2ReportResponse }) {
             Сегменты: {report.progress.ready_segments}/
             {report.progress.total_segments || report.segments.length}
           </p>
+          <Button onClick={onRegenerate} disabled={isRegenerating}>
+            <RefreshCw className="h-4 w-4" />
+            {isRegenerating ? "Перегенерируем..." : "Перегенерировать V2 отчёт"}
+          </Button>
         </CardContent>
       </Card>
 
@@ -121,6 +133,7 @@ export default function AstrotypeV2ReportPage() {
   const [report, setReport] = useState<AstrotypeV2ReportResponse | null>(null);
   const [message, setMessage] = useState("Готовим V2 natal-only отчёт...");
   const [error, setError] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
 
   const clearPollTimer = useCallback(() => {
@@ -161,6 +174,7 @@ export default function AstrotypeV2ReportPage() {
 
   const start = useCallback(
     async (force = false) => {
+      setIsRegenerating(force);
       setState("loading");
       setError(null);
       setMessage("Запрашиваем V2 отчёт...");
@@ -172,13 +186,34 @@ export default function AstrotypeV2ReportPage() {
           if (!ready) {
             schedulePoll(generation.report_id);
           }
+          setIsRegenerating(false);
           return;
         }
         setState("queued");
-        setMessage("V2 отчёт поставлен в очередь. Обновите страницу через несколько секунд, если генерация ещё не отображается.");
+        setMessage("V2 отчёт поставлен в очередь. Проверяем готовность...");
+        clearPollTimer();
+        pollTimerRef.current = window.setTimeout(async () => {
+          try {
+            const retryGeneration = await generateAstrotypeV2Report(
+              profileId,
+              false,
+            );
+            if (retryGeneration.report_id) {
+              const ready = await loadReport(retryGeneration.report_id);
+              if (!ready) {
+                schedulePoll(retryGeneration.report_id);
+              }
+            }
+          } catch (retryError) {
+            setState("error");
+            setError(getErrorMessage(retryError));
+            setIsRegenerating(false);
+          }
+        }, POLL_INTERVAL_MS);
       } catch (err) {
         setState("error");
         setError(getErrorMessage(err));
+        setIsRegenerating(false);
       }
     },
     [clearPollTimer, loadReport, profileId, schedulePoll],
@@ -196,10 +231,19 @@ export default function AstrotypeV2ReportPage() {
     return clearPollTimer;
   }, [clearPollTimer, reportId, schedulePoll, state]);
 
-  const canRetry = useMemo(() => state === "error" || state === "queued", [state]);
+  const canRetry = useMemo(
+    () => state === "error" || state === "queued",
+    [state],
+  );
 
   if (state === "ready" && report) {
-    return <ReportReady report={report} />;
+    return (
+      <ReportReady
+        report={report}
+        onRegenerate={() => void start(true)}
+        isRegenerating={isRegenerating}
+      />
+    );
   }
 
   return (
@@ -211,7 +255,11 @@ export default function AstrotypeV2ReportPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-[#D8DCE8]">
           <p>{error || message}</p>
-          {reportId && <p className="text-xs text-muted-foreground">report_id: {reportId}</p>}
+          {reportId && (
+            <p className="text-xs text-muted-foreground">
+              report_id: {reportId}
+            </p>
+          )}
           {canRetry && (
             <Button onClick={() => start(true)}>
               <RefreshCw className="h-4 w-4" />

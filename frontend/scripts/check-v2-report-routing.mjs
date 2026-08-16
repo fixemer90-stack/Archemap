@@ -22,10 +22,14 @@ const checks = [
 for (const check of checks) {
   const source = readFileSync(resolve(check.path), "utf8");
   if (!source.includes(check.required)) {
-    throw new Error(`${check.path} must route Self reports to ${check.required}`);
+    throw new Error(
+      `${check.path} must route Self reports to ${check.required}`,
+    );
   }
   if (source.includes(check.forbidden)) {
-    throw new Error(`${check.path} still routes Self reports to legacy ${check.forbidden}`);
+    throw new Error(
+      `${check.path} still routes Self reports to legacy ${check.forbidden}`,
+    );
   }
 }
 
@@ -41,14 +45,24 @@ for (const forbidden of [
   "/api/v1/reports",
 ]) {
   if (v2Page.includes(forbidden)) {
-    throw new Error(`V2 report page must not contain legacy marker: ${forbidden}`);
+    throw new Error(
+      `V2 report page must not contain legacy marker: ${forbidden}`,
+    );
   }
 }
 
 const publicCopy = readFileSync(resolve("src/app/page.tsx"), "utf8");
-for (const forbiddenCopy of ["соционич", "Соционич", "socionics", "Socionics", "Model A"] ) {
+for (const forbiddenCopy of [
+  "соционич",
+  "Соционич",
+  "socionics",
+  "Socionics",
+  "Model A",
+]) {
   if (publicCopy.includes(forbiddenCopy)) {
-    throw new Error(`Public landing page must not advertise legacy typology marker: ${forbiddenCopy}`);
+    throw new Error(
+      `Public landing page must not advertise legacy typology marker: ${forbiddenCopy}`,
+    );
   }
 }
 

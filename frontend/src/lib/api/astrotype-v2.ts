@@ -63,10 +63,13 @@ export function generateAstrotypeV2Report(
   profileId: string,
   force = false,
 ): Promise<AstrotypeV2GenerationResponse> {
-  return api.post<AstrotypeV2GenerationResponse>("/api/v1/astrotype-v2/reports", {
-    profile_id: profileId,
-    force,
-  });
+  return api.post<AstrotypeV2GenerationResponse>(
+    "/api/v1/astrotype-v2/reports",
+    {
+      profile_id: profileId,
+      force,
+    },
+  );
 }
 
 export function fetchAstrotypeV2Report(

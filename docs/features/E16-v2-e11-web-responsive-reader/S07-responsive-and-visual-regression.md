@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -24,12 +24,15 @@ Canonical structure must be automatically checked so the reader does not regress
 
 ## Acceptance criteria
 
-- [ ] DOM check verifies hero, section order and calculation layer.
-- [ ] DOM check verifies forbidden markers are absent.
-- [ ] Responsive/mobile conditions are documented or automated.
+- [x] DOM check verifies hero, section order and calculation layer.
+- [x] DOM check verifies forbidden markers are absent.
+- [x] Responsive/mobile conditions are documented or automated.
 
 ## Verification
 
 ```bash
-cd frontend && node scripts/check-v2-report-reader-dom.mjs && npx eslint scripts/check-v2-report-reader-dom.mjs && npx prettier --check scripts/check-v2-report-reader-dom.mjs
+cd frontend && node scripts/check-v2-report-reader-dom.mjs
+cd frontend && npx eslint src/components/astrotype-v2/report/*.tsx src/components/astrotype-v2/report/format.ts scripts/check-v2-report-reader-dom.mjs
+cd frontend && npx prettier --check src/components/astrotype-v2/report/*.tsx src/components/astrotype-v2/report/format.ts scripts/check-v2-report-reader-dom.mjs package.json
+cd frontend && npm test
 ```

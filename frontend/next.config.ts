@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
-const defaultBackendUrl = process.env.WSL_DISTRO_NAME
-  ? "http://host.docker.internal:8000"
-  : "http://localhost:8000";
+const defaultBackendUrl = "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
   output: "standalone",

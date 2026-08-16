@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Завершено
 
 ## Goal
 
@@ -68,16 +68,16 @@ The sample overrides the current product report/dashboard design. Existing front
 
 ## Stories
 
-| ID  | Story                                                                                   | Status       |
-| --- | --------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Lock reader data contract](./S01-reader-data-contract.md)                              | ✅ Готово    |
-| S02 | [Add frontend view-model mappers](./S02-view-model-mappers.md)                          | ✅ Готово    |
-| S03 | [Build canonical layout shell](./S03-canonical-layout-shell.md)                         | ✅ Готово    |
-| S04 | [Render narrative section cards](./S04-narrative-section-rendering.md)                  | ✅ Готово    |
-| S05 | [Render deterministic calculation layer](./S05-deterministic-calculation-layer.md)      | ✅ Готово    |
-| S06 | [Formalize generation/progress states](./S06-regeneration-and-progress-states.md)       | ✅ Готово    |
-| S07 | [Add responsive and visual regression gates](./S07-responsive-and-visual-regression.md) | ⬜ Не начато |
-| S08 | [Add full-flow smoke and runbook](./S08-full-flow-smoke-and-runbook.md)                 | ⬜ Не начато |
+| ID  | Story                                                                                   | Status    |
+| --- | --------------------------------------------------------------------------------------- | --------- |
+| S01 | [Lock reader data contract](./S01-reader-data-contract.md)                              | ✅ Готово |
+| S02 | [Add frontend view-model mappers](./S02-view-model-mappers.md)                          | ✅ Готово |
+| S03 | [Build canonical layout shell](./S03-canonical-layout-shell.md)                         | ✅ Готово |
+| S04 | [Render narrative section cards](./S04-narrative-section-rendering.md)                  | ✅ Готово |
+| S05 | [Render deterministic calculation layer](./S05-deterministic-calculation-layer.md)      | ✅ Готово |
+| S06 | [Formalize generation/progress states](./S06-regeneration-and-progress-states.md)       | ✅ Готово |
+| S07 | [Add responsive and visual regression gates](./S07-responsive-and-visual-regression.md) | ✅ Готово |
+| S08 | [Add full-flow smoke and runbook](./S08-full-flow-smoke-and-runbook.md)                 | ✅ Готово |
 
 ## Implementation order
 

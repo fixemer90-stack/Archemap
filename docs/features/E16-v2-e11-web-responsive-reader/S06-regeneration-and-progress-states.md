@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -25,13 +25,17 @@ Regenerate/polling behavior must be a clear state machine, not ad-hoc self-calli
 
 ## Acceptance criteria
 
-- [ ] Ready report can be regenerated.
-- [ ] Queued report eventually resolves to latest report_id.
-- [ ] Errors are recoverable.
-- [ ] No hook lint violations.
+- [x] Ready report can be regenerated.
+- [x] Queued report eventually resolves to latest report_id.
+- [x] Errors are recoverable.
+- [x] No hook lint violations.
 
 ## Verification
 
 ```bash
-cd frontend && npx eslint src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/lib/astrotype-v2 && npx prettier --check src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/lib/astrotype-v2 && npx tsc --noEmit
+cd frontend && node scripts/check-v2-report-generation-state.mjs
+cd frontend && npx eslint src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/lib/astrotype-v2/use-v2-report-generation.ts scripts/check-v2-report-generation-state.mjs
+cd frontend && npx prettier --check src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/lib/astrotype-v2/use-v2-report-generation.ts scripts/check-v2-report-generation-state.mjs package.json
+cd frontend && rm -rf .next && npx tsc --noEmit --pretty false
+cd frontend && npm test
 ```

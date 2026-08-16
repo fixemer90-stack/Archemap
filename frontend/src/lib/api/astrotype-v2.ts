@@ -33,6 +33,17 @@ export interface AstrotypeV2ProgressResponse {
 
 export interface AstrotypeV2ReportResponse {
   contract_version: "astrotype_v2_report_api_v1";
+  profile: {
+    id: string;
+    name: string;
+    birth_date: string;
+    birth_time: string | null;
+    birth_time_accuracy: string;
+    birth_place: string;
+    timezone: string;
+    latitude: number;
+    longitude: number;
+  } | null;
   report: {
     id: string;
     chart_id: string;

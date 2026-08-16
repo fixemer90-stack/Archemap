@@ -3,14 +3,12 @@ import type { V2ReportHeroViewModel } from "@/lib/astrotype-v2/report-view-model
 
 interface V2ReportHeroProps {
   hero: V2ReportHeroViewModel;
-  progressLabel: string;
   isRegenerating: boolean;
   onRegenerate: () => void;
 }
 
 export function V2ReportHero({
   hero,
-  progressLabel,
   isRegenerating,
   onRegenerate,
 }: V2ReportHeroProps) {
@@ -28,26 +26,33 @@ export function V2ReportHero({
             {hero.title}
           </h1>
           <p className="text-lg leading-8 text-[#E6D9B8] md:text-xl">
-            Это не dashboard и не набор технических карточек: перед вами цельный
-            натальный портрет, где сначала идёт мягкое повествование, а
-            расчётная основа вынесена ниже.
+            {hero.greeting}. Вот ваша натальная карта, собранная по вашим данным
+            рождения.
           </p>
           <p className="max-w-3xl text-sm leading-7 text-[#BFC6D8] md:text-base">
-            Верхняя часть написана как связный отчёт о личности. Нижний слой
-            показывает, какие положения, балансы домов и аспекты поддерживают
-            интерпретацию.
+            {hero.intro}
           </p>
         </div>
+        {hero.birthDataItems.length > 0 && (
+          <div className="rounded-3xl border border-white/12 bg-white/[0.04] p-5">
+            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#D8B45A]">
+              Ваши данные рождения
+            </div>
+            <dl className="grid gap-4 md:grid-cols-2">
+              {hero.birthDataItems.map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <dt className="text-xs uppercase tracking-[0.14em] text-[#8E99B4]">
+                    {item.label}
+                  </dt>
+                  <dd className="text-base font-medium text-[#F5E9D0]">
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
         <div className="flex flex-wrap gap-3 text-sm">
-          <span className="rounded-full bg-[#D8B45A] px-4 py-2 font-semibold text-[#111827]">
-            {hero.statusLabel}
-          </span>
-          <span className="rounded-full border border-white/15 px-4 py-2 text-[#E6D9B8]">
-            {hero.calculationLabel}
-          </span>
-          <span className="rounded-full border border-white/15 px-4 py-2 text-[#E6D9B8]">
-            {progressLabel}
-          </span>
           <Button
             type="button"
             onClick={onRegenerate}

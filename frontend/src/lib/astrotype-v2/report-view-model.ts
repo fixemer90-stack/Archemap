@@ -14,6 +14,9 @@ export type V2ReportLayoutBlock = "hero" | "narrative" | "calculation_layer";
 export interface V2ReportHeroViewModel {
   eyebrow: string;
   title: string;
+  greeting: string;
+  intro: string;
+  birthDataItems: Array<{ label: string; value: string }>;
   statusLabel: string;
   calculationLabel: string;
   pdfLabel: string;
@@ -139,17 +142,25 @@ export function buildV2ReportReaderViewModel(
     status: report.status,
     version: report.version,
     layoutOrder: toLayoutOrder(readerView.layout_order),
-    hero: toHeroViewModel(asRecord(readerView.hero)),
+    hero: toHeroViewModel(asRecord(readerView.hero), payload.profile),
     sections: toNarrativeSections(narrative),
     calculationLayer: toCalculationLayer(calculationLayer),
     progress: payload.progress,
   };
 }
 
-function toHeroViewModel(hero: Record<string, unknown>): V2ReportHeroViewModel {
+function toHeroViewModel(
+  hero: Record<string, unknown>,
+  profile: AstrotypeV2ReportResponse["profile"],
+): V2ReportHeroViewModel {
+  const displayName = profile?.name?.trim() || "для вас";
   return {
     eyebrow: stringValue(hero.eyebrow, "Astrotype v2 · натальный отчёт"),
-    title: stringValue(hero.title, "Натальный портрет личности"),
+    title: `Здравствуйте, ${displayName}`,
+    greeting: "Ваша натальная карта готова",
+    intro:
+      "Мы построили её по данным рождения, которые вы указали. Ниже — личный отчёт и аккуратная расчётная основа карты.",
+    birthDataItems: toBirthDataItems(profile),
     statusLabel: stringValue(hero.status_label, "Полный отчёт готов"),
     calculationLabel: stringValue(
       hero.calculation_label,
@@ -157,6 +168,39 @@ function toHeroViewModel(hero: Record<string, unknown>): V2ReportHeroViewModel {
     ),
     pdfLabel: stringValue(hero.pdf_label, "Предпросмотр PDF"),
   };
+}
+
+function toBirthDataItems(
+  profile: AstrotypeV2ReportResponse["profile"],
+): Array<{ label: string; value: string }> {
+  if (!profile) return [];
+  return [
+    { label: "Дата рождения", value: formatDate(profile.birth_date) },
+    {
+      label: "Время",
+      value: formatBirthTime(profile.birth_time, profile.birth_time_accuracy),
+    },
+    { label: "Место", value: profile.birth_place },
+    { label: "Часовой пояс", value: profile.timezone },
+  ].filter((item) => item.value.trim().length > 0);
+}
+
+function formatDate(value: string): string {
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function formatBirthTime(value: string | null, accuracy: string): string {
+  if (accuracy === "unknown") return "время не указано, используется 12:00";
+  if (!value) return "не указано";
+  const [hours, minutes] = value.split(":");
+  const label = `${hours}:${minutes}`;
+  return accuracy === "approximate" ? `примерно ${label}` : label;
 }
 
 function toLayoutOrder(value: unknown): V2ReportLayoutBlock[] {

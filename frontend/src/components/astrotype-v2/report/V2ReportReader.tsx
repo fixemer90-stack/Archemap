@@ -14,8 +14,6 @@ export function V2ReportReader({
   isRegenerating,
   onRegenerate,
 }: V2ReportReaderProps) {
-  const progressLabel = `Сегменты ${viewModel.progress.ready_segments}/${viewModel.progress.total_segments || viewModel.sections.length}`;
-
   return (
     <main
       data-v2-reader="canonical"
@@ -24,7 +22,6 @@ export function V2ReportReader({
       <div className="mx-auto max-w-6xl space-y-8">
         <V2ReportHero
           hero={viewModel.hero}
-          progressLabel={progressLabel}
           isRegenerating={isRegenerating}
           onRegenerate={onRegenerate}
         />

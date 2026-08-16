@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, time
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -140,6 +141,16 @@ def test_build_report_read_payload_v2_includes_report_facts_infographics_segment
             "evidence": [],
         }
     ]
+    profile = MagicMock()
+    profile.id = uuid.uuid4()
+    profile.name = "Алина"
+    profile.birth_date = date(1991, 8, 1)
+    profile.birth_time = time(9, 30)
+    profile.birth_time_accuracy = "exact"
+    profile.birth_place = "Москва, Россия"
+    profile.timezone = "Europe/Moscow"
+    profile.latitude = 55.7558
+    profile.longitude = 37.6173
     segments = [_segment(chart_id, outline.id, "core_pattern", "ready")]
 
     payload = build_report_read_payload_v2(
@@ -148,6 +159,7 @@ def test_build_report_read_payload_v2_includes_report_facts_infographics_segment
         infographic=infographic,
         facts=facts,
         segments=segments,
+        profile=profile,
     )
 
     assert payload["contract_version"] == "astrotype_v2_report_api_v1"
@@ -155,6 +167,17 @@ def test_build_report_read_payload_v2_includes_report_facts_infographics_segment
     assert payload["infographic"]["calculation_layer"]["contract_version"] == "natal_infographic_data_v2"
     assert payload["facts"] == facts
     assert payload["segments"][0]["section_key"] == "core_pattern"
+    assert payload["profile"] == {
+        "id": str(profile.id),
+        "name": "Алина",
+        "birth_date": "1991-08-01",
+        "birth_time": "09:30:00",
+        "birth_time_accuracy": "exact",
+        "birth_place": "Москва, Россия",
+        "timezone": "Europe/Moscow",
+        "latitude": 55.7558,
+        "longitude": 37.6173,
+    }
     assert "socionics" not in str(payload).lower()
 
 

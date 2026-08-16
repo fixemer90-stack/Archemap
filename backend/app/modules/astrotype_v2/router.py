@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -21,6 +22,7 @@ from app.modules.astrotype_v2.api_runtime import (
 from app.modules.astrotype_v2.fact_view import build_fact_evidence_payload
 from app.modules.astrotype_v2.infographic_data import build_infographic_api_payload_v2
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
+from app.modules.profiles.models import PersonProfile
 
 router = APIRouter(prefix="/astrotype-v2", tags=["astrotype-v2"])
 
@@ -89,6 +91,8 @@ async def get_v2_report(
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
     outline = await repository.get_outline_for_chart(report.chart_id)
+    chart = await repository.get_chart(report.chart_id)
+    profile = await _load_profile(db=db, chart=chart, user_id=current_user)
     infographic = await repository.get_infographic_data_for_chart(report.chart_id)
     facts = await repository.list_facts_for_chart(report.chart_id)
     evidence = [row for fact in facts for row in await repository.list_fact_evidence(fact.id)]
@@ -99,6 +103,7 @@ async def get_v2_report(
         infographic=infographic,
         facts=build_fact_evidence_payload(facts=facts, evidence=evidence),
         segments=segments,
+        profile=profile,
     )
 
 
@@ -212,3 +217,17 @@ async def _load_report_for_user(
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return report
+
+
+async def _load_profile(
+    *,
+    db: AsyncSession,
+    chart: models.NatalChart | None,
+    user_id: UUID,
+) -> PersonProfile | None:
+    if chart is None:
+        return None
+    result = await db.execute(
+        select(PersonProfile).where(PersonProfile.id == chart.profile_id, PersonProfile.user_id == user_id)
+    )
+    return result.scalar_one_or_none()

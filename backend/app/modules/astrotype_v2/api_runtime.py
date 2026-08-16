@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.modules.astrotype_v2 import models
+from app.modules.profiles.models import PersonProfile
 
 PROGRESS_CONTRACT_VERSION = "astrotype_v2_report_progress_v1"
 REPORT_API_CONTRACT_VERSION = "astrotype_v2_report_api_v1"
@@ -108,6 +109,7 @@ def build_report_read_payload_v2(
     infographic: models.NatalInfographicData | None,
     facts: list[dict[str, Any]],
     segments: list[models.ReportSegmentGeneration],
+    profile: PersonProfile | None = None,
 ) -> dict[str, Any]:
     """Build full v2 report API payload for web/mobile clients."""
 
@@ -117,6 +119,7 @@ def build_report_read_payload_v2(
         "progress": build_report_progress_v2(report=report, outline=outline, segments=segments),
         "outline": outline.outline if outline is not None else None,
         "infographic": _infographic_payload(infographic),
+        "profile": _profile_payload(profile),
         "facts": facts,
         "segments": [_segment_payload(segment) for segment in _ordered_segments(outline=outline, segments=segments)],
     }
@@ -196,4 +199,20 @@ def _infographic_payload(infographic: models.NatalInfographicData | None) -> dic
         "status": infographic.status,
         "source_version": infographic.source_version,
         "calculation_layer": infographic.calculation_layer,
+    }
+
+
+def _profile_payload(profile: PersonProfile | None) -> dict[str, Any] | None:
+    if profile is None:
+        return None
+    return {
+        "id": str(profile.id),
+        "name": profile.name,
+        "birth_date": profile.birth_date.isoformat(),
+        "birth_time": profile.birth_time.isoformat() if profile.birth_time is not None else None,
+        "birth_time_accuracy": profile.birth_time_accuracy,
+        "birth_place": profile.birth_place,
+        "timezone": profile.timezone,
+        "latitude": profile.latitude,
+        "longitude": profile.longitude,
     }

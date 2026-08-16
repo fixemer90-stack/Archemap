@@ -9,6 +9,7 @@ const read = (path) => readFileSync(join(root, path), "utf8");
 
 const reader = read("src/components/astrotype-v2/report/V2ReportReader.tsx");
 const hero = read("src/components/astrotype-v2/report/V2ReportHero.tsx");
+const viewModel = read("src/lib/astrotype-v2/report-view-model.ts");
 const section = read(
   "src/components/astrotype-v2/report/V2NarrativeSectionCard.tsx",
 );
@@ -39,6 +40,14 @@ assert(
     reader.indexOf("<V2CalculationLayer"),
 );
 assert.match(hero, /Astrotype v2 · натальный отчёт|hero\.eyebrow/);
+assert.match(viewModel, /Здравствуйте/);
+assert.match(hero, /ваша натальная карта/i);
+assert.match(viewModel, /Ваша натальная карта готова/);
+assert.match(hero, /Ваши данные рождения/);
+assert.match(hero, /hero\.birthDataItems/);
+assert.equal(hero.includes("Это не dashboard"), false);
+assert.equal(hero.includes("технических карточек"), false);
+assert.equal(hero.includes("progressLabel"), false);
 assert.match(section, /data-v2-reader-block="narrative-section"/);
 assert.match(calculation, /data-v2-reader-block="calculation_layer"/);
 

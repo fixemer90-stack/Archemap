@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 
 from app.chart_engine.chart import build_chart
+from app.config import settings
 from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.astrotype_v2 import models
@@ -24,19 +25,22 @@ from app.modules.astrotype_v2.fact_extractor import (
     build_placement_fact_rows,
 )
 from app.modules.astrotype_v2.infographic_data import build_natal_infographic_data_row
-from app.modules.astrotype_v2.outline import build_report_outline_row
+from app.modules.astrotype_v2.llm_segments import StructuredSegmentProviderAdapter, run_segment_generation_v2
+from app.modules.astrotype_v2.outline import ReportOutlineV2, build_report_outline_row, build_report_outline_v2
 from app.modules.astrotype_v2.report_assembler import build_natal_report_row
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2
+from app.modules.astrotype_v2.segment_inputs import build_section_render_inputs_v2
 from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, build_natal_synthesis_row
+from app.modules.llm.provider import get_llm_provider
 from app.modules.profiles.models import PersonProfile
 from workers.celery_app import app
 
 _SOURCE_VERSION = "v2.0"
 _ENGINE_VERSION = "0.1.5"
-_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
-_PROVIDER = "deterministic"
-_MODEL = "v2-local-runtime"
+_DETERMINISTIC_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
+_DETERMINISTIC_PROVIDER = "deterministic"
+_DETERMINISTIC_MODEL = "v2-local-runtime"
 
 
 @app.task(name="astrotype_v2.generate_natal_report", bind=True)  # type: ignore[untyped-decorator]
@@ -295,6 +299,74 @@ async def _ensure_ready_segments(
     synthesis: NatalSynthesisV2,
 ) -> list[models.ReportSegmentGeneration]:
     existing_segments = await repository.list_segments_for_outline(outline.id)
+    if settings.LLM_ENABLED:
+        return await _ensure_llm_segments(
+            repository=repository,
+            outline=outline,
+            synthesis=synthesis,
+            existing_segments=existing_segments,
+        )
+    return await _ensure_deterministic_segments(
+        repository=repository,
+        chart_id=chart_id,
+        outline=outline,
+        synthesis=synthesis,
+        existing_segments=existing_segments,
+    )
+
+
+async def _ensure_llm_segments(
+    *,
+    repository: AstrotypeV2Repository,
+    outline: models.ReportOutline,
+    synthesis: NatalSynthesisV2,
+    existing_segments: list[models.ReportSegmentGeneration],
+) -> list[models.ReportSegmentGeneration]:
+    by_key = {segment.section_key: segment for segment in existing_segments}
+    llm_provider = get_llm_provider()
+    segment_provider = StructuredSegmentProviderAdapter(
+        provider=llm_provider,
+        provider_name=settings.LLM_PROVIDER,
+        model_name=settings.LLM_MODEL,
+    )
+    section_inputs = build_section_render_inputs_v2(
+        outline=_outline_contract_from_row(outline=outline, synthesis=synthesis),
+        synthesis=synthesis,
+    )
+    new_segments: list[models.ReportSegmentGeneration] = []
+    for section_input in section_inputs:
+        existing = by_key.get(section_input.section_id)
+        if existing is not None and existing.status == "ready" and existing.provider == settings.LLM_PROVIDER:
+            continue
+        segment = await run_segment_generation_v2(
+            provider=segment_provider,
+            section_input=section_input,
+            outline_id=outline.id,
+        )
+        if existing is not None:
+            existing.status = segment.status
+            existing.provider = segment.provider
+            existing.model = segment.model
+            existing.prompt_version = segment.prompt_version
+            existing.payload = segment.payload
+            existing.error = segment.error
+            continue
+        new_segments.append(segment)
+    if new_segments:
+        await repository.add_many(new_segments)
+        await repository.flush()
+        existing_segments = await repository.list_segments_for_outline(outline.id)
+    return existing_segments
+
+
+async def _ensure_deterministic_segments(
+    *,
+    repository: AstrotypeV2Repository,
+    chart_id: uuid.UUID,
+    outline: models.ReportOutline,
+    synthesis: NatalSynthesisV2,
+    existing_segments: list[models.ReportSegmentGeneration],
+) -> list[models.ReportSegmentGeneration]:
     by_key = {segment.section_key: segment for segment in existing_segments}
     section_plans = outline.outline.get("sections", []) if isinstance(outline.outline, dict) else []
     new_segments: list[models.ReportSegmentGeneration] = []
@@ -310,9 +382,9 @@ async def _ensure_ready_segments(
         }
         if existing is not None:
             existing.status = "ready"
-            existing.provider = _PROVIDER
-            existing.model = _MODEL
-            existing.prompt_version = _PROMPT_VERSION
+            existing.provider = _DETERMINISTIC_PROVIDER
+            existing.model = _DETERMINISTIC_MODEL
+            existing.prompt_version = _DETERMINISTIC_PROMPT_VERSION
             existing.payload = payload
             existing.error = None
             continue
@@ -322,9 +394,9 @@ async def _ensure_ready_segments(
                 outline_id=outline.id,
                 section_key=section_id,
                 status="ready",
-                provider=_PROVIDER,
-                model=_MODEL,
-                prompt_version=_PROMPT_VERSION,
+                provider=_DETERMINISTIC_PROVIDER,
+                model=_DETERMINISTIC_MODEL,
+                prompt_version=_DETERMINISTIC_PROMPT_VERSION,
                 payload=payload,
                 error=None,
             )
@@ -359,6 +431,12 @@ def _segment_output(*, section: dict[str, Any], synthesis: NatalSynthesisV2) -> 
         continuation_complete=True,
         notes=["generated by local deterministic v2 worker"],
     )
+
+
+def _outline_contract_from_row(*, outline: models.ReportOutline, synthesis: NatalSynthesisV2) -> ReportOutlineV2:
+    """Rebuild the typed outline contract used by section input builders."""
+
+    return build_report_outline_v2(synthesis=synthesis, source_version=outline.source_version)
 
 
 def _synthesis_contract(chart_id: uuid.UUID, synthesis_row: models.NatalSynthesis) -> NatalSynthesisV2:

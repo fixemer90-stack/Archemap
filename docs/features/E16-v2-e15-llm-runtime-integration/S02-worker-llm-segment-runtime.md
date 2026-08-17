@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -47,20 +47,49 @@ The task currently builds a complete report flow, but the narrative prose is gen
 
 ## Acceptance criteria
 
-- [ ] Worker calls the existing LLM provider factory when `LLM_ENABLED=true`.
-- [ ] Worker persists real provider/model metadata in segment rows.
-- [ ] Worker does not call LLM for deterministic lower calculation layer.
-- [ ] Worker does not silently downgrade real-provider failures to deterministic prose.
-- [ ] Existing idempotency/race behavior remains green.
-- [ ] V2 remains natal-only; no socionics/Model A/MBTI leakage.
+- [x] Worker calls the existing LLM provider factory when `LLM_ENABLED=true`.
+- [x] Worker persists real provider/model metadata in segment rows.
+- [x] Worker does not call LLM for deterministic lower calculation layer.
+- [x] Worker does not silently downgrade real-provider failures to deterministic prose.
+- [x] Existing idempotency/race behavior remains green in the Astrotype v2 regression suite.
+- [x] V2 remains natal-only; no socionics/Model A/MBTI leakage in the segment prompt/validation contract.
 
 ## Verification
 
-To be filled during implementation. Expected shape:
+Fresh verification after implementation:
 
 ```bash
-cd backend && uv run pytest tests/unit/test_astrotype_v2/test_llm_segments.py tests/unit/test_astrotype_v2/test_api_runtime.py -q
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_llm_segments.py -q
+# 6 passed in 1.46s
+
 cd backend && uv run pytest tests/unit/test_astrotype_v2 -q
-cd backend && uv run ruff check workers/tasks/astrotype_v2.py app/modules/astrotype_v2 app/modules/llm tests/unit/test_astrotype_v2
-cd backend && uv run mypy workers/tasks/astrotype_v2.py app/modules/astrotype_v2 app/modules/llm
+# 114 passed in 5.52s
+
+cd backend && uv run ruff check app/modules/astrotype_v2/llm_segments.py workers/tasks/astrotype_v2.py tests/unit/test_astrotype_v2/test_llm_segments.py
+# All checks passed!
+
+cd backend && uv run mypy app/modules/astrotype_v2/llm_segments.py workers/tasks/astrotype_v2.py tests/unit/test_astrotype_v2/test_llm_segments.py
+# Success: no issues found in 3 source files
+
+cd backend && uv run python - <<'PY'
+from pathlib import Path
+src = Path('workers/tasks/astrotype_v2.py').read_text()
+checks = {
+    'imports_get_llm_provider': 'get_llm_provider' in src,
+    'uses_llm_enabled': 'settings.LLM_ENABLED' in src,
+    'uses_segment_adapter': 'StructuredSegmentProviderAdapter' in src,
+    'uses_segment_runner': 'run_segment_generation_v2' in src,
+    'keeps_deterministic_fallback': '_ensure_deterministic_segments' in src,
+}
+for key, value in checks.items():
+    print(key, value)
+assert all(checks.values())
+PY
+# imports_get_llm_provider True
+# uses_llm_enabled True
+# uses_segment_adapter True
+# uses_segment_runner True
+# keeps_deterministic_fallback True
 ```
+
+Real-provider end-to-end smoke remains owned by S03 so the code path can be verified without printing secrets or making CI depend on external credentials.

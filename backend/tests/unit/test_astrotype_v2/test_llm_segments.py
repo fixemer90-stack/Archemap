@@ -25,6 +25,22 @@ class FakeSegmentProvider:
         return self.responses.pop(0)
 
 
+class FakeStructuredProvider:
+    def __init__(self, response: dict[str, Any]) -> None:
+        self.response = response
+        self.calls: list[tuple[str, Any, type[ReportSegmentOutputV2]]] = []
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: Any,
+        schema: type[ReportSegmentOutputV2],
+    ) -> ReportSegmentOutputV2:
+        self.calls.append((prompt, narrative_input, schema))
+        return schema.model_validate(self.response)
+
+
 def _theme(theme_id: str, section: str, evidence_id: str) -> SynthesisThemeV2:
     return SynthesisThemeV2(
         id=theme_id,
@@ -140,6 +156,30 @@ def test_validate_segment_output_preserves_long_grounded_section_without_artific
     output = ReportSegmentOutputV2.model_validate({**_valid_long_output(), "body": long_body})
 
     assert validate_segment_output_v2(output=output, section_input=section_input).body == long_body
+
+
+@pytest.mark.asyncio
+async def test_structured_segment_provider_adapter_uses_generic_llm_provider_for_v2_schema() -> None:
+    from app.modules.astrotype_v2.llm_segments import StructuredSegmentProviderAdapter
+
+    section_input = _section_input()
+    generic_provider = FakeStructuredProvider(_valid_long_output())
+    adapter = StructuredSegmentProviderAdapter(
+        provider=generic_provider,
+        provider_name="deepseek",
+        model_name="deepseek-v4-flash",
+    )
+
+    payload = await adapter.generate_segment(prompt="segment prompt", section_input=section_input)
+
+    assert adapter.provider_name == "deepseek"
+    assert adapter.model_name == "deepseek-v4-flash"
+    assert payload["section_id"] == "core_pattern"
+    assert payload["evidence_ids"] == ["ev:sun"]
+    assert len(generic_provider.calls) == 1
+    _, sent_input, sent_schema = generic_provider.calls[0]
+    assert sent_input == section_input
+    assert sent_schema is ReportSegmentOutputV2
 
 
 @pytest.mark.asyncio

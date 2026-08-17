@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2, SectionRenderInputV2
@@ -22,6 +22,38 @@ class SegmentLLMProvider(Protocol):
 
     async def generate_segment(self, *, prompt: str, section_input: SectionRenderInputV2) -> dict[str, Any]:
         """Return raw JSON-like data for one section."""
+        ...
+
+
+class StructuredLLMProvider(Protocol):
+    """Generic project LLM provider boundary used by existing provider factory."""
+
+    async def generate_structured(
+        self,
+        *,
+        prompt: str,
+        narrative_input: Any,
+        schema: type[ReportSegmentOutputV2],
+    ) -> ReportSegmentOutputV2:
+        """Generate and validate a structured model response."""
+        ...
+
+
+class StructuredSegmentProviderAdapter:
+    """Adapt the generic provider factory to the v2 segment provider boundary."""
+
+    def __init__(self, *, provider: StructuredLLMProvider, provider_name: str, model_name: str) -> None:
+        self._provider = provider
+        self.provider_name = provider_name
+        self.model_name = model_name
+
+    async def generate_segment(self, *, prompt: str, section_input: SectionRenderInputV2) -> dict[str, Any]:
+        response = await self._provider.generate_structured(
+            prompt=prompt,
+            narrative_input=cast(Any, section_input),
+            schema=ReportSegmentOutputV2,
+        )
+        return response.model_dump(mode="json")
 
 
 def build_segment_prompt(section_input: SectionRenderInputV2) -> str:

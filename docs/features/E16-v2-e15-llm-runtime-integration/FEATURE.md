@@ -85,7 +85,7 @@ As of the discovery pass:
 | ID  | Story                                                                                       | Status       |
 | --- | ------------------------------------------------------------------------------------------- | ------------ |
 | S01 | [Fix backend/worker LLM environment loading](./S01-env-loading-contract.md)                 | ✅ Готово    |
-| S02 | [Wire V2 worker narrative segments to LLM provider](./S02-worker-llm-segment-runtime.md)    | ⬜ Не начато |
+| S02 | [Wire V2 worker narrative segments to LLM provider](./S02-worker-llm-segment-runtime.md)    | ✅ Готово    |
 | S03 | [Add real-provider smoke and CI-safe mock gates](./S03-real-provider-smoke-and-ci-gates.md) | ⬜ Не начато |
 
 ## Implementation order

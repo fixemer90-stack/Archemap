@@ -31,6 +31,11 @@ As of the discovery pass:
 - Current V2 worker does not call `get_llm_provider`, `generate_structured`, `DeepSeekProvider`, or `OpenRouterProvider`.
 - Current frontend V2 flow is ready for UX/API/runtime work, but not yet a real LLM-backed V2 narrative flow.
 
+## Companion docs
+
+- Workflow / product-runtime scenario: [`WORKFLOW.md`](./WORKFLOW.md)
+- API/state contract: [`API.md`](./API.md)
+
 ## Dependencies
 
 - V2-E7 Modular LLM generation: `../E16-v2-e7-modular-llm-generation/FEATURE.md`
@@ -87,6 +92,18 @@ As of the discovery pass:
 
 ```text
 S01 → S02 → S03
+```
+
+Recommended first vertical slice before scaling to all sections:
+
+```text
+core-pattern only
+→ build curated input
+→ call configured provider
+→ validate structured payload
+→ persist one segment
+→ expose progress/API state
+→ render one real LLM section in `/report/v2/{profile_id}`
 ```
 
 ## Verification plan

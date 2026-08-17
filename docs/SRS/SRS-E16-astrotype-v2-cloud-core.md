@@ -57,7 +57,7 @@ Feature contracts:
 - `V2-E12` — `Android MVP path`: `docs/features/E16-v2-e12-android-mvp-path/FEATURE.md`
 - `V2-E13` — `Desktop thin client decision`: `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md`; decision artifact: `docs/architecture/astrotype-v2-desktop-thin-client-decision.md`.
 - `V2-E14` — `QA, smoke, rollout`: `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`
-- `V2-E15` — `LLM runtime integration`: `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`
+- `V2-E15` — `LLM runtime integration`: `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`; workflow companion: `docs/features/E16-v2-e15-llm-runtime-integration/WORKFLOW.md`; API/state companion: `docs/features/E16-v2-e15-llm-runtime-integration/API.md`
 
 ---
 

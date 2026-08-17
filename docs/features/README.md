@@ -68,6 +68,6 @@ Active v2 features:
 - `V2-E12` — [Android MVP path](./E16-v2-e12-android-mvp-path/FEATURE.md)
 - `V2-E13` — [Desktop thin client decision](./E16-v2-e13-desktop-thin-client-decision/FEATURE.md)
 - `V2-E14` — [QA, smoke, rollout](./E16-v2-e14-qa-smoke-rollout/FEATURE.md)
-- `V2-E15` — [LLM runtime integration](./E16-v2-e15-llm-runtime-integration/FEATURE.md)
+- `V2-E15` — [LLM runtime integration](./E16-v2-e15-llm-runtime-integration/FEATURE.md) ([workflow](./E16-v2-e15-llm-runtime-integration/WORKFLOW.md), [API](./E16-v2-e15-llm-runtime-integration/API.md))
 
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`

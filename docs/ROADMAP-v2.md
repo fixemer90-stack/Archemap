@@ -65,6 +65,7 @@ v2 foundation is not:
 | V2-E12 | Android MVP path                 | ⬜ Planned               | Prepare PWA/Capacitor Android shell.                                                                    | `docs/features/E16-v2-e12-android-mvp-path/FEATURE.md`             |
 | V2-E13 | Desktop thin client decision     | ✅ Completed             | `.exe` is not required for core launch; if built, it remains a thin API client with cache-only storage. | `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md` |
 | V2-E14 | QA, smoke, rollout               | ⬜ Planned               | Verify generation quality, runtime reliability and rollout safety.                                      | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`             |
+| V2-E15 | LLM runtime integration          | ⬜ Planned               | Connect V2 narrative segments to the configured real LLM provider with honest progress/failure states.  | `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`      |
 
 ---
 

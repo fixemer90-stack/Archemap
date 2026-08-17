@@ -15,7 +15,10 @@ function entries(value: unknown): Array<[string, unknown]> {
     : [];
 }
 
-export function V2CalculationMatrix({ matrix, aspects }: V2CalculationMatrixProps) {
+export function V2CalculationMatrix({
+  matrix,
+  aspects,
+}: V2CalculationMatrixProps) {
   const houseMode = normalizeGroup(matrix.houseMode, {
     angular: "Угловые",
     succedent: "Последующие",
@@ -48,15 +51,18 @@ export function V2CalculationMatrix({ matrix, aspects }: V2CalculationMatrixProp
     .slice(0, 3);
 
   return (
-    <section data-v2-calculation-block="calculation_matrix" className="space-y-4">
+    <section
+      data-v2-calculation-block="calculation_matrix"
+      className="w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6"
+    >
       <h3 className="text-[21px] font-semibold text-[#F4EADB]">
         Расчётные акценты карты
       </h3>
-      <p className="text-[12px] leading-[1.45] text-[#9FB0CC]">
+      <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
         Компактная сводка производных расчётов: тип домов, ориентация карты,
         квадранты и профиль аспектной сети.
       </p>
-      <div className="grid gap-[14px] md:grid-cols-2">
+      <div className="mt-4 grid gap-[14px] md:grid-cols-2">
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
           <h4 className="font-semibold text-[#FFE2A1]">Тип домов</h4>
           <div className="mt-3 space-y-[11px]">
@@ -105,8 +111,14 @@ export function V2CalculationMatrix({ matrix, aspects }: V2CalculationMatrixProp
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
           <h4 className="font-semibold text-[#FFE2A1]">Профиль аспектов</h4>
           <div className="mt-3 grid grid-cols-3 gap-[10px]">
-            <CountCard value={numericValue(aspectCounts.resource)} label="ресурс" />
-            <CountCard value={numericValue(aspectCounts.tension)} label="напряжение" />
+            <CountCard
+              value={numericValue(aspectCounts.resource)}
+              label="ресурс"
+            />
+            <CountCard
+              value={numericValue(aspectCounts.tension)}
+              label="напряжение"
+            />
             <CountCard
               value={numericValue(aspectCounts.conjunction)}
               label="соединения"
@@ -122,7 +134,8 @@ export function V2CalculationMatrix({ matrix, aspects }: V2CalculationMatrixProp
                   {bodyLabel(aspect.bodyA)} — {bodyLabel(aspect.bodyB)}
                 </b>
                 <span className="block text-[12px] text-[#9FB0CC]">
-                  {aspectLabel(aspect.aspectCode)}, orb {formatValue(aspect.orbDegrees)}°
+                  {aspectLabel(aspect.aspectCode)}, orb{" "}
+                  {formatValue(aspect.orbDegrees)}°
                 </span>
               </li>
             ))}
@@ -141,7 +154,10 @@ function normalizeGroup(
     .filter(([key, item]) => key in labels && typeof item === "number")
     .map(([key, item]) => [labels[key], Number(item)] as [string, number]);
   const total = rows.reduce((sum, [, item]) => sum + item, 0);
-  return rows.map(([label, item]) => [label, total > 0 ? Math.round((item / total) * 100) : 0]);
+  return rows.map(([label, item]) => [
+    label,
+    total > 0 ? Math.round((item / total) * 100) : 0,
+  ]);
 }
 
 function BarRow({

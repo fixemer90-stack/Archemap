@@ -13,7 +13,10 @@ interface V2CalculationLayerProps {
 
 export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
   return (
-    <section data-v2-reader-block="calculation_layer" className="space-y-[18px] text-[#F4EADB]">
+    <section
+      data-v2-reader-block="calculation_layer"
+      className="space-y-[18px] text-[#F4EADB]"
+    >
       <header className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6">
         <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#D9B86F]">
           Расчётная основа
@@ -32,15 +35,18 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
         </div>
       </div>
       <div className="grid items-stretch gap-[18px] xl:grid-cols-12">
-        <div className="flex xl:col-span-6">
+        <div className="flex w-full xl:col-span-6">
           <V2HouseEmphasis houseEmphasis={layer.houseEmphasis} />
         </div>
-        <div className="flex xl:col-span-6">
+        <div className="flex w-full xl:col-span-6">
           <V2AspectNetwork network={layer.aspectNetwork} />
         </div>
       </div>
       <V2KeyAspectsTable aspects={layer.keyAspects} />
-      <V2CalculationMatrix matrix={layer.calculationMatrix} aspects={layer.keyAspects} />
+      <V2CalculationMatrix
+        matrix={layer.calculationMatrix}
+        aspects={layer.keyAspects}
+      />
     </section>
   );
 }

@@ -30,18 +30,23 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
     .slice(0, EDGE_LIMIT);
 
   return (
-    <section data-v2-calculation-block="aspect_network" className="space-y-4">
-      <h3 className="text-[21px] font-semibold text-[#F4EADB]">Сеть ключевых аспектов</h3>
-      <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
-          <div className="mx-auto w-full max-w-[420px]">
-            <svg
-              className="h-auto w-full"
-              width="420"
-              height="420"
-              viewBox="0 0 420 420"
-              role="img"
-              aria-label="Сеть ключевых аспектов натальной карты"
-            >
+    <section
+      data-v2-calculation-block="aspect_network"
+      className="h-full min-h-[600px] w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] max-[1100px]:min-h-0"
+    >
+      <h3 className="mb-[14px] text-[21px] font-semibold leading-tight text-[#F4EADB]">
+        Сеть ключевых аспектов
+      </h3>
+      <div className="flex min-h-[500px] items-center justify-center max-[1100px]:min-h-0">
+        <div className="w-full max-w-[420px]">
+          <svg
+            className="h-auto w-full"
+            width="420"
+            height="420"
+            viewBox="0 0 420 420"
+            role="img"
+            aria-label="Сеть ключевых аспектов натальной карты"
+          >
             <defs>
               <filter
                 id="v2-aspect-node-shadow"
@@ -121,8 +126,8 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
                 </text>
               </g>
             ))}
-            </svg>
-          </div>
+          </svg>
+        </div>
       </div>
     </section>
   );

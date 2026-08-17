@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -56,26 +56,39 @@ LLM_MAX_RETRIES=2
 
 ## Acceptance criteria
 
-- [ ] Running settings import from `backend/` sees the intended configured LLM provider/model.
-- [ ] Running settings import from repo root sees the same provider/model.
-- [ ] Secret values are redacted in all verification output.
-- [ ] Mock/offline mode remains available for CI without requiring real API credentials.
-- [ ] Backend and Celery startup commands for real LLM mode are documented.
+- [x] Running settings import from `backend/` sees the intended configured LLM provider/model.
+- [x] Running settings import from repo root sees the same provider/model through absolute env-file resolution.
+- [x] Secret values are redacted in all verification output.
+- [x] Mock/offline mode remains available for CI without requiring real API credentials.
+- [x] Backend and Celery startup commands for real LLM mode are documented by the E15 feature/runbook docs.
 
 ## Verification
 
-To be filled during implementation. Expected shape:
+Fresh verification after implementation:
 
 ```bash
+cd backend && uv run pytest tests/unit/test_config_env.py tests/unit/test_llm/test_provider.py -q
+# 12 passed in 1.27s
+
+cd backend && uv run ruff check app/config.py tests/unit/test_config_env.py tests/unit/test_llm/test_provider.py
+# All checks passed!
+
+cd backend && uv run mypy app/config.py tests/unit/test_config_env.py
+# Success: no issues found in 2 source files
+
 cd backend && uv run python - <<'PY'
 from app.config import settings
-assert settings.LLM_ENABLED is True
-assert settings.LLM_PROVIDER == 'deepseek'
-assert settings.LLM_MODEL == 'deepseek-v4-flash'
-assert bool(settings.LLM_API_KEY)
-print('LLM env resolved with API key [REDACTED]')
+print('LLM_ENABLED', settings.LLM_ENABLED)
+print('LLM_PROVIDER', settings.LLM_PROVIDER)
+print('LLM_MODEL', settings.LLM_MODEL)
+print('LLM_API_KEY', '[REDACTED]' if bool(settings.LLM_API_KEY) else '')
+print('LLM_TIMEOUT_SECONDS', settings.LLM_TIMEOUT_SECONDS)
+print('LLM_MAX_RETRIES', settings.LLM_MAX_RETRIES)
 PY
-cd backend && uv run pytest <settings-env-contract-test> -q
-cd backend && uv run ruff check app/config.py <test-file>
-cd backend && uv run mypy app/config.py <test-file>
+# LLM_ENABLED True
+# LLM_PROVIDER deepseek
+# LLM_MODEL deepseek-v4-flash
+# LLM_API_KEY [REDACTED]
+# LLM_TIMEOUT_SECONDS 180
+# LLM_MAX_RETRIES 2
 ```

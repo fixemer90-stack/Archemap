@@ -293,8 +293,8 @@ function toIndicator(value: unknown): V2ChartIndicatorViewModel | undefined {
   if (!record) return undefined;
   return {
     body: optionalString(record.body),
-    planet: optionalString(record.planet),
-    sign: optionalString(record.sign),
+    planet: optionalLocalizedString(record.planet),
+    sign: optionalLocalizedString(record.sign),
     degreeLabel: optionalString(record.degree_label),
     houseNumber: optionalNumber(record.house_number),
     position: toIndicator(record.position),
@@ -306,7 +306,7 @@ function toPlanetPosition(
 ): V2PlanetPositionViewModel {
   return {
     body: stringValue(record.body),
-    sign: stringValue(record.sign),
+    sign: localizedAstroLabel(stringValue(record.sign)),
     houseNumber: optionalNumber(record.house_number),
     signDegree: optionalNumber(record.sign_degree),
     degreeLabel: stringValue(record.degree_label),
@@ -335,10 +335,58 @@ function toBalanceBar(
   return {
     category: stringValue(record.category, category),
     key,
-    label: key,
+    label: localizedAstroLabel(key),
     value: numberValue(record.value, 0),
     rank: optionalNumber(record.rank),
   };
+}
+
+function localizedAstroLabel(value: string): string {
+  return (
+    {
+      Sun: "Солнце",
+      Moon: "Луна",
+      Mercury: "Меркурий",
+      Venus: "Венера",
+      Mars: "Марс",
+      Jupiter: "Юпитер",
+      Saturn: "Сатурн",
+      Uranus: "Уран",
+      Neptune: "Нептун",
+      Pluto: "Плутон",
+      Lilith: "Лилит",
+      Ascendant: "Асцендент",
+      MC: "MC",
+      "North Node": "Северный узел",
+      north_node: "Северный узел",
+      fire: "Огонь",
+      Fire: "Огонь",
+      earth: "Земля",
+      Earth: "Земля",
+      air: "Воздух",
+      Air: "Воздух",
+      water: "Вода",
+      Water: "Вода",
+      cardinal: "Кардинальная",
+      Cardinal: "Кардинальная",
+      fixed: "Фиксированная",
+      Fixed: "Фиксированная",
+      mutable: "Мутабельная",
+      Mutable: "Мутабельная",
+      Aries: "Овен",
+      Taurus: "Телец",
+      Gemini: "Близнецы",
+      Cancer: "Рак",
+      Leo: "Лев",
+      Virgo: "Дева",
+      Libra: "Весы",
+      Scorpio: "Скорпион",
+      Sagittarius: "Стрелец",
+      Capricorn: "Козерог",
+      Aquarius: "Водолей",
+      Pisces: "Рыбы",
+    }[value] ?? value
+  );
 }
 
 function toHouseEmphasisBar(
@@ -346,7 +394,7 @@ function toHouseEmphasisBar(
 ): V2HouseEmphasisBarViewModel {
   return {
     houseNumber: numberValue(record.house_number, 0),
-    sign: stringValue(record.sign),
+    sign: localizedAstroLabel(stringValue(record.sign)),
     bodyCount: numberValue(record.body_count, 0),
     accentWeight: numberValue(record.accent_weight, 0),
   };
@@ -355,8 +403,8 @@ function toHouseEmphasisBar(
 function toAspectNode(record: Record<string, unknown>): V2AspectNodeViewModel {
   return {
     id: stringValue(record.id),
-    label: stringValue(record.label, stringValue(record.id)),
-    sign: optionalString(record.sign),
+    label: localizedAstroLabel(stringValue(record.label, stringValue(record.id))),
+    sign: optionalLocalizedString(record.sign),
     houseNumber: optionalNumber(record.house_number),
   };
 }
@@ -418,6 +466,12 @@ function stringValue(value: unknown, fallback = ""): string {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function optionalLocalizedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0
+    ? localizedAstroLabel(value)
+    : undefined;
 }
 
 function numberValue(value: unknown, fallback: number): number {

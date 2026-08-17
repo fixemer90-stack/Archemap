@@ -31,11 +31,11 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
           <V2BalanceBars balanceBars={layer.balanceBars} />
         </div>
       </div>
-      <div className="grid gap-[18px] xl:grid-cols-12">
-        <div className="xl:col-span-6">
+      <div className="grid items-stretch gap-[18px] xl:grid-cols-12">
+        <div className="flex xl:col-span-6">
           <V2HouseEmphasis houseEmphasis={layer.houseEmphasis} />
         </div>
-        <div className="xl:col-span-6">
+        <div className="flex xl:col-span-6">
           <V2AspectNetwork network={layer.aspectNetwork} />
         </div>
       </div>

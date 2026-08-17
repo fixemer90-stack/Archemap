@@ -13,32 +13,34 @@ export function V2KeyIndicators({ indicators }: V2KeyIndicatorsProps) {
   const items = [
     [
       "Асцендент",
-      indicators.ascendant?.degreeLabel,
-      indicators.ascendant?.sign,
+      formatIndicator(indicators.ascendant),
+      "первый дом, внешний стиль контакта и первичная реакция на мир",
     ],
-    ["MC", indicators.mc?.degreeLabel, indicators.mc?.sign],
+    [
+      "MC",
+      formatIndicator(indicators.mc),
+      "верх карты, публичная траектория и способ проявляться в деле",
+    ],
     [
       "Управитель ASC",
-      indicators.ascendantRuler?.planet,
-      indicators.ascendantRuler?.position?.degreeLabel,
+      formatAscRuler(indicators.ascendantRuler),
+      "как энергия асцендента уходит в действие, границы и партнёрство",
     ],
-  ];
+  ] as const;
+
   return (
-    <section data-v2-calculation-block="key_indicators" className="space-y-4">
-      <h3 className="text-xl font-semibold">Карта и ключевые показатели</h3>
+    <section data-v2-calculation-block="key_indicators" className="mt-4 space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
         {items.map(([label, primary, secondary]) => (
           <div
             key={label}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+            className="rounded-[17px] border border-[#263046] bg-[#101622] p-[13px]"
           >
-            <div className="text-xs uppercase tracking-[0.18em] text-[#D8B45A]">
-              {label}
-            </div>
-            <div className="mt-3 text-lg font-semibold text-[#F5E9D0]">
+            <div className="text-[15px] font-semibold text-[#FFE2A1]">{label}</div>
+            <div className="mt-2 text-[18px] font-semibold leading-tight text-[#F4EADB]">
               {formatValue(primary)}
             </div>
-            <div className="mt-1 text-sm text-[#BFC6D8]">
+            <div className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
               {formatValue(secondary)}
             </div>
           </div>
@@ -46,4 +48,20 @@ export function V2KeyIndicators({ indicators }: V2KeyIndicatorsProps) {
       </div>
     </section>
   );
+}
+
+function formatIndicator(indicator?: V2ChartIndicatorViewModel): string {
+  if (!indicator) return "—";
+  const parts = [indicator.sign, indicator.degreeLabel].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function formatAscRuler(indicator?: V2ChartIndicatorViewModel): string {
+  if (!indicator) return "—";
+  const position = indicator.position;
+  const sign = position?.sign;
+  const house = position?.houseNumber ? `${position.houseNumber} дом` : undefined;
+  return [indicator.planet, sign ? `в ${sign}` : undefined, house]
+    .filter(Boolean)
+    .join(" ");
 }

@@ -2,8 +2,6 @@ import type {
   V2AspectNodeViewModel,
   V2CalculationLayerViewModel,
 } from "@/lib/astrotype-v2/report-view-model";
-import { formatValue } from "./format";
-
 interface V2AspectNetworkProps {
   network: V2CalculationLayerViewModel["aspectNetwork"];
 }
@@ -33,17 +31,17 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
 
   return (
     <section data-v2-calculation-block="aspect_network" className="space-y-4">
-      <h3 className="text-xl font-semibold">Сеть ключевых аспектов</h3>
-      <div className="grid gap-5 lg:grid-cols-[minmax(20rem,28rem)_minmax(0,1fr)]">
-        <div className="rounded-[1.75rem] border border-white/10 bg-[#101622] p-4">
-          <svg
-            className="h-auto w-full"
-            width="420"
-            height="420"
-            viewBox="0 0 420 420"
-            role="img"
-            aria-label="Сеть ключевых аспектов натальной карты"
-          >
+      <h3 className="text-[21px] font-semibold text-[#F4EADB]">Сеть ключевых аспектов</h3>
+      <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
+          <div className="mx-auto w-full max-w-[420px]">
+            <svg
+              className="h-auto w-full"
+              width="420"
+              height="420"
+              viewBox="0 0 420 420"
+              role="img"
+              aria-label="Сеть ключевых аспектов натальной карты"
+            >
             <defs>
               <filter
                 id="v2-aspect-node-shadow"
@@ -123,51 +121,8 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
                 </text>
               </g>
             ))}
-          </svg>
-        </div>
-
-        <div className="space-y-4">
-          <p className="text-sm leading-7 text-[#BFC6D8]">
-            Линии показывают самые сильные связи между точками карты: красные —
-            напряжение и задача, синие — ресурс и естественный ход энергии.
-            Толщина линии зависит от силы аспекта.
-          </p>
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-[#ff6f83]/15 px-3 py-1 font-medium text-[#ffa3ae]">
-              напряжение
-            </span>
-            <span className="rounded-full bg-[#6fa8ff]/15 px-3 py-1 font-medium text-[#afd0ff]">
-              ресурс
-            </span>
+            </svg>
           </div>
-          <div className="grid gap-2">
-            {edges.slice(0, 10).map((edge) => (
-              <div
-                key={`${edge.source}-${edge.target}-${edge.aspectCode}-legend`}
-                className="grid grid-cols-[1fr_auto] gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm"
-              >
-                <div>
-                  <div className="font-medium text-[#F5E9D0]">
-                    {bodyLabel(edge.source)} — {bodyLabel(edge.target)}
-                  </div>
-                  <div className="text-xs text-[#8E99B4]">
-                    {aspectLabel(edge.aspectCode)} · сила{" "}
-                    {formatValue(edge.strength)}
-                  </div>
-                </div>
-                <span
-                  className={
-                    aspectTone(edge.aspectCode) === "resource"
-                      ? "rounded-full bg-[#6fa8ff]/15 px-3 py-1 text-xs font-medium text-[#afd0ff]"
-                      : "rounded-full bg-[#ff6f83]/15 px-3 py-1 text-xs font-medium text-[#ffa3ae]"
-                  }
-                >
-                  orb {formatValue(edge.orbDegrees)}°
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -195,17 +150,10 @@ function aspectTone(aspectCode: string): "resource" | "tension" {
   return ["trine", "sextile"].includes(aspectCode) ? "resource" : "tension";
 }
 
-function aspectLabel(aspectCode: string): string {
-  return (
-    {
-      conjunction: "соединение",
-      opposition: "оппозиция",
-      trine: "трин",
-      square: "квадрат",
-      sextile: "секстиль",
-      quincunx: "квинконс",
-    }[aspectCode] ?? aspectCode
-  );
+function shortBodyLabel(body: string): string {
+  const label = bodyLabel(body);
+  if (label === "MC") return "MC";
+  return label.slice(0, 3);
 }
 
 function bodyLabel(body: string): string {
@@ -227,12 +175,6 @@ function bodyLabel(body: string): string {
       MC: "MC",
     }[body] ?? body
   );
-}
-
-function shortBodyLabel(body: string): string {
-  const label = bodyLabel(body);
-  if (label === "MC") return "MC";
-  return label.slice(0, 3);
 }
 
 function round(value: number): number {

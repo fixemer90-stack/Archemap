@@ -8,26 +8,30 @@ interface V2PlanetPositionsTableProps {
 export function V2PlanetPositionsTable({
   positions,
 }: V2PlanetPositionsTableProps) {
+  const orderedPositions = [...positions].sort(
+    (a, b) => sortRank(a.body) - sortRank(b.body),
+  );
+
   return (
     <section data-v2-calculation-block="planet_positions" className="space-y-4">
-      <h3 className="text-xl font-semibold">Положения планет</h3>
-      <div className="overflow-x-auto rounded-2xl border border-white/10">
+      <h3 className="text-[21px] font-semibold text-[#F4EADB]">Положения планет</h3>
+      <div className="overflow-x-auto rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-white/[0.04] text-[#D8B45A]">
+          <thead className="text-[#C4CCDB]">
             <tr>
-              <th className="px-4 py-3">Точка</th>
+              <th className="px-4 py-3">Планета</th>
               <th className="px-4 py-3">Знак</th>
               <th className="px-4 py-3">Дом</th>
               <th className="px-4 py-3">Градус</th>
               <th className="px-4 py-3">R</th>
-              <th className="px-4 py-3">Ключевые аспекты</th>
+              <th className="px-4 py-3">Ключевые аспекты из выборки</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10 text-[#D8DCE8]">
-            {positions.map((position) => (
+          <tbody className="divide-y divide-[#2d3548] text-[#DCE4F3]">
+            {orderedPositions.map((position) => (
               <tr key={position.body}>
-                <td className="px-4 py-3 font-medium text-[#F5E9D0]">
-                  {position.body}
+                <td className="px-4 py-3 font-medium text-[#F4EADB]">
+                  {bodyLabel(position.body)}
                 </td>
                 <td className="px-4 py-3">{position.sign}</td>
                 <td className="px-4 py-3">
@@ -40,7 +44,7 @@ export function V2PlanetPositionsTable({
                     ? position.sampledAspects
                         .map(
                           (aspect) =>
-                            `${aspect.bodyA}/${aspect.bodyB} ${aspect.aspectCode}`,
+                            `${otherBody(position.body, aspect)} ${aspectLabel(aspect.aspectCode)}`,
                         )
                         .join(", ")
                     : "—"}
@@ -51,5 +55,61 @@ export function V2PlanetPositionsTable({
         </table>
       </div>
     </section>
+  );
+}
+
+function bodyLabel(body: string): string {
+  return (
+    {
+      Sun: "Солнце",
+      Moon: "Луна",
+      Mercury: "Меркурий",
+      Venus: "Венера",
+      Mars: "Марс",
+      Jupiter: "Юпитер",
+      Saturn: "Сатурн",
+      Uranus: "Уран",
+      Neptune: "Нептун",
+      Pluto: "Плутон",
+      Ascendant: "Асцендент",
+      MC: "MC",
+    }[body] ?? body
+  );
+}
+
+function aspectLabel(aspectCode: string): string {
+  return (
+    {
+      conjunction: "соединение",
+      opposition: "оппозиция",
+      trine: "трин",
+      square: "квадрат",
+      sextile: "секстиль",
+      quincunx: "квинконс",
+    }[aspectCode] ?? aspectCode
+  );
+}
+
+function otherBody(body: string, aspect: V2PlanetPositionViewModel["sampledAspects"][number]): string {
+  const other = aspect.bodyA === body ? aspect.bodyB : aspect.bodyA;
+  return bodyLabel(other);
+}
+
+function sortRank(body: string): number {
+  return (
+    {
+      Sun: 0,
+      Moon: 1,
+      Mercury: 2,
+      Venus: 3,
+      Mars: 4,
+      Jupiter: 5,
+      Saturn: 6,
+      Uranus: 7,
+      Neptune: 8,
+      Pluto: 9,
+      Ascendant: 10,
+      MC: 11,
+    }[body] ?? 999
   );
 }

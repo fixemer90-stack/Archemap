@@ -11,33 +11,33 @@ export function V2NarrativeSectionCard({
     <article
       data-v2-reader-block="narrative-section"
       data-v2-section-id={section.id}
-      className="rounded-[1.75rem] border border-white/10 bg-[#111827] p-6 text-[#F5E9D0] shadow-xl shadow-black/20 md:p-8"
+      className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 text-[#F4EADB] shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6"
     >
-      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D8B45A]">
+      <div className="mb-[14px] flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#D9B86F]">
             {section.eyebrow}
           </div>
-          <h2 className="text-2xl font-semibold md:text-4xl">
+          <h2 className="text-[21px] leading-tight font-semibold text-[#F4EADB] md:text-[28px]">
             {section.title}
           </h2>
         </div>
-        <div className="rounded-full border border-[#D8B45A]/30 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#D8B45A]">
+        <div className="rounded-full border border-white/10 bg-[#101622] px-3 py-1 text-[12px] uppercase tracking-[0.08em] text-[#AEB6C7]">
           {section.subtitle}
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="space-y-5 text-base leading-8 text-[#D8DCE8] md:text-lg md:leading-9">
+      <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div className="space-y-4 text-[15px] leading-[1.6] text-[#DCE4F3] md:text-[16px]">
           {section.paragraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>
-        <aside className="h-fit rounded-2xl border border-[#D8B45A]/20 bg-[#D8B45A]/10 p-5">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#D8B45A]">
+        <aside className="h-fit rounded-[16px] border border-[#263046] bg-[#101622] p-4">
+          <h3 className="mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#D9B86F]">
             {section.asideTitle}
           </h3>
-          <ul className="space-y-2 text-sm leading-6 text-[#E6D9B8]">
+          <ul className="space-y-2 text-[13px] leading-[1.5] text-[#DCE4F3]">
             {section.asideBullets.map((bullet) => (
               <li key={bullet} className="flex gap-2">
                 <span aria-hidden="true">·</span>

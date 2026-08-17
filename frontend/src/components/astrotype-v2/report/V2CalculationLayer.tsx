@@ -13,30 +13,34 @@ interface V2CalculationLayerProps {
 
 export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
   return (
-    <section
-      data-v2-reader-block="calculation_layer"
-      className="space-y-8 rounded-[1.75rem] border border-[#D8B45A]/20 bg-[#0F172A] p-6 text-[#F5E9D0] md:p-8"
-    >
-      <header>
-        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D8B45A]">
-          Нижний расчётный слой
+    <section data-v2-reader-block="calculation_layer" className="space-y-[18px] text-[#F4EADB]">
+      <header className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6">
+        <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#D9B86F]">
+          Расчётная основа
         </div>
-        <h2 className="mt-3 text-2xl font-semibold md:text-4xl">
+        <h2 className="mt-3 text-[21px] font-semibold text-[#F4EADB] md:text-[28px]">
           Карта и ключевые показатели
         </h2>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-[#BFC6D8]">
-          Компактная deterministic-основа отчёта: положения, балансы, дома,
-          аспекты и расчётные акценты карты. Здесь нет отдельного dashboard —
-          только подложка к уже прочитанному портрету.
-        </p>
+        <V2KeyIndicators indicators={layer.keyIndicators} />
       </header>
-      <V2KeyIndicators indicators={layer.keyIndicators} />
-      <V2PlanetPositionsTable positions={layer.planetPositions} />
-      <V2BalanceBars balanceBars={layer.balanceBars} />
-      <V2HouseEmphasis houseEmphasis={layer.houseEmphasis} />
-      <V2AspectNetwork network={layer.aspectNetwork} />
+      <div className="grid gap-[18px] xl:grid-cols-12">
+        <div className="xl:col-span-8">
+          <V2PlanetPositionsTable positions={layer.planetPositions} />
+        </div>
+        <div className="xl:col-span-4">
+          <V2BalanceBars balanceBars={layer.balanceBars} />
+        </div>
+      </div>
+      <div className="grid gap-[18px] xl:grid-cols-12">
+        <div className="xl:col-span-6">
+          <V2HouseEmphasis houseEmphasis={layer.houseEmphasis} />
+        </div>
+        <div className="xl:col-span-6">
+          <V2AspectNetwork network={layer.aspectNetwork} />
+        </div>
+      </div>
       <V2KeyAspectsTable aspects={layer.keyAspects} />
-      <V2CalculationMatrix matrix={layer.calculationMatrix} />
+      <V2CalculationMatrix matrix={layer.calculationMatrix} aspects={layer.keyAspects} />
     </section>
   );
 }

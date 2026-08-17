@@ -12,8 +12,13 @@ const TITLES: Record<string, string> = {
   modality: "Баланс модальностей",
 };
 
+const BALANCE_ORDER = ["elements", "element", "modalities", "modality"];
+
 export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
-  const entries = Object.entries(balanceBars);
+  const entries = BALANCE_ORDER.flatMap((category) => {
+    const rows = balanceBars[category];
+    return rows ? ([[category, rows]] as Array<[string, V2BalanceBarViewModel[]]>) : [];
+  });
 
   return (
     <section data-v2-calculation-block="balance_bars">

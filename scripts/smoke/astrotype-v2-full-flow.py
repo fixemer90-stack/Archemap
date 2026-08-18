@@ -64,22 +64,48 @@ def ensure_http_url(url: str) -> None:
 async def latest_verification_token(email: str) -> str:
     from sqlalchemy import select
 
-    from app.infrastructure.database import async_session_factory
+    from app.infrastructure.database import async_session_factory, engine
     from app.modules.auth.models import EmailVerification
     from app.modules.users.models import User
 
-    async with async_session_factory() as session:
-        result = await session.execute(
-            select(EmailVerification.token)
-            .join(User, User.id == EmailVerification.user_id)
-            .where(User.email == email, EmailVerification.used_at.is_(None))
-            .order_by(EmailVerification.created_at.desc())
-            .limit(1)
-        )
-        token = result.scalar_one_or_none()
-        if not token:
-            raise RuntimeError(f"verification token not found for {email}")
-        return str(token)
+    try:
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(EmailVerification.token)
+                .join(User, User.id == EmailVerification.user_id)
+                .where(User.email == email, EmailVerification.used_at.is_(None))
+                .order_by(EmailVerification.created_at.desc())
+                .limit(1)
+            )
+            token = result.scalar_one_or_none()
+            if not token:
+                raise RuntimeError(f"verification token not found for {email}")
+            return str(token)
+    finally:
+        await engine.dispose()
+
+
+async def latest_v2_report_id_for_profile(profile_id: str) -> str | None:
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from app.infrastructure.database import async_session_factory, engine
+    from app.modules.astrotype_v2.models import NatalChart, NatalReport
+
+    try:
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(NatalReport.id)
+                .join(NatalChart, NatalChart.id == NatalReport.chart_id)
+                .where(NatalChart.profile_id == UUID(profile_id))
+                .order_by(NatalReport.created_at.desc())
+                .limit(1)
+            )
+            report_id = result.scalar_one_or_none()
+            return str(report_id) if report_id is not None else None
+    finally:
+        await engine.dispose()
 
 
 def assert_no_forbidden(payload: Any) -> None:
@@ -129,12 +155,60 @@ def assert_canonical_report(payload: dict[str, Any]) -> None:
     assert_no_forbidden(payload)
 
 
+def llm_config_summary() -> dict[str, Any]:
+    from app.config import settings
+
+    return {
+        "llm_enabled": settings.LLM_ENABLED,
+        "llm_provider": settings.LLM_PROVIDER,
+        "llm_model": settings.LLM_MODEL,
+        "llm_api_key": "[REDACTED]" if bool(settings.LLM_API_KEY) else "",
+        "llm_timeout_seconds": settings.LLM_TIMEOUT_SECONDS,
+        "llm_max_retries": settings.LLM_MAX_RETRIES,
+    }
+
+
+def assert_expected_segment_provider(
+    payload: dict[str, Any], *, expect_provider: str | None, expect_model: str | None
+) -> None:
+    if expect_provider is None and expect_model is None:
+        return
+    segments = payload.get("segments") or payload.get("progress", {}).get("segments") or []
+    if not segments:
+        raise AssertionError("provider/model assertion requested, but report payload has no segments")
+    mismatches: list[dict[str, Any]] = []
+    for segment in segments:
+        provider = segment.get("provider")
+        model = segment.get("model")
+        if expect_provider is not None and provider != expect_provider:
+            mismatches.append({"section_key": segment.get("section_key"), "provider": provider, "model": model})
+            continue
+        if expect_model is not None and model != expect_model:
+            mismatches.append({"section_key": segment.get("section_key"), "provider": provider, "model": model})
+    if mismatches:
+        raise AssertionError(
+            "segment provider/model mismatch: "
+            + json.dumps(
+                {
+                    "expect_provider": expect_provider,
+                    "expect_model": expect_model,
+                    "mismatches": mismatches,
+                },
+                ensure_ascii=False,
+            )
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:3000")
     parser.add_argument("--backend-url", default="http://127.0.0.1:8000")
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--expect-provider", default=None)
+    parser.add_argument("--expect-model", default=None)
     args = parser.parse_args()
+
+    config_summary = llm_config_summary()
 
     health_status, health = request_json(f"{args.backend_url}/api/v1/health")
     assert health_status == 200 and health["status"] == "ok", health
@@ -192,24 +266,27 @@ def main() -> None:
     report_payload: dict[str, Any] | None = None
     last_generation = generation
     while time.time() < deadline:
-        generation_status, last_generation = request_json(
-            f"{args.backend_url}/api/v1/astrotype-v2/reports",
-            method="POST",
-            payload={"profile_id": profile_id, "force": False},
-            token=access_token,
-        )
-        report_id = last_generation.get("report_id")
+        report_id = asyncio.run(latest_v2_report_id_for_profile(profile_id))
         if report_id:
             _, report_payload = request_json(
                 f"{args.backend_url}/api/v1/astrotype-v2/reports/{report_id}", token=access_token
             )
             if report_payload["progress"]["status"] == "ready":
                 break
+        _, last_generation = request_json(
+            f"{args.backend_url}{generation['links']['progress']}",
+            token=access_token,
+        )
         time.sleep(2)
     if report_payload is None:
         raise RuntimeError(f"report not ready before timeout; last_generation={last_generation}")
 
     assert_canonical_report(report_payload)
+    assert_expected_segment_provider(
+        report_payload,
+        expect_provider=args.expect_provider,
+        expect_model=args.expect_model,
+    )
     page_status, page_html = request_text(f"{args.base_url}/report/v2/{profile_id}")
     assert page_status == 200 and "__next" in page_html
 
@@ -221,6 +298,17 @@ def main() -> None:
         "report_status": report_payload["progress"]["status"],
         "ready_segments": report_payload["progress"]["ready_segments"],
         "total_segments": report_payload["progress"]["total_segments"],
+        "llm_config": config_summary,
+        "segment_providers": [
+            {
+                "section_key": segment.get("section_key"),
+                "status": segment.get("status"),
+                "provider": segment.get("provider"),
+                "model": segment.get("model"),
+                "prompt_version": segment.get("prompt_version"),
+            }
+            for segment in report_payload.get("segments", [])
+        ],
         "reader_blocks": report_payload["infographic"]["calculation_layer"]["reader_blocks"],
         "frontend_route_http": page_status,
     }

@@ -9,7 +9,7 @@ from typing import Any, Protocol, cast
 
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2, SectionRenderInputV2
-from app.modules.astrotype_v2.segment_validation import validate_segment_output_v2
+from app.modules.astrotype_v2.segment_validation import SegmentValidationError, validate_segment_output_v2
 
 DEFAULT_SEGMENT_PROMPT_VERSION = "astrotype_v2_segment_v1"
 
@@ -69,6 +69,7 @@ Return typed JSON matching contract_version report_segment_output_v2.
 
 Depth contract:
 - Write deep, expanded, specific prose.
+- Body must contain at least 3 paragraphs separated by blank lines and at least 80 words.
 - Cover every owned theme and every owned evidence id with developed explanation.
 - Explain inner mechanisms and lived patterns; do not produce generic horoscope filler.
 - Reference themes may be used only for continuity.
@@ -97,9 +98,28 @@ async def run_segment_generation_v2(
     """Run one section request and return a persistable segment generation row."""
 
     prompt = build_segment_prompt(section_input)
-    raw_response = await provider.generate_segment(prompt=prompt, section_input=section_input)
-    parsed = ReportSegmentOutputV2.model_validate(raw_response)
-    validated = validate_segment_output_v2(output=parsed, section_input=section_input)
+    validation_error: SegmentValidationError | None = None
+    for attempt in range(2):
+        retry_prompt = prompt
+        if validation_error is not None:
+            retry_prompt = (
+                f"{prompt}\n\n"
+                "Your previous JSON failed validation. Return the same section again as valid JSON only. "
+                f"Validation error: {validation_error}. "
+                "Do not change section_id. Use only allowed evidence_ids and covered_theme_ids. "
+                "If the body was underdeveloped, expand it to at least 3 paragraphs and at least 80 words."
+            )
+        raw_response = await provider.generate_segment(prompt=retry_prompt, section_input=section_input)
+        parsed = ReportSegmentOutputV2.model_validate(raw_response)
+        try:
+            validated = validate_segment_output_v2(output=parsed, section_input=section_input)
+            break
+        except SegmentValidationError as exc:
+            validation_error = exc
+            if attempt >= 1:
+                raise
+    else:  # pragma: no cover - loop always exits or raises
+        raise SegmentValidationError("segment validation retry exhausted")
     status = "ready" if validated.continuation_complete else "continuation_required"
 
     request_payload = section_input.to_payload()

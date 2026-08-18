@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 from typing import Any, TypeVar
 
 import httpx
@@ -52,26 +54,42 @@ class DeepSeekProvider:
             "Content-Type": "application/json",
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-                response = await client.post(
-                    "https://api.deepseek.com/chat/completions",
-                    headers=headers,
-                    json=request_payload,
-                )
-                response.raise_for_status()
-        except httpx.TimeoutException as exc:
-            raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout") from exc
-        except httpx.HTTPStatusError as exc:
-            raise LLMProviderUnavailableError(
-                f"LLM provider request failed with status {exc.response.status_code}",
-                code="llm_provider_unavailable",
-            ) from exc
-        except httpx.HTTPError as exc:
+        response: httpx.Response | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                    response = await client.post(
+                        "https://api.deepseek.com/chat/completions",
+                        headers=headers,
+                        json=request_payload,
+                    )
+                    response.raise_for_status()
+                break
+            except httpx.TimeoutException as exc:
+                if attempt >= self.max_retries:
+                    raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout") from exc
+                await asyncio.sleep(min(2**attempt, 5))
+            except httpx.HTTPStatusError as exc:
+                status_code = exc.response.status_code
+                if attempt >= self.max_retries or status_code < 500:
+                    raise LLMProviderUnavailableError(
+                        f"LLM provider request failed with status {status_code}",
+                        code="llm_provider_unavailable",
+                    ) from exc
+                await asyncio.sleep(min(2**attempt, 5))
+            except httpx.HTTPError as exc:
+                if attempt >= self.max_retries:
+                    raise LLMProviderUnavailableError(
+                        "LLM provider request failed",
+                        code="llm_provider_unavailable",
+                    ) from exc
+                await asyncio.sleep(min(2**attempt, 5))
+
+        if response is None:
             raise LLMProviderUnavailableError(
                 "LLM provider request failed",
                 code="llm_provider_unavailable",
-            ) from exc
+            )
 
         return self._parse_response(response.json(), schema, narrative_input)
 
@@ -79,7 +97,7 @@ class DeepSeekProvider:
         self,
         response_payload: dict[str, Any],
         schema: type[StructuredSchemaT],
-        narrative_input: NarrativeInput | None = None,
+        narrative_input: Any | None = None,
     ) -> StructuredSchemaT:
         try:
             content = response_payload["choices"][0]["message"]["content"]
@@ -90,23 +108,75 @@ class DeepSeekProvider:
             ) from exc
 
         try:
-            parsed_content = json.loads(content)
+            parsed_content = _load_structured_json_content(content)
         except json.JSONDecodeError as exc:
             raise LLMInvalidResponseError(
                 "LLM provider returned non-JSON content",
                 code="llm_invalid_response",
             ) from exc
 
-        if isinstance(parsed_content, dict):
+        if isinstance(parsed_content, list) and schema.__name__ == "ReportSegmentOutputV2":
+            parsed_content = _normalize_report_segment_output_v2_shape(
+                {"sections": parsed_content},
+                narrative_input,
+            )
+        elif isinstance(parsed_content, dict):
             parsed_content = _normalize_structured_shape(parsed_content, schema.__name__, narrative_input)
 
         try:
             return schema.model_validate(parsed_content)
         except ValidationError as exc:
+            diagnostics = _schema_validation_diagnostics(parsed_content, schema.__name__, exc)
             raise LLMInvalidResponseError(
-                "LLM provider returned JSON that does not match schema",
+                f"LLM provider returned JSON that does not match schema: {diagnostics}",
                 code="llm_invalid_response",
             ) from exc
+
+
+def _schema_validation_diagnostics(payload: Any, schema_name: str, exc: ValidationError) -> str:
+    if isinstance(payload, dict):
+        shape: dict[str, Any] = {
+            "schema": schema_name,
+            "type": "dict",
+            "keys": sorted(str(key) for key in payload),
+        }
+        for key in ("section", "segment", "output", "sections"):
+            value = payload.get(key)
+            if isinstance(value, dict):
+                shape[f"{key}_keys"] = sorted(str(nested_key) for nested_key in value)
+            elif isinstance(value, list):
+                shape[f"{key}_type"] = "list"
+                shape[f"{key}_len"] = len(value)
+                first = next((item for item in value if isinstance(item, dict)), None)
+                if first is not None:
+                    shape[f"{key}_first_keys"] = sorted(str(nested_key) for nested_key in first)
+    elif isinstance(payload, list):
+        shape = {"schema": schema_name, "type": "list", "len": len(payload)}
+        first = next((item for item in payload if isinstance(item, dict)), None)
+        if first is not None:
+            shape["first_keys"] = sorted(str(key) for key in first)
+    else:
+        shape = {"schema": schema_name, "type": type(payload).__name__}
+    shape["errors"] = [
+        {"loc": list(error.get("loc", ())), "type": error.get("type")}
+        for error in exc.errors(include_url=False, include_context=False, include_input=False)
+    ]
+    return json.dumps(shape, ensure_ascii=False, sort_keys=True)
+
+
+def _load_structured_json_content(content: str) -> Any:
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        stripped = content.strip()
+        fence_match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE)
+        if fence_match is not None:
+            return json.loads(fence_match.group(1))
+        start = stripped.find("{")
+        end = stripped.rfind("}")
+        if start >= 0 and end > start:
+            return json.loads(stripped[start : end + 1])
+        raise
 
 
 _SECTION_TITLES: dict[str, str] = {
@@ -140,9 +210,95 @@ def _normalize_structured_shape(
         return _normalize_development_section_shape(payload, narrative_input)
     if schema_name == "HouseScenariosSectionOutput":
         return _normalize_house_scenarios_section_shape(payload, narrative_input)
+    if schema_name == "ReportSegmentOutputV2":
+        return _normalize_report_segment_output_v2_shape(payload, narrative_input)
     if schema_name == "AssemblyCheck" and "assembly_check" in payload and isinstance(payload["assembly_check"], dict):
         return payload["assembly_check"]
     return payload
+
+
+def _normalize_report_segment_output_v2_shape(
+    payload: dict[str, Any], section_input: Any | None = None
+) -> dict[str, Any]:
+    source = _first_mapping(
+        payload,
+        (
+            "sections",
+            "report_segment_output_v2",
+            "report_segment_output",
+            "segment_output",
+            "segment",
+            "section",
+            "output",
+        ),
+    )
+    normalized = dict(source)
+    normalized.setdefault("contract_version", "report_segment_output_v2")
+    if section_input is not None:
+        normalized.setdefault("section_id", getattr(section_input, "section_id", None))
+        normalized.setdefault("title", getattr(section_input, "section_title", None))
+    if "body" not in normalized:
+        body = _coerce_body_text(normalized)
+        if body:
+            normalized["body"] = body
+    covered_theme_ids = _unique_strings(
+        normalized.get("theme_ids")
+        or normalized.get("covered_themes")
+        or normalized.get("covered_theme_ids")
+        or []
+    )
+    if not covered_theme_ids and section_input is not None:
+        covered_theme_ids = [str(theme.id) for theme in getattr(section_input, "owned_themes", [])]
+    if not covered_theme_ids and section_input is not None:
+        covered_theme_ids = [str(theme.id) for theme in getattr(section_input, "reference_themes", [])]
+    normalized["covered_theme_ids"] = covered_theme_ids
+
+    evidence_ids = _unique_strings(
+        normalized.get("evidence")
+        or normalized.get("evidence_ids")
+        or normalized.get("source_evidence_ids")
+        or []
+    )
+    if not evidence_ids and section_input is not None:
+        evidence_ids = [str(item) for item in getattr(section_input, "evidence_ids", [])]
+    normalized["evidence_ids"] = evidence_ids
+    normalized.setdefault("continuation_complete", True)
+    normalized.setdefault("continuation_cursor", None)
+    normalized["notes"] = _coerce_notes(normalized.get("notes"))
+    return normalized
+
+
+def _first_mapping(payload: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, list):
+            first_mapping = next((item for item in value if isinstance(item, dict)), None)
+            if first_mapping is not None:
+                return first_mapping
+    return payload
+
+
+def _coerce_body_text(payload: dict[str, Any]) -> str:
+    for key in ("body", "body_prose", "content", "text", "prose", "section_body", "narrative"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    paragraphs = payload.get("paragraphs")
+    if isinstance(paragraphs, list):
+        parts = [item.strip() for item in paragraphs if isinstance(item, str) and item.strip()]
+        if parts:
+            return "\n\n".join(parts)
+    return ""
+
+
+def _coerce_notes(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
 
 
 def _normalize_narrative_plan_shape(

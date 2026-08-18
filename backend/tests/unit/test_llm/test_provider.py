@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.config import Settings
@@ -480,3 +482,76 @@ class TestProviderFactory:
         assert settings.LLM_MODEL == "mock-self-v1"
         assert settings.LLM_TIMEOUT_SECONDS == 17
         assert settings.LLM_MAX_RETRIES == 4
+
+    def test_deepseek_normalizes_wrapped_v2_report_segment_output(self) -> None:
+        from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2
+
+        provider = DeepSeekProvider(api_key="test-key", model="deepseek-v4-flash", timeout_seconds=30, max_retries=1)
+        from tests.unit.test_astrotype_v2.test_llm_segments import _section_input
+
+        section_input = _section_input()
+        parsed = provider._parse_response(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "segment": {
+                                        "paragraphs": [
+                                            "Первый развёрнутый абзац про evidence ev:sun.",
+                                            "Второй развёрнутый абзац про theme:core:sun.",
+                                        ],
+                                    }
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+            ReportSegmentOutputV2,
+            section_input,
+        )
+
+        assert parsed.section_id == "core_pattern"
+        assert parsed.body == (
+            "Первый развёрнутый абзац про evidence ev:sun.\n\n"
+            "Второй развёрнутый абзац про theme:core:sun."
+        )
+        assert parsed.covered_theme_ids == ["theme:core:sun"]
+        assert parsed.evidence_ids == ["ev:sun"]
+        assert parsed.continuation_complete is True
+
+    def test_deepseek_normalizes_v2_report_segment_list_output(self) -> None:
+        from tests.unit.test_astrotype_v2.test_llm_segments import _section_input
+
+        from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2
+
+        provider = DeepSeekProvider(api_key="test-key", model="deepseek-v4-flash", timeout_seconds=30, max_retries=1)
+        section_input = _section_input()
+        parsed = provider._parse_response(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                [
+                                    {
+                                        "body_prose": "Развёрнутый текст секции, который пришёл массивом.",
+                                        "notes": "служебная заметка строкой",
+                                    }
+                                ]
+                            )
+                        }
+                    }
+                ]
+            },
+            ReportSegmentOutputV2,
+            section_input,
+        )
+
+        assert parsed.section_id == "core_pattern"
+        assert parsed.title == "Ядро личности"
+        assert parsed.body == "Развёрнутый текст секции, который пришёл массивом."
+        assert parsed.covered_theme_ids == ["theme:core:sun"]
+        assert parsed.evidence_ids == ["ev:sun"]

@@ -1,5 +1,6 @@
 import type { V2PlanetPositionViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { formatValue } from "./format";
+import { V2GlossaryTerm } from "./V2GlossaryText";
 
 interface V2PlanetPositionsTableProps {
   positions: V2PlanetPositionViewModel[];
@@ -14,16 +15,28 @@ export function V2PlanetPositionsTable({
 
   return (
     <section data-v2-calculation-block="planet_positions" className="space-y-4">
-      <h3 className="text-[21px] font-semibold text-[#F4EADB]">Положения планет</h3>
+      <h3 className="text-[21px] font-semibold text-[#F4EADB]">
+        Положения планет
+      </h3>
       <div className="overflow-x-auto rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="text-[#C4CCDB]">
             <tr>
-              <th className="px-4 py-3">Планета</th>
-              <th className="px-4 py-3">Знак</th>
-              <th className="px-4 py-3">Дом</th>
-              <th className="px-4 py-3">Градус</th>
-              <th className="px-4 py-3">R</th>
+              <th className="px-4 py-3">
+                <V2GlossaryTerm term="Планета" />
+              </th>
+              <th className="px-4 py-3">
+                <V2GlossaryTerm term="Знак" />
+              </th>
+              <th className="px-4 py-3">
+                <V2GlossaryTerm term="Дом" />
+              </th>
+              <th className="px-4 py-3">
+                <V2GlossaryTerm term="Градус" />
+              </th>
+              <th className="px-4 py-3">
+                <V2GlossaryTerm term="Ретроградность" />
+              </th>
               <th className="px-4 py-3">Ключевые аспекты из выборки</th>
             </tr>
           </thead>
@@ -90,7 +103,10 @@ function aspectLabel(aspectCode: string): string {
   );
 }
 
-function otherBody(body: string, aspect: V2PlanetPositionViewModel["sampledAspects"][number]): string {
+function otherBody(
+  body: string,
+  aspect: V2PlanetPositionViewModel["sampledAspects"][number],
+): string {
   const other = aspect.bodyA === body ? aspect.bodyB : aspect.bodyA;
   return bodyLabel(other);
 }

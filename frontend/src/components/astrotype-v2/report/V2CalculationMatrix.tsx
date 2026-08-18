@@ -3,6 +3,7 @@ import type {
   V2CalculationLayerViewModel,
 } from "@/lib/astrotype-v2/report-view-model";
 import { formatValue } from "./format";
+import { V2GlossaryTerm } from "./V2GlossaryText";
 
 interface V2CalculationMatrixProps {
   matrix: V2CalculationLayerViewModel["calculationMatrix"];
@@ -64,7 +65,9 @@ export function V2CalculationMatrix({
       </p>
       <div className="mt-4 grid gap-[14px] md:grid-cols-2">
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">Тип домов</h4>
+          <h4 className="font-semibold text-[#FFE2A1]">
+            <V2GlossaryTerm term="Тип домов" />
+          </h4>
           <div className="mt-3 space-y-[11px]">
             {houseMode.map(([label, value]) => (
               <BarRow key={label} label={label} value={value} compact />
@@ -76,7 +79,9 @@ export function V2CalculationMatrix({
         </div>
 
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">Ориентация карты</h4>
+          <h4 className="font-semibold text-[#FFE2A1]">
+            <V2GlossaryTerm term="Ориентация карты" />
+          </h4>
           <div className="mt-3 space-y-[11px]">
             {hemiTopBottom.map(([label, value]) => (
               <BarRow key={label} label={label} value={value} compact />
@@ -89,7 +94,9 @@ export function V2CalculationMatrix({
         </div>
 
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">Квадранты</h4>
+          <h4 className="font-semibold text-[#FFE2A1]">
+            <V2GlossaryTerm term="Квадрант" />
+          </h4>
           <div className="mt-3 grid grid-cols-2 gap-[10px]">
             {quadrants.map(([label, value]) => (
               <div
@@ -109,7 +116,9 @@ export function V2CalculationMatrix({
         </div>
 
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">Профиль аспектов</h4>
+          <h4 className="font-semibold text-[#FFE2A1]">
+            <V2GlossaryTerm term="Профиль аспектов" />
+          </h4>
           <div className="mt-3 grid grid-cols-3 gap-[10px]">
             <CountCard
               value={numericValue(aspectCounts.resource)}

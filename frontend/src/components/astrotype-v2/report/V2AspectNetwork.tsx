@@ -2,6 +2,7 @@ import type {
   V2AspectNodeViewModel,
   V2CalculationLayerViewModel,
 } from "@/lib/astrotype-v2/report-view-model";
+import { V2GlossaryTerm } from "./V2GlossaryText";
 interface V2AspectNetworkProps {
   network: V2CalculationLayerViewModel["aspectNetwork"];
 }
@@ -35,7 +36,7 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
       className="h-full min-h-[600px] w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] max-[1100px]:min-h-0"
     >
       <h3 className="mb-[14px] text-[21px] font-semibold leading-tight text-[#F4EADB]">
-        Сеть ключевых аспектов
+        <V2GlossaryTerm term="Сеть ключевых аспектов" />
       </h3>
       <div className="flex min-h-[500px] items-center justify-center max-[1100px]:min-h-0">
         <div className="w-full max-w-[420px]">

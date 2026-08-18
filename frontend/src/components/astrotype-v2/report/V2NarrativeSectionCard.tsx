@@ -1,4 +1,5 @@
 import type { V2NarrativeSectionViewModel } from "@/lib/astrotype-v2/report-view-model";
+import { V2GlossaryText } from "./V2GlossaryText";
 
 interface V2NarrativeSectionCardProps {
   section: V2NarrativeSectionViewModel;
@@ -30,7 +31,9 @@ export function V2NarrativeSectionCard({
       <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="space-y-4 text-[15px] leading-[1.6] text-[#DCE4F3] md:text-[16px]">
           {section.paragraphs.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
+            <p key={paragraph}>
+              <V2GlossaryText text={paragraph} />
+            </p>
           ))}
         </div>
         <aside className="h-fit rounded-[16px] border border-[#263046] bg-[#101622] p-4">

@@ -28,11 +28,17 @@ const componentSources = [
   read("src/components/astrotype-v2/report/V2AspectNetwork.tsx"),
   read("src/components/astrotype-v2/report/V2KeyAspectsTable.tsx"),
   read("src/components/astrotype-v2/report/V2CalculationMatrix.tsx"),
+  read("src/components/astrotype-v2/report/V2GlossaryText.tsx"),
+  read("src/components/glossary/term-help.tsx"),
 ].join("\n");
 
 assert.match(reader, /data-v2-reader="canonical"/);
 assert(
   reader.indexOf('data-v2-reader-block="hero"') <
+    reader.indexOf("<V2GlossaryHelpStrip"),
+);
+assert(
+  reader.indexOf("<V2GlossaryHelpStrip") <
     reader.indexOf('data-v2-reader-block="narrative"'),
 );
 assert(
@@ -60,6 +66,9 @@ for (const marker of [
   "Сеть ключевых аспектов",
   "Ключевые аспекты",
   "Расчётные акценты карты",
+  "Словарь терминов",
+  "data-glossary-term",
+  'role="tooltip"',
 ]) {
   assert.match(
     componentSources,

@@ -1,5 +1,6 @@
 import type { V2ChartIndicatorViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { formatValue } from "./format";
+import { V2GlossaryTerm } from "./V2GlossaryText";
 
 interface V2KeyIndicatorsProps {
   indicators: {
@@ -29,14 +30,25 @@ export function V2KeyIndicators({ indicators }: V2KeyIndicatorsProps) {
   ] as const;
 
   return (
-    <section data-v2-calculation-block="key_indicators" className="mt-4 space-y-4">
+    <section
+      data-v2-calculation-block="key_indicators"
+      className="mt-4 space-y-4"
+    >
       <div className="grid gap-3 md:grid-cols-3">
         {items.map(([label, primary, secondary]) => (
           <div
             key={label}
             className="rounded-[17px] border border-[#263046] bg-[#101622] p-[13px]"
           >
-            <div className="text-[15px] font-semibold text-[#FFE2A1]">{label}</div>
+            <div className="text-[15px] font-semibold text-[#FFE2A1]">
+              {label === "Асцендент" ||
+              label === "MC" ||
+              label === "Управитель ASC" ? (
+                <V2GlossaryTerm term={label} />
+              ) : (
+                label
+              )}
+            </div>
             <div className="mt-2 text-[18px] font-semibold leading-tight text-[#F4EADB]">
               {formatValue(primary)}
             </div>
@@ -60,7 +72,9 @@ function formatAscRuler(indicator?: V2ChartIndicatorViewModel): string {
   if (!indicator) return "—";
   const position = indicator.position;
   const sign = position?.sign;
-  const house = position?.houseNumber ? `${position.houseNumber} дом` : undefined;
+  const house = position?.houseNumber
+    ? `${position.houseNumber} дом`
+    : undefined;
   return [indicator.planet, sign ? `в ${sign}` : undefined, house]
     .filter(Boolean)
     .join(" ");

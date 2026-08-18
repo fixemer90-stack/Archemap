@@ -515,8 +515,7 @@ class TestProviderFactory:
 
         assert parsed.section_id == "core_pattern"
         assert parsed.body == (
-            "Первый развёрнутый абзац про evidence ev:sun.\n\n"
-            "Второй развёрнутый абзац про theme:core:sun."
+            "Первый развёрнутый абзац про evidence ev:sun.\n\nВторой развёрнутый абзац про theme:core:sun."
         )
         assert parsed.covered_theme_ids == ["theme:core:sun"]
         assert parsed.evidence_ids == ["ev:sun"]

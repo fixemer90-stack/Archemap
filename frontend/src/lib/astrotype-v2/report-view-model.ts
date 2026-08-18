@@ -415,7 +415,9 @@ function toHouseEmphasisBar(
 function toAspectNode(record: Record<string, unknown>): V2AspectNodeViewModel {
   return {
     id: stringValue(record.id),
-    label: localizedAstroLabel(stringValue(record.label, stringValue(record.id))),
+    label: localizedAstroLabel(
+      stringValue(record.label, stringValue(record.id)),
+    ),
     sign: optionalLocalizedString(record.sign),
     houseNumber: optionalNumber(record.house_number),
   };

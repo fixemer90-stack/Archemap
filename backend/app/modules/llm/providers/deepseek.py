@@ -242,10 +242,7 @@ def _normalize_report_segment_output_v2_shape(
         if body:
             normalized["body"] = body
     covered_theme_ids = _unique_strings(
-        normalized.get("theme_ids")
-        or normalized.get("covered_themes")
-        or normalized.get("covered_theme_ids")
-        or []
+        normalized.get("theme_ids") or normalized.get("covered_themes") or normalized.get("covered_theme_ids") or []
     )
     if not covered_theme_ids and section_input is not None:
         covered_theme_ids = [str(theme.id) for theme in getattr(section_input, "owned_themes", [])]
@@ -254,10 +251,7 @@ def _normalize_report_segment_output_v2_shape(
     normalized["covered_theme_ids"] = covered_theme_ids
 
     evidence_ids = _unique_strings(
-        normalized.get("evidence")
-        or normalized.get("evidence_ids")
-        or normalized.get("source_evidence_ids")
-        or []
+        normalized.get("evidence") or normalized.get("evidence_ids") or normalized.get("source_evidence_ids") or []
     )
     if not evidence_ids and section_input is not None:
         evidence_ids = [str(item) for item in getattr(section_input, "evidence_ids", [])]

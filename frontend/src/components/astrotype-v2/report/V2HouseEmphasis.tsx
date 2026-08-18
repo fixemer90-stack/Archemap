@@ -9,24 +9,60 @@ interface V2HouseEmphasisProps {
 }
 
 const HOUSE_META: Record<number, { name: string; description: string }> = {
-  1: { name: "Личность и старт", description: "внешний образ, тело, импульс к действию" },
-  2: { name: "Ресурсы и опора", description: "деньги, ценности, устойчивость, телесная база" },
-  3: { name: "Обучение и среда", description: "контакты, речь, повседневное мышление" },
+  1: {
+    name: "Личность и старт",
+    description: "внешний образ, тело, импульс к действию",
+  },
+  2: {
+    name: "Ресурсы и опора",
+    description: "деньги, ценности, устойчивость, телесная база",
+  },
+  3: {
+    name: "Обучение и среда",
+    description: "контакты, речь, повседневное мышление",
+  },
   4: { name: "Дом и корни", description: "семья, база, внутренний фундамент" },
-  5: { name: "Творчество и выражение", description: "игра, сцена, романтика, дети" },
-  6: { name: "Режим и служение", description: "здоровье, рутина, рабочий процесс" },
-  7: { name: "Отношения и партнёрство", description: "пары, договоры, зеркало другого человека" },
-  8: { name: "Обмен и кризисы", description: "общие ресурсы, трансформация, глубина" },
-  9: { name: "Смысл и горизонт", description: "образование, мировоззрение, путешествия, вера" },
-  10: { name: "Статус и реализация", description: "карьера, репутация, способ проявиться в мире" },
-  11: { name: "Сообщества и будущее", description: "друзья, группы, проекты, дальняя цель" },
-  12: { name: "Подсознание и завершение", description: "изоляция, внутренние циклы, отпускание" },
+  5: {
+    name: "Творчество и выражение",
+    description: "игра, сцена, романтика, дети",
+  },
+  6: {
+    name: "Режим и служение",
+    description: "здоровье, рутина, рабочий процесс",
+  },
+  7: {
+    name: "Отношения и партнёрство",
+    description: "пары, договоры, зеркало другого человека",
+  },
+  8: {
+    name: "Обмен и кризисы",
+    description: "общие ресурсы, трансформация, глубина",
+  },
+  9: {
+    name: "Смысл и горизонт",
+    description: "образование, мировоззрение, путешествия, вера",
+  },
+  10: {
+    name: "Статус и реализация",
+    description: "карьера, репутация, способ проявиться в мире",
+  },
+  11: {
+    name: "Сообщества и будущее",
+    description: "друзья, группы, проекты, дальняя цель",
+  },
+  12: {
+    name: "Подсознание и завершение",
+    description: "изоляция, внутренние циклы, отпускание",
+  },
 };
 
 export function V2HouseEmphasis({ houseEmphasis }: V2HouseEmphasisProps) {
   const max = Math.max(1, ...houseEmphasis.bars.map((bar) => bar.accentWeight));
   const topHouses = [...houseEmphasis.bars]
-    .sort((a, b) => b.accentWeight - a.accentWeight || a.houseNumber - b.houseNumber)
+    .sort(
+      (a, b) =>
+        b.accentWeight - a.accentWeight || a.houseNumber - b.houseNumber,
+    )
     .slice(0, 4);
 
   return (
@@ -71,7 +107,9 @@ export function V2HouseEmphasis({ houseEmphasis }: V2HouseEmphasisProps) {
             key={bar.houseNumber}
             className="grid min-h-[78px] min-w-0 grid-cols-[42px_minmax(0,1fr)] items-start gap-[10px] rounded-[13px] border border-[#263046] bg-[#101622] p-[10px]"
           >
-            <div className="font-extrabold text-[#D9B86F]">{bar.houseNumber} дом</div>
+            <div className="font-extrabold text-[#D9B86F]">
+              {bar.houseNumber} дом
+            </div>
             <div className="min-w-0">
               <span className="block [overflow-wrap:anywhere] text-[#FFF2D6]">
                 {HOUSE_META[bar.houseNumber]?.name ?? bar.sign}

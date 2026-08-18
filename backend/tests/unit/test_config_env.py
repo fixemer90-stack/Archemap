@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app.config import _BACKEND_ROOT, _ENV_FILES, _REPOSITORY_ROOT, Settings
 
 
@@ -16,8 +18,18 @@ def test_settings_env_files_are_absolute_and_root_env_wins() -> None:
     assert all(path.is_absolute() for path in _ENV_FILES)
 
 
-def test_later_root_env_overrides_backend_env_for_llm_settings(tmp_path: Path) -> None:
+def test_later_root_env_overrides_backend_env_for_llm_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The root env file is loaded after backend/.env, so real LLM config wins."""
+
+    for key in (
+        "LLM_ENABLED",
+        "LLM_PROVIDER",
+        "LLM_MODEL",
+        "LLM_API_KEY",
+        "LLM_TIMEOUT_SECONDS",
+        "LLM_MAX_RETRIES",
+    ):
+        monkeypatch.delenv(key, raising=False)
 
     backend_env = tmp_path / "backend.env"
     root_env = tmp_path / "root.env"

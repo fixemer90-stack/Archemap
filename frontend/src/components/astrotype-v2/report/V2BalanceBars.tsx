@@ -55,29 +55,53 @@ export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
               </p>
             )}
             <div className="mt-4 space-y-[13px]">
-              {rows.map((row) => (
-                <div
-                  key={`${row.category}:${row.key}`}
-                  className="grid grid-cols-[128px_minmax(0,1fr)_46px] items-center gap-3"
-                >
-                  <span className="text-[15px] text-[#DCE4F3]">
-                    {row.label}
-                  </span>
-                  <div className="h-4 overflow-hidden rounded-[99px] border border-[#2c3548] bg-[#0b1019]">
-                    <div
-                      className="h-full bg-[linear-gradient(90deg,#d9b86f,#f2d991)]"
-                      style={{ width: percentWidth(row.value) }}
-                    />
+              {rows.map((row) => {
+                const description = modalityDescription(row);
+                return (
+                  <div key={`${row.category}:${row.key}`}>
+                    <div className="grid grid-cols-[128px_minmax(0,1fr)_46px] items-center gap-3">
+                      <span className="text-[15px] text-[#DCE4F3]">
+                        {row.label}
+                      </span>
+                      <div className="h-4 overflow-hidden rounded-[99px] border border-[#2c3548] bg-[#0b1019]">
+                        <div
+                          className="h-full bg-[linear-gradient(90deg,#d9b86f,#f2d991)]"
+                          style={{ width: percentWidth(row.value) }}
+                        />
+                      </div>
+                      <span className="text-right text-[15px] text-[#AEB6C7]">
+                        {formatValue(row.value)}%
+                      </span>
+                    </div>
+                    {description && (
+                      <p className="mt-[5px] pl-[128px] pr-[46px] text-[11px] leading-[1.35] text-[#7F8DA8] max-sm:pl-0 max-sm:pr-0">
+                        {description}
+                      </p>
+                    )}
                   </div>
-                  <span className="text-right text-[15px] text-[#AEB6C7]">
-                    {formatValue(row.value)}%
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
     </section>
   );
+}
+
+function modalityDescription(row: V2BalanceBarViewModel): string | null {
+  if (row.category !== "modalities" && row.category !== "modality") {
+    return null;
+  }
+  const normalized = `${row.key} ${row.label}`.toLowerCase();
+  if (normalized.includes("cardinal") || normalized.includes("кардин")) {
+    return "Запускает движение: инициатива, первый шаг, быстрый разворот ситуации.";
+  }
+  if (normalized.includes("fixed") || normalized.includes("фикс")) {
+    return "Удерживает форму: устойчивость, верность курсу, способность доводить до результата.";
+  }
+  if (normalized.includes("mutable") || normalized.includes("мутаб")) {
+    return "Адаптирует процесс: гибкость, настройка под контекст, переход между этапами.";
+  }
+  return null;
 }

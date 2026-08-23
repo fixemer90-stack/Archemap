@@ -80,6 +80,17 @@ for (const marker of [
   );
 }
 
+assert.match(
+  componentSources,
+  /\(\?<!\[\\\\p\{L\}\\\\p\{N\}_\]\)/,
+  "glossary terms must not match inside words like рядом/поводом",
+);
+assert.match(
+  componentSources,
+  /\(\?!\[\\\\p\{L\}\\\\p\{N\}_\]\)/,
+  "glossary terms must not match inside words like рядом/поводом",
+);
+
 for (const block of [
   "key_indicators",
   "planet_positions",

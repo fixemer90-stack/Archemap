@@ -24,7 +24,7 @@ const V2_INLINE_TERMS: ReportGlossaryTerm[] = [
 ];
 
 const TERM_PATTERN = new RegExp(
-  `(${V2_INLINE_TERMS.map(escapeRegExp).join("|")})`,
+  `(?<![\\p{L}\\p{N}_])(${V2_INLINE_TERMS.map(escapeRegExp).join("|")})(?![\\p{L}\\p{N}_])`,
   "giu",
 );
 

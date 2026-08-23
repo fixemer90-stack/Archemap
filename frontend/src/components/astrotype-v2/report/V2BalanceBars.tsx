@@ -15,6 +15,8 @@ const TITLES: Record<string, string> = {
 
 const BALANCE_ORDER = ["elements", "element", "modalities", "modality"];
 
+const MODALITY_ORDER = ["mutable", "cardinal", "fixed"];
+
 export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
   const entries = BALANCE_ORDER.flatMap((category) => {
     const rows = balanceBars[category];
@@ -55,7 +57,7 @@ export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
               </p>
             )}
             <div className="mt-4 space-y-[13px]">
-              {rows.map((row) => {
+              {orderedBalanceRows(category, rows).map((row) => {
                 const description = modalityDescription(row);
                 return (
                   <div key={`${row.category}:${row.key}`}>
@@ -87,6 +89,38 @@ export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
       </div>
     </section>
   );
+}
+
+function orderedBalanceRows(
+  category: string,
+  rows: V2BalanceBarViewModel[],
+): V2BalanceBarViewModel[] {
+  if (category !== "modalities" && category !== "modality") {
+    return rows;
+  }
+  return [...rows].sort(
+    (left, right) => modalityOrderIndex(left) - modalityOrderIndex(right),
+  );
+}
+
+function modalityOrderIndex(row: V2BalanceBarViewModel): number {
+  const normalized = `${row.key} ${row.label}`.toLowerCase();
+  const index = MODALITY_ORDER.findIndex((modality) =>
+    normalized.includes(modality),
+  );
+  if (index >= 0) {
+    return index;
+  }
+  if (normalized.includes("мутаб")) {
+    return 0;
+  }
+  if (normalized.includes("кардин")) {
+    return 1;
+  }
+  if (normalized.includes("фикс")) {
+    return 2;
+  }
+  return MODALITY_ORDER.length;
 }
 
 function modalityDescription(row: V2BalanceBarViewModel): string | null {

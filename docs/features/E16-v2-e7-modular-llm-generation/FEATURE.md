@@ -29,6 +29,7 @@ Related architecture:
 
 - `docs/ROADMAP-v2.md`
 - `docs/architecture/astrotype-v2-natal-report-architecture.md`
+- `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 - `docs/architecture/astrotype-v2-database-design.md`
 - `docs/architecture/astrotype-v2-c4-architecture.md`
 - `docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`

@@ -40,6 +40,7 @@ Out of scope for foundation:
 - `docs/architecture/astrotype-v2-derived-calculations/README.md`
 - `docs/design/astrotype-v2-infographic-db-report-sample.html`
 - `docs/design/astrotype-v2-infographic-db-report-data.json`
+- `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 
 Feature contracts:
 
@@ -58,6 +59,7 @@ Feature contracts:
 - `V2-E13` — `Desktop thin client decision`: `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md`; decision artifact: `docs/architecture/astrotype-v2-desktop-thin-client-decision.md`.
 - `V2-E14` — `QA, smoke, rollout`: `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`
 - `V2-E15` — `LLM runtime integration`: `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`; workflow companion: `docs/features/E16-v2-e15-llm-runtime-integration/WORKFLOW.md`; API/state companion: `docs/features/E16-v2-e15-llm-runtime-integration/API.md`
+- `V2-E16` — `Narrative depth quality`: `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`; depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 
 ---
 
@@ -123,6 +125,8 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 - FR-5.5: final report depth shall not be limited by arbitrary hard section caps, low character caps, summary-style prompt limits or any other artificial content cap.
 - FR-5.6: provider output limits shall be handled with continuation/chunking at segment level rather than by shortening the product report.
 - FR-5.7: validators shall reject shallow/generic output, but shall not reject a grounded valid section merely because it is long.
+- FR-5.8: upper narrative sections shall follow the depth contract in `docs/architecture/astrotype-v2-narrative-depth-contract.md`: mechanism, lived manifestation, tension, protection/shadow and mature expression.
+- FR-5.9: `core_pattern` shall target 700–1200 words and 6–9 developed paragraphs unless continuation is required; other upper sections shall target 450–900 words and 4–7 developed paragraphs unless continuation is required.
 
 ### FR-6: Progressive report delivery
 

@@ -52,6 +52,7 @@ Astrotype v2 phase 1 is:
 9. Deterministically assemble the final large report from validated segments.
 10. Build natal-chart infographics without LLM and expose the factual basis used by the report. Element and modality balances follow `docs/architecture/astrotype-v2-balance-calculation.md`.
 11. MVP derived chart calculations are specified in `docs/architecture/astrotype-v2-derived-calculations/README.md`.
+12. Upper narrative sections follow the depth contract in `docs/architecture/astrotype-v2-narrative-depth-contract.md`: evidence must become mechanism, lived manifestation, tension, protection/shadow and mature expression rather than a shallow overview.
 
 Astrotype v2 phase 1 is not:
 
@@ -421,6 +422,7 @@ Important: none of these schemas contain `socionics`, `function_strengths`, `typ
 **Objective:** Establish a new bounded context for v2 without touching legacy report generation.
 
 **Files:**
+
 - Create: `backend/app/modules/astrotype_v2/__init__.py`
 - Create: `backend/app/modules/astrotype_v2/schemas.py`
 - Create: `backend/tests/unit/test_astrotype_v2/test_schemas.py`
@@ -518,6 +520,7 @@ git commit -m "feat: add astrotype v2 natal schema foundation"
 **Objective:** Make the v2 contract explicitly natal-only at the schema boundary.
 
 **Files:**
+
 - Modify: `backend/tests/unit/test_astrotype_v2/test_schemas.py`
 
 **Step 1: Write test**
@@ -567,6 +570,7 @@ git commit -m "test: keep astrotype v2 schema natal-only"
 **Objective:** Reuse the existing chart calculation output while stripping v2 down to natal-chart data only.
 
 **Files:**
+
 - Create: `backend/app/modules/astrotype_v2/chart_adapter.py`
 - Modify: `backend/tests/unit/test_astrotype_v2/test_schemas.py` or create `test_chart_adapter.py`
 
@@ -684,6 +688,7 @@ git commit -m "feat: adapt chart snapshots to natal v2 contract"
 **Objective:** Convert `NatalChartV2` into evidence-backed astrological facts without typology concepts.
 
 **Files:**
+
 - Modify: `backend/app/modules/astrotype_v2/schemas.py`
 - Create: `backend/app/modules/astrotype_v2/natal_facts.py`
 - Create: `backend/tests/unit/test_astrotype_v2/test_natal_facts.py`
@@ -771,6 +776,7 @@ git commit -m "feat: extract natal facts for astrotype v2"
 **Objective:** Give v2 the first aggregate chart-level facts needed for synthesis.
 
 **Files:**
+
 - Modify: `backend/app/modules/astrotype_v2/natal_facts.py`
 - Test: `backend/tests/unit/test_astrotype_v2/test_natal_facts.py`
 
@@ -826,6 +832,7 @@ git commit -m "feat: add natal balance facts for v2"
 **Objective:** Convert facts into coherent themes, tensions, resources and growth vectors before any narrative rendering.
 
 **Files:**
+
 - Modify: `backend/app/modules/astrotype_v2/schemas.py`
 - Create: `backend/app/modules/astrotype_v2/synthesis.py`
 - Create: `backend/tests/unit/test_astrotype_v2/test_synthesis.py`
@@ -933,6 +940,7 @@ git commit -m "feat: build natal synthesis for astrotype v2"
 **Objective:** Build a deterministic section plan that prevents duplicate expansion of the same theme across personality blocks.
 
 **Files:**
+
 - Modify: `backend/app/modules/astrotype_v2/schemas.py`
 - Create: `backend/app/modules/astrotype_v2/outline.py`
 - Create: `backend/tests/unit/test_astrotype_v2/test_outline.py`
@@ -1012,6 +1020,7 @@ git commit -m "feat: plan self v2 sections without duplicate theme ownership"
 **Objective:** Produce a report object from `NatalSynthesisV2` + `ReportOutlineV2` without LLM dependency.
 
 **Files:**
+
 - Modify: `backend/app/modules/astrotype_v2/schemas.py`
 - Create: `backend/app/modules/astrotype_v2/report_builder.py`
 - Create: `backend/tests/unit/test_astrotype_v2/test_report_builder.py`
@@ -1099,6 +1108,7 @@ class NatalReportV2(BaseModel):
 Use deterministic, modest Russian text assembled from section plans and their owned themes. This is foundation, not final prose quality.
 
 Important rendering rule:
+
 - expand only `owned_theme_ids` for the current section;
 - mention `reference_theme_ids` at most briefly for continuity;
 - never expand `forbidden_theme_ids`;
@@ -1128,6 +1138,7 @@ git commit -m "feat: build deterministic natal report v2 from outline"
 **Objective:** Provide one backend service entry point that calculates/loads a chart and returns a full v2 natal report.
 
 **Files:**
+
 - Create: `backend/app/modules/astrotype_v2/service.py`
 - Create: `backend/tests/unit/test_astrotype_v2/test_service.py`
 
@@ -1175,6 +1186,7 @@ class AstrotypeV2Service:
 ```
 
 Rules:
+
 - no import from `app.chart_engine.socionics`;
 - no import from `app.modules.report_narratives.input_builder`;
 - no import from legacy `NarrativeInput`.
@@ -1201,6 +1213,7 @@ git commit -m "feat: orchestrate astrotype v2 natal report"
 **Objective:** Protect the architectural boundary: v2 module must not import socionics or legacy narrative input.
 
 **Files:**
+
 - Create: `backend/tests/unit/test_astrotype_v2/test_boundaries.py`
 
 **Step 1: Write boundary test**
@@ -1250,6 +1263,7 @@ git commit -m "test: enforce astrotype v2 module boundary"
 **Objective:** Expose v2 report generation for manual/local smoke without replacing legacy `/reports/generate` yet.
 
 **Files:**
+
 - Create: `backend/app/modules/astrotype_v2/router.py`
 - Modify: `backend/app/main.py` or wherever routers are registered
 - Create: `backend/tests/unit/test_astrotype_v2/test_api.py`
@@ -1323,6 +1337,7 @@ git commit -m "feat: expose astrotype v2 natal report endpoint"
 **Objective:** Let us see the new v2 natal-only report without integrating it into the full legacy report page.
 
 **Files:**
+
 - Create: `frontend/src/app/reports/v2/[profileId]/page.tsx` or align with current app router structure
 - Create: `frontend/src/lib/api/astrotype-v2.ts`
 - Create: `frontend/src/components/report-v2/natal-report-v2-page.tsx`
@@ -1338,7 +1353,9 @@ Read the current `frontend/src/app` structure and follow existing auth/data-fetc
 Add a function like:
 
 ```ts
-export async function generateNatalReportV2(profileId: string): Promise<NatalReportV2> {
+export async function generateNatalReportV2(
+  profileId: string,
+): Promise<NatalReportV2> {
   return apiFetch("/api/v1/astrotype-v2/natal-report", {
     method: "POST",
     body: JSON.stringify({ profile_id: profileId }),
@@ -1382,6 +1399,7 @@ git commit -m "feat: add astrotype v2 report preview UI"
 **Objective:** Document that v2 is natal-only by construction, not legacy-with-guards.
 
 **Files:**
+
 - Create: `docs/SRS/SRS-E16-astrotype-v2-natal-foundation.md`
 - Create: `docs/features/E16-astrotype-v2-natal-foundation/FEATURE.md`
 - Create: `docs/features/E16-astrotype-v2-natal-foundation/S01-natal-only-domain-boundary.md`
@@ -1394,12 +1412,15 @@ Include:
 # SRS-E16 Astrotype v2 Natal Foundation
 
 ## Product boundary
+
 Astrotype v2 starts as a natal chart calculation and report assembly service. It does not include socionics, Model A, information functions, MBTI or any typology system.
 
 ## Architecture boundary
+
 v2 lives under `backend/app/modules/astrotype_v2/` and does not import legacy `report_narratives` or `chart_engine.socionics`.
 
 ## Phase 1 acceptance criteria
+
 - v2 has standalone Pydantic contracts: `NatalChartV2`, `NatalFactV2`, `NatalSynthesisV2`, `ReportOutlineV2`, `NatalReportV2`.
 - v2 service can generate a deterministic natal report from an existing chart snapshot.
 - v2 endpoint returns `contract_version=natal_report_v2`.
@@ -1455,6 +1476,7 @@ curl -I -fsS http://localhost:3000
 ```
 
 Expected:
+
 - backend healthy;
 - postgres healthy;
 - redis healthy;
@@ -1473,6 +1495,7 @@ curl -fsS -X POST http://localhost:8000/api/v1/astrotype-v2/natal-report \
 ```
 
 Expected:
+
 - JSON has `contract_version: "natal_report_v2"`;
 - `hero`, `sections`, `evidence_index`, `calculation_summary` exist;
 - section ids follow `core_pattern`, `perception_and_mind`, `emotional_regulation`, `agency_and_desire`, `relationships_and_intimacy`, `growth_vector`, `technical_basis`;
@@ -1483,6 +1506,7 @@ Expected:
 ## Files likely to change
 
 Backend new v2 module:
+
 - `backend/app/modules/astrotype_v2/__init__.py`
 - `backend/app/modules/astrotype_v2/schemas.py`
 - `backend/app/modules/astrotype_v2/chart_adapter.py`
@@ -1494,9 +1518,11 @@ Backend new v2 module:
 - `backend/app/modules/astrotype_v2/router.py`
 
 Backend integration:
+
 - `backend/app/main.py` or existing router registration file
 
 Backend tests:
+
 - `backend/tests/unit/test_astrotype_v2/test_schemas.py`
 - `backend/tests/unit/test_astrotype_v2/test_chart_adapter.py`
 - `backend/tests/unit/test_astrotype_v2/test_natal_facts.py`
@@ -1508,17 +1534,20 @@ Backend tests:
 - `backend/tests/unit/test_astrotype_v2/test_api.py`
 
 Optional frontend preview:
+
 - `frontend/src/lib/api/astrotype-v2.ts`
 - `frontend/src/components/report-v2/natal-report-v2-page.tsx`
 - `frontend/src/components/report-v2/natal-report-v2-section.tsx`
 - `frontend/src/app/reports/v2/[profileId]/page.tsx` or equivalent existing route pattern
 
 Docs:
+
 - `docs/SRS/SRS-E16-astrotype-v2-natal-foundation.md`
 - `docs/features/E16-astrotype-v2-natal-foundation/FEATURE.md`
 - `docs/features/E16-astrotype-v2-natal-foundation/S01-natal-only-domain-boundary.md`
 
 Avoid touching in foundation unless a later migration task explicitly says so:
+
 - `backend/app/chart_engine/socionics.py`
 - `backend/app/modules/report_narratives/input_builder.py`
 - `backend/app/modules/report_narratives/schemas.py` legacy `NarrativeInput`

@@ -17,6 +17,8 @@ Each prompt must tell the LLM:
 - write only the requested personality section;
 - use only the provided JSON facts/themes/evidence;
 - cover every owned theme deeply enough;
+- follow `docs/architecture/astrotype-v2-narrative-depth-contract.md`;
+- transform evidence into psychological mechanism, lived manifestation, tension, protection/shadow and mature expression;
 - avoid generic horoscope filler;
 - avoid socionics, archetypes and typology labels;
 - do not write the deterministic lower calculation layer;
@@ -41,6 +43,8 @@ write a detailed, expanded section; continue until the section purpose and owned
 ```
 
 If output is cut by provider token limits, the runner should request continuation for the same segment, not accept a shallow section as complete.
+
+The historical 3-paragraph / 80-word check is only a technical emptiness guard. It is not sufficient for product depth; V2-E16 defines the stricter implementation work.
 
 ## Files likely affected
 

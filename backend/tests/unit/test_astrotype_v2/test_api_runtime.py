@@ -283,6 +283,60 @@ def test_repository_ownership_queries_join_v2_chart_user_and_profile() -> None:
         assert marker in source
 
 
+def test_deterministic_worker_core_segment_is_reader_prose_not_raw_fact_dump() -> None:
+    from app.modules.astrotype_v2.outline import build_report_outline_v2
+    from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, SynthesisThemeV2
+    from workers.tasks.astrotype_v2 import _segment_output
+
+    chart_id = uuid.uuid4()
+    themes = (
+        SynthesisThemeV2(
+            id="theme:placement:asc",
+            title="Ascendant in Gemini, house 1",
+            summary="Ascendant is in Gemini in house 1.",
+            primary_section="core_pattern",
+            fact_keys=("placement:ascendant:gemini:house_1",),
+            evidence_ids=("fact:asc",),
+            weight=1.0,
+            confidence=1.0,
+        ),
+        SynthesisThemeV2(
+            id="theme:placement:sun",
+            title="Sun in Taurus, house 12",
+            summary="Sun is in Taurus in house 12.",
+            primary_section="core_pattern",
+            fact_keys=("placement:sun:taurus:house_12",),
+            evidence_ids=("fact:sun",),
+            weight=1.0,
+            confidence=1.0,
+        ),
+        SynthesisThemeV2(
+            id="theme:aspect:moon_mercury",
+            title="Moon sextile Mercury",
+            summary="Moon sextile Mercury with orb 0.1°.",
+            primary_section="core_pattern",
+            fact_keys=("aspect:moon:mercury:sextile",),
+            evidence_ids=("fact:aspect",),
+            weight=0.99,
+            confidence=1.0,
+        ),
+    )
+    synthesis = NatalSynthesisV2(chart_id=chart_id, source_version="v2.0", dominant_themes=themes)
+    section = build_report_outline_v2(synthesis=synthesis).to_payload()["sections"][0]
+
+    output = _segment_output(section=section, synthesis=synthesis)
+
+    assert output.section_id == "core_pattern"
+    assert output.title == "Ядро личности"
+    assert "Ядро личности:" not in output.body
+    assert "Ascendant is in" not in output.body
+    assert "with orb" not in output.body
+    assert "Асцендент в Близнецах в 1 доме" in output.body
+    assert "Солнце в Тельце в 12 доме" in output.body
+    assert "Луна секстиль Меркурий" in output.body
+    assert len(output.body.split("\n\n")) >= 3
+
+
 def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pipeline() -> None:
     task_source = (ROOT / "workers" / "tasks" / "astrotype_v2.py").read_text()
     runtime_source = (ROOT / "app" / "modules" / "astrotype_v2" / "api_runtime.py").read_text()

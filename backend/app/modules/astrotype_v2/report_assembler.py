@@ -18,9 +18,13 @@ REPORT_CONTRACT_VERSION = "natal_report_v2"
 _SECTION_DISPLAY_METADATA: dict[str, dict[str, Any]] = {
     "core_pattern": {
         "label": "ядро личности",
-        "subtitle": "центральная сборка карты",
-        "aside_title": "На что обратить внимание",
-        "aside_bullets": ["ведущий мотив", "тон проявления", "устойчивые опоры"],
+        "subtitle": "главная формула",
+        "aside_title": "Как это может ощущаться",
+        "aside_bullets": [
+            "сначала считать ситуацию, потом действовать",
+            "искать точные слова для внутреннего ощущения",
+            "соединять личный смысл с реальным шагом",
+        ],
     },
     "perception_and_mind": {
         "label": "мышление и восприятие",

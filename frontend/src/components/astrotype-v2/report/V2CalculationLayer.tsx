@@ -27,10 +27,10 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
         <V2KeyIndicators indicators={layer.keyIndicators} />
       </header>
       <div className="grid gap-[18px] xl:grid-cols-12">
-        <div className="xl:col-span-8">
+        <div className="flex xl:col-span-8">
           <V2PlanetPositionsTable positions={layer.planetPositions} />
         </div>
-        <div className="xl:col-span-4">
+        <div className="flex xl:col-span-4">
           <V2BalanceBars balanceBars={layer.balanceBars} />
         </div>
       </div>

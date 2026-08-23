@@ -26,8 +26,8 @@ export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
   });
 
   return (
-    <section data-v2-calculation-block="balance_bars">
-      <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
+    <section data-v2-calculation-block="balance_bars" className="h-full w-full">
+      <div className="h-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
         {entries.map(([category, rows], index) => (
           <div key={category}>
             <h3

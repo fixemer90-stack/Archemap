@@ -1,3 +1,4 @@
+# ruff: noqa: E501,RUF001
 """Contract tests for Astrotype v2 LLM segment prompts, validation, and runner lifecycle."""
 
 from __future__ import annotations
@@ -78,16 +79,31 @@ def _section_input() -> SectionRenderInputV2:
     return build_section_render_inputs_v2(outline=outline, synthesis=synthesis)[0]
 
 
+
+def _deep_body(paragraphs: int = 6, words_per_paragraph: int = 125) -> str:
+    base = (
+        "Внутренний механизм этой темы показывает, как человек собирает ощущение себя и выбирает направление действия. "
+        "В жизни это проявляется не как абстрактная черта, а как повторяющийся сценарий: сначала возникает чувствительность к контексту, "
+        "затем желание сохранить контроль и только после этого появляется готовность открыто действовать. "
+        "Главное напряжение держится между потребностью защитить уязвимое место и стремлением быть видимым без лишней брони. "
+        "Защитная стратегия под давлением может превращаться в резкость, уход в анализ или компенсацию через чрезмерную самостоятельность. "
+        "В более зрелом выражении тот же материал становится ресурсом: человек замечает импульс, выбирает форму контакта и действует осознанно. "
+        "Интеграционный вопрос звучит мягко: какой следующий шаг помогает остаться живым, точным и не прятать силу за автоматической защитой? "
+    )
+    result = []
+    for index in range(paragraphs):
+        words = (f"Абзац {index + 1}. " + base).split()
+        while len(words) < words_per_paragraph:
+            words.extend(base.split())
+        result.append(" ".join(words[:words_per_paragraph]))
+    return "\n\n".join(result)
+
 def _valid_long_output(section_id: str = "core_pattern") -> dict[str, Any]:
     return {
         "contract_version": "report_segment_output_v2",
         "section_id": section_id,
         "title": "Ядро личности",
-        "body": (
-            "Первый развёрнутый абзац подробно раскрывает тему Солнца и показывает внутренний механизм.\n\n"
-            "Второй абзац опирается на evidence ev:sun и не сводит раздел к короткому резюме.\n\n"
-            "Третий абзац продолжает объяснение, сохраняя связность и конкретность без общих клише."
-        ),
+        "body": _deep_body(),
         "covered_theme_ids": ["theme:core:sun"],
         "evidence_ids": ["ev:sun"],
         "continuation_complete": True,
@@ -105,7 +121,13 @@ def test_build_segment_prompt_requires_expanded_json_grounded_in_one_section_wit
     assert "report_segment_output_v2" in prompt
     assert "write only this section" in lowered
     assert "cover every owned theme" in lowered
-    assert "deep, expanded" in lowered
+    assert "deep psychological reading" in lowered
+    assert "700–1200 words and 6–9 developed paragraphs" in prompt
+    assert "psychological mechanism" in lowered
+    assert "lived manifestation" in lowered
+    assert "protective/shadow" in lowered
+    assert "mature integrated expression" in lowered
+    assert "not a broad life overview" in lowered
     assert "provided json" in lowered
     assert "forbidden_theme_ids" in prompt
     assert "deterministic lower calculation layer" in lowered
@@ -149,10 +171,7 @@ def test_validate_segment_output_preserves_long_grounded_section_without_artific
     from app.modules.astrotype_v2.segment_validation import validate_segment_output_v2
 
     section_input = _section_input()
-    long_body = "\n\n".join(
-        f"Развёрнутый абзац {index} подробно раскрывает evidence ev:sun и тему theme:core:sun."
-        for index in range(1, 18)
-    )
+    long_body = _deep_body(paragraphs=18, words_per_paragraph=90)
     output = ReportSegmentOutputV2.model_validate({**_valid_long_output(), "body": long_body})
 
     assert validate_segment_output_v2(output=output, section_input=section_input).body == long_body

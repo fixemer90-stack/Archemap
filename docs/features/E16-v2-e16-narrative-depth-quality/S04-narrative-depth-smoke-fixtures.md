@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -40,11 +40,11 @@ This story adds repeatable smoke checks for depth without requiring real LLM cal
 
 ## Acceptance criteria
 
-- [ ] Positive simulated fixtures pass the depth validator.
-- [ ] Negative fixtures fail for the expected reason.
-- [ ] Smoke output names the generation mode: deterministic, simulated LLM or real provider.
-- [ ] Real-provider smoke is optional and skipped honestly when provider quota/auth is unavailable.
-- [ ] Smoke does not claim real LLM quality from simulated text.
+- [x] Positive simulated fixtures pass the depth validator.
+- [x] Negative fixtures fail for the expected reason.
+- [x] Smoke output names the generation mode: deterministic, simulated LLM or real provider.
+- [x] Real-provider smoke is optional and skipped honestly when provider quota/auth is unavailable.
+- [x] Smoke does not claim real LLM quality from simulated text.
 
 ## Verification commands
 

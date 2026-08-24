@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -41,11 +41,11 @@ This story enriches deterministic synthesis so the prompt receives already-struc
 
 ## Acceptance criteria
 
-- [ ] Each major section can receive at least one enriched theme when evidence supports it.
-- [ ] Enriched fields retain evidence ids.
-- [ ] `SectionRenderInputV2` exposes enriched theme fields to the LLM.
-- [ ] Debug output lets engineers inspect mechanism/tension/protection/mature-expression data before provider calls.
-- [ ] Tests prove enriched fields are deterministic and evidence-backed.
+- [x] Each major section can receive at least one enriched theme when evidence supports it.
+- [x] Enriched fields retain evidence ids.
+- [x] `SectionRenderInputV2` exposes enriched theme fields to the LLM.
+- [x] Debug output lets engineers inspect mechanism/tension/protection/mature-expression data before provider calls.
+- [x] Tests prove enriched fields are deterministic and evidence-backed.
 
 ## Verification commands
 

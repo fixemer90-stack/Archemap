@@ -55,6 +55,8 @@ assert.equal(hero.includes("Это не dashboard"), false);
 assert.equal(hero.includes("технических карточек"), false);
 assert.equal(hero.includes("progressLabel"), false);
 assert.match(section, /data-v2-reader-block="narrative-section"/);
+assert.match(section, /data-v2-paragraph-count=\{section\.paragraphCount\}/);
+assert.match(section, /key=\{`\$\{section\.id\}-\$\{index\}`\}/);
 assert.match(calculation, /data-v2-reader-block="calculation_layer"/);
 
 for (const marker of [

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -32,12 +32,12 @@ This story verifies that long validated sections remain readable and complete in
 
 ## Acceptance criteria
 
-- [ ] Web reader renders every paragraph from a long `core_pattern` section.
-- [ ] View-model mapping does not truncate narrative body text.
-- [ ] Glossary wrapping still respects word boundaries inside long prose.
-- [ ] Mobile layout remains readable for long sections.
-- [ ] PDF/export, if present, preserves full section text.
-- [ ] Frontend checks include at least one long-section regression.
+- [x] Web reader renders every paragraph from a long `core_pattern` section.
+- [x] View-model mapping does not truncate narrative body text.
+- [x] Glossary wrapping still respects word boundaries inside long prose.
+- [x] Mobile layout remains readable for long sections.
+- [x] PDF/export, if present, preserves full section text.
+- [x] Frontend checks include at least one long-section regression.
 
 ## Verification commands
 

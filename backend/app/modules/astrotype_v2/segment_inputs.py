@@ -60,6 +60,16 @@ def _theme_input(theme: SynthesisThemeV2) -> SectionThemeInputV2:
         confidence=theme.confidence,
         polarity=theme.polarity,
         fact_type=theme.fact_type,
+        psychological_mechanism=theme.psychological_mechanism,
+        lived_manifestation=theme.lived_manifestation,
+        inner_tension=theme.inner_tension,
+        protective_strategy=theme.protective_strategy,
+        immature_expression=theme.immature_expression,
+        mature_expression=theme.mature_expression,
+        integration_question=theme.integration_question,
+        evidence_strength=theme.evidence_strength,
+        contradictions=list(theme.contradictions),
+        compensations=list(theme.compensations),
     )
 
 
@@ -80,8 +90,24 @@ def _depth_contract() -> dict[str, object]:
     return {
         "mode": "expanded_section",
         "coverage": "cover every owned theme and evidence id with developed prose",
+        "technical_emptiness_floor": {"paragraphs": 3, "words": 80},
+        "section_targets": {
+            "core_pattern": {"words": "700-1200", "paragraphs": "6-9"},
+            "other_upper_sections": {"words": "450-900", "paragraphs": "4-7"},
+        },
+        "required_moves": [
+            "central formula",
+            "psychological mechanism",
+            "lived manifestation",
+            "inner tension or polarity",
+            "protective or shadow strategy",
+            "mature integrated expression",
+            "soft self-check or integration cue",
+        ],
         "quality": [
+            "write a deep psychological reading of one section, not a broad overview",
             "explain the inner mechanism, not a generic horoscope claim",
+            "do not structure prose as a placement or aspect summary",
             "use reference themes only for continuity and do not expand forbidden themes",
             "preserve long valid prose when it is grounded and coherent",
         ],

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Goal
 
@@ -76,26 +76,26 @@ Out of scope:
 
 ## Acceptance criteria
 
-- [ ] Prompt contract distinguishes technical emptiness floor from product depth target.
-- [ ] `core_pattern` requires 700–1200 words and 6–9 developed paragraphs unless continuation is needed.
-- [ ] Other upper sections require 450–900 words and 4–7 developed paragraphs unless continuation is needed.
-- [ ] Every upper section requires mechanism, lived manifestation, tension, protection/shadow and mature expression.
-- [ ] Retry prompts preserve depth requirements instead of shrinking to “at least 80 words”.
-- [ ] Validators reject raw fact dumps, shallow/generic sections and missing depth moves.
-- [ ] Validators allow long grounded sections and use continuation/chunking for provider output limits.
-- [ ] Deterministic synthesis exposes or plans richer fields needed for depth: mechanism, manifestation, tension, protection, immature/mature expression and integration cue.
-- [ ] Local simulated LLM smoke and real-provider smoke check the same quality gates.
-- [ ] Final report assembly and frontend rendering preserve long validated sections.
+- [x] Prompt contract distinguishes technical emptiness floor from product depth target.
+- [x] `core_pattern` requires 700–1200 words and 6–9 developed paragraphs unless continuation is needed.
+- [x] Other upper sections require 450–900 words and 4–7 developed paragraphs unless continuation is needed.
+- [x] Every upper section requires mechanism, lived manifestation, tension, protection/shadow and mature expression.
+- [x] Retry prompts preserve depth requirements instead of shrinking to “at least 80 words”.
+- [x] Validators reject raw fact dumps, shallow/generic sections and missing depth moves.
+- [x] Validators allow long grounded sections and use continuation/chunking for provider output limits.
+- [x] Deterministic synthesis exposes or plans richer fields needed for depth: mechanism, manifestation, tension, protection, immature/mature expression and integration cue.
+- [x] Local simulated LLM smoke and real-provider smoke check the same quality gates.
+- [x] Final report assembly and frontend rendering preserve long validated sections.
 
 ## Stories
 
 | ID  | Story                                                                                 | Status       |
 | --- | ------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Depth prompt contracts](./S01-depth-prompt-contracts.md)                             | ⬜ Не начато |
-| S02 | [Depth validation gates](./S02-depth-validation-gates.md)                             | ⬜ Не начато |
-| S03 | [Deep synthesis inputs](./S03-deep-synthesis-inputs.md)                               | ⬜ Не начато |
-| S04 | [Narrative depth smoke fixtures](./S04-narrative-depth-smoke-fixtures.md)             | ⬜ Не начато |
-| S05 | [Reader/PDF long-section preservation](./S05-reader-pdf-long-section-preservation.md) | ⬜ Не начато |
+| S01 | [Depth prompt contracts](./S01-depth-prompt-contracts.md)                             | ✅ Готово  |
+| S02 | [Depth validation gates](./S02-depth-validation-gates.md)                             | ✅ Готово  |
+| S03 | [Deep synthesis inputs](./S03-deep-synthesis-inputs.md)                               | ✅ Готово  |
+| S04 | [Narrative depth smoke fixtures](./S04-narrative-depth-smoke-fixtures.md)             | ✅ Готово  |
+| S05 | [Reader/PDF long-section preservation](./S05-reader-pdf-long-section-preservation.md) | ✅ Готово  |
 
 ## Implementation order
 

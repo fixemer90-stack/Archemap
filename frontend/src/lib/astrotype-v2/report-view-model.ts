@@ -27,7 +27,9 @@ export interface V2NarrativeSectionViewModel {
   title: string;
   eyebrow: string;
   subtitle: string;
+  bodyText: string;
   paragraphs: string[];
+  paragraphCount: number;
   asideTitle: string;
   asideBullets: string[];
   evidenceIds: string[];
@@ -234,12 +236,16 @@ function toNarrativeSection(
   section: Record<string, unknown>,
 ): V2NarrativeSectionViewModel {
   const display = asRecord(section.reader_display);
+  const bodyText = stringValue(section.body);
+  const sectionParagraphs = paragraphs(bodyText);
   return {
     id: stringValue(section.section_id),
     title: stringValue(section.title),
     eyebrow: stringValue(display.eyebrow),
     subtitle: stringValue(display.subtitle),
-    paragraphs: paragraphs(section.body),
+    bodyText,
+    paragraphs: sectionParagraphs,
+    paragraphCount: sectionParagraphs.length,
     asideTitle: stringValue(display.aside_title, "В фокусе"),
     asideBullets: stringArray(display.aside_bullets),
     evidenceIds: stringArray(section.evidence_ids),

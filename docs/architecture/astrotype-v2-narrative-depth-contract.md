@@ -183,7 +183,7 @@ Validators should not reject a grounded valid section merely because it is long.
 
 ## Deterministic synthesis requirements
 
-The LLM cannot reliably produce depth from only raw placements. The deterministic synthesis layer should eventually provide richer fields for each theme:
+The LLM cannot reliably produce depth from only raw placements. The deterministic synthesis layer provides richer fields for each theme:
 
 - `psychological_mechanism`;
 - `lived_manifestation`;
@@ -195,7 +195,7 @@ The LLM cannot reliably produce depth from only raw placements. The deterministi
 - `evidence_strength`;
 - `contradictions` / `compensations` where present.
 
-Until those fields exist, prompts must still require the LLM to infer these layers from owned evidence, but quality gates should flag thin output.
+Prompts still require the LLM to transform these fields into prose rather than copy raw facts, and quality gates flag thin output.
 
 ## Smoke examples
 

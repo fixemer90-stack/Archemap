@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -40,14 +40,14 @@ This story upgrades the prompt contract from a weak generic instruction to secti
 
 ## Acceptance criteria
 
-- [ ] Prompt says this is not a broad overview.
-- [ ] Prompt says to write a deep psychological reading of one section.
-- [ ] `core_pattern` has 700–1200 word / 6–9 paragraph target.
-- [ ] Other upper sections have 450–900 word / 4–7 paragraph target.
-- [ ] Prompt requires mechanism, lived manifestation, tension, protection/shadow and mature expression.
-- [ ] Prompt forbids placement/aspect summaries as the section structure.
-- [ ] Retry prompt preserves the same depth contract.
-- [ ] Unit tests assert these prompt markers.
+- [x] Prompt says this is not a broad overview.
+- [x] Prompt says to write a deep psychological reading of one section.
+- [x] `core_pattern` has 700–1200 word / 6–9 paragraph target.
+- [x] Other upper sections have 450–900 word / 4–7 paragraph target.
+- [x] Prompt requires mechanism, lived manifestation, tension, protection/shadow and mature expression.
+- [x] Prompt forbids placement/aspect summaries as the section structure.
+- [x] Retry prompt preserves the same depth contract.
+- [x] Unit tests assert these prompt markers.
 
 ## Verification commands
 

@@ -29,6 +29,14 @@ def _theme(
         confidence=1.0,
         polarity=None,
         fact_type="placement",
+        psychological_mechanism=f"{theme_id} mechanism",
+        lived_manifestation=f"{theme_id} manifestation",
+        inner_tension=f"{theme_id} tension",
+        protective_strategy=f"{theme_id} protection",
+        immature_expression=f"{theme_id} immature",
+        mature_expression=f"{theme_id} mature",
+        integration_question=f"{theme_id} question",
+        evidence_strength="strong",
     )
 
 
@@ -72,6 +80,12 @@ def test_build_section_render_inputs_v2_creates_one_curated_input_per_outline_se
     assert core.section_id == "core_pattern"
     assert core.section_title == "Ядро личности"
     assert core.owned_themes[0].id == "theme:core:sun"
+    assert core.owned_themes[0].psychological_mechanism
+    assert core.owned_themes[0].lived_manifestation
+    assert core.owned_themes[0].inner_tension
+    assert core.owned_themes[0].protective_strategy
+    assert core.owned_themes[0].mature_expression
+    assert core.owned_themes[0].integration_question
     assert [theme.id for theme in core.reference_themes] == [
         "theme:emotion:moon",
         "theme:mind:mercury",
@@ -92,6 +106,9 @@ def test_section_render_input_payload_has_depth_and_continuation_contract_withou
 
     assert payload["depth_contract"]["mode"] == "expanded_section"
     assert payload["depth_contract"]["coverage"] == "cover every owned theme and evidence id with developed prose"
+    assert payload["depth_contract"]["technical_emptiness_floor"] == {"paragraphs": 3, "words": 80}
+    assert payload["depth_contract"]["section_targets"]["core_pattern"] == {"words": "700-1200", "paragraphs": "6-9"}
+    assert "psychological mechanism" in payload["depth_contract"]["required_moves"]
     assert payload["continuation_policy"]["continuation_supported"] is True
     assert payload["continuation_policy"]["retry_scope"] == "section_only"
 

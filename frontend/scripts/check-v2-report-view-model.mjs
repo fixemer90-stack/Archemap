@@ -22,6 +22,8 @@ for (const marker of [
   "layoutOrder",
   "toHeroViewModel",
   "toNarrativeSections",
+  "bodyText",
+  "paragraphCount",
   "toCalculationLayer",
   "keyIndicators",
   "planetPositions",
@@ -58,6 +60,14 @@ for (let index = 1; index < order.length; index += 1) {
     `canonical section order broken around ${order[index]}`,
   );
 }
+
+assert.match(source, /const bodyText = stringValue\(section\.body\)/);
+assert.match(source, /paragraphCount: sectionParagraphs\.length/);
+assert.equal(
+  source.includes("slice(0"),
+  false,
+  "view model must not truncate narrative body text",
+);
 
 for (const forbidden of [
   "socionics",

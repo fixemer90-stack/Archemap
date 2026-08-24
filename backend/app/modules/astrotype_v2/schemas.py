@@ -20,6 +20,16 @@ class SectionThemeInputV2(BaseModel):
     confidence: float
     polarity: str | None = None
     fact_type: str | None = None
+    psychological_mechanism: str | None = None
+    lived_manifestation: str | None = None
+    inner_tension: str | None = None
+    protective_strategy: str | None = None
+    immature_expression: str | None = None
+    mature_expression: str | None = None
+    integration_question: str | None = None
+    evidence_strength: str | None = None
+    contradictions: list[str] = Field(default_factory=list)
+    compensations: list[str] = Field(default_factory=list)
 
 
 class SectionRenderInputV2(BaseModel):

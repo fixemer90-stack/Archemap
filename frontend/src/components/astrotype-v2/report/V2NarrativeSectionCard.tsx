@@ -12,6 +12,7 @@ export function V2NarrativeSectionCard({
     <article
       data-v2-reader-block="narrative-section"
       data-v2-section-id={section.id}
+      data-v2-paragraph-count={section.paragraphCount}
       className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 text-[#F4EADB] shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6"
     >
       <div className="mb-[14px] flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -30,8 +31,8 @@ export function V2NarrativeSectionCard({
 
       <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="space-y-4 text-[15px] leading-[1.6] text-[#DCE4F3] md:text-[16px]">
-          {section.paragraphs.map((paragraph) => (
-            <p key={paragraph}>
+          {section.paragraphs.map((paragraph, index) => (
+            <p key={`${section.id}-${index}`}>
               <V2GlossaryText text={paragraph} />
             </p>
           ))}

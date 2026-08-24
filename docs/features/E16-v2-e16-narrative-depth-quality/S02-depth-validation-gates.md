@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -39,13 +39,13 @@ This story adds quality gates to `segment_validation` and report assembly tests.
 
 ## Acceptance criteria
 
-- [ ] Shallow 80-word sections fail validation.
-- [ ] Raw English fact dumps fail validation.
-- [ ] Generic horoscope filler fails validation.
-- [ ] Sections missing lived manifestation fail validation.
-- [ ] Sections missing protection/shadow or mature expression fail validation.
-- [ ] Long grounded sections pass validation.
-- [ ] `continuation_complete=false` is accepted only as an incomplete segment state, not as a complete report section.
+- [x] Shallow 80-word sections fail validation.
+- [x] Raw English fact dumps fail validation.
+- [x] Generic horoscope filler fails validation.
+- [x] Sections missing lived manifestation fail validation.
+- [x] Sections missing protection/shadow or mature expression fail validation.
+- [x] Long grounded sections pass validation.
+- [x] `continuation_complete=false` is accepted only as an incomplete segment state, not as a complete report section.
 
 ## Verification commands
 

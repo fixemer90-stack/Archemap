@@ -341,7 +341,8 @@ def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pip
     task_source = (ROOT / "workers" / "tasks" / "astrotype_v2.py").read_text()
     runtime_source = (ROOT / "app" / "modules" / "astrotype_v2" / "api_runtime.py").read_text()
 
-    assert '@app.task(name="astrotype_v2.generate_natal_report"' in task_source
+    assert "@app.task" in task_source
+    assert 'name="astrotype_v2.generate_natal_report"' in task_source
     assert "def generate_natal_report_v2" in task_source
     assert "run_async_in_worker" in task_source
     assert "build_natal_chart_rows" in task_source

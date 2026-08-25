@@ -85,20 +85,17 @@ def _output(body: str, **overrides: Any) -> ReportSegmentOutputV2:
 
 def test_shallow_80_word_complete_section_fails_validation() -> None:
     body = " ".join(
-        [
-            "Внутренний механизм проявляется в жизни через напряжение, защитную стратегию и зрелое выражение ресурса."
-        ]
-        * 8
+        ["Внутренний механизм проявляется в жизни через напряжение, защитную стратегию и зрелое выражение ресурса."] * 8
     )
 
     with pytest.raises(SegmentValidationError, match="underdeveloped"):
         validate_segment_output_v2(output=_output(body), section_input=_section_input())
 
 
-
 def test_missing_owned_evidence_ids_fail_validation_before_report_assembly() -> None:
     with pytest.raises(SegmentValidationError, match="missing evidence ids"):
         validate_segment_output_v2(output=_output(_deep_body(), evidence_ids=[]), section_input=_section_input())
+
 
 def test_raw_english_fact_dump_fails_validation() -> None:
     body = _deep_body().replace(
@@ -112,7 +109,10 @@ def test_raw_english_fact_dump_fails_validation() -> None:
 
 
 def test_generic_horoscope_filler_fails_validation() -> None:
-    body = _deep_body() + "\n\nУникальная энергия помогает раскрыть свой потенциал, важно найти баланс и следуйте своему сердцу."
+    body = (
+        _deep_body()
+        + "\n\nУникальная энергия помогает раскрыть свой потенциал, важно найти баланс и следуйте своему сердцу."
+    )
 
     with pytest.raises(SegmentValidationError, match="generic filler"):
         validate_segment_output_v2(output=_output(body), section_input=_section_input())

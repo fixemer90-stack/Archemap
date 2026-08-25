@@ -79,7 +79,6 @@ def _section_input() -> SectionRenderInputV2:
     return build_section_render_inputs_v2(outline=outline, synthesis=synthesis)[0]
 
 
-
 def _deep_body(paragraphs: int = 6, words_per_paragraph: int = 125) -> str:
     base = (
         "Внутренний механизм этой темы показывает, как человек собирает ощущение себя и выбирает направление действия. "
@@ -97,6 +96,7 @@ def _deep_body(paragraphs: int = 6, words_per_paragraph: int = 125) -> str:
             words.extend(base.split())
         result.append(" ".join(words[:words_per_paragraph]))
     return "\n\n".join(result)
+
 
 def _valid_long_output(section_id: str = "core_pattern") -> dict[str, Any]:
     return {

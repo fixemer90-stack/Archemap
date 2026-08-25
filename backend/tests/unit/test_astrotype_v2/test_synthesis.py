@@ -117,7 +117,6 @@ def test_build_natal_synthesis_v2_groups_ranked_themes_without_llm_or_legacy_fie
     assert "model_a" not in str(payload).lower()
 
 
-
 def test_build_natal_synthesis_v2_preserves_explicit_depth_payload_evidence_backed() -> None:
     from app.modules.astrotype_v2.synthesis import build_natal_synthesis_v2
 
@@ -156,6 +155,7 @@ def test_build_natal_synthesis_v2_preserves_explicit_depth_payload_evidence_back
     assert theme["integration_question"] == "explicit question?"
     assert theme["contradictions"] == ["need / fear"]
     assert theme["compensations"] == ["over-care"]
+
 
 def test_build_natal_synthesis_v2_is_deterministic_for_same_fact_set_order_independent() -> None:
     from app.modules.astrotype_v2.synthesis import build_natal_synthesis_v2

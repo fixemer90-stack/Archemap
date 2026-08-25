@@ -224,7 +224,9 @@ def _depth_payload_from_fact(*, fact: models.NatalFact, section: str) -> dict[st
     depth_candidate = payload.get("depth")
     raw_depth: dict[str, Any] = depth_candidate if isinstance(depth_candidate, dict) else {}
     mechanism = _payload_text(raw_depth, "psychological_mechanism") or _default_mechanism(fact=fact, section=section)
-    manifestation = _payload_text(raw_depth, "lived_manifestation") or _default_manifestation(fact=fact, section=section)
+    manifestation = _payload_text(raw_depth, "lived_manifestation") or _default_manifestation(
+        fact=fact, section=section
+    )
     tension = _payload_text(raw_depth, "inner_tension") or _default_tension(fact=fact)
     protection = _payload_text(raw_depth, "protective_strategy") or _default_protection(fact=fact)
     immature = _payload_text(raw_depth, "immature_expression") or _default_immature(fact=fact)
@@ -243,11 +245,13 @@ def _depth_payload_from_fact(*, fact: models.NatalFact, section: str) -> dict[st
         "compensations": _payload_list(raw_depth, "compensations"),
     }
 
+
 def _payload_text(payload: dict[str, Any], key: str) -> str | None:
     value = payload.get(key)
     if isinstance(value, str) and value.strip():
         return value.strip()
     return None
+
 
 def _payload_list(payload: dict[str, Any], key: str) -> list[str]:
     value = payload.get(key)
@@ -255,28 +259,38 @@ def _payload_list(payload: dict[str, Any], key: str) -> list[str]:
         return [str(item).strip() for item in value if str(item).strip()]
     return []
 
+
 def _default_mechanism(*, fact: models.NatalFact, section: str) -> str:
     return f"{fact.title} описывает внутренний механизм раздела {section}: как человек выбирает опору, фокус и способ реагирования."
 
+
 def _default_manifestation(*, fact: models.NatalFact, section: str) -> str:
     return f"В жизни это проявляется через повторяющийся сценарий раздела {section}, где тема {fact.title} заметна в решениях, темпе и контакте с реальностью."
+
 
 def _default_tension(*, fact: models.NatalFact) -> str:
     if (fact.polarity or "").lower() in _TENSION_POLARITIES:
         return f"Напряжение темы {fact.title} возникает между потребностью в защите и необходимостью оставаться включённым."
     return f"Внутренняя полярность темы {fact.title} связана с балансом привычной защиты и более зрелого способа выражения."
 
+
 def _default_protection(*, fact: models.NatalFact) -> str:
     return f"Защитная стратегия может превращать {fact.title} в контроль, избегание или чрезмерную компенсацию под давлением."
+
 
 def _default_immature(*, fact: models.NatalFact) -> str:
     return f"В незрелом выражении {fact.title} звучит как автоматическая реакция, а не свободный выбор."
 
+
 def _default_mature(*, fact: models.NatalFact) -> str:
-    return f"В зрелом выражении {fact.title} становится осознанным ресурсом, который помогает действовать мягче и точнее."
+    return (
+        f"В зрелом выражении {fact.title} становится осознанным ресурсом, который помогает действовать мягче и точнее."
+    )
+
 
 def _default_question(*, section: str) -> str:
     return f"Какой маленький выбор в разделе {section} помогает перейти от защиты к более зрелому выражению?"
+
 
 def _evidence_strength(confidence: float) -> str:
     if confidence >= 0.85:

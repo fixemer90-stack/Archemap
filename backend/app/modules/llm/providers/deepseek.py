@@ -43,6 +43,8 @@ class DeepSeekProvider:
         request_payload = {
             "model": self.model_name,
             "response_format": {"type": "json_object"},
+            "max_tokens": 32000,
+            "thinking": {"type": "disabled"},
             "messages": [
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": narrative_input.model_dump_json(indent=2)},
@@ -110,8 +112,13 @@ class DeepSeekProvider:
         try:
             parsed_content = _load_structured_json_content(content)
         except json.JSONDecodeError as exc:
+            preview = content[:120].replace("\n", " ") if isinstance(content, str) else ""
+            finish_reason = _first_choice_value(response_payload, "finish_reason")
+            usage = response_payload.get("usage") if isinstance(response_payload, dict) else None
             raise LLMInvalidResponseError(
-                "LLM provider returned non-JSON content",
+                "LLM provider returned non-JSON content: "
+                f"finish_reason={finish_reason!r}; content_len={len(content or '')}; "
+                f"preview={preview!r}; usage={usage}",
                 code="llm_invalid_response",
             ) from exc
 
@@ -131,6 +138,13 @@ class DeepSeekProvider:
                 f"LLM provider returned JSON that does not match schema: {diagnostics}",
                 code="llm_invalid_response",
             ) from exc
+
+
+def _first_choice_value(response_payload: dict[str, Any], key: str) -> Any:
+    choices = response_payload.get("choices")
+    if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+        return choices[0].get(key)
+    return None
 
 
 def _schema_validation_diagnostics(payload: Any, schema_name: str, exc: ValidationError) -> str:

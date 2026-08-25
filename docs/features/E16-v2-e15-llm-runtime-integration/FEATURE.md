@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Goal
 
@@ -68,25 +68,25 @@ As of the discovery pass:
 
 ## Acceptance criteria
 
-- [ ] Backend and worker can be started from `backend/` and still resolve the intended root `.env` LLM variables, or a documented explicit env-loading command is used.
-- [ ] There is no secret leakage in docs, tests, logs, commits, or smoke output.
-- [ ] V2 worker uses the existing LLM provider factory for narrative sections when `LLM_ENABLED=true` and `LLM_PROVIDER=deepseek`.
-- [ ] V2 worker no longer persists real user-facing narrative segments as `provider=deterministic` when real LLM config is present.
-- [ ] Deterministic chart/fact/synthesis/outline/calculation-layer stages remain LLM-free.
-- [ ] Segment rows persist real provider/model/prompt metadata.
-- [ ] Provider timeout/retry behavior respects `LLM_TIMEOUT_SECONDS` and `LLM_MAX_RETRIES`.
-- [ ] Failure path keeps deterministic foundation readable and marks narrative/report status honestly.
-- [ ] Full-flow smoke proves registration → verify → login → V2 generation → LLM-backed report ready → `/report/v2/{profile_id}` HTTP 200.
-- [ ] Smoke output redacts secrets and includes provider/model/status evidence.
-- [ ] CI remains green using mock/deterministic mode without real API credentials.
+- [x] Backend and worker can be started from `backend/` and still resolve the intended root `.env` LLM variables, or a documented explicit env-loading command is used.
+- [x] There is no secret leakage in docs, tests, logs, commits, or smoke output.
+- [x] V2 worker uses the existing LLM provider factory for narrative sections when `LLM_ENABLED=true` and `LLM_PROVIDER=deepseek`.
+- [x] V2 worker no longer persists real user-facing narrative segments as `provider=deterministic` when real LLM config is present.
+- [x] Deterministic chart/fact/synthesis/outline/calculation-layer stages remain LLM-free.
+- [x] Segment rows persist real provider/model/prompt metadata.
+- [x] Provider timeout/retry behavior respects `LLM_TIMEOUT_SECONDS` and `LLM_MAX_RETRIES`.
+- [x] Failure path keeps deterministic foundation readable and marks narrative/report status honestly.
+- [x] Full-flow smoke proves registration → verify → login → V2 generation → LLM-backed report ready → `/report/v2/{profile_id}` HTTP 200.
+- [x] Smoke output redacts secrets and includes provider/model/status evidence.
+- [x] CI remains green using mock/deterministic mode without real API credentials.
 
 ## Stories
 
-| ID  | Story                                                                                       | Status       |
-| --- | ------------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Fix backend/worker LLM environment loading](./S01-env-loading-contract.md)                 | ✅ Готово    |
-| S02 | [Wire V2 worker narrative segments to LLM provider](./S02-worker-llm-segment-runtime.md)    | ✅ Готово    |
-| S03 | [Add real-provider smoke and CI-safe mock gates](./S03-real-provider-smoke-and-ci-gates.md) | ⬜ Не начато |
+| ID  | Story                                                                                       | Status    |
+| --- | ------------------------------------------------------------------------------------------- | --------- |
+| S01 | [Fix backend/worker LLM environment loading](./S01-env-loading-contract.md)                 | ✅ Готово |
+| S02 | [Wire V2 worker narrative segments to LLM provider](./S02-worker-llm-segment-runtime.md)    | ✅ Готово |
+| S03 | [Add real-provider smoke and CI-safe mock gates](./S03-real-provider-smoke-and-ci-gates.md) | ✅ Готово |
 
 ## Implementation order
 
@@ -121,7 +121,7 @@ Implementation verification must add fresh commands to each story before marking
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy .
 cd backend && uv run pytest tests/unit -q
 cd frontend && npx eslint . && npx prettier --check . && rm -rf .next && npx tsc --noEmit --pretty false && npm test && npm run build
-cd backend && uv run python ../scripts/smoke/astrotype-v2-full-flow.py --base-url http://127.0.0.1:3000 --backend-url http://127.0.0.1:8000 --timeout 240 --expect-provider deepseek --expect-model deepseek-v4-flash
+cd backend && uv run python ../scripts/smoke/astrotype-v2-full-flow.py --base-url http://127.0.0.1:3000 --backend-url http://127.0.0.1:8000 --timeout 600 --expect-provider deepseek --expect-model deepseek-v4-flash
 ```
 
 ## Non-negotiable secret handling

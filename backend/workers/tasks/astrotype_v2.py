@@ -44,7 +44,14 @@ _DETERMINISTIC_PROVIDER = "deterministic"
 _DETERMINISTIC_MODEL = "v2-local-runtime"
 
 
-@app.task(name="astrotype_v2.generate_natal_report", bind=True)  # type: ignore[untyped-decorator]
+@app.task(  # type: ignore[untyped-decorator]
+    name="astrotype_v2.generate_natal_report",
+    bind=True,
+    max_retries=settings.LLM_MAX_RETRIES,
+    default_retry_delay=30,
+    soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4, 600),
+    time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720),
+)
 def generate_natal_report_v2(
     self: object,
     *,
@@ -334,16 +341,30 @@ async def _ensure_llm_segments(
         outline=_outline_contract_from_row(outline=outline, synthesis=synthesis),
         synthesis=synthesis,
     )
-    new_segments: list[models.ReportSegmentGeneration] = []
-    for section_input in section_inputs:
-        existing = by_key.get(section_input.section_id)
-        if existing is not None and existing.status == "ready" and existing.provider == settings.LLM_PROVIDER:
-            continue
-        segment = await run_segment_generation_v2(
-            provider=segment_provider,
-            section_input=section_input,
-            outline_id=outline.id,
+    generation_inputs = [
+        section_input
+        for section_input in section_inputs
+        if not (
+            (existing := by_key.get(section_input.section_id)) is not None
+            and existing.status == "ready"
+            and existing.provider == settings.LLM_PROVIDER
+            and existing.model == settings.LLM_MODEL
         )
+    ]
+    generated_segments = await asyncio.gather(
+        *(
+            run_segment_generation_v2(
+                provider=segment_provider,
+                section_input=section_input,
+                outline_id=outline.id,
+            )
+            for section_input in generation_inputs
+        )
+    )
+
+    new_segments: list[models.ReportSegmentGeneration] = []
+    for segment in generated_segments:
+        existing = by_key.get(segment.section_key)
         if existing is not None:
             existing.status = segment.status
             existing.provider = segment.provider

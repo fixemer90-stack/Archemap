@@ -25,7 +25,12 @@ sys.path.insert(0, str(BACKEND))
 
 
 def request_json(
-    url: str, *, method: str = "GET", payload: dict[str, Any] | None = None, token: str | None = None
+    url: str,
+    *,
+    method: str = "GET",
+    payload: dict[str, Any] | None = None,
+    token: str | None = None,
+    retry_rate_limit: bool = True,
 ) -> tuple[int, dict[str, Any]]:
     ensure_http_url(url)
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
@@ -45,7 +50,25 @@ def request_json(
             parsed = json.loads(body)
         except json.JSONDecodeError:
             parsed = {"detail": body}
+        if retry_rate_limit and exc.code == 429:
+            retry_after = _retry_after_seconds(parsed)
+            if retry_after is not None:
+                time.sleep(retry_after)
+                return request_json(
+                    url,
+                    method=method,
+                    payload=payload,
+                    token=token,
+                    retry_rate_limit=False,
+                )
         raise RuntimeError(f"{method} {url} -> HTTP {exc.code}: {parsed}") from exc
+
+
+def _retry_after_seconds(payload: dict[str, Any]) -> int | None:
+    value = payload.get("retry_after")
+    if isinstance(value, int | float) and value > 0:
+        return min(int(value) + 1, 60)
+    return None
 
 
 def request_text(url: str) -> tuple[int, str]:
@@ -155,17 +178,54 @@ def assert_canonical_report(payload: dict[str, Any]) -> None:
     assert_no_forbidden(payload)
 
 
+def redact_llm_config(raw: dict[str, Any]) -> dict[str, Any]:
+    """Return smoke-safe LLM config evidence without leaking secrets."""
+
+    api_key_present = bool(raw.get("llm_api_key"))
+    return {
+        "llm_enabled": raw.get("llm_enabled"),
+        "llm_provider": raw.get("llm_provider"),
+        "llm_model": raw.get("llm_model"),
+        "llm_api_key_present": api_key_present,
+        "llm_api_key": "[REDACTED]" if api_key_present else "",
+        "llm_timeout_seconds": raw.get("llm_timeout_seconds"),
+        "llm_max_retries": raw.get("llm_max_retries"),
+    }
+
+
 def llm_config_summary() -> dict[str, Any]:
     from app.config import settings
 
-    return {
-        "llm_enabled": settings.LLM_ENABLED,
-        "llm_provider": settings.LLM_PROVIDER,
-        "llm_model": settings.LLM_MODEL,
-        "llm_api_key": "[REDACTED]" if bool(settings.LLM_API_KEY) else "",
-        "llm_timeout_seconds": settings.LLM_TIMEOUT_SECONDS,
-        "llm_max_retries": settings.LLM_MAX_RETRIES,
-    }
+    return redact_llm_config(
+        {
+            "llm_enabled": settings.LLM_ENABLED,
+            "llm_provider": settings.LLM_PROVIDER,
+            "llm_model": settings.LLM_MODEL,
+            "llm_api_key": settings.LLM_API_KEY,
+            "llm_timeout_seconds": settings.LLM_TIMEOUT_SECONDS,
+            "llm_max_retries": settings.LLM_MAX_RETRIES,
+        }
+    )
+
+
+def assert_report_progress_ready(progress: dict[str, Any]) -> None:
+    status = progress.get("status")
+    ready_segments = progress.get("ready_segments")
+    total_segments = progress.get("total_segments")
+    if status not in {"ready", "complete"}:
+        raise AssertionError(f"report progress is not ready/complete: {progress}")
+    if ready_segments != total_segments or total_segments != 6:
+        raise AssertionError(
+            "segment readiness mismatch: "
+            + json.dumps(
+                {
+                    "report_status": status,
+                    "ready_segments": ready_segments,
+                    "total_segments": total_segments,
+                },
+                ensure_ascii=False,
+            )
+        )
 
 
 def assert_expected_segment_provider(
@@ -271,17 +331,18 @@ def main() -> None:
             _, report_payload = request_json(
                 f"{args.backend_url}/api/v1/astrotype-v2/reports/{report_id}", token=access_token
             )
-            if report_payload["progress"]["status"] == "ready":
+            if report_payload["progress"]["status"] in {"ready", "complete"}:
                 break
         _, last_generation = request_json(
             f"{args.backend_url}{generation['links']['progress']}",
             token=access_token,
         )
-        time.sleep(2)
+        time.sleep(5)
     if report_payload is None:
         raise RuntimeError(f"report not ready before timeout; last_generation={last_generation}")
 
     assert_canonical_report(report_payload)
+    assert_report_progress_ready(report_payload["progress"])
     assert_expected_segment_provider(
         report_payload,
         expect_provider=args.expect_provider,

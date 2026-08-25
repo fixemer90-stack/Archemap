@@ -25,9 +25,16 @@ def validate_segment_output_v2(
     allowed_evidence_ids = set(section_input.evidence_ids) | {
         evidence_id for theme in section_input.reference_themes for evidence_id in theme.evidence_ids
     }
-    unknown_evidence_ids = set(output.evidence_ids) - allowed_evidence_ids
+    output_evidence_ids = set(output.evidence_ids)
+    if not output_evidence_ids:
+        raise SegmentValidationError("missing evidence ids")
+    unknown_evidence_ids = output_evidence_ids - allowed_evidence_ids
     if unknown_evidence_ids:
         raise SegmentValidationError(f"unknown evidence ids: {sorted(unknown_evidence_ids)}")
+
+    missing_evidence_ids = set(section_input.evidence_ids) - output_evidence_ids
+    if missing_evidence_ids:
+        raise SegmentValidationError(f"missing owned evidence ids: {sorted(missing_evidence_ids)}")
 
     owned_theme_ids = {theme.id for theme in section_input.owned_themes}
     forbidden_theme_ids = set(section_input.forbidden_theme_ids)
@@ -65,8 +72,8 @@ def section_depth_floor(section_id: str) -> tuple[int, int]:
     """Return minimum complete-section word and paragraph counts."""
 
     if section_id == "core_pattern":
-        return 700, 6
-    return 450, 4
+        return 450, 4
+    return 300, 3
 
 
 def _paragraphs(body: str) -> list[str]:

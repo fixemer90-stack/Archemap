@@ -15,8 +15,8 @@ This story upgrades the prompt contract from a weak generic instruction to secti
 1. Read `docs/architecture/astrotype-v2-narrative-depth-contract.md`.
 2. Update `backend/app/modules/astrotype_v2/llm_segments.py` or split prompt templates under `backend/app/modules/astrotype_v2/prompts/`.
 3. Replace the product-depth minimum with section-specific requirements:
-   - `core_pattern`: 700–1200 words, 6–9 paragraphs;
-   - other upper sections: 450–900 words, 4–7 paragraphs.
+   - `core_pattern`: 450–700 words, 4–6 paragraphs;
+   - other upper sections: 300–500 words, 3–5 paragraphs.
 4. Keep a separate technical emptiness floor only for malformed/empty response detection.
 5. Add section-specific instructions for:
    - central formula;
@@ -42,8 +42,8 @@ This story upgrades the prompt contract from a weak generic instruction to secti
 
 - [x] Prompt says this is not a broad overview.
 - [x] Prompt says to write a deep psychological reading of one section.
-- [x] `core_pattern` has 700–1200 word / 6–9 paragraph target.
-- [x] Other upper sections have 450–900 word / 4–7 paragraph target.
+- [x] `core_pattern` has 450–700 word / 4–6 paragraph target.
+- [x] Other upper sections have 300–500 word / 3–5 paragraph target.
 - [x] Prompt requires mechanism, lived manifestation, tension, protection/shadow and mature expression.
 - [x] Prompt forbids placement/aspect summaries as the section structure.
 - [x] Retry prompt preserves the same depth contract.

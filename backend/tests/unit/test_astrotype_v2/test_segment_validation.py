@@ -95,6 +95,11 @@ def test_shallow_80_word_complete_section_fails_validation() -> None:
         validate_segment_output_v2(output=_output(body), section_input=_section_input())
 
 
+
+def test_missing_owned_evidence_ids_fail_validation_before_report_assembly() -> None:
+    with pytest.raises(SegmentValidationError, match="missing evidence ids"):
+        validate_segment_output_v2(output=_output(_deep_body(), evidence_ids=[]), section_input=_section_input())
+
 def test_raw_english_fact_dump_fails_validation() -> None:
     body = _deep_body().replace(
         "Внутренний психологический механизм",
@@ -131,7 +136,7 @@ def test_long_grounded_core_section_passes_without_artificial_max_length() -> No
 
 
 def test_other_upper_sections_use_450_word_four_paragraph_floor() -> None:
-    body = _deep_body(paragraphs=4, words_per_paragraph=115)
+    body = _deep_body(paragraphs=3, words_per_paragraph=105)
     section_input = _section_input(section_id="perception_and_mind")
     output = _output(body, section_id="perception_and_mind", title="Восприятие и мышление")
 

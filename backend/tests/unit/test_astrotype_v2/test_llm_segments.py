@@ -122,7 +122,7 @@ def test_build_segment_prompt_requires_expanded_json_grounded_in_one_section_wit
     assert "write only this section" in lowered
     assert "cover every owned theme" in lowered
     assert "deep psychological reading" in lowered
-    assert "700–1200 words and 6–9 developed paragraphs" in prompt
+    assert "450-700 words" in prompt
     assert "psychological mechanism" in lowered
     assert "lived manifestation" in lowered
     assert "protective/shadow" in lowered

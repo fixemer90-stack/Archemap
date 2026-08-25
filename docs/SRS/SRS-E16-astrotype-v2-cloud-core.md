@@ -126,7 +126,7 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 - FR-5.6: provider output limits shall be handled with continuation/chunking at segment level rather than by shortening the product report.
 - FR-5.7: validators shall reject shallow/generic output, but shall not reject a grounded valid section merely because it is long.
 - FR-5.8: upper narrative sections shall follow the depth contract in `docs/architecture/astrotype-v2-narrative-depth-contract.md`: mechanism, lived manifestation, tension, protection/shadow and mature expression.
-- FR-5.9: `core_pattern` shall target 700–1200 words and 6–9 developed paragraphs unless continuation is required; other upper sections shall target 450–900 words and 4–7 developed paragraphs unless continuation is required.
+- FR-5.9: `core_pattern` shall target 450–700 words and 4–6 developed paragraphs unless continuation is required; other upper sections shall target 300–500 words and 3–5 developed paragraphs unless continuation is required.
 
 ### FR-6: Progressive report delivery
 

@@ -107,7 +107,7 @@ def test_section_render_input_payload_has_depth_and_continuation_contract_withou
     assert payload["depth_contract"]["mode"] == "expanded_section"
     assert payload["depth_contract"]["coverage"] == "cover every owned theme and evidence id with developed prose"
     assert payload["depth_contract"]["technical_emptiness_floor"] == {"paragraphs": 3, "words": 80}
-    assert payload["depth_contract"]["section_targets"]["core_pattern"] == {"words": "700-1200", "paragraphs": "6-9"}
+    assert payload["depth_contract"]["section_targets"]["core_pattern"] == {"words": "450-700", "paragraphs": "4-6"}
     assert "psychological mechanism" in payload["depth_contract"]["required_moves"]
     assert payload["continuation_policy"]["continuation_supported"] is True
     assert payload["continuation_policy"]["retry_scope"] == "section_only"

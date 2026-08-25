@@ -28,6 +28,11 @@ def _build_section_input(
 ) -> SectionRenderInputV2:
     owned_themes = [_theme_input(themes_by_id[theme_id]) for theme_id in section.owned_theme_ids]
     reference_themes = [_theme_input(themes_by_id[theme_id]) for theme_id in section.reference_theme_ids]
+    section_evidence_ids = set(section.evidence_ids)
+    if not section_evidence_ids:
+        for theme_id in section.reference_theme_ids:
+            section_evidence_ids.update(themes_by_id[theme_id].evidence_ids)
+
     return SectionRenderInputV2(
         chart_id=outline.chart_id,
         source_version=outline.source_version,
@@ -37,7 +42,7 @@ def _build_section_input(
         owned_themes=owned_themes,
         reference_themes=reference_themes,
         forbidden_theme_ids=list(section.forbidden_theme_ids),
-        evidence_ids=sorted(section.evidence_ids),
+        evidence_ids=sorted(section_evidence_ids),
         already_explained={
             "owned_theme_ids": list(section.owned_theme_ids),
             "global_narrative_arc": outline.global_narrative_arc,
@@ -92,8 +97,8 @@ def _depth_contract() -> dict[str, object]:
         "coverage": "cover every owned theme and evidence id with developed prose",
         "technical_emptiness_floor": {"paragraphs": 3, "words": 80},
         "section_targets": {
-            "core_pattern": {"words": "700-1200", "paragraphs": "6-9"},
-            "other_upper_sections": {"words": "450-900", "paragraphs": "4-7"},
+            "core_pattern": {"words": "450-700", "paragraphs": "4-6"},
+            "other_upper_sections": {"words": "300-500", "paragraphs": "3-5"},
         },
         "required_moves": [
             "central formula",

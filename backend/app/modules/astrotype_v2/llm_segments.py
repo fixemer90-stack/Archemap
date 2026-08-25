@@ -1,4 +1,4 @@
-# ruff: noqa: E501,RUF001
+# ruff: noqa: E501
 """Prompt construction and segment-level LLM runner for Astrotype v2."""
 
 from __future__ import annotations
@@ -69,9 +69,12 @@ Write only this section: {section_input.section_id} — {section_input.section_t
 Write a deep psychological reading of this one section, not a broad life overview.
 Use only the provided JSON facts, themes, boundaries, and evidence ids.
 Return typed JSON matching contract_version report_segment_output_v2.
+Do not include reasoning, analysis, markdown, or prose outside the JSON object.
 
 Depth contract:
 - Product depth target: {length_contract}. This is separate from the technical emptiness floor used only to detect malformed empty output.
+- Count words conservatively. If the body is below this product depth target, it is invalid JSON for this task.
+- Do not set continuation_complete=true unless the body already satisfies the target word and paragraph floor.
 - Do not shrink, summarize, or compress the section to satisfy provider limits. If provider output is cut, set continuation_complete=false and continuation_cursor.
 - Cover every owned theme and every owned evidence id with developed explanation.
 - Build the section through this chain: central formula → psychological mechanism → lived manifestation → inner tension or polarity → protective/shadow strategy → mature integrated expression → soft self-check or integration cue.
@@ -83,9 +86,19 @@ Depth contract:
 - Do not invent chart facts, unsupported aspects, houses, planets or evidence ids.
 - Do not mention socionics, archetype labels, Model A, function strengths or typology systems.
 
-Output JSON fields:
-contract_version, section_id, title, body, covered_theme_ids, evidence_ids,
-continuation_complete, continuation_cursor, notes.
+Output JSON object shape exactly:
+{{
+  "contract_version": "report_segment_output_v2",
+  "section_id": "{section_input.section_id}",
+  "title": "{section_input.section_title}",
+  "body": "long Russian prose with blank-line-separated paragraphs",
+  "covered_theme_ids": ["owned theme ids from Provided JSON"],
+  "evidence_ids": ["owned evidence ids from Provided JSON"],
+  "continuation_complete": true,
+  "continuation_cursor": null,
+  "notes": []
+}}
+Do not echo or return section_render_input_v2. The response must contain body.
 
 Provided JSON:
 {payload_json}
@@ -94,8 +107,8 @@ Provided JSON:
 
 def _section_length_contract(section_id: str) -> str:
     if section_id == "core_pattern":
-        return "700–1200 words and 6–9 developed paragraphs unless continuation is needed"
-    return "450–900 words and 4–7 developed paragraphs unless continuation is needed"
+        return "450-700 words and 4-6 developed paragraphs unless continuation is needed"
+    return "300-500 words and 3-5 developed paragraphs unless continuation is needed"
 
 
 async def run_segment_generation_v2(
@@ -119,6 +132,7 @@ async def run_segment_generation_v2(
                 "Do not change section_id. Use only allowed evidence_ids and covered_theme_ids. "
                 "If the body was underdeveloped, preserve the same product depth contract: "
                 f"{_section_length_contract(section_input.section_id)}. "
+                "Do not return a short overview. Do not set continuation_complete=true below the floor. "
                 "Include mechanism, lived manifestation, tension, protection or shadow, mature expression, and a soft self-check cue."
             )
         raw_response = await provider.generate_segment(prompt=retry_prompt, section_input=section_input)

@@ -43,14 +43,14 @@ The current active code-level minimum of 3 paragraphs / 80 words is only a techn
 
 Target depth requirements:
 
-| Section                        |  Target length | Paragraph rhythm         |
-| ------------------------------ | -------------: | ------------------------ |
-| `core_pattern` / Ядро личности | 700–1200 words | 6–9 developed paragraphs |
-| `perception_and_mind`          |  450–900 words | 4–7 developed paragraphs |
-| `emotional_regulation`         |  450–900 words | 4–7 developed paragraphs |
-| `agency_and_desire`            |  450–900 words | 4–7 developed paragraphs |
-| `relationships_and_intimacy`   |  450–900 words | 4–7 developed paragraphs |
-| `growth_vector`                |  450–900 words | 4–7 developed paragraphs |
+| Section                        | Target length | Paragraph rhythm         |
+| ------------------------------ | ------------: | ------------------------ |
+| `core_pattern` / Ядро личности | 450–700 words | 4–6 developed paragraphs |
+| `perception_and_mind`          | 300–500 words | 3–5 developed paragraphs |
+| `emotional_regulation`         | 300–500 words | 3–5 developed paragraphs |
+| `agency_and_desire`            | 300–500 words | 3–5 developed paragraphs |
+| `relationships_and_intimacy`   | 300–500 words | 3–5 developed paragraphs |
+| `growth_vector`                | 300–500 words | 3–5 developed paragraphs |
 
 Provider output limits are infrastructure constraints. If a section is cut by the provider, the segment runner must request continuation for the same section rather than compress the report into a short summary.
 
@@ -158,8 +158,8 @@ The segment prompt must explicitly say:
 This is not a broad overview. Write a deep psychological reading of this one section.
 Do not summarize placements. Convert evidence into lived psychological mechanisms.
 A paragraph is invalid if it only names a trait without explaining how it operates in real life.
-For core_pattern write 700–1200 words in 6–9 paragraphs.
-For other upper sections write 450–900 words in 4–7 paragraphs.
+For core_pattern write 450–700 words in 4–6 paragraphs.
+For other upper sections write 300–500 words in 3–5 paragraphs.
 Each section must include: mechanism, lived manifestation, tension, protection/shadow and mature expression.
 If the answer would be cut by provider limits, set continuation_complete=false; do not compress.
 ```

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Готово
 
 ## Context
 
@@ -35,29 +35,51 @@ The existing full-flow smoke proves that V2 flow works end-to-end, but it curren
 
 ## Acceptance criteria
 
-- [ ] Real-provider smoke creates a report with segment/provider evidence matching `deepseek/deepseek-v4-flash`.
-- [ ] Smoke prints no secrets.
-- [ ] Smoke confirms `report_status=ready/complete`, `ready_segments=6`, `total_segments=6`.
-- [ ] Smoke confirms frontend `/report/v2/{profile_id}` returns HTTP 200.
-- [ ] CI remains green without real LLM credentials.
-- [ ] A bad-provider/bad-key case fails loudly with a precise blocker.
+- [x] Real-provider smoke creates a report with segment/provider evidence matching `deepseek/deepseek-v4-flash`.
+- [x] Smoke prints no secrets.
+- [x] Smoke confirms `report_status=ready/complete`, `ready_segments=6`, `total_segments=6`.
+- [x] Smoke confirms frontend `/report/v2/{profile_id}` returns HTTP 200.
+- [x] CI remains green without real LLM credentials.
+- [x] A bad-provider/bad-key case fails loudly with a precise blocker.
 
 ## Verification
 
-To be filled during implementation. Expected final real-provider command:
+Real-provider smoke (local backend, worker and frontend running; email forced to console for local smoke):
 
 ```bash
-cd backend && uv run python ../scripts/smoke/astrotype-v2-full-flow.py \
+cd backend && EMAIL_PROVIDER=console uv run python ../scripts/smoke/astrotype-v2-full-flow.py \
   --base-url http://127.0.0.1:3000 \
   --backend-url http://127.0.0.1:8000 \
-  --timeout 240 \
+  --timeout 600 \
   --expect-provider deepseek \
   --expect-model deepseek-v4-flash
 ```
 
-Expected CI-safe gate:
+Observed smoke evidence:
+
+```json
+{
+  "status": "ok",
+  "report_status": "ready",
+  "ready_segments": 6,
+  "total_segments": 6,
+  "llm_config": {
+    "llm_enabled": true,
+    "llm_provider": "deepseek",
+    "llm_model": "deepseek-v4-flash",
+    "llm_api_key_present": true,
+    "llm_api_key": "[REDACTED]"
+  },
+  "segment_providers": "6 sections all provider=deepseek model=deepseek-v4-flash",
+  "frontend_route_http": 200
+}
+```
+
+CI-safe gates:
 
 ```bash
-cd backend && LLM_ENABLED=false LLM_PROVIDER=mock uv run pytest tests/unit -q
-cd frontend && npm test && npm run build
+cd backend && uv run pytest tests/unit/test_smoke_astrotype_v2_full_flow.py -q --tb=short
+cd backend && uv run pytest tests/unit/test_astrotype_v2/test_segment_inputs.py tests/unit/test_astrotype_v2/test_segment_validation.py tests/unit/test_astrotype_v2/test_llm_segments.py -q --tb=short
+cd backend && uv run ruff check app/modules/astrotype_v2 app/modules/llm/providers/deepseek.py workers/tasks/astrotype_v2.py ../scripts/smoke/astrotype-v2-full-flow.py tests/unit/test_smoke_astrotype_v2_full_flow.py tests/unit/test_astrotype_v2
+cd backend && uv run mypy app/modules/astrotype_v2 app/modules/llm/providers/deepseek.py workers/tasks/astrotype_v2.py ../scripts/smoke/astrotype-v2-full-flow.py tests/unit/test_smoke_astrotype_v2_full_flow.py tests/unit/test_astrotype_v2
 ```

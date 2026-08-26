@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Astrotype</h1>
-  <p><strong>Премиальная платформа астрологических self‑reports, соционики и продуктовых вертикалей.</strong></p>
+  <p><strong>Премиальная платформа астрологических self‑reports: active v2 — natal‑only cloud‑core с evidence‑backed LLM‑нарративом.</strong></p>
 
   <p>
     <a href="https://github.com/fixemer90-stack/Archemap/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/fixemer90-stack/Archemap/ci.yml?branch=main&label=CI&style=for-the-badge"></a>
@@ -28,19 +28,19 @@ Astrotype — это full‑stack SaaS для персональных ната�
 Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым; LLM не рассчитывает карту, не добавляет факты и не блокирует первый полезный экран.
 
 ```text
-birth/profile data → deterministic_ready foundation → async LLM segments → partial/complete report → PDF / UI
+birth/profile data → deterministic_ready foundation → async DeepSeek LLM segments → complete report → UI / PDF
 ```
 
 ---
 
 ## 🧭 Продукт
 
-| Вертикаль | Что получает пользователь | Статус |
-|---|---|---|
-| **Astrotype Self v2** | Натальная карта, deterministic foundation, progressive LLM‑нарратив без соционики | 🟡 Документация готова, реализация начинается |
-| **Astrotype v1 archive** | Исторические Self/Career/LLM narrative документы и идеи для справки | 📦 Архив, не активный контракт |
-| **Astrotype Love** | Совместимость, паттерны отношений, триггеры конфликтов | 🧭 После v2 foundation |
-| **Astrotype Child** | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию | 🧭 После v2 foundation |
+| Вертикаль                | Что получает пользователь                                                                              | Статус                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| **Astrotype Self v2**    | Натальная карта, deterministic foundation, responsive reader, real DeepSeek LLM‑нарратив без соционики | ✅ Web/backend/runtime реализованы, CI green |
+| **Astrotype v1 archive** | Исторические Self/Career/LLM narrative документы и идеи для справки                                    | 📦 Архив, не активный контракт               |
+| **Astrotype Love**       | Совместимость, паттерны отношений, триггеры конфликтов                                                 | 🧭 После v2 foundation                       |
+| **Astrotype Child**      | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию                                    | 🧭 После v2 foundation                       |
 
 ### Почему это не «астро‑гадалка»
 
@@ -180,12 +180,16 @@ docker compose up -d --build
 
 ```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --extra dev
+EMAIL_PROVIDER=console uv run alembic upgrade head
+EMAIL_PROVIDER=console uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-alembic upgrade head
-uvicorn app.main:app --reload
+### Worker
+
+```bash
+cd backend
+EMAIL_PROVIDER=console uv run celery -A workers.celery_app.app worker --loglevel=INFO
 ```
 
 ### Frontend
@@ -193,7 +197,7 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev -- --hostname 0.0.0.0 --port 3000
 ```
 
 ---
@@ -204,11 +208,10 @@ npm run dev
 
 ```bash
 cd backend
-ruff check .
-ruff format --check .
-mypy .
-pytest tests/unit -v
-pytest tests/integration -v
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy .
+uv run pytest tests/unit -q
 ```
 
 ### Frontend
@@ -287,24 +290,25 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ | Назначение |
-|---|---|
-| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md) | Активная дорожная карта v2 |
-| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md) | Umbrella SRS для v2 cloud-core natal platform |
-| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md) | C4 architecture, progressive delivery, v1 quarantine |
-| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md) | v2 PostgreSQL source-of-truth schema |
-| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md) | Natal report pipeline and section architecture |
-| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy |
-| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md) | Derived deterministic calculation references |
-| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md) | Balance calculation rules |
-| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html) | Canonical v2 report visual sample |
-| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json) | Sample data for v2 report visual contract |
-| [`docs/features/README.md`](docs/features/README.md) | Active v2 feature/story index |
-| [`docs/features/E16-v2-e1-architecture-contracts/FEATURE.md`](docs/features/E16-v2-e1-architecture-contracts/FEATURE.md) | V2-E1 architecture/contracts feature |
-| [`docs/archive/README.md`](docs/archive/README.md) | Archive rules: v1 is reference-only |
-| [`docs/archive/v1/`](docs/archive/v1/) | Historical v1 docs retained away from active contracts |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml) | REST API contract, when present |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml) | Async/event contract, when present |
+| Документ                                                                                                                                       | Назначение                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md)                                                                                                     | Активная дорожная карта v2                             |
+| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md)                                                   | Umbrella SRS для v2 cloud-core natal platform          |
+| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)                                       | C4 architecture, progressive delivery, v1 quarantine   |
+| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md)                                       | v2 PostgreSQL source-of-truth schema                   |
+| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md)                   | Natal report pipeline and section architecture         |
+| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy      |
+| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references           |
+| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                              |
+| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                      |
+| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json)                         | Sample data for v2 report visual contract              |
+| [`docs/features/README.md`](docs/features/README.md)                                                                                           | Active v2 feature/story index                          |
+| [`docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`](docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md)                   | Real-provider LLM runtime integration and smoke gates  |
+| [`docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`](docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md)                   | Narrative depth quality contract and validation gates  |
+| [`docs/archive/README.md`](docs/archive/README.md)                                                                                             | Archive rules: v1 is reference-only                    |
+| [`docs/archive/v1/`](docs/archive/v1/)                                                                                                         | Historical v1 docs retained away from active contracts |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                                             | REST API contract, when present                        |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                                           | Async/event contract, when present                     |
 
 ---
 

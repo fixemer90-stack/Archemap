@@ -52,20 +52,20 @@ v2 foundation is not:
 | Epic   | Name                             | Status                   | Goal                                                                                                    | Feature doc                                                        |
 | ------ | -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | V2-E1  | Architecture & contracts         | ✅ Contract docs aligned | Freeze boundaries, contracts, storage, progressive delivery and multi-client strategy.                  | `docs/features/E16-v2-e1-architecture-contracts/FEATURE.md`        |
-| V2-E2  | Database foundation              | ⬜ Planned               | Add normalized v2 PostgreSQL tables and migrations.                                                     | `docs/features/E16-v2-e2-database-foundation/FEATURE.md`           |
-| V2-E3  | Natal chart adapter              | ⬜ Planned               | Convert chart engine output into v2 rows/contracts without socionics.                                   | `docs/features/E16-v2-e3-natal-chart-adapter/FEATURE.md`           |
-| V2-E4  | Reference data                   | ⬜ Planned               | Add aspect/sign/planet/house meaning reference data.                                                    | `docs/features/E16-v2-e4-reference-data/FEATURE.md`                |
-| V2-E5  | Fact extraction                  | ⬜ Planned               | Generate persisted evidence-backed natal facts.                                                         | `docs/features/E16-v2-e5-fact-extraction/FEATURE.md`               |
-| V2-E6  | Synthesis & outline              | ⬜ Planned               | Build themes and ownership-based section plans.                                                         | `docs/features/E16-v2-e6-synthesis-outline/FEATURE.md`             |
-| V2-E7  | Modular LLM generation           | ⬜ Planned               | Generate long detailed personality segments from curated facts.                                         | `docs/features/E16-v2-e7-modular-llm-generation/FEATURE.md`        |
-| V2-E8  | Final report assembly            | ⬜ Planned               | Assemble full report and validate evidence/duplication boundaries.                                      | `docs/features/E16-v2-e8-final-report-assembly/FEATURE.md`         |
-| V2-E9  | Infographics & calculation layer | ⬜ Planned               | Show deterministic natal visuals and calculation/fact data without LLM.                                 | `docs/features/E16-v2-e9-infographics-factual-basis/FEATURE.md`    |
-| V2-E10 | API & async runtime              | ⬜ Planned               | Expose deterministic readiness, generation status and report APIs.                                      | `docs/features/E16-v2-e10-api-async-runtime/FEATURE.md`            |
-| V2-E11 | Web responsive reader            | ⬜ Planned               | Build mobile-friendly web report UX.                                                                    | `docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md`        |
+| V2-E2  | Database foundation              | ✅ Implemented           | Add normalized v2 PostgreSQL tables and migrations.                                                     | `docs/features/E16-v2-e2-database-foundation/FEATURE.md`           |
+| V2-E3  | Natal chart adapter              | ✅ Implemented           | Convert chart engine output into v2 rows/contracts without socionics.                                   | `docs/features/E16-v2-e3-natal-chart-adapter/FEATURE.md`           |
+| V2-E4  | Reference data                   | ✅ Implemented           | Add aspect/sign/planet/house meaning reference data.                                                    | `docs/features/E16-v2-e4-reference-data/FEATURE.md`                |
+| V2-E5  | Fact extraction                  | ✅ Implemented           | Generate persisted evidence-backed natal facts.                                                         | `docs/features/E16-v2-e5-fact-extraction/FEATURE.md`               |
+| V2-E6  | Synthesis & outline              | ✅ Completed             | Build themes and ownership-based section plans.                                                         | `docs/features/E16-v2-e6-synthesis-outline/FEATURE.md`             |
+| V2-E7  | Modular LLM generation           | ✅ Completed             | Generate long detailed personality segments from curated facts.                                         | `docs/features/E16-v2-e7-modular-llm-generation/FEATURE.md`        |
+| V2-E8  | Final report assembly            | ✅ Completed             | Assemble full report and validate evidence/duplication boundaries.                                      | `docs/features/E16-v2-e8-final-report-assembly/FEATURE.md`         |
+| V2-E9  | Infographics & calculation layer | ✅ Completed             | Show deterministic natal visuals and calculation/fact data without LLM.                                 | `docs/features/E16-v2-e9-infographics-factual-basis/FEATURE.md`    |
+| V2-E10 | API & async runtime              | ✅ Completed             | Expose deterministic readiness, generation status and report APIs.                                      | `docs/features/E16-v2-e10-api-async-runtime/FEATURE.md`            |
+| V2-E11 | Web responsive reader            | ✅ Completed             | Build mobile-friendly web report UX.                                                                    | `docs/features/E16-v2-e11-web-responsive-reader/FEATURE.md`        |
 | V2-E12 | Android MVP path                 | ⬜ Planned               | Prepare PWA/Capacitor Android shell.                                                                    | `docs/features/E16-v2-e12-android-mvp-path/FEATURE.md`             |
 | V2-E13 | Desktop thin client decision     | ✅ Completed             | `.exe` is not required for core launch; if built, it remains a thin API client with cache-only storage. | `docs/features/E16-v2-e13-desktop-thin-client-decision/FEATURE.md` |
-| V2-E14 | QA, smoke, rollout               | ⬜ Planned               | Verify generation quality, runtime reliability and rollout safety.                                      | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`             |
-| V2-E15 | LLM runtime integration          | ⬜ Planned               | Connect V2 narrative segments to the configured real LLM provider with honest progress/failure states.  | `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`      |
+| V2-E14 | QA, smoke, rollout               | ✅ Completed             | Verify generation quality, runtime reliability and rollout safety.                                      | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`             |
+| V2-E15 | LLM runtime integration          | ✅ Completed             | Connect V2 narrative segments to the configured real LLM provider with honest progress/failure states.  | `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`      |
 | V2-E16 | Narrative depth quality          | ✅ Completed             | Harden prompts, synthesis inputs and validators so report prose is deep rather than shallow.            | `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`      |
 
 ---
@@ -100,7 +100,7 @@ Tasks:
 
 ## V2-E2: Database foundation
 
-Status: ⬜ Planned
+Status: ✅ Implemented
 
 Goal: create normalized durable storage for v2.
 
@@ -133,7 +133,7 @@ Acceptance criteria:
 
 ## V2-E3: Natal chart adapter
 
-Status: ⬜ Planned
+Status: ✅ Implemented
 
 Goal: convert existing chart calculation output into v2 normalized entities.
 
@@ -157,7 +157,7 @@ Verification:
 
 ## V2-E4: Reference data
 
-Status: ⬜ Planned
+Status: ✅ Implemented
 
 Goal: create reusable meaning/reference tables so interpretations are not hardcoded in scattered Python dictionaries.
 
@@ -179,7 +179,7 @@ Acceptance criteria:
 
 ## V2-E5: Fact extraction
 
-Status: ⬜ Planned
+Status: ✅ Implemented
 
 Goal: generate persisted `NatalFactV2` rows from chart entities and reference data.
 
@@ -206,7 +206,7 @@ Acceptance criteria:
 
 ## V2-E6: Synthesis & outline
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: turn facts into themes and assign themes to report segments before LLM generation.
 
@@ -240,7 +240,7 @@ Acceptance criteria:
 
 ## V2-E7: Modular LLM generation
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: generate detailed report prose by personality segment from curated evidence-backed inputs.
 
@@ -267,7 +267,7 @@ Acceptance criteria:
 
 ## V2-E8: Final report assembly
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: assemble section outputs into one large detailed `NatalReportV2`.
 
@@ -284,7 +284,7 @@ Acceptance criteria:
 
 ## V2-E9: Infographics & calculation layer
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: produce the deterministic lower calculation layer from the canonical sample, not a separate evidence/factual-basis dashboard.
 
@@ -320,7 +320,7 @@ Acceptance criteria:
 
 ## V2-E10: API & async runtime
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: expose v2 report generation to all clients through a stable API.
 
@@ -348,7 +348,7 @@ Acceptance criteria:
 
 ## V2-E11: Web responsive reader
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: implement the web report reader to match the canonical sample, not the existing legacy product report/dashboard UI.
 
@@ -425,7 +425,7 @@ Acceptance criteria if implemented:
 
 ## V2-E14: QA, smoke, rollout
 
-Status: ⬜ Planned
+Status: ✅ Completed
 
 Goal: verify quality, runtime and multi-client consistency before rollout.
 
@@ -442,9 +442,26 @@ Acceptance criteria:
 
 ---
 
+## V2-E15: LLM runtime integration
+
+Status: ✅ Completed
+
+Goal: connect v2 narrative segments to the configured real LLM provider with CI-safe mock/deterministic gates.
+
+Current verified runtime:
+
+- real-provider smoke uses `deepseek` / `deepseek-v4-flash`;
+- smoke output redacts secrets;
+- deterministic chart/facts/synthesis/outline/calculation-layer stages remain backend-owned and LLM-free;
+- CI uses mock/deterministic gates and does not require real provider credentials.
+
+Feature doc: `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`
+
+---
+
 ## Implementation priorities
 
-The implementation priority is deterministic-first. The first shippable milestone is not a complete LLM report; it is a user-visible `deterministic_ready` report foundation after registration/profile completion.
+Current state: web/backend v2 delivery is implemented through real-provider narrative runtime and CI-safe smoke gates. The historical implementation priority remains deterministic-first: the first user-visible milestone is `deterministic_ready`, then async LLM narrative completion.
 
 ### P0 — Repository/runtime inventory before feature code
 
@@ -559,7 +576,7 @@ Exit criteria:
 
 ## Suggested timeline
 
-Rough estimate for MVP-quality v2 foundation and web-ready delivery:
+Historical delivery timeline. Phases 0–5 are now implemented for web/backend runtime; Phase 6 remains the Android/PWA follow-up path.
 
 ```text
 Phase 0:     Runtime/code inventory + legacy-leak removal list
@@ -571,7 +588,7 @@ Phase 5:     V2-E10/V2-E11 narrative progress UX + V2-E14 quality/smoke/rollout
 Phase 6:     V2-E12 Android PWA/Capacitor path; V2-E13 desktop only if justified
 ```
 
-Web-first v2 can ship after Phase 5. Android shell should wait until the web report/status UX is stable. Desktop is explicitly not on the MVP critical path.
+Web-first v2 has reached the Phase 5 runtime gate. Android shell should wait until the web report/status UX is stable in product use. Desktop is explicitly not on the MVP critical path.
 
 ---
 

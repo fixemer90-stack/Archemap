@@ -7,13 +7,19 @@ import { V2ReportHero } from "./V2ReportHero";
 interface V2ReportReaderProps {
   viewModel: V2ReportReaderViewModel;
   isRegenerating: boolean;
+  isDownloadingPdf: boolean;
   onRegenerate: () => void;
+  onDownloadPdf: () => void;
+  pdfError?: string | null;
 }
 
 export function V2ReportReader({
   viewModel,
   isRegenerating,
+  isDownloadingPdf,
   onRegenerate,
+  onDownloadPdf,
+  pdfError,
 }: V2ReportReaderProps) {
   return (
     <main
@@ -24,8 +30,16 @@ export function V2ReportReader({
         <V2ReportHero
           hero={viewModel.hero}
           isRegenerating={isRegenerating}
+          isDownloadingPdf={isDownloadingPdf}
           onRegenerate={onRegenerate}
+          onDownloadPdf={onDownloadPdf}
         />
+
+        {pdfError && (
+          <div className="rounded-2xl border border-red-300/30 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+            {pdfError}
+          </div>
+        )}
 
         <V2GlossaryHelpStrip />
 

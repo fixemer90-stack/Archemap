@@ -228,7 +228,7 @@ def _reader_view_payload() -> dict[str, Any]:
             "title": "Натальный портрет личности",
             "status_label": "Полный отчёт готов",
             "calculation_label": "Карта и расчёт ниже",
-            "pdf_label": "Предпросмотр PDF",
+            "pdf_label": "Скачать PDF",
         },
     }
 

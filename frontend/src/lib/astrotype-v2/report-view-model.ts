@@ -168,7 +168,7 @@ function toHeroViewModel(
       hero.calculation_label,
       "Карта и расчёт ниже",
     ),
-    pdfLabel: stringValue(hero.pdf_label, "Предпросмотр PDF"),
+    pdfLabel: stringValue(hero.pdf_label, "Скачать PDF"),
   };
 }
 

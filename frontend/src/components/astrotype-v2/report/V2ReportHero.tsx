@@ -4,13 +4,17 @@ import type { V2ReportHeroViewModel } from "@/lib/astrotype-v2/report-view-model
 interface V2ReportHeroProps {
   hero: V2ReportHeroViewModel;
   isRegenerating: boolean;
+  isDownloadingPdf: boolean;
   onRegenerate: () => void;
+  onDownloadPdf: () => void;
 }
 
 export function V2ReportHero({
   hero,
   isRegenerating,
+  isDownloadingPdf,
   onRegenerate,
+  onDownloadPdf,
 }: V2ReportHeroProps) {
   return (
     <section
@@ -64,9 +68,11 @@ export function V2ReportHero({
           <Button
             type="button"
             variant="outline"
+            onClick={onDownloadPdf}
+            disabled={isDownloadingPdf}
             className="rounded-full border-white/20 bg-transparent text-[#F5E9D0] hover:bg-white/10"
           >
-            {hero.pdfLabel}
+            {isDownloadingPdf ? "Готовим PDF..." : hero.pdfLabel}
           </Button>
         </div>
       </div>

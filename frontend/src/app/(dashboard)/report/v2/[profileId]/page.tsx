@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { V2ReportReader } from "@/components/astrotype-v2/report/V2ReportReader";
@@ -11,7 +12,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { AstrotypeV2ReportResponse } from "@/lib/api/astrotype-v2";
+import {
+  downloadAstrotypeV2ReportPdf,
+  type AstrotypeV2ReportResponse,
+} from "@/lib/api/astrotype-v2";
 import { buildV2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { useV2ReportGeneration } from "@/lib/astrotype-v2/use-v2-report-generation";
 
@@ -24,12 +28,31 @@ function ReportReady({
   onRegenerate: () => void;
   isRegenerating: boolean;
 }) {
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  async function handleDownloadPdf() {
+    setIsDownloadingPdf(true);
+    setPdfError(null);
+    try {
+      await downloadAstrotypeV2ReportPdf(report.report.id);
+    } catch (error) {
+      setPdfError(
+        error instanceof Error ? error.message : "Не удалось скачать PDF.",
+      );
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }
   const viewModel = buildV2ReportReaderViewModel(report);
   return (
     <V2ReportReader
       viewModel={viewModel}
       onRegenerate={onRegenerate}
       isRegenerating={isRegenerating}
+      isDownloadingPdf={isDownloadingPdf}
+      onDownloadPdf={handleDownloadPdf}
+      pdfError={pdfError}
     />
   );
 }

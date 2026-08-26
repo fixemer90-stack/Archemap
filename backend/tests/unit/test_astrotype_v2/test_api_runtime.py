@@ -193,7 +193,7 @@ def test_v2_report_payload_exposes_canonical_reader_hero_and_narrative_contract(
         "title": "Натальный портрет личности",
         "status_label": "Полный отчёт готов",
         "calculation_label": "Карта и расчёт ниже",
-        "pdf_label": "Предпросмотр PDF",
+        "pdf_label": "Скачать PDF",
     }
     assert assembled["reader_view"]["layout_order"] == ["hero", "narrative", "calculation_layer"]
     assert narrative["section_order"] == [
@@ -349,3 +349,22 @@ def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pip
     assert "build_natal_report_row" in task_source
     for fragment in ("report_narratives", "socionics", "model_a", "function_strength"):
         assert fragment not in runtime_source
+
+
+def test_v2_pdf_endpoint_and_renderer_return_downloadable_pdf_bytes() -> None:
+    from app.modules.astrotype_v2.pdf import generate_v2_report_pdf, render_v2_report_html
+    from app.modules.astrotype_v2.qa_smoke import build_smoke_report_bundle_v2
+
+    router_source = (ROOT / "app" / "modules" / "astrotype_v2" / "router.py").read_text()
+    assert '@router.get("/reports/{report_id}/pdf")' in router_source
+    assert 'media_type="application/pdf"' in router_source
+    assert "Content-Disposition" in router_source
+    assert "attachment" in router_source
+
+    report_payload = build_smoke_report_bundle_v2()["report_payload"]["report"]
+    html = render_v2_report_html(report_payload=report_payload, profile_name="Алина")
+    assert "Натальный портрет личности" in html
+    assert "Алина" in html
+    pdf = generate_v2_report_pdf(report_payload=report_payload, profile_name="Алина")
+    assert pdf.startswith(b"%PDF")
+    assert len(pdf) > 1000

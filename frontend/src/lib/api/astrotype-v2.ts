@@ -98,3 +98,44 @@ export function fetchAstrotypeV2Progress(
     `/api/v1/astrotype-v2/reports/${reportId}/progress`,
   );
 }
+
+export async function downloadAstrotypeV2ReportPdf(
+  reportId: string,
+): Promise<void> {
+  const response = await fetch(`/api/v1/astrotype-v2/reports/${reportId}/pdf`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let message = "Не удалось скачать PDF.";
+    try {
+      const data = (await response.json()) as { detail?: string };
+      message = data.detail || message;
+    } catch {
+      message = response.statusText || message;
+    }
+    throw new Error(message);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  const blob = await response.blob();
+
+  if (blob.size === 0) {
+    throw new Error("PDF пришёл пустым. Попробуйте ещё раз.");
+  }
+
+  if (!contentType.includes("application/pdf")) {
+    const text = await blob.text();
+    throw new Error(text || "Сервер вернул не PDF-файл.");
+  }
+
+  const objectUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = `astrotype-v2-report-${reportId}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 30_000);
+}

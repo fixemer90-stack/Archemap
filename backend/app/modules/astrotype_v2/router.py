@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ from app.modules.astrotype_v2.api_runtime import (
 )
 from app.modules.astrotype_v2.fact_view import build_fact_evidence_payload
 from app.modules.astrotype_v2.infographic_data import build_infographic_api_payload_v2
+from app.modules.astrotype_v2.pdf import generate_v2_report_pdf
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.profiles.models import PersonProfile
 
@@ -104,6 +105,34 @@ async def get_v2_report(
         facts=build_fact_evidence_payload(facts=facts, evidence=evidence),
         segments=segments,
         profile=profile,
+    )
+
+
+@router.get("/reports/{report_id}/pdf")
+async def get_v2_report_pdf(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> Response:
+    """Download a generated v2 report as a PDF file."""
+
+    repository = AstrotypeV2Repository(db)
+    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    chart = await repository.get_chart(report.chart_id)
+    profile = await _load_profile(db=db, chart=chart, user_id=current_user)
+    pdf_bytes = generate_v2_report_pdf(
+        report_payload={
+            "deterministic_payload": report.deterministic_payload,
+            "narrative_payload": report.narrative_payload,
+            "assembled_payload": report.assembled_payload,
+        },
+        profile_name=profile.name if profile is not None else "",
+    )
+    filename = f"astrotype-v2-report-{report.id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

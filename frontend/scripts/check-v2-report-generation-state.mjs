@@ -47,3 +47,27 @@ assert.equal(
 );
 
 console.log("V2 generation state machine markers OK");
+
+const apiSource = readFileSync(
+  join(root, "src/lib/api/astrotype-v2.ts"),
+  "utf8",
+);
+const pageSource = readFileSync(join(root, pagePath), "utf8");
+for (const marker of [
+  "downloadAstrotypeV2ReportPdf",
+  "/api/v1/astrotype-v2/reports/${reportId}/pdf",
+  "application/pdf",
+  "blob.size === 0",
+  "createObjectURL",
+  "setTimeout",
+  "revokeObjectURL",
+  "astrotype-v2-report-${reportId}.pdf",
+]) {
+  assert.equal(
+    apiSource.includes(marker),
+    true,
+    `missing PDF download marker: ${marker}`,
+  );
+}
+assert.match(pageSource, /downloadAstrotypeV2ReportPdf\(report\.report\.id\)/);
+assert.match(pageSource, /isDownloadingPdf/);

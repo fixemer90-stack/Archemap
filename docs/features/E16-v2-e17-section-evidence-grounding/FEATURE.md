@@ -18,7 +18,10 @@ SegmentValidationError("missing evidence ids")
 
 The immediate validator failure was correct: a generated segment had no `evidence_ids`. The root cause was earlier: the current synthesis maps nearly all extracted technical facts into `core_pattern`, while the outline always requests six sections. Several sections therefore receive zero owned evidence.
 
-Root-cause architecture doc: `docs/architecture/astrotype-v2-section-evidence-grounding.md`.
+Root-cause architecture docs:
+
+- `docs/architecture/astrotype-v2-section-evidence-grounding.md`;
+- `docs/architecture/astrotype-v2-deterministic-first-delivery.md`.
 
 ## Scope
 
@@ -47,6 +50,7 @@ In scope:
 - [ ] `perception_and_mind`, `emotional_regulation`, `agency_and_desire`, and `relationships_and_intimacy` receive facts from relevant planets/houses/aspects/balances instead of defaulting to zero.
 - [ ] `ReportOutlineV2` exposes section grounding diagnostics.
 - [ ] Worker persists deterministic artifacts before LLM generation and does not roll them back because one segment fails.
+- [ ] `NatalReport(status="deterministic_ready")` is committed before the first LLM provider call, so users can see deterministic content immediately.
 - [ ] Generation status can be traced by `generation_id` from API response to worker/result/status rows.
 - [ ] Production smoke with real provider proves generated sections contain non-empty `evidence_ids`.
 
@@ -60,14 +64,15 @@ In scope:
 | S04 | [Harden segment runtime and partial persistence](./S04-segment-runtime-partial-persistence.md) | ⬜ Не начато |
 | S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | ⬜ Не начато |
 | S06 | [Production smoke and backfill/retry runbook](./S06-production-smoke-retry-runbook.md) | ⬜ Не начато |
+| S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | ⬜ Не начато |
 
 ## Implementation order
 
 ```text
-S01 -> S02 -> S03 -> S04 -> S05 -> S06
+S01 -> S02 -> S03 -> S07 -> S04 -> S05 -> S06
 ```
 
-S01 must fail before implementation. S02/S03 fix the actual lack of section-specific facts. S04/S05 make failures observable and non-destructive. S06 proves the fix against production-like behavior.
+S01 must fail before implementation. S02/S03 fix the actual lack of section-specific facts. S07 creates the deterministic-visible report before any LLM call. S04/S05 make narrative failures observable and non-destructive. S06 proves the fix against production-like behavior.
 
 ## Verification
 

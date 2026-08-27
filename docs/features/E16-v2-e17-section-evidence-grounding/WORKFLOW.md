@@ -31,6 +31,14 @@ The user sees a report that never appears, while the API cannot explain why.
 
 ## Target flow
 
+Hard invariant:
+
+```text
+No LLM provider call before deterministic report commit.
+```
+
+The deterministic report must be visible as `deterministic_ready` before narrative generation starts.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -44,6 +52,8 @@ sequenceDiagram
     API->>Worker: enqueue generate_natal_report(profile_id, generation_id)
     Worker->>DB: mark generation running
     Worker->>DB: persist chart/facts/synthesis/outline/infographic
+    Worker->>DB: create report(status=deterministic_ready) and commit
+    API-->>User: status exposes report_id
     Worker->>Worker: compute section grounding ledger
     loop grounded sections
         Worker->>LLM: generate one section with non-empty evidence ids
@@ -54,6 +64,8 @@ sequenceDiagram
     User->>API: GET generation status
     API-->>User: real status, report id, section diagnostics
 ```
+
+After the deterministic commit, the frontend must render the report shell, chart/facts/outline and infographic/calculation layer immediately. Narrative sections are progressive additions, not a prerequisite for showing the report.
 
 ## Section grounding ledger
 

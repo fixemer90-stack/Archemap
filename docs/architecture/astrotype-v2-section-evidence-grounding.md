@@ -226,6 +226,14 @@ MVP should prefer `bridged` for core product sections and `blocked` for unexpect
 
 A single bad section must not roll back all deterministic work.
 
+Hard deterministic-first delivery invariant:
+
+```text
+No LLM provider call before deterministic report commit.
+```
+
+See `docs/architecture/astrotype-v2-deterministic-first-delivery.md` for the full transaction/API/frontend contract. This grounding remediation depends on that boundary: section evidence failures are narrative-layer failures and must not prevent the deterministic report shell from being visible.
+
 Required behavior:
 
 1. Persist chart, facts, synthesis, outline and infographic before LLM segment generation.

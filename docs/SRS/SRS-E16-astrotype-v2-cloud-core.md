@@ -42,6 +42,7 @@ Out of scope for foundation:
 - `docs/design/astrotype-v2-infographic-db-report-data.json`
 - `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 - `docs/architecture/astrotype-v2-section-evidence-grounding.md`
+- `docs/architecture/astrotype-v2-deterministic-first-delivery.md`
 
 Feature contracts:
 
@@ -61,7 +62,7 @@ Feature contracts:
 - `V2-E14` — `QA, smoke, rollout`: `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`
 - `V2-E15` — `LLM runtime integration`: `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`; workflow companion: `docs/features/E16-v2-e15-llm-runtime-integration/WORKFLOW.md`; API/state companion: `docs/features/E16-v2-e15-llm-runtime-integration/API.md`
 - `V2-E16` — `Narrative depth quality`: `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`; depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
-- `V2-E17` — `Section evidence grounding remediation`: `docs/features/E16-v2-e17-section-evidence-grounding/FEATURE.md`; workflow companion: `docs/features/E16-v2-e17-section-evidence-grounding/WORKFLOW.md`; remediation architecture: `docs/architecture/astrotype-v2-section-evidence-grounding.md`
+- `V2-E17` — `Section evidence grounding remediation`: `docs/features/E16-v2-e17-section-evidence-grounding/FEATURE.md`; workflow companion: `docs/features/E16-v2-e17-section-evidence-grounding/WORKFLOW.md`; remediation architecture: `docs/architecture/astrotype-v2-section-evidence-grounding.md`; deterministic-first contract: `docs/architecture/astrotype-v2-deterministic-first-delivery.md`
 
 ---
 
@@ -141,6 +142,9 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 - FR-6.2: v2 shall expose narrative generation states separately from deterministic readiness: `narrative_generating`, `partial`, `complete` and `failed`.
 - FR-6.3: LLM failures or retries shall not hide or invalidate already persisted deterministic output.
 - FR-6.4: registration/profile completion may trigger deterministic calculation when enough birth data is present.
+- FR-6.5: v2 shall commit `NatalReport(status="deterministic_ready")` with deterministic payload, outline, facts and infographic before the first LLM provider call.
+- FR-6.6: v2 report read APIs shall return deterministic-ready reports without requiring complete narrative sections.
+- FR-6.7: clients shall render deterministic-ready content immediately and treat narrative sections as progressive additions.
 
 ### FR-7: Final report
 

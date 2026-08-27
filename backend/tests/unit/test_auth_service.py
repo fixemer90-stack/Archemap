@@ -233,3 +233,69 @@ class TestCompleteOAuthProfile:
                     "timezone": TEST_TIMEZONE,
                 }
             )
+
+
+class TestVerificationLinks:
+    async def test_verification_email_uses_configured_frontend_url(
+        self, mock_db: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.modules.auth import verification as verification_module
+
+        sent: dict[str, str] = {}
+
+        class Provider:
+            async def send(self, to: str, subject: str, html_body: str, text_body: str = "") -> None:
+                sent["html"] = html_body
+                sent["text"] = text_body
+
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "FRONTEND_URL", "https://astrotype.ru/")
+        monkeypatch.setattr(
+            verification_module,
+            "verify_email_template",
+            lambda link: (f"html:{link}", f"text:{link}"),
+        )
+        monkeypatch.setattr(verification_module, "get_email_provider", lambda: Provider())
+
+        service = verification_module.VerificationService(mock_db)
+        await service.send_verification_email("user@example.com", "token123")
+
+        assert "https://astrotype.ru/verify?token=token123" in sent["html"]
+        assert "http://localhost:3000" not in sent["html"]
+
+
+class TestPasswordResetLinks:
+    async def test_password_reset_email_uses_configured_frontend_url(
+        self, mock_db: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.modules.auth import password_reset as password_reset_module
+
+        user = MagicMock()
+        user.id = "user-id"
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = user
+        mock_db.execute.return_value = result
+        sent: dict[str, str] = {}
+
+        class Provider:
+            async def send(self, to: str, subject: str, html_body: str, text_body: str = "") -> None:
+                sent["html"] = html_body
+                sent["text"] = text_body
+
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "FRONTEND_URL", "https://astrotype.ru/")
+        monkeypatch.setattr(password_reset_module.PasswordResetService, "_generate_token", lambda self: "reset123")
+        monkeypatch.setattr(
+            password_reset_module,
+            "password_reset_template",
+            lambda link: (f"html:{link}", f"text:{link}"),
+        )
+        monkeypatch.setattr(password_reset_module, "get_email_provider", lambda: Provider())
+
+        service = password_reset_module.PasswordResetService(mock_db)
+        await service.request_reset("user@example.com")
+
+        assert "https://astrotype.ru/reset-password?token=reset123" in sent["html"]
+        assert "http://localhost:3000" not in sent["html"]

@@ -11,7 +11,7 @@ def verify_email_template(link: str) -> tuple[str, str]:
      max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
   <h2 style="margin: 0 0 16px;">Подтвердите email</h2>
   <p style="margin: 0 0 24px; color: #666;">
-    Спасибо за регистрацию в Archemap. Нажмите кнопку ниже, чтобы подтвердить ваш email.
+    Спасибо за регистрацию в Astrotype. Нажмите кнопку ниже, чтобы подтвердить ваш email.
   </p>
   <a href="{link}"
      style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
@@ -22,20 +22,20 @@ def verify_email_template(link: str) -> tuple[str, str]:
     Ссылка действует 24 часа. Если вы не регистрировались, просто ignore this email.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
-  <p style="color: #999; font-size: 12px;">Archemap — астрологический анализ личности</p>
+  <p style="color: #999; font-size: 12px;">Astrotype — астрологический анализ личности</p>
 </body>
 </html>
 """
     text = f"""Подтвердите email
 
-Спасибо за регистрацию в Archemap. Перейдите по ссылке для подтверждения:
+Спасибо за регистрацию в Astrotype. Перейдите по ссылке для подтверждения:
 
 {link}
 
 Ссылка действует 24 часа. Если вы не регистрировались, ignore this email.
 
 --
-Archemap
+Astrotype
 """
     return html.strip(), text.strip()
 
@@ -50,7 +50,7 @@ def resend_verification_template(link: str) -> tuple[str, str]:
      max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
   <h2 style="margin: 0 0 16px;">Новая ссылка для подтверждения</h2>
   <p style="margin: 0 0 24px; color: #666;">
-    Вот новая ссылка для подтверждения вашего email в Archemap.
+    Вот новая ссылка для подтверждения вашего email в Astrotype.
   </p>
   <a href="{link}"
      style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
@@ -65,14 +65,14 @@ def resend_verification_template(link: str) -> tuple[str, str]:
 """
     text = f"""Новая ссылка для подтверждения
 
-Вот новая ссылка для подтверждения email в Archemap:
+Вот новая ссылка для подтверждения email в Astrotype:
 
 {link}
 
 Ссылка действует 24 часа.
 
 --
-Archemap
+Astrotype
 """
     return html.strip(), text.strip()
 
@@ -87,7 +87,7 @@ def password_reset_template(link: str) -> tuple[str, str]:
      max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
   <h2 style="margin: 0 0 16px;">Сброс пароля</h2>
   <p style="margin: 0 0 24px; color: #666;">
-    Вы запросили сброс пароля для Archemap. Нажмите кнопку ниже.
+    Вы запросили сброс пароля для Astrotype. Нажмите кнопку ниже.
   </p>
   <a href="{link}"
      style="display: inline-block; background: #000; color: #fff; padding: 12px 24px;
@@ -98,19 +98,19 @@ def password_reset_template(link: str) -> tuple[str, str]:
     Ссылка действует 1 час. Если вы не запрашивали сброс, ignore this email.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
-  <p style="color: #999; font-size: 12px;">Archemap — астрологический анализ личности</p>
+  <p style="color: #999; font-size: 12px;">Astrotype — астрологический анализ личности</p>
 </body>
 </html>
 """
     text = f"""Сброс пароля
 
-Вы запросили сброс пароля для Archemap. Перейдите по ссылке:
+Вы запросили сброс пароля для Astrotype. Перейдите по ссылке:
 
 {link}
 
 Ссылка действует 1 час. Если вы не запрашивали сброс, ignore this email.
 
 --
-Archemap
+Astrotype
 """
     return html.strip(), text.strip()

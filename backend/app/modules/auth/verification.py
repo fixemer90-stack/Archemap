@@ -10,6 +10,7 @@ import structlog
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.infrastructure.email import get_email_provider
 from app.infrastructure.email_templates import resend_verification_template, verify_email_template
@@ -20,8 +21,6 @@ logger = structlog.get_logger()
 
 VERIFICATION_TOKEN_EXPIRE_HOURS = 24
 VERIFICATION_TOKEN_LENGTH = 32
-
-BASE_URL = "http://localhost:3000"  # TODO: move to settings
 
 
 class VerificationService:
@@ -83,13 +82,13 @@ class VerificationService:
 
     async def send_verification_email(self, email: str, token: str) -> None:
         """Send verification email using configured provider."""
-        link = f"{BASE_URL}/verify?token={token}"
+        link = f"{settings.FRONTEND_URL.rstrip('/')}/verify?token={token}"
         html_body, text_body = verify_email_template(link)
 
         provider = get_email_provider()
         await provider.send(
             to=email,
-            subject="Подтвердите email — Archemap",
+            subject="Подтвердите email — Astrotype",
             html_body=html_body,
             text_body=text_body,
         )
@@ -103,13 +102,13 @@ class VerificationService:
             return  # anti-enumeration: don't reveal if user exists
 
         token = await self.create_verification(user.id)
-        link = f"{BASE_URL}/verify?token={token}"
+        link = f"{settings.FRONTEND_URL.rstrip('/')}/verify?token={token}"
         html_body, text_body = resend_verification_template(link)
 
         provider = get_email_provider()
         await provider.send(
             to=email,
-            subject="Подтвердите email — Archemap",
+            subject="Подтвердите email — Astrotype",
             html_body=html_body,
             text_body=text_body,
         )

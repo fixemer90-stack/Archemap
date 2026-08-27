@@ -9,6 +9,7 @@ import structlog
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import ValidationError
 from app.core.security import hash_password
 from app.infrastructure.email import get_email_provider
@@ -20,8 +21,6 @@ logger = structlog.get_logger()
 
 RESET_TOKEN_EXPIRE_HOURS = 1
 RESET_TOKEN_LENGTH = 32
-
-BASE_URL = "http://localhost:3000"  # TODO: move to settings
 
 
 class PasswordResetService:
@@ -55,13 +54,13 @@ class PasswordResetService:
         self.db.add(reset)
         await self.db.flush()
 
-        link = f"{BASE_URL}/reset-password?token={token}"
-        html_body, text_body = password_reset_template(link)
+        reset_link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
+        html_body, text_body = password_reset_template(reset_link)
 
         provider = get_email_provider()
         await provider.send(
             to=email,
-            subject="Reset your password — Archemap",
+            subject="Reset your password — Astrotype",
             html_body=html_body,
             text_body=text_body,
         )

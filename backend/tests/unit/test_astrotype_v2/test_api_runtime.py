@@ -365,6 +365,10 @@ def test_v2_pdf_endpoint_and_renderer_return_downloadable_pdf_bytes() -> None:
     html = render_v2_report_html(report_payload=report_payload, profile_name="Алина")
     assert "Натальный портрет личности" in html
     assert "Алина" in html
+    assert "Astrotype Signature" in html
+    assert "Натальный портрет" in html
+    for forbidden in ("Astrotype v2", " JSON", "LLM", "Техническая база", "Версия синтеза"):
+        assert forbidden not in html
     pdf = generate_v2_report_pdf(report_payload=report_payload, profile_name="Алина")
     assert pdf.startswith(b"%PDF")
     assert len(pdf) > 1000

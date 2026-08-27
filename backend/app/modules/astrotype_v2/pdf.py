@@ -21,11 +21,10 @@ def _paragraphs(body: object) -> str:
 
 
 def render_v2_report_html(*, report_payload: dict[str, Any], profile_name: str = "") -> str:
-    """Render a self-contained HTML document for a v2 natal report PDF."""
+    """Render a self-contained reader-facing HTML document for a natal report PDF."""
 
     assembled = report_payload.get("assembled_payload") or {}
     narrative = report_payload.get("narrative_payload") or {}
-    deterministic = report_payload.get("deterministic_payload") or {}
     reader_view = assembled.get("reader_view") if isinstance(assembled, dict) else {}
     hero = reader_view.get("hero") if isinstance(reader_view, dict) else {}
     sections = narrative.get("sections") if isinstance(narrative, dict) else []
@@ -59,11 +58,6 @@ def render_v2_report_html(*, report_payload: dict[str, Any], profile_name: str =
             "<p>Базовый расчёт сохранён, нарративные разделы ещё не доступны.</p></section>"
         )
 
-    synthesis = deterministic.get("synthesis") if isinstance(deterministic, dict) else None
-    technical_note = ""
-    if isinstance(synthesis, dict):
-        technical_note = f"<p>Версия синтеза: {html.escape(_text(synthesis.get('source_version'), 'v2.0'))}</p>"
-
     return f"""<!doctype html>
 <html lang="ru">
 <head>
@@ -79,27 +73,17 @@ def render_v2_report_html(*, report_payload: dict[str, Any], profile_name: str =
     .intro, .subtitle {{ color: #4d5a73; }}
     .section {{ page-break-inside: avoid; margin: 0 0 22px; }}
     .body p {{ margin: 0 0 10px; }}
-    .technical {{
-      border-top: 1px solid #d7dce8;
-      color: #5d6678;
-      font-size: 12px;
-      margin-top: 28px;
-      padding-top: 12px;
-    }}
+    .footer {{ border-top: 1px solid #eadfbf; color: #7a6c4d; font-size: 11px; margin-top: 28px; padding-top: 10px; }}
   </style>
 </head>
 <body>
   <section class="cover">
-    <div class="eyebrow">Astrotype v2 · PDF</div>
+    <div class="eyebrow">Astrotype Signature</div>
     <h1>{html.escape(title)}</h1>
-    <p class="intro">{html.escape(greeting)} PDF сохранён из готового v2 отчёта.</p>
+    <p class="intro">{html.escape(greeting)} Ваш натальный портрет сохранён в формате PDF.</p>
   </section>
   {"".join(section_html)}
-  <section class="technical">
-    <strong>Техническая база</strong>
-    <p>PDF сформирован из сохранённого JSON отчёта Astrotype v2. LLM не рассчитывает карту и не добавляет факты.</p>
-    {technical_note}
-  </section>
+  <footer class="footer">Astrotype · Натальный портрет</footer>
 </body>
 </html>"""
 

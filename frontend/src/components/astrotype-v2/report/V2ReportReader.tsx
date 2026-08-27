@@ -1,6 +1,5 @@
 import type { V2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { V2CalculationLayer } from "./V2CalculationLayer";
-import { V2GlossaryTerm } from "./V2GlossaryText";
 import { V2NarrativeSectionCard } from "./V2NarrativeSectionCard";
 import { V2ReportHero } from "./V2ReportHero";
 
@@ -35,8 +34,6 @@ export function V2ReportReader({
           </div>
         )}
 
-        <V2GlossaryHelpStrip />
-
         <section data-v2-reader-block="narrative" className="space-y-[18px]">
           {viewModel.sections.map((section) => (
             <V2NarrativeSectionCard key={section.id} section={section} />
@@ -46,29 +43,5 @@ export function V2ReportReader({
         <V2CalculationLayer layer={viewModel.calculationLayer} />
       </div>
     </main>
-  );
-}
-
-function V2GlossaryHelpStrip() {
-  return (
-    <section
-      data-v2-reader-block="glossary"
-      className="rounded-[22px] border border-[#D9B86F]/20 bg-[linear-gradient(180deg,rgba(217,184,111,0.10),rgba(255,255,255,0.025))] p-4 text-[13px] leading-[1.5] text-[#DCE4F3] shadow-[0_20px_70px_rgba(0,0,0,0.22)] md:p-5"
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="font-semibold uppercase tracking-[0.08em] text-[#D9B86F]">
-          Словарь терминов
-        </span>
-        <span className="text-[#9FB0CC]">Наведи на сложное слово:</span>
-        <V2GlossaryTerm term="Натальная карта" />
-        <V2GlossaryTerm term="Асцендент" />
-        <V2GlossaryTerm term="MC" />
-        <V2GlossaryTerm term="Дом" />
-        <V2GlossaryTerm term="Аспект" />
-        <V2GlossaryTerm term="Орб" />
-        <V2GlossaryTerm term="Стихия" />
-        <V2GlossaryTerm term="Модальность" />
-      </div>
-    </section>
   );
 }

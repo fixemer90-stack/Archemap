@@ -35,10 +35,6 @@ const componentSources = [
 assert.match(reader, /data-v2-reader="canonical"/);
 assert(
   reader.indexOf('data-v2-reader-block="hero"') <
-    reader.indexOf("<V2GlossaryHelpStrip"),
-);
-assert(
-  reader.indexOf("<V2GlossaryHelpStrip") <
     reader.indexOf('data-v2-reader-block="narrative"'),
 );
 assert(
@@ -46,7 +42,8 @@ assert(
     reader.indexOf("<V2CalculationLayer"),
 );
 assert.match(hero, /Astrotype Signature|hero\.eyebrow/);
-assert.match(hero, /Премиальный натальный портрет/);
+assert.match(hero, /Натальный портрет/);
+assert.equal(hero.includes("Премиальный натальный портрет"), false);
 assert.equal(viewModel.includes("Astrotype v2 · натальный отчёт"), false);
 assert.match(viewModel, /Здравствуйте/);
 assert.match(hero, /ваша натальная карта/i);
@@ -65,6 +62,8 @@ assert.equal(reader.includes("onRegenerate"), false);
 assert.equal(hero.includes("Это не dashboard"), false);
 assert.equal(hero.includes("технических карточек"), false);
 assert.equal(hero.includes("progressLabel"), false);
+assert.equal(reader.includes("V2GlossaryHelpStrip"), false);
+assert.equal(reader.includes("Словарь терминов"), false);
 assert.match(section, /data-v2-reader-block="narrative-section"/);
 assert.match(section, /data-v2-paragraph-count=\{section\.paragraphCount\}/);
 assert.match(section, /key=\{`\$\{section\.id\}-\$\{index\}`\}/);
@@ -82,7 +81,6 @@ for (const marker of [
   "Сеть ключевых аспектов",
   "Ключевые аспекты",
   "Расчётные акценты карты",
-  "Словарь терминов",
   "data-glossary-term",
   'role="tooltip"',
 ]) {

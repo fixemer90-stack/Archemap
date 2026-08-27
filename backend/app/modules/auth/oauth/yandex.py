@@ -27,7 +27,7 @@ class YandexOAuthProvider:
             "client_id": settings.YANDEX_CLIENT_ID,
             "redirect_uri": settings.YANDEX_REDIRECT_URI,
             "state": state,
-            "scope": "login:birthday login:email",
+            "scope": "login:info login:birthday login:email",
         }
         return f"{YANDEX_AUTHORIZE_URL}?{urlencode(params)}"
 

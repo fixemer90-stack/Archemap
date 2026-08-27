@@ -64,7 +64,14 @@ Required values:
 - `SECRET_KEY`
 - `YANDEX_CLIENT_ID` / `YANDEX_CLIENT_SECRET` when OAuth is enabled
 - `LLM_API_KEY` when real DeepSeek generation is enabled
-- SMTP values if `EMAIL_PROVIDER=smtp`
+- SMTP values for registration email. Current production mailbox is
+  `noreply@astrotype.ru` via BeGet SMTP:
+  - `EMAIL_PROVIDER=smtp`
+  - `SMTP_HOST=smtp.beget.com`
+  - `SMTP_PORT=465`
+  - `SMTP_USER=noreply@astrotype.ru`
+  - `SMTP_PASSWORD=<mailbox password>`
+  - `SMTP_FROM_EMAIL=noreply@astrotype.ru`
 
 ## Start/update
 

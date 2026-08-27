@@ -68,14 +68,15 @@ export function V2CalculationMatrix({
           <h4 className="font-semibold text-[#FFE2A1]">
             <V2GlossaryTerm term="Тип домов" />
           </h4>
+          <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+            Типы домов показывают, как тема включается в жизни: быстро
+            проявляется, удерживается или постепенно перерабатывается.
+          </p>
           <div className="mt-3 space-y-[11px]">
             {houseMode.map(([label, value]) => (
-              <BarRow key={label} label={label} value={value} compact />
+              <HouseModeRow key={label} label={label} value={value} />
             ))}
           </div>
-          <small className="mt-3 block text-[12px] text-[#9FB0CC]">
-            оси действия · закрепление · переосмысление
-          </small>
         </div>
 
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
@@ -199,6 +200,30 @@ function BarRow({
       </div>
       <div className="text-right text-[15px] text-[#AEB6C7]">{value}%</div>
     </div>
+  );
+}
+
+function HouseModeRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="space-y-1.5">
+      <BarRow label={label} value={value} compact />
+      <p className="pl-0 text-[12px] leading-[1.45] text-[#8E99B4] md:pl-[116px]">
+        {houseModeDescription(label)}
+      </p>
+    </div>
+  );
+}
+
+function houseModeDescription(label: string): string {
+  return (
+    {
+      Угловые:
+        "То, что сразу заметно и запускает события: инициативы, повороты, точки действия.",
+      Последующие:
+        "То, что закрепляет результат: устойчивость, ресурс, привычки, накопление опыта.",
+      Падающие:
+        "То, что осмысляет и перестраивает опыт: адаптация, обучение, переходы, внутренняя переработка.",
+    }[label] ?? "Показывает, через какой тип домов чаще проявляются темы карты."
   );
 }
 

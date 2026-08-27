@@ -81,25 +81,6 @@ export function V2CalculationMatrix({
 
         <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
           <h4 className="font-semibold text-[#FFE2A1]">
-            <V2GlossaryTerm term="Ориентация карты" />
-          </h4>
-          <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
-            Это не оценка характера, а распределение планет по половинам карты:
-            где сильнее проявляются темы жизни.
-          </p>
-          <div className="mt-3 space-y-[11px]">
-            {hemiTopBottom.map(([label, value]) => (
-              <OrientationRow key={label} label={label} value={value} />
-            ))}
-            <div className="my-[13px] h-px bg-[#263046]" />
-            {hemiEastWest.map(([label, value]) => (
-              <OrientationRow key={label} label={label} value={value} />
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">
             <V2GlossaryTerm term="Квадрант" />
           </h4>
           <div className="mt-3 grid grid-cols-2 gap-[10px]">
@@ -116,6 +97,25 @@ export function V2CalculationMatrix({
                   {quadrantDescription(label)}
                 </small>
               </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
+          <h4 className="font-semibold text-[#FFE2A1]">
+            <V2GlossaryTerm term="Ориентация карты" />
+          </h4>
+          <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+            Это не оценка характера, а распределение планет по половинам карты:
+            где сильнее проявляются темы жизни.
+          </p>
+          <div className="mt-3 space-y-[11px]">
+            {hemiTopBottom.map(([label, value]) => (
+              <OrientationRow key={label} label={label} value={value} />
+            ))}
+            <div className="my-[13px] h-px bg-[#263046]" />
+            {hemiEastWest.map(([label, value]) => (
+              <OrientationRow key={label} label={label} value={value} />
             ))}
           </div>
         </div>

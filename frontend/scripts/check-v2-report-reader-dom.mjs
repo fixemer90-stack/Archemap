@@ -16,6 +16,9 @@ const section = read(
 const calculation = read(
   "src/components/astrotype-v2/report/V2CalculationLayer.tsx",
 );
+const calculationMatrix = read(
+  "src/components/astrotype-v2/report/V2CalculationMatrix.tsx",
+);
 const componentSources = [
   reader,
   hero,
@@ -27,7 +30,7 @@ const componentSources = [
   read("src/components/astrotype-v2/report/V2HouseEmphasis.tsx"),
   read("src/components/astrotype-v2/report/V2AspectNetwork.tsx"),
   read("src/components/astrotype-v2/report/V2KeyAspectsTable.tsx"),
-  read("src/components/astrotype-v2/report/V2CalculationMatrix.tsx"),
+  calculationMatrix,
   read("src/components/astrotype-v2/report/V2GlossaryText.tsx"),
   read("src/components/glossary/term-help.tsx"),
 ].join("\n");
@@ -68,6 +71,18 @@ assert.match(section, /data-v2-reader-block="narrative-section"/);
 assert.match(section, /data-v2-paragraph-count=\{section\.paragraphCount\}/);
 assert.match(section, /key=\{`\$\{section\.id\}-\$\{index\}`\}/);
 assert.match(calculation, /data-v2-reader-block="calculation_layer"/);
+assert(
+  calculationMatrix.indexOf('term="Тип домов"') <
+    calculationMatrix.indexOf('term="Квадрант"'),
+);
+assert(
+  calculationMatrix.indexOf('term="Квадрант"') <
+    calculationMatrix.indexOf('term="Ориентация карты"'),
+);
+assert(
+  calculationMatrix.indexOf('term="Ориентация карты"') <
+    calculationMatrix.indexOf('term="Профиль аспектов"'),
+);
 
 for (const marker of [
   "Карта и ключевые показатели",

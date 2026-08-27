@@ -82,13 +82,17 @@ export function V2CalculationMatrix({
           <h4 className="font-semibold text-[#FFE2A1]">
             <V2GlossaryTerm term="Ориентация карты" />
           </h4>
+          <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+            Это не оценка характера, а распределение планет по половинам карты:
+            где сильнее проявляются темы жизни.
+          </p>
           <div className="mt-3 space-y-[11px]">
             {hemiTopBottom.map(([label, value]) => (
-              <BarRow key={label} label={label} value={value} compact />
+              <OrientationRow key={label} label={label} value={value} />
             ))}
             <div className="my-[13px] h-px bg-[#263046]" />
             {hemiEastWest.map(([label, value]) => (
-              <BarRow key={label} label={label} value={value} compact />
+              <OrientationRow key={label} label={label} value={value} />
             ))}
           </div>
         </div>
@@ -195,6 +199,32 @@ function BarRow({
       </div>
       <div className="text-right text-[15px] text-[#AEB6C7]">{value}%</div>
     </div>
+  );
+}
+
+function OrientationRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="space-y-1.5">
+      <BarRow label={label} value={value} compact />
+      <p className="pl-0 text-[12px] leading-[1.45] text-[#8E99B4] md:pl-[116px]">
+        {orientationDescription(label)}
+      </p>
+    </div>
+  );
+}
+
+function orientationDescription(label: string): string {
+  return (
+    {
+      Верхняя:
+        "Акцент на внешней реализации: события, роль, видимость, взаимодействие с миром.",
+      Нижняя:
+        "Акцент на внутренней опоре: личная территория, семья, приватность, накопление ресурса.",
+      Восточная:
+        "Больше инициативы от себя: человек чаще сам запускает процессы и выбирает направление.",
+      Западная:
+        "Больше отклика на других: важны партнёры, среда, обратная связь и совместные решения.",
+    }[label] ?? "Показывает, в какой зоне карты сосредоточено больше планет."
   );
 }
 

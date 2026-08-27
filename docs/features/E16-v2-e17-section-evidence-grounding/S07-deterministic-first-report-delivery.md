@@ -37,6 +37,18 @@ Architecture contract: `docs/architecture/astrotype-v2-deterministic-first-deliv
 6. Ensure LLM failures do not roll back deterministic artifacts.
 7. Update frontend polling so it can render deterministic content before narrative completion.
 
+## Client readiness discovery
+
+The client does not wait for the registration request to return a complete report. It learns readiness through polling persisted status:
+
+1. receive `generation_id` from generation/registration/profile completion;
+2. poll `GET /api/v1/astrotype-v2/reports/generations/{generation_id}` until `report_id` appears;
+3. fetch `GET /api/v1/astrotype-v2/reports/{report_id}` at `deterministic_ready` and render deterministic content;
+4. continue polling generation status or `GET /api/v1/astrotype-v2/reports/{report_id}/progress` while status is `narrative_generating` or `partial`;
+5. stop when status is `complete`, `narrative_failed` or `deterministic_failed`.
+
+MVP uses polling as the transport. SSE/WebSocket/push may be added later only as a transport mirror of the same persisted statuses.
+
 ## Files affected
 
 | File | Action |
@@ -58,6 +70,8 @@ Architecture contract: `docs/architecture/astrotype-v2-deterministic-first-deliv
 - [ ] If one section fails, the report becomes `partial` or remains deterministic-ready with diagnostics, not missing.
 - [ ] Frontend displays deterministic content as soon as it exists.
 - [ ] Generation status endpoint exposes `report_id` immediately after deterministic commit.
+- [ ] Frontend can continue polling after deterministic render and update the page when narrative sections become `partial` or `complete`.
+- [ ] Polling terminal states are explicit: `complete`, `narrative_failed`, `deterministic_failed`.
 - [ ] Tests verify transaction boundaries and frontend state behavior.
 
 ## Verification

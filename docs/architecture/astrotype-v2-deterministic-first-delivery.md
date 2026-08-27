@@ -240,6 +240,63 @@ Required states:
 
 Frontend polling must use `generation_id` until `report_id` exists, then it may switch to report/progress endpoints.
 
+## How the client knows the rest is ready
+
+The client learns that the remaining narrative report is ready through the persisted generation/progress state, not through a long blocking registration request.
+
+Required client sequence after registration/profile completion:
+
+1. The registration/profile completion flow receives or follows a v2 generation handle:
+   - `generation_id` immediately;
+   - `report_id` once deterministic phase commits.
+2. While only `generation_id` is known, the client polls:
+
+   ```text
+   GET /api/v1/astrotype-v2/reports/generations/{generation_id}
+   ```
+
+3. As soon as that response contains `report_id` and `status=deterministic_ready|narrative_generating|partial|complete`, the client fetches the report:
+
+   ```text
+   GET /api/v1/astrotype-v2/reports/{report_id}
+   ```
+
+4. While the report is not terminal, the client polls either the generation status endpoint or report progress endpoint:
+
+   ```text
+   GET /api/v1/astrotype-v2/reports/generations/{generation_id}
+   GET /api/v1/astrotype-v2/reports/{report_id}/progress
+   ```
+
+5. The client stops polling when status is terminal:
+   - `complete`;
+   - `narrative_failed`;
+   - `deterministic_failed`.
+
+6. For `partial`, the client keeps deterministic content visible, inserts ready sections, and may continue polling until `complete` or `narrative_failed` depending on retry policy.
+
+Minimum polling payload:
+
+```json
+{
+  "generation_id": "...",
+  "report_id": "...",
+  "status": "narrative_generating",
+  "narrative": {
+    "ready_segments": 2,
+    "running_segments": 3,
+    "failed_segments": 1,
+    "total_segments": 6
+  },
+  "links": {
+    "report": "/api/v1/astrotype-v2/reports/...",
+    "progress": "/api/v1/astrotype-v2/reports/.../progress"
+  }
+}
+```
+
+MVP transport is polling. SSE/WebSocket/push may be added later, but they are not required for the deterministic-first contract. If added, they must publish the same persisted statuses and must not become the source of truth.
+
 ## Data model requirements
 
 The implementation may use existing tables plus a new generation-status table, but the data model must support:

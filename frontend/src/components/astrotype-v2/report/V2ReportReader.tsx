@@ -6,18 +6,14 @@ import { V2ReportHero } from "./V2ReportHero";
 
 interface V2ReportReaderProps {
   viewModel: V2ReportReaderViewModel;
-  isRegenerating: boolean;
   isDownloadingPdf: boolean;
-  onRegenerate: () => void;
   onDownloadPdf: () => void;
   pdfError?: string | null;
 }
 
 export function V2ReportReader({
   viewModel,
-  isRegenerating,
   isDownloadingPdf,
-  onRegenerate,
   onDownloadPdf,
   pdfError,
 }: V2ReportReaderProps) {
@@ -29,9 +25,7 @@ export function V2ReportReader({
       <div className="mx-auto w-[min(96vw,1840px)] space-y-[18px]">
         <V2ReportHero
           hero={viewModel.hero}
-          isRegenerating={isRegenerating}
           isDownloadingPdf={isDownloadingPdf}
-          onRegenerate={onRegenerate}
           onDownloadPdf={onDownloadPdf}
         />
 

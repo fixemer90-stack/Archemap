@@ -3,17 +3,13 @@ import type { V2ReportHeroViewModel } from "@/lib/astrotype-v2/report-view-model
 
 interface V2ReportHeroProps {
   hero: V2ReportHeroViewModel;
-  isRegenerating: boolean;
   isDownloadingPdf: boolean;
-  onRegenerate: () => void;
   onDownloadPdf: () => void;
 }
 
 export function V2ReportHero({
   hero,
-  isRegenerating,
   isDownloadingPdf,
-  onRegenerate,
   onDownloadPdf,
 }: V2ReportHeroProps) {
   return (
@@ -57,14 +53,6 @@ export function V2ReportHero({
           </div>
         )}
         <div className="flex flex-wrap gap-3 text-sm">
-          <Button
-            type="button"
-            onClick={onRegenerate}
-            disabled={isRegenerating}
-            className="rounded-full bg-white text-[#111827] hover:bg-[#F5E9D0]"
-          >
-            {isRegenerating ? "Перегенерируем..." : "Перегенерировать"}
-          </Button>
           <Button
             type="button"
             variant="outline"

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { RefreshCw } from "lucide-react";
 import { V2ReportReader } from "@/components/astrotype-v2/report/V2ReportReader";
 import {
   Card,
@@ -11,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   downloadAstrotypeV2ReportPdf,
   type AstrotypeV2ReportResponse,
@@ -19,15 +17,7 @@ import {
 import { buildV2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { useV2ReportGeneration } from "@/lib/astrotype-v2/use-v2-report-generation";
 
-function ReportReady({
-  report,
-  onRegenerate,
-  isRegenerating,
-}: {
-  report: AstrotypeV2ReportResponse;
-  onRegenerate: () => void;
-  isRegenerating: boolean;
-}) {
+function ReportReady({ report }: { report: AstrotypeV2ReportResponse }) {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
@@ -48,8 +38,6 @@ function ReportReady({
   return (
     <V2ReportReader
       viewModel={viewModel}
-      onRegenerate={onRegenerate}
-      isRegenerating={isRegenerating}
       isDownloadingPdf={isDownloadingPdf}
       onDownloadPdf={handleDownloadPdf}
       pdfError={pdfError}
@@ -63,13 +51,7 @@ export default function AstrotypeV2ReportPage() {
   const generation = useV2ReportGeneration(profileId);
 
   if (generation.state === "ready" && generation.report) {
-    return (
-      <ReportReady
-        report={generation.report}
-        onRegenerate={generation.regenerate}
-        isRegenerating={generation.isRegenerating}
-      />
-    );
+    return <ReportReady report={generation.report} />;
   }
 
   return (
@@ -94,12 +76,6 @@ export default function AstrotypeV2ReportPage() {
               segments: {generation.progress.ready_segments}/
               {generation.progress.total_segments}
             </p>
-          )}
-          {generation.canRetry && (
-            <Button onClick={generation.retry}>
-              <RefreshCw className="h-4 w-4" />
-              Перегенерировать V2 отчёт
-            </Button>
           )}
         </CardContent>
       </Card>

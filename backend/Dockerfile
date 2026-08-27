@@ -1,9 +1,13 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# Install system dependencies for pyswisseph + WeasyPrint PDF rendering
-RUN apt-get update && apt-get install -y \
+# System dependencies for asyncpg builds, pyswisseph, healthchecks, and WeasyPrint PDF rendering.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gcc \
     g++ \
@@ -20,16 +24,15 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY pyproject.toml .
-RUN python -m pip install --no-cache-dir --upgrade "pip>=26.1.2" \
-    && pip install --no-cache-dir -e ".[dev]"
+COPY pyproject.toml ./
+RUN python -m pip install --upgrade "pip>=26.1.2" \
+    && pip install -e "."
 
-# Copy application code
-COPY . .
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY app ./app
+COPY workers ./workers
 
-# Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

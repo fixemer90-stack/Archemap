@@ -41,6 +41,7 @@ Out of scope for foundation:
 - `docs/design/astrotype-v2-infographic-db-report-sample.html`
 - `docs/design/astrotype-v2-infographic-db-report-data.json`
 - `docs/architecture/astrotype-v2-narrative-depth-contract.md`
+- `docs/architecture/astrotype-v2-section-evidence-grounding.md`
 
 Feature contracts:
 
@@ -60,6 +61,7 @@ Feature contracts:
 - `V2-E14` — `QA, smoke, rollout`: `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`
 - `V2-E15` — `LLM runtime integration`: `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`; workflow companion: `docs/features/E16-v2-e15-llm-runtime-integration/WORKFLOW.md`; API/state companion: `docs/features/E16-v2-e15-llm-runtime-integration/API.md`
 - `V2-E16` — `Narrative depth quality`: `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`; depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
+- `V2-E17` — `Section evidence grounding remediation`: `docs/features/E16-v2-e17-section-evidence-grounding/FEATURE.md`; workflow companion: `docs/features/E16-v2-e17-section-evidence-grounding/WORKFLOW.md`; remediation architecture: `docs/architecture/astrotype-v2-section-evidence-grounding.md`
 
 ---
 
@@ -115,6 +117,9 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 - FR-4.2: v2 shall build `ReportOutlineV2` before LLM generation.
 - FR-4.3: every theme shall have one owning section.
 - FR-4.4: references and forbidden expansions shall be explicit.
+- FR-4.5: v2 shall assign technical chart facts to semantic report-section usages before outline generation; source-type hints such as `placements`, `aspects`, `balances` and `patterns` shall not by themselves collapse all facts into `core_pattern`.
+- FR-4.6: every generated section shall satisfy a configurable grounding invariant before the LLM call: non-empty allowed evidence ids plus enough owned or approved reference themes for that section.
+- FR-4.7: a technical fact may support multiple report sections when astrologically justified, but every usage shall preserve a stable evidence id that points back to deterministic v2 source data.
 
 ### FR-5: Modular LLM generation
 
@@ -127,6 +132,8 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 - FR-5.7: validators shall reject shallow/generic output, but shall not reject a grounded valid section merely because it is long.
 - FR-5.8: upper narrative sections shall follow the depth contract in `docs/architecture/astrotype-v2-narrative-depth-contract.md`: mechanism, lived manifestation, tension, protection/shadow and mature expression.
 - FR-5.9: `core_pattern` shall target 450–700 words and 4–6 developed paragraphs unless continuation is required; other upper sections shall target 300–500 words and 3–5 developed paragraphs unless continuation is required.
+- FR-5.10: the LLM runtime shall never call the provider for a section with empty `evidence_ids`; such sections shall be bridged, skipped or blocked before provider invocation.
+- FR-5.11: a single section validation/provider failure shall be persisted at segment boundary and shall not roll back deterministic chart/fact/synthesis/outline/infographic artifacts.
 
 ### FR-6: Progressive report delivery
 
@@ -155,6 +162,8 @@ Astrotype v2 is a new bounded context, not a refactor of legacy Self report. It 
 - FR-9.3: auth and entitlement checks shall be server-side and reuse the existing auth/profile infrastructure rather than creating a separate v2 auth stack.
 - FR-9.4: LLM provider keys shall never be embedded in clients.
 - FR-9.5: v2 shall not re-register old v1 REST report/socionics endpoints as compatibility methods.
+- FR-9.6: generation status shall be persisted and owner-scoped by `generation_id`; the status endpoint shall not return synthetic `queued_or_running` for arbitrary authenticated UUIDs.
+- FR-9.7: generation status payloads shall expose section-level grounding/segment diagnostics sufficient to explain failures such as missing evidence ids.
 
 ---
 

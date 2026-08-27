@@ -70,6 +70,8 @@ Active v2 features:
 - `V2-E14` — [QA, smoke, rollout](./E16-v2-e14-qa-smoke-rollout/FEATURE.md)
 - `V2-E15` — [LLM runtime integration](./E16-v2-e15-llm-runtime-integration/FEATURE.md) ([workflow](./E16-v2-e15-llm-runtime-integration/WORKFLOW.md), [API](./E16-v2-e15-llm-runtime-integration/API.md))
 - `V2-E16` — [Narrative depth quality](./E16-v2-e16-narrative-depth-quality/FEATURE.md)
+- `V2-E17` — [Section evidence grounding remediation](./E16-v2-e17-section-evidence-grounding/FEATURE.md) ([workflow](./E16-v2-e17-section-evidence-grounding/WORKFLOW.md))
 
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
+Section evidence grounding remediation: `docs/architecture/astrotype-v2-section-evidence-grounding.md`

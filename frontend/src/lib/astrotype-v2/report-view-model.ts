@@ -157,7 +157,7 @@ function toHeroViewModel(
 ): V2ReportHeroViewModel {
   const displayName = profile?.name?.trim() || "для вас";
   return {
-    eyebrow: stringValue(hero.eyebrow, "Astrotype v2 · натальный отчёт"),
+    eyebrow: toPremiumHeroEyebrow(hero.eyebrow),
     title: `Здравствуйте, ${displayName}`,
     greeting: "Ваша натальная карта готова",
     intro:
@@ -170,6 +170,14 @@ function toHeroViewModel(
     ),
     pdfLabel: stringValue(hero.pdf_label, "Скачать PDF"),
   };
+}
+
+function toPremiumHeroEyebrow(value: unknown): string {
+  const raw = stringValue(value, "").trim();
+  if (!raw || raw.toLowerCase().includes("v2")) {
+    return "Astrotype Signature";
+  }
+  return raw;
 }
 
 function toBirthDataItems(

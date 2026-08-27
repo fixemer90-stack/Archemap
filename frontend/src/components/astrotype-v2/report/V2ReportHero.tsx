@@ -18,8 +18,13 @@ export function V2ReportHero({
       className="overflow-hidden rounded-[2rem] border border-[#D8B45A]/25 bg-[#101626] shadow-2xl shadow-black/30"
     >
       <div className="space-y-8 bg-[radial-gradient(circle_at_top_left,rgba(216,180,90,0.20),transparent_36%),linear-gradient(135deg,rgba(16,22,38,0.98),rgba(6,10,19,0.98))] p-6 text-[#F5E9D0] md:p-10">
-        <div className="inline-flex rounded-full border border-[#D8B45A]/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-[#D8B45A]">
-          {hero.eyebrow}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-full border border-[#D8B45A]/45 bg-[#D8B45A]/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-[#E9C86C] shadow-[0_0_36px_rgba(216,180,90,0.18)]">
+            {hero.eyebrow}
+          </div>
+          <div className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.24em] text-[#D8DCE8]">
+            Премиальный натальный портрет
+          </div>
         </div>
         <div className="max-w-4xl space-y-5">
           <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">

@@ -45,7 +45,9 @@ assert(
   reader.indexOf('data-v2-reader-block="narrative"') <
     reader.indexOf("<V2CalculationLayer"),
 );
-assert.match(hero, /Astrotype v2 · натальный отчёт|hero\.eyebrow/);
+assert.match(hero, /Astrotype Signature|hero\.eyebrow/);
+assert.match(hero, /Премиальный натальный портрет/);
+assert.equal(viewModel.includes("Astrotype v2 · натальный отчёт"), false);
 assert.match(viewModel, /Здравствуйте/);
 assert.match(hero, /ваша натальная карта/i);
 assert.match(viewModel, /Ваша натальная карта готова/);

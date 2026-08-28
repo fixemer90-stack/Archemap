@@ -324,9 +324,7 @@ class NatalReport(BaseModel):
     )
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="deterministic_ready", index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    generation_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True, index=True
-    )
+    generation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     deterministic_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     narrative_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     assembled_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

@@ -10,9 +10,7 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 def _validate_birth_coordinates(latitude: float, longitude: float) -> None:
     """Reject the default (0, 0) placeholder that means 'place not geocoded'."""
     if latitude == 0.0 and longitude == 0.0:
-        raise ValueError(
-            "Выберите место рождения из списка: координаты места рождения не определены"
-        )
+        raise ValueError("Выберите место рождения из списка: координаты места рождения не определены")
 
 
 class RegisterRequest(BaseModel):

@@ -371,7 +371,7 @@ def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pip
     assert "build_natal_chart_rows" in task_source
     assert "build_deterministic_natal_report_row" in task_source
     assert task_source.index("build_deterministic_natal_report_row") < task_source.index("_ensure_ready_segments")
-    assert "report.status = \"narrative_generating\"" in task_source
+    assert 'report.status = "narrative_generating"' in task_source
     for fragment in ("report_narratives", "socionics", "model_a", "function_strength"):
         assert fragment not in runtime_source
 

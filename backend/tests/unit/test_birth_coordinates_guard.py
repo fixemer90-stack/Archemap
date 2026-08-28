@@ -9,7 +9,7 @@ from app.modules.auth.schemas import CompleteProfileRequest, RegisterRequest
 from app.modules.profiles.schemas import CreateProfileRequest, UpdateProfileRequest
 
 
-def _register_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict:
+def _register_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict[str, object]:
     return {
         "email": "user@example.com",
         "password": "password123",
@@ -24,14 +24,14 @@ def _register_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict
     }
 
 
-def _complete_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict:
+def _complete_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict[str, object]:
     body = _register_body(latitude=latitude, longitude=longitude)
     body.pop("email")
     body.pop("password")
     return body
 
 
-def _create_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict:
+def _create_body(*, latitude: float = 55.75, longitude: float = 37.62) -> dict[str, object]:
     return {
         "name": "Тест",
         "birth_date": "2000-01-01",

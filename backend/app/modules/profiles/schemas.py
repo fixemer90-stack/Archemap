@@ -22,9 +22,7 @@ class CreateProfileRequest(BaseModel):
     @model_validator(mode="after")
     def _coordinates_must_be_geocoded(self) -> CreateProfileRequest:
         if self.latitude == 0.0 and self.longitude == 0.0:
-            raise ValueError(
-                "Выберите место рождения из списка: координаты места рождения не определены"
-            )
+            raise ValueError("Выберите место рождения из списка: координаты места рождения не определены")
         return self
 
 
@@ -44,9 +42,7 @@ class UpdateProfileRequest(BaseModel):
     def _coordinates_must_be_geocoded(self) -> UpdateProfileRequest:
         if self.latitude is not None and self.longitude is not None:
             if self.latitude == 0.0 and self.longitude == 0.0:
-                raise ValueError(
-                    "Выберите место рождения из списка: координаты места рождения не определены"
-                )
+                raise ValueError("Выберите место рождения из списка: координаты места рождения не определены")
         elif self.latitude is not None or self.longitude is not None:
             raise ValueError("latitude и longitude должны передаваться вместе")
         return self

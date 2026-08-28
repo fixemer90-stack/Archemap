@@ -156,6 +156,10 @@ function RegisterForm() {
       setError("Укажите место рождения");
       return false;
     }
+    if (latitude === 0 && longitude === 0) {
+      setError("Выберите место рождения из списка подсказок");
+      return false;
+    }
     if (birthTimeAccuracy !== "unknown" && !birthTime) {
       setError("Укажите время рождения");
       return false;

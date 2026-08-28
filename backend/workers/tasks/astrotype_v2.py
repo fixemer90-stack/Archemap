@@ -265,6 +265,10 @@ async def _get_or_create_chart(
     profile: PersonProfile,
     user_id: uuid.UUID,
 ) -> models.NatalChart:
+    if profile.latitude == 0.0 and profile.longitude == 0.0:
+        raise ValueError(
+            "Координаты места рождения не определены. Укажите место рождения в профиле."
+        )
     birth_time = profile.birth_time or time(12, 0)
     local_tz = ZoneInfo(profile.timezone)
     birth_dt_local = datetime.combine(profile.birth_date, birth_time).replace(tzinfo=local_tz)

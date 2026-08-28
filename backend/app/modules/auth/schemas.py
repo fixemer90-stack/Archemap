@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from datetime import date, time
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
+
+
+def _validate_birth_coordinates(latitude: float, longitude: float) -> None:
+    """Reject the default (0, 0) placeholder that means 'place not geocoded'."""
+    if latitude == 0.0 and longitude == 0.0:
+        raise ValueError(
+            "Выберите место рождения из списка: координаты места рождения не определены"
+        )
 
 
 class RegisterRequest(BaseModel):
@@ -25,6 +33,11 @@ class RegisterRequest(BaseModel):
     longitude: float = Field(..., ge=-180, le=180, description="Birth place longitude")
     timezone: str = Field(..., min_length=1, max_length=60, description="IANA timezone, e.g. Europe/Moscow")
 
+    @model_validator(mode="after")
+    def _coordinates_must_be_geocoded(self) -> RegisterRequest:
+        _validate_birth_coordinates(self.latitude, self.longitude)
+        return self
+
 
 class CompleteProfileRequest(BaseModel):
     """Complete OAuth profile with name and birth data (no email/password needed)."""
@@ -41,6 +54,11 @@ class CompleteProfileRequest(BaseModel):
     latitude: float = Field(..., ge=-90, le=90, description="Birth place latitude")
     longitude: float = Field(..., ge=-180, le=180, description="Birth place longitude")
     timezone: str = Field(..., min_length=1, max_length=60, description="IANA timezone, e.g. Europe/Moscow")
+
+    @model_validator(mode="after")
+    def _coordinates_must_be_geocoded(self) -> CompleteProfileRequest:
+        _validate_birth_coordinates(self.latitude, self.longitude)
+        return self
 
 
 class LoginRequest(BaseModel):

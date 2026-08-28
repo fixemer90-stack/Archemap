@@ -125,13 +125,27 @@ def build_report_read_payload_v2(
     }
 
 
-def build_generation_status_payload(*, generation_id: uuid.UUID) -> dict[str, Any]:
-    """Return status for an accepted generation id before a report row exists."""
-
+def build_generation_status_payload(
+    *,
+    generation_id: uuid.UUID,
+    report: models.NatalReport | None = None,
+) -> dict[str, Any]:
+    """Return status for an accepted generation id, exposing the report row when present."""
+    if report is None:
+        return {
+            "contract_version": "astrotype_v2_generation_status_v1",
+            "generation_id": str(generation_id),
+            "status": "queued_or_running",
+        }
     return {
         "contract_version": "astrotype_v2_generation_status_v1",
         "generation_id": str(generation_id),
-        "status": "queued_or_running",
+        "status": report.status,
+        "report_id": str(report.id),
+        "links": {
+            "report": f"/api/v1/astrotype-v2/reports/{report.id}",
+            "progress": f"/api/v1/astrotype-v2/reports/{report.id}/progress",
+        },
     }
 
 

@@ -212,6 +212,20 @@ class AstrotypeV2Repository:
         )
         return result.scalar_one_or_none()
 
+    async def get_report_for_generation(
+        self, *, generation_id: uuid.UUID, user_id: uuid.UUID
+    ) -> models.NatalReport | None:
+        """Return the report created by one generation id, only when owned by the user."""
+        result = await self.session.execute(
+            select(models.NatalReport)
+            .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
+            .where(
+                models.NatalReport.generation_id == generation_id,
+                models.NatalChart.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def get_latest_report_for_profile(
         self, *, profile_id: uuid.UUID, user_id: uuid.UUID
     ) -> models.NatalReport | None:

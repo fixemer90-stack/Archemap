@@ -12,7 +12,6 @@ from app.modules.astrotype_v2 import models
 SYNTHESIS_CONTRACT_VERSION = "natal_synthesis_v2"
 
 _SECTION_BY_HINT = {
-    "placements": "core_pattern",
     "identity": "core_pattern",
     "core": "core_pattern",
     "mind": "perception_and_mind",
@@ -25,10 +24,28 @@ _SECTION_BY_HINT = {
     "relationship": "relationships_and_intimacy",
     "intimacy": "relationships_and_intimacy",
     "growth": "growth_vector",
-    "patterns": "growth_vector",
-    "balances": "core_pattern",
-    "aspects": "core_pattern",
 }
+
+_SECTION_BY_BODY = {
+    "sun": "core_pattern",
+    "ascendant": "core_pattern",
+    "mercury": "perception_and_mind",
+    "moon": "emotional_regulation",
+    "mars": "agency_and_desire",
+    "venus": "relationships_and_intimacy",
+    "jupiter": "growth_vector",
+    "saturn": "growth_vector",
+    "uranus": "growth_vector",
+    "neptune": "growth_vector",
+    "pluto": "growth_vector",
+}
+
+_BALANCE_SECTION_ROTATION = (
+    "core_pattern",
+    "agency_and_desire",
+    "emotional_regulation",
+    "perception_and_mind",
+)
 
 _TENSION_POLARITIES = {"tension", "challenge", "conflict", "friction"}
 _RESOURCE_POLARITIES = {"resource", "gift", "support", "strength"}
@@ -198,8 +215,30 @@ def _theme_from_fact(fact: models.NatalFact) -> SynthesisThemeV2:
 
 
 def _section_for_fact(fact: models.NatalFact) -> str:
-    raw_hint = (fact.section_hint or fact.fact_type or "").strip().lower()
-    return _SECTION_BY_HINT.get(raw_hint, "core_pattern")
+    raw_hint = (fact.section_hint or "").strip().lower()
+    if raw_hint in _SECTION_BY_HINT:
+        return _SECTION_BY_HINT[raw_hint]
+
+    fact_key = fact.fact_key.lower()
+    if raw_hint in {"placements", "aspects"} or fact.fact_type in {"placement", "aspect"}:
+        for body, section in _SECTION_BY_BODY.items():
+            if f":{body}:" in fact_key or fact_key.endswith(f":{body}") or fact_key.startswith(f"{body}:"):
+                return section
+        if raw_hint == "aspects" or fact.fact_type == "aspect":
+            return "growth_vector"
+
+    if raw_hint == "patterns" or fact.fact_type == "pattern":
+        return "growth_vector"
+
+    if raw_hint == "balances" or fact.fact_type == "balance":
+        return _section_for_balance_fact(fact.fact_key)
+
+    return _SECTION_BY_HINT.get((fact.fact_type or "").strip().lower(), "core_pattern")
+
+
+def _section_for_balance_fact(fact_key: str) -> str:
+    bucket = sum(ord(char) for char in fact_key) % len(_BALANCE_SECTION_ROTATION)
+    return _BALANCE_SECTION_ROTATION[bucket]
 
 
 def _evidence_ids_from_fact(fact: models.NatalFact) -> tuple[str, ...]:

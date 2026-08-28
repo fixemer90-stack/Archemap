@@ -60,7 +60,7 @@ class ThemeClusterV2:
 
 @dataclass(frozen=True, slots=True)
 class SectionPlanV2:
-    """Theme ownership contract for one report section."""
+    """Theme ownership and grounding contract for one report section."""
 
     id: str
     title: str
@@ -69,6 +69,8 @@ class SectionPlanV2:
     reference_theme_ids: list[str]
     forbidden_theme_ids: list[str]
     evidence_ids: list[str]
+    reference_evidence_ids: list[str]
+    grounding_status: str
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -79,6 +81,10 @@ class SectionPlanV2:
             "reference_theme_ids": list(self.reference_theme_ids),
             "forbidden_theme_ids": list(self.forbidden_theme_ids),
             "evidence_ids": list(self.evidence_ids),
+            "reference_evidence_ids": list(self.reference_evidence_ids),
+            "grounding_status": self.grounding_status,
+            "owned_evidence_count": len(self.evidence_ids),
+            "reference_evidence_count": len(self.reference_evidence_ids),
         }
 
 
@@ -144,6 +150,13 @@ def build_report_outline_v2(*, synthesis: NatalSynthesisV2, source_version: str 
         evidence_ids = sorted(
             {evidence_id for theme_id in owned_theme_ids for evidence_id in themes_by_id[theme_id].evidence_ids}
         )
+        reference_evidence_ids = sorted(
+            {evidence_id for theme_id in reference_theme_ids for evidence_id in themes_by_id[theme_id].evidence_ids}
+        )
+        grounding_status = _grounding_status(
+            owned_evidence_ids=evidence_ids,
+            reference_evidence_ids=reference_evidence_ids,
+        )
         title, purpose = _SECTION_META[section_id]
         sections.append(
             SectionPlanV2(
@@ -154,6 +167,8 @@ def build_report_outline_v2(*, synthesis: NatalSynthesisV2, source_version: str 
                 reference_theme_ids=reference_theme_ids,
                 forbidden_theme_ids=forbidden_theme_ids,
                 evidence_ids=evidence_ids,
+                reference_evidence_ids=reference_evidence_ids,
+                grounding_status=grounding_status,
             )
         )
 
@@ -162,7 +177,7 @@ def build_report_outline_v2(*, synthesis: NatalSynthesisV2, source_version: str 
         source_version=source_version,
         sections=tuple(sections),
         theme_clusters=clusters,
-        section_keys=list(SECTION_ORDER),
+        section_keys=[section.id for section in sections if section.grounding_status != "skipped"],
         global_narrative_arc=_global_narrative_arc(synthesis),
     )
 
@@ -196,6 +211,10 @@ def render_debug_outline_payload(*, outline: ReportOutlineV2, synthesis: NatalSy
                 "reference_theme_ids": list(section.reference_theme_ids),
                 "forbidden_theme_ids": list(section.forbidden_theme_ids),
                 "evidence_ids": list(section.evidence_ids),
+                "reference_evidence_ids": list(section.reference_evidence_ids),
+                "grounding_status": section.grounding_status,
+                "owned_evidence_count": len(section.evidence_ids),
+                "reference_evidence_count": len(section.reference_evidence_ids),
             }
             for section in outline.sections
         ],
@@ -218,6 +237,14 @@ def _reference_theme_ids(section_id: str, themes_by_section: dict[str, tuple[Syn
         if neighbor_themes:
             references.append(neighbor_themes[0].id)
     return sorted(references)
+
+
+def _grounding_status(*, owned_evidence_ids: list[str], reference_evidence_ids: list[str]) -> str:
+    if owned_evidence_ids:
+        return "ready"
+    if reference_evidence_ids:
+        return "bridged"
+    return "skipped"
 
 
 def _global_narrative_arc(synthesis: NatalSynthesisV2) -> str:

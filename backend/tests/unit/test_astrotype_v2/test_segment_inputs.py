@@ -55,6 +55,14 @@ def _synthesis(chart_id: uuid.UUID) -> NatalSynthesisV2:
             weight=0.7,
             evidence_id="ev:moon",
         ),
+        _theme(theme_id="theme:agency:mars", primary_section="agency_and_desire", weight=0.6, evidence_id="ev:mars"),
+        _theme(
+            theme_id="theme:relations:venus",
+            primary_section="relationships_and_intimacy",
+            weight=0.5,
+            evidence_id="ev:venus",
+        ),
+        _theme(theme_id="theme:growth:saturn", primary_section="growth_vector", weight=0.4, evidence_id="ev:saturn"),
     )
     return NatalSynthesisV2(
         chart_id=chart_id,

@@ -73,12 +73,17 @@ async def generate_v2_report(
 @router.get("/reports/generations/{generation_id}")
 async def get_v2_generation_status(
     generation_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     """Return coarse status for an accepted generation id."""
 
-    _ = current_user
-    return build_generation_status_payload(generation_id=generation_id)
+    repository = AstrotypeV2Repository(db)
+    report = await repository.get_report_for_generation(
+        generation_id=generation_id,
+        user_id=current_user,
+    )
+    return build_generation_status_payload(generation_id=generation_id, report=report)
 
 
 @router.get("/reports/{report_id}")

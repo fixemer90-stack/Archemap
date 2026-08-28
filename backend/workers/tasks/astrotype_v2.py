@@ -28,7 +28,7 @@ from app.modules.astrotype_v2.fact_extractor import (
 from app.modules.astrotype_v2.infographic_data import build_natal_infographic_data_row
 from app.modules.astrotype_v2.llm_segments import StructuredSegmentProviderAdapter, run_segment_generation_v2
 from app.modules.astrotype_v2.outline import ReportOutlineV2, build_report_outline_row, build_report_outline_v2
-from app.modules.astrotype_v2.report_assembler import build_natal_report_row
+from app.modules.astrotype_v2.report_assembler import build_deterministic_natal_report_row, build_natal_report_row
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2
 from app.modules.astrotype_v2.segment_inputs import build_section_render_inputs_v2
@@ -169,31 +169,65 @@ async def _generate_natal_report_v2_async(
                 await repository.add(infographic)
                 await repository.flush()
 
-            segments = await _ensure_ready_segments(
-                repository=repository,
-                chart_id=chart.id,
-                outline=outline,
-                synthesis=_synthesis_contract(chart.id, synthesis),
-            )
             latest_report = await repository.get_latest_report_for_chart(chart.id)
-            report = build_natal_report_row(
+            report = build_deterministic_natal_report_row(
                 chart_id=chart.id,
                 synthesis_row=synthesis,
                 outline_row=outline,
                 infographic_row=infographic,
-                segment_rows=segments,
                 previous_version=latest_report.version if latest_report is not None else 0,
             )
+            report.generation_id = uuid.UUID(generation_id)
             await repository.add(report)
             await repository.flush()
             await db.commit()
-            return _task_payload(
-                generation_id=generation_id,
-                profile_id=profile_uuid,
-                report=report,
-                status="ready",
-                force=force,
-            )
+
+            report.status = "narrative_generating"
+            report.assembled_payload = report.assembled_payload | {"status": "narrative_generating"}
+            await repository.flush()
+            await db.commit()
+
+            try:
+                segments = await _ensure_ready_segments(
+                    repository=repository,
+                    chart_id=chart.id,
+                    outline=outline,
+                    synthesis=_synthesis_contract(chart.id, synthesis),
+                )
+                complete_report = build_natal_report_row(
+                    chart_id=chart.id,
+                    synthesis_row=synthesis,
+                    outline_row=outline,
+                    infographic_row=infographic,
+                    segment_rows=segments,
+                    previous_version=report.version - 1,
+                )
+                report.status = complete_report.status
+                report.deterministic_payload = complete_report.deterministic_payload
+                report.narrative_payload = complete_report.narrative_payload
+                report.assembled_payload = complete_report.assembled_payload
+                await repository.flush()
+                await db.commit()
+                return _task_payload(
+                    generation_id=generation_id,
+                    profile_id=profile_uuid,
+                    report=report,
+                    status="ready",
+                    force=force,
+                )
+            except Exception as exc:
+                await db.rollback()
+                report.status = "narrative_failed"
+                report.assembled_payload = report.assembled_payload | {"status": "narrative_failed", "error": str(exc)}
+                await repository.flush()
+                await db.commit()
+                return _task_payload(
+                    generation_id=generation_id,
+                    profile_id=profile_uuid,
+                    report=report,
+                    status="narrative_failed",
+                    force=force,
+                )
         except Exception:
             await db.rollback()
             raise
@@ -394,6 +428,8 @@ async def _ensure_deterministic_segments(
     new_segments: list[models.ReportSegmentGeneration] = []
     for section in section_plans:
         section_id = str(section.get("id"))
+        if section.get("grounding_status") == "skipped":
+            continue
         existing = by_key.get(section_id)
         output = _segment_output(section=section, synthesis=synthesis)
         response_payload = output.model_dump(mode="json")

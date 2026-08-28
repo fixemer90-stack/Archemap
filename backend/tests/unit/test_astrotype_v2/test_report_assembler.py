@@ -229,6 +229,31 @@ def test_assemble_natal_report_v2_quality_gates_reject_repeated_or_ungrounded_se
         )
 
 
+def test_build_deterministic_natal_report_row_exposes_calculation_layer_before_segments() -> None:
+    from app.modules.astrotype_v2.report_assembler import build_deterministic_natal_report_row
+
+    chart_id = uuid.uuid4()
+    report = build_deterministic_natal_report_row(
+        chart_id=chart_id,
+        synthesis_row=_synthesis_row(chart_id),
+        outline_row=_outline_row(chart_id),
+        infographic_row=_infographic_row(chart_id),
+        previous_version=2,
+    )
+
+    assert report.chart_id == chart_id
+    assert report.version == 3
+    assert report.status == "deterministic_ready"
+    assert report.deterministic_payload["synthesis"]["contract_version"] == "natal_synthesis_v2"
+    assert report.deterministic_payload["outline"]["contract_version"] == "report_outline_v2"
+    assert (
+        report.deterministic_payload["technical_basis"]["calculation_layer"]["contract_version"]
+        == "natal_infographic_data_v2"
+    )
+    assert report.narrative_payload == {"sections": [], "section_order": ["core_pattern", "perception_and_mind"]}
+    assert report.assembled_payload["status"] == "deterministic_ready"
+
+
 def test_build_natal_report_row_versions_without_overwriting_prior_artifacts() -> None:
     from app.modules.astrotype_v2.report_assembler import build_natal_report_row
 

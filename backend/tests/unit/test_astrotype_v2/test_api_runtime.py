@@ -122,6 +122,29 @@ def test_build_report_progress_v2_exposes_segment_level_state_and_overall_status
     }
 
 
+def test_build_generation_status_payload_exposes_report_id_for_deterministic_ready_polling() -> None:
+    from app.modules.astrotype_v2.api_runtime import build_generation_status_payload
+
+    chart_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
+    report = _report(chart_id)
+    report.generation_id = generation_id
+    report.status = "narrative_generating"
+
+    payload = build_generation_status_payload(generation_id=generation_id, report=report)
+
+    assert payload == {
+        "contract_version": "astrotype_v2_generation_status_v1",
+        "generation_id": str(generation_id),
+        "status": "narrative_generating",
+        "report_id": str(report.id),
+        "links": {
+            "report": f"/api/v1/astrotype-v2/reports/{report.id}",
+            "progress": f"/api/v1/astrotype-v2/reports/{report.id}/progress",
+        },
+    }
+
+
 def test_build_report_read_payload_v2_includes_report_facts_infographics_segments() -> None:
     from app.modules.astrotype_v2.api_runtime import build_report_read_payload_v2
 
@@ -346,7 +369,9 @@ def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pip
     assert "def generate_natal_report_v2" in task_source
     assert "run_async_in_worker" in task_source
     assert "build_natal_chart_rows" in task_source
-    assert "build_natal_report_row" in task_source
+    assert "build_deterministic_natal_report_row" in task_source
+    assert task_source.index("build_deterministic_natal_report_row") < task_source.index("_ensure_ready_segments")
+    assert "report.status = \"narrative_generating\"" in task_source
     for fragment in ("report_narratives", "socionics", "model_a", "function_strength"):
         assert fragment not in runtime_source
 

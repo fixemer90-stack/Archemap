@@ -121,6 +121,58 @@ def assemble_natal_report_v2(
     )
 
 
+def build_deterministic_natal_report_row(
+    *,
+    chart_id: uuid.UUID,
+    synthesis_row: models.NatalSynthesis,
+    outline_row: models.ReportOutline,
+    infographic_row: models.NatalInfographicData,
+    previous_version: int | None = None,
+) -> models.NatalReport:
+    """Build a fetchable deterministic report row before any narrative segment exists."""
+
+    next_version = (previous_version or 0) + 1
+    technical_basis = _build_technical_basis(
+        synthesis_row=synthesis_row,
+        outline_row=outline_row,
+        infographic_row=infographic_row,
+    )
+    deterministic_payload = {
+        "synthesis": synthesis_row.payload,
+        "outline": outline_row.outline,
+        "technical_basis": technical_basis,
+    }
+    narrative_payload = {
+        "sections": [],
+        "section_order": _required_section_keys(outline_row),
+    }
+    assembled_payload = {
+        "contract_version": REPORT_CONTRACT_VERSION,
+        "chart_id": str(chart_id),
+        "version": next_version,
+        "status": "deterministic_ready",
+        "reader_view": _reader_view_payload(status_label="Расчёт готов, текстовые разделы собираются"),
+        "input_hashes": _input_hashes(
+            synthesis_row=synthesis_row,
+            outline_row=outline_row,
+            infographic_row=infographic_row,
+            segment_rows=[],
+        ),
+        "version_lineage": {"previous_version": previous_version, "version": next_version},
+    }
+    return models.NatalReport(
+        chart_id=chart_id,
+        synthesis_id=getattr(synthesis_row, "id", None),
+        outline_id=getattr(outline_row, "id", None),
+        infographic_data_id=getattr(infographic_row, "id", None),
+        status="deterministic_ready",
+        version=next_version,
+        deterministic_payload=deterministic_payload,
+        narrative_payload=narrative_payload,
+        assembled_payload=assembled_payload,
+    )
+
+
 def build_natal_report_row(
     *,
     chart_id: uuid.UUID,
@@ -219,14 +271,14 @@ def _section_reader_display(*, section: NatalReportSectionV2, index: int) -> dic
     }
 
 
-def _reader_view_payload() -> dict[str, Any]:
+def _reader_view_payload(*, status_label: str = "Полный отчёт готов") -> dict[str, Any]:
     return {
         "contract_version": "astrotype_v2_reader_view_v1",
         "layout_order": ["hero", "narrative", "calculation_layer"],
         "hero": {
             "eyebrow": "Astrotype v2 · натальный отчёт",
             "title": "Натальный портрет личности",
-            "status_label": "Полный отчёт готов",
+            "status_label": status_label,
             "calculation_label": "Карта и расчёт ниже",
             "pdf_label": "Скачать PDF",
         },

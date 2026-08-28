@@ -10,13 +10,20 @@ from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, SynthesisThemeV
 def build_section_render_inputs_v2(
     *, outline: ReportOutlineV2, synthesis: NatalSynthesisV2
 ) -> list[SectionRenderInputV2]:
-    """Create one restricted render input for every upper report section."""
+    """Create restricted render inputs only for grounded upper report sections."""
 
     themes_by_id = {theme.id: theme for theme in synthesis.dominant_themes}
-    return [
-        _build_section_input(section=section, outline=outline, synthesis=synthesis, themes_by_id=themes_by_id)
-        for section in outline.sections
-    ]
+    inputs: list[SectionRenderInputV2] = []
+    for section in outline.sections:
+        section_input = _build_section_input(
+            section=section,
+            outline=outline,
+            synthesis=synthesis,
+            themes_by_id=themes_by_id,
+        )
+        if section_input.evidence_ids:
+            inputs.append(section_input)
+    return inputs
 
 
 def _build_section_input(

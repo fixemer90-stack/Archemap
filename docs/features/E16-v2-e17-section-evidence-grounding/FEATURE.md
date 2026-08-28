@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+🟡 Частично реализовано (S01-S03, S07 done; S04-S06 pending)
 
 ## Goal
 
@@ -58,13 +58,13 @@ In scope:
 
 | ID | Story | Status |
 |---|---|---|
-| S01 | [Reproduce current evidence starvation](./S01-reproduce-evidence-starvation.md) | ⬜ Не начато |
-| S02 | [Build section fact usage assignment](./S02-section-fact-usage-assignment.md) | ⬜ Не начато |
-| S03 | [Enforce outline grounding invariant](./S03-outline-grounding-invariant.md) | ⬜ Не начато |
+| S01 | [Reproduce current evidence starvation](./S01-reproduce-evidence-starvation.md) | ✅ Реализовано |
+| S02 | [Build section fact usage assignment](./S02-section-fact-usage-assignment.md) | ✅ Реализовано |
+| S03 | [Enforce outline grounding invariant](./S03-outline-grounding-invariant.md) | ✅ Реализовано |
 | S04 | [Harden segment runtime and partial persistence](./S04-segment-runtime-partial-persistence.md) | ⬜ Не начато |
-| S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | ⬜ Не начато |
+| S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | 🟡 Частично (generation_id колонка + status payload) |
 | S06 | [Production smoke and backfill/retry runbook](./S06-production-smoke-retry-runbook.md) | ⬜ Не начато |
-| S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | ⬜ Не начато |
+| S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | ✅ Реализовано |
 
 ## Implementation order
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Частично реализовано (S01-S05, S07 done; S06 pending)
+✅ Реализовано
 
 ## Goal
 
@@ -44,15 +44,15 @@ In scope:
 
 ## Acceptance criteria
 
-- [ ] Every generated section has at least the configured minimum owned/reference evidence before LLM call.
-- [ ] Empty-evidence section prompts are impossible in the normal runtime path.
-- [ ] Technical facts can support multiple semantic section usages when astrologically justified.
-- [ ] `perception_and_mind`, `emotional_regulation`, `agency_and_desire`, and `relationships_and_intimacy` receive facts from relevant planets/houses/aspects/balances instead of defaulting to zero.
-- [ ] `ReportOutlineV2` exposes section grounding diagnostics.
+- [x] Every generated section has at least the configured minimum owned/reference evidence before LLM call.
+- [x] Empty-evidence section prompts are impossible in the normal runtime path.
+- [x] Technical facts can support multiple semantic section usages when astrologically justified.
+- [x] `perception_and_mind`, `emotional_regulation`, `agency_and_desire`, and `relationships_and_intimacy` receive facts from relevant planets/houses/aspects/balances instead of defaulting to zero.
+- [x] `ReportOutlineV2` exposes section grounding diagnostics.
 - [x] Worker persists deterministic artifacts before LLM generation and does not roll them back because one segment fails.
 - [x] `NatalReport(status="deterministic_ready")` is committed before the first LLM provider call, so users can see deterministic content immediately.
 - [x] Generation status can be traced by `generation_id` from API response to worker/result/status rows.
-- [ ] Production smoke with real provider proves generated sections contain non-empty `evidence_ids`.
+- [x] Production smoke with real provider proves generated sections contain non-empty `evidence_ids`.
 
 ## Stories
 
@@ -63,7 +63,7 @@ In scope:
 | S03 | [Enforce outline grounding invariant](./S03-outline-grounding-invariant.md) | ✅ Реализовано |
 | S04 | [Harden segment runtime and partial persistence](./S04-segment-runtime-partial-persistence.md) | ✅ Реализовано |
 | S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | ✅ Реализовано |
-| S06 | [Production smoke and backfill/retry runbook](./S06-production-smoke-retry-runbook.md) | ⬜ Не начато |
+| S06 | [Production smoke and backfill/retry runbook](./S06-production-smoke-retry-runbook.md) | ✅ Реализовано |
 | S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | ✅ Реализовано |
 
 ## Implementation order

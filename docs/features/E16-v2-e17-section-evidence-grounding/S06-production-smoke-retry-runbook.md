@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -40,20 +40,44 @@ The runbook must include:
 
 ## Acceptance criteria
 
-- [ ] A new production-like report reaches `complete` or intentional `partial`.
-- [ ] `GET /reports/generations/{generation_id}` shows real state.
-- [ ] All generated ready sections have non-empty evidence ids.
-- [ ] Worker logs can be correlated by generation id.
-- [ ] Failed old generations can be retried without manual DB surgery.
-- [ ] Runbook explicitly forbids destructive cleanup of generated production data.
+- [x] A new production-like report reaches `complete` or intentional `partial`.
+- [x] `GET /reports/generations/{generation_id}` shows real state.
+- [x] All generated ready sections have non-empty evidence ids.
+- [x] Worker logs can be correlated by generation id.
+- [x] Failed old generations can be retried without manual DB surgery.
+- [x] Runbook explicitly forbids destructive cleanup of generated production data.
 
 ## Verification
 
-Production-like smoke should record exact command outputs in this Story before marking it complete.
+Production smoke recorded on 2026-08-30 after deploying commit `0dd47f7` to backend/worker.
 
-```bash
-curl -fsS https://astrotype.ru/api/v1/health
-# authenticated generation request here
-# authenticated generation status lookup here
-# DB/worker diagnostics here
+```text
+Profile id: 548049cd-99d3-4186-ae5b-fc53a64b05e7
+Generation id: 4034efcf-b27c-4867-a30f-5cf00de22b65
+Celery task id: 34d24fb1-1b68-45aa-9db8-3453e1ef7155
+Report id: e21c7daf-4257-408c-9d66-5106e3fd26b6
+Final status: complete
+Health: {"status":"ok","database":"ok","redis":"ok"}
+Worker log correlation: generation_id=true, celery_task_id=true
 ```
+
+Status endpoint proof:
+
+```text
+POLL 1 queued None
+POLL 2 complete e21c7daf-4257-408c-9d66-5106e3fd26b6
+GENERATION_ROW 4034efcf-b27c-4867-a30f-5cf00de22b65|34d24fb1-1b68-45aa-9db8-3453e1ef7155|e21c7daf-4257-408c-9d66-5106e3fd26b6|complete
+```
+
+Ready section evidence counts:
+
+```text
+agency_and_desire:ready:8
+core_pattern:ready:9
+emotional_regulation:ready:3
+growth_vector:ready:18
+perception_and_mind:ready:12
+relationships_and_intimacy:ready:4
+```
+
+All ready sections have non-empty `evidence_ids`.

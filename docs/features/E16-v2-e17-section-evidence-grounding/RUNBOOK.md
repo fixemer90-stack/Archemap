@@ -177,15 +177,15 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d backe
 Fill this section after each production smoke.
 
 ```text
-Date/time UTC:
-Commit:
-Profile id:
-Generation id:
-Celery task id:
-Report id:
-Final status:
-Health result:
-Ready section evidence counts:
-Worker log correlation:
-Notes:
+Date/time UTC: 2026-08-30T19:55:16Z
+Commit: 0dd47f7
+Profile id: 548049cd-99d3-4186-ae5b-fc53a64b05e7
+Generation id: 4034efcf-b27c-4867-a30f-5cf00de22b65
+Celery task id: 34d24fb1-1b68-45aa-9db8-3453e1ef7155
+Report id: e21c7daf-4257-408c-9d66-5106e3fd26b6
+Final status: complete
+Health result: {"status":"ok","database":"ok","redis":"ok"}
+Ready section evidence counts: agency_and_desire=8, core_pattern=9, emotional_regulation=3, growth_vector=18, perception_and_mind=12, relationships_and_intimacy=4
+Worker log correlation: generation_id=true, celery_task_id=true
+Notes: all ready sections have non-empty evidence_ids; runbook retry path used no destructive cleanup.
 ```

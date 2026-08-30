@@ -182,6 +182,8 @@ async def _generate_natal_report_v2_async(
             await repository.flush()
             await db.commit()
 
+            report_id = report.id
+            deterministic_payload = dict(report.assembled_payload or {})
             report.status = "narrative_generating"
             report.assembled_payload = report.assembled_payload | {"status": "narrative_generating"}
             await repository.flush()
@@ -217,14 +219,20 @@ async def _generate_natal_report_v2_async(
                 )
             except Exception as exc:
                 await db.rollback()
-                report.status = "narrative_failed"
-                report.assembled_payload = report.assembled_payload | {"status": "narrative_failed", "error": str(exc)}
+                failed_report = await repository.get_report(report_id)
+                if failed_report is None:
+                    raise
+                failed_report.status = "narrative_failed"
+                failed_report.assembled_payload = deterministic_payload | {
+                    "status": "narrative_failed",
+                    "error": str(exc),
+                }
                 await repository.flush()
                 await db.commit()
                 return _task_payload(
                     generation_id=generation_id,
                     profile_id=profile_uuid,
-                    report=report,
+                    report=failed_report,
                     status="narrative_failed",
                     force=force,
                 )

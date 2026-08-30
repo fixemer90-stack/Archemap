@@ -102,7 +102,16 @@ def _validate_required_depth_moves(body: str) -> None:
     lowered = body.lower()
     required_groups = {
         "mechanism": ("механизм", "внутренн", "психологическ"),
-        "lived manifestation": ("проявляется", "в жизни", "повседнев"),
+        "lived manifestation": (
+            "проявля",
+            "жизн",
+            "повседнев",
+            "на практике",
+            "в поведени",
+            "в отношени",
+            "в конкретн",
+            "реальн",
+        ),
         "tension": ("напряж", "конфликт", "поляр", "противореч"),
         "protection shadow": ("защит", "тень", "под давлением", "компенсац"),
         "mature expression": ("зрел",),

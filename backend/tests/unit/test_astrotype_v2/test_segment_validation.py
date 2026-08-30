@@ -129,6 +129,15 @@ def test_sections_missing_lived_or_mature_depth_moves_fail_validation() -> None:
         validate_segment_output_v2(output=_output(body_without_mature), section_input=_section_input())
 
 
+def test_lived_manifestation_accepts_natural_russian_variants() -> None:
+    body = _deep_body().replace(
+        "В жизни это проявляется как повторяющийся сценарий",
+        "На практике этот материал становится заметен как повторяющийся сценарий",
+    )
+
+    assert validate_segment_output_v2(output=_output(body), section_input=_section_input()).body == body
+
+
 def test_long_grounded_core_section_passes_without_artificial_max_length() -> None:
     body = _deep_body(paragraphs=10, words_per_paragraph=140)
 

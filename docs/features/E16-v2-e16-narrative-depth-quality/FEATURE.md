@@ -53,6 +53,7 @@ Related docs:
 
 - `docs/architecture/astrotype-v2-natal-report-architecture.md`
 - `docs/architecture/astrotype-v2-narrative-depth-contract.md`
+- `docs/architecture/ADR-009-v2-segment-depth-validation-policy.md`
 - `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 
 ## Scope
@@ -104,6 +105,15 @@ S01 → S02 → S03 → S04 → S05
 ```
 
 S01 and S02 may be implemented before S03, but S03 is required for consistently deep real output. Without richer synthesis, the prompt will keep asking the LLM to infer too much from raw chart facts.
+
+## Known temporary architecture debt
+
+The current hard-fail depth validator is a temporary guard, not the final quality architecture.
+Production incident `548049cd-99d3-4186-ae5b-fc53a64b05e7` showed that lexical-marker checks can reject acceptable Russian prose and block report assembly. Replacement is tracked by ADR-009:
+
+- `docs/architecture/ADR-009-v2-segment-depth-validation-policy.md`
+
+Future work must split objective contract validation from semantic quality evaluation and introduce repair/degraded/partial recovery states before tightening prose gates further.
 
 ## Verification
 

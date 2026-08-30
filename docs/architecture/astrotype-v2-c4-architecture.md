@@ -799,6 +799,21 @@ Consequences:
 - Windows `.exe`, if built, should be a thin Tauri/Electron client.
 - SQLite is local cache/draft storage only unless a separate offline product is explicitly planned.
 
+### ADR-009: Temporary hard-fail segment depth validation must be replaced
+
+Decision: the current string-marker depth validator for v2 LLM segments is accepted only as a temporary production guard. Hard validation remains appropriate for objective contract violations, but semantic depth checks such as mechanism / lived manifestation / tension / protection / mature expression must move to a layered repair/degraded-state policy instead of blocking report assembly by brittle lexical markers.
+
+Reason: production report `548049cd-99d3-4186-ae5b-fc53a64b05e7` showed that valid Russian prose can fail a narrow marker check and leave the user-facing report unassembled. The immediate fix widened markers and fixed worker failure handling, but this does not remove the architectural bottleneck.
+
+Consequences:
+
+- `_validate_required_depth_moves` is temporary as a hard exception;
+- replacement work must separate objective contract validation, technical completeness, semantic quality rubric and runtime recovery;
+- deterministic and partial narrative state must remain persisted and readable even when one segment needs repair;
+- API/frontend states need to support degraded/partial/fallback behavior before prose-quality gates are tightened further.
+
+Standalone ADR: `docs/architecture/ADR-009-v2-segment-depth-validation-policy.md`.
+
 ---
 
 ## Verification checklist

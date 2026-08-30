@@ -168,6 +168,11 @@ Retry prompts must preserve the same depth requirement. They must not say “exp
 
 ## Validation requirements
 
+> Architecture note: the current hard-fail implementation of required depth moves is temporary.
+> See `docs/architecture/ADR-009-v2-segment-depth-validation-policy.md`.
+> Future work must replace brittle lexical-marker failure with layered contract validation,
+> repair/degraded status, and deterministic/partial report recovery.
+
 Validators should reject a section when:
 
 - word count is below the section target floor;

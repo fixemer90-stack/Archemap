@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+⬜ Не закрыто
 
 ## Context
 
@@ -43,3 +43,14 @@ Expected before fix: targeted test fails with current evidence-starvation behavi
 cd backend
 uv run pytest tests/unit/test_astrotype_v2/test_fact_section_assignment.py -v --tb=short
 ```
+
+## Audit note
+
+Not closed in the 2026-08-30 documentation audit. The current code is already remediated, and `test_fact_section_assignment.py` now verifies the fixed distribution and skipped-section guard. This Story's original RED-only criteria required preserving a failing pre-fix reproduction of the old starvation behavior:
+
+- high total fact count with low section coverage;
+- exact empty sections from the old implementation;
+- proof that empty evidence reached the LLM/validator boundary in the old implementation;
+- no production fix in the same Story.
+
+Those exact historical RED criteria are no longer present as a standalone failing test, so the Story should not be marked `✅` without either recovering the original RED evidence from history or rewriting this Story into a retrospective incident-reproduction contract.

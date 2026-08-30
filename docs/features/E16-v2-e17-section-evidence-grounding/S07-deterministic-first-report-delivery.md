@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+🟡 Частично реализовано
 
 ## Context
 
@@ -64,12 +64,12 @@ MVP uses polling as the transport. SSE/WebSocket/push may be added later only as
 
 ## Acceptance criteria
 
-- [ ] Worker commits `NatalReport(status="deterministic_ready")` before any LLM provider call.
-- [ ] `GET /api/v1/astrotype-v2/reports/{report_id}` returns deterministic payload, facts, outline and infographic before narrative completion.
-- [ ] If all LLM sections fail, the deterministic report remains available.
-- [ ] If one section fails, the report becomes `partial` or remains deterministic-ready with diagnostics, not missing.
+- [x] Worker commits `NatalReport(status="deterministic_ready")` before any LLM provider call.
+- [x] `GET /api/v1/astrotype-v2/reports/{report_id}` returns deterministic payload, facts, outline and infographic before narrative completion.
+- [x] If all LLM sections fail, the deterministic report remains available.
+- [x] If one section fails, the report becomes `partial` or remains deterministic-ready with diagnostics, not missing.
 - [ ] Frontend displays deterministic content as soon as it exists.
-- [ ] Generation status endpoint exposes `report_id` immediately after deterministic commit.
+- [x] Generation status endpoint exposes `report_id` immediately after deterministic commit.
 - [ ] Frontend can continue polling after deterministic render and update the page when narrative sections become `partial` or `complete`.
 - [ ] Polling terminal states are explicit: `complete`, `narrative_failed`, `deterministic_failed`.
 - [ ] Tests verify transaction boundaries and frontend state behavior.
@@ -99,3 +99,20 @@ Production-like smoke:
 ```text
 POST generation -> poll generation_id -> receive report_id at deterministic_ready -> fetch report -> see deterministic payload while narrative is still running/failing.
 ```
+
+## Audit note
+
+Backend deterministic-first behavior is implemented and covered by the 2026-08-30 audit run:
+
+```bash
+uv run pytest tests/unit/test_astrotype_v2/test_fact_section_assignment.py tests/unit/test_astrotype_v2/test_outline.py tests/unit/test_astrotype_v2/test_segment_inputs.py tests/unit/test_astrotype_v2/test_report_assembler.py::test_build_deterministic_natal_report_row_exposes_calculation_layer_before_segments tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_api_runtime.py -q
+```
+
+Result: `25 passed`.
+
+Not fully closed because frontend-specific criteria are not implemented/proven in the current v2 client:
+
+- `frontend/src/lib/astrotype-v2/use-v2-report-generation.ts` still polls a `reportId`; it does not call `GET /api/v1/astrotype-v2/reports/generations/{generation_id}` until a `report_id` appears.
+- `frontend/src/lib/api/astrotype-v2.ts` has no generation-status client/type for the new S05 endpoint.
+- no frontend tests cover deterministic-first rendering or continued polling through `partial` / `complete`.
+- no `deterministic_failed` status exists in the current backend source.

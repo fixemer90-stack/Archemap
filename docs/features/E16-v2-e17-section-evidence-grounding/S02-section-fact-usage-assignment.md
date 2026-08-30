@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -42,11 +42,11 @@ Examples:
 
 ## Acceptance criteria
 
-- [ ] Existing fact extraction remains deterministic and natal-only.
-- [ ] Each generated `SynthesisThemeV2` has section-specific evidence usage.
-- [ ] A realistic chart fixture gives non-zero coverage for all core MVP sections or marks explicit gaps.
-- [ ] Multi-section usage is tested for cross-domain aspects such as Moon-Mercury and Venus-Mars.
-- [ ] No socionics/typology/legacy report fields enter v2.
+- [x] Existing fact extraction remains deterministic and natal-only.
+- [x] Each generated `SynthesisThemeV2` has section-specific evidence usage.
+- [x] A realistic chart fixture gives non-zero coverage for all core MVP sections or marks explicit gaps.
+- [x] Multi-section usage is tested for cross-domain aspects such as Moon-Mercury and Venus-Mars.
+- [x] No socionics/typology/legacy report fields enter v2.
 
 ## Verification
 
@@ -56,3 +56,11 @@ uv run pytest tests/unit/test_astrotype_v2/test_fact_section_assignment.py -v --
 uv run ruff check app/modules/astrotype_v2 tests/unit/test_astrotype_v2/test_fact_section_assignment.py
 uv run mypy app/modules/astrotype_v2 tests/unit/test_astrotype_v2/test_fact_section_assignment.py
 ```
+
+Fresh audit verification on 2026-08-30:
+
+```bash
+uv run pytest tests/unit/test_astrotype_v2/test_fact_section_assignment.py tests/unit/test_astrotype_v2/test_outline.py tests/unit/test_astrotype_v2/test_segment_inputs.py tests/unit/test_astrotype_v2/test_report_assembler.py::test_build_deterministic_natal_report_row_exposes_calculation_layer_before_segments tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_api_runtime.py -q
+```
+
+Result: `25 passed`. The evidence-grounding tests cover semantic distribution into all six MVP sections, skipped empty-section behavior, and v2 legacy isolation.

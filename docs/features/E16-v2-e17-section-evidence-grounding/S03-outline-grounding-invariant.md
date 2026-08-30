@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -40,10 +40,10 @@ This Story adds section-level grounding statuses and invariant checks before seg
 
 ## Acceptance criteria
 
-- [ ] `SectionRenderInputV2` for generated sections always has non-empty evidence ids.
-- [ ] Ungrounded sections are explicitly `skipped` or `blocked`, not silently sent to LLM.
-- [ ] Debug outline shows why each section is ready/bridged/skipped/blocked.
-- [ ] Existing anti-duplication fields (`owned_theme_ids`, `reference_theme_ids`, `forbidden_theme_ids`) remain intact.
+- [x] `SectionRenderInputV2` for generated sections always has non-empty evidence ids.
+- [x] Ungrounded sections are explicitly `skipped` or `blocked`, not silently sent to LLM.
+- [x] Debug outline shows why each section is ready/bridged/skipped/blocked.
+- [x] Existing anti-duplication fields (`owned_theme_ids`, `reference_theme_ids`, `forbidden_theme_ids`) remain intact.
 
 ## Verification
 
@@ -53,3 +53,11 @@ uv run pytest tests/unit/test_astrotype_v2/test_outline.py tests/unit/test_astro
 uv run ruff check app/modules/astrotype_v2 tests/unit/test_astrotype_v2
 uv run mypy app/modules/astrotype_v2 tests/unit/test_astrotype_v2
 ```
+
+Fresh audit verification on 2026-08-30:
+
+```bash
+uv run pytest tests/unit/test_astrotype_v2/test_fact_section_assignment.py tests/unit/test_astrotype_v2/test_outline.py tests/unit/test_astrotype_v2/test_segment_inputs.py tests/unit/test_astrotype_v2/test_report_assembler.py::test_build_deterministic_natal_report_row_exposes_calculation_layer_before_segments tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_api_runtime.py -q
+```
+
+Result: `25 passed`. `outline.py` emits `grounding_status`, owned/reference evidence counts, and `owned_theme_ids` / `reference_theme_ids` / `forbidden_theme_ids`; `segment_inputs.py` excludes skipped sections and only emits generated inputs with evidence ids.

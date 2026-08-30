@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Частично реализовано (S01-S04, S07 done; S05-S06 pending)
+🟡 Частично реализовано (S01-S05, S07 done; S06 pending)
 
 ## Goal
 
@@ -51,7 +51,7 @@ In scope:
 - [ ] `ReportOutlineV2` exposes section grounding diagnostics.
 - [x] Worker persists deterministic artifacts before LLM generation and does not roll them back because one segment fails.
 - [x] `NatalReport(status="deterministic_ready")` is committed before the first LLM provider call, so users can see deterministic content immediately.
-- [ ] Generation status can be traced by `generation_id` from API response to worker/result/status rows.
+- [x] Generation status can be traced by `generation_id` from API response to worker/result/status rows.
 - [ ] Production smoke with real provider proves generated sections contain non-empty `evidence_ids`.
 
 ## Stories
@@ -62,7 +62,7 @@ In scope:
 | S02 | [Build section fact usage assignment](./S02-section-fact-usage-assignment.md) | ✅ Реализовано |
 | S03 | [Enforce outline grounding invariant](./S03-outline-grounding-invariant.md) | ✅ Реализовано |
 | S04 | [Harden segment runtime and partial persistence](./S04-segment-runtime-partial-persistence.md) | ✅ Реализовано |
-| S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | 🟡 Частично (generation_id колонка + status payload) |
+| S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | ✅ Реализовано |
 | S06 | [Production smoke and backfill/retry runbook](./S06-production-smoke-retry-runbook.md) | ⬜ Не начато |
 | S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | ✅ Реализовано |
 

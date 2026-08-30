@@ -127,21 +127,101 @@ def test_build_generation_status_payload_exposes_report_id_for_deterministic_rea
 
     chart_id = uuid.uuid4()
     generation_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    job = models.NatalReportGeneration(
+        generation_id=generation_id,
+        user_id=user_id,
+        profile_id=profile_id,
+        status="running",
+        celery_task_id="task-123",
+    )
     report = _report(chart_id)
     report.generation_id = generation_id
     report.status = "narrative_generating"
+    outline = _outline(chart_id)
+    segments = [_segment(chart_id, outline.id, "core_pattern", "running")]
+    segments[0].error = None
 
-    payload = build_generation_status_payload(generation_id=generation_id, report=report)
+    payload = build_generation_status_payload(generation=job, report=report, outline=outline, segments=segments)
 
-    assert payload == {
-        "contract_version": "astrotype_v2_generation_status_v1",
-        "generation_id": str(generation_id),
-        "status": "narrative_generating",
-        "report_id": str(report.id),
-        "links": {
-            "report": f"/api/v1/astrotype-v2/reports/{report.id}",
-            "progress": f"/api/v1/astrotype-v2/reports/{report.id}/progress",
+    assert payload["contract_version"] == "astrotype_v2_generation_status_v1"
+    assert payload["generation_id"] == str(generation_id)
+    assert payload["status"] == "running"
+    assert payload["profile_id"] == str(profile_id)
+    assert payload["report_id"] == str(report.id)
+    assert payload["celery_task_id"] == "task-123"
+    assert payload["sections"] == [
+        {
+            "section_id": "core_pattern",
+            "grounding_status": None,
+            "owned_evidence_count": None,
+            "reference_evidence_count": None,
+            "segment_status": "running",
+            "provider": "fake",
+            "model": "fake-model",
+            "error": None,
         },
+        {
+            "section_id": "perception_and_mind",
+            "grounding_status": None,
+            "owned_evidence_count": None,
+            "reference_evidence_count": None,
+            "segment_status": "pending",
+            "provider": None,
+            "model": None,
+            "error": None,
+        },
+    ]
+    assert payload["links"] == {
+        "report": f"/api/v1/astrotype-v2/reports/{report.id}",
+        "progress": f"/api/v1/astrotype-v2/reports/{report.id}/progress",
+    }
+
+
+def test_build_generation_status_payload_exposes_failed_section_diagnostics() -> None:
+    from app.modules.astrotype_v2.api_runtime import build_generation_status_payload
+
+    chart_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
+    job = models.NatalReportGeneration(
+        generation_id=generation_id,
+        user_id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        status="partial",
+    )
+    outline = _outline(chart_id)
+    outline.outline = {
+        "sections": [
+            {
+                "id": "core_pattern",
+                "grounding_status": "ready",
+                "owned_evidence_count": 8,
+                "reference_evidence_count": 1,
+            },
+            {
+                "id": "perception_and_mind",
+                "grounding_status": "ready",
+                "owned_evidence_count": 6,
+                "reference_evidence_count": 2,
+            },
+        ]
+    }
+    failed = _segment(chart_id, outline.id, "perception_and_mind", "failed_validation")
+    failed.error = "SegmentValidationError: missing depth moves"
+
+    payload = build_generation_status_payload(generation=job, outline=outline, segments=[failed])
+
+    assert payload["status"] == "partial"
+    assert payload["sections"][1] == {
+        "section_id": "perception_and_mind",
+        "grounding_status": "ready",
+        "owned_evidence_count": 6,
+        "reference_evidence_count": 2,
+        "segment_status": "failed_validation",
+        "provider": "fake",
+        "model": "fake-model",
+        "error": "SegmentValidationError: missing depth moves",
     }
 
 
@@ -299,6 +379,8 @@ def test_repository_ownership_queries_join_v2_chart_user_and_profile() -> None:
     for marker in [
         "get_report_for_user",
         "get_latest_report_for_profile",
+        "get_generation_for_user",
+        "models.NatalReportGeneration.user_id == user_id",
         "models.NatalChart.user_id == user_id",
         "models.NatalChart.profile_id == profile_id",
         ".join(models.NatalChart",
@@ -370,6 +452,9 @@ def test_worker_task_is_registered_but_runtime_module_does_not_import_legacy_pip
     assert "run_async_in_worker" in task_source
     assert "build_natal_chart_rows" in task_source
     assert "build_deterministic_natal_report_row" in task_source
+    assert "astrotype_v2_generation_started" in task_source
+    assert "astrotype_v2_generation_finished" in task_source
+    assert "astrotype_v2_generation_failed" in task_source
     assert task_source.index("build_deterministic_natal_report_row") < task_source.index("_ensure_ready_segments")
     assert 'report.status = "narrative_generating"' in task_source
     for fragment in ("report_narratives", "socionics", "model_a", "function_strength"):

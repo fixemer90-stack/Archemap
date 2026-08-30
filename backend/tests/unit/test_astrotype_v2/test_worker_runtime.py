@@ -24,6 +24,7 @@ class _FakeRepository:
     def __init__(self) -> None:
         self.session = _FakeSession()
         self.segments: list[models.ReportSegmentGeneration] = []
+        self.generations: dict[uuid.UUID, models.NatalReportGeneration] = {}
         self.flushes = 0
 
     async def list_segments_for_outline(self, outline_id: uuid.UUID) -> list[models.ReportSegmentGeneration]:
@@ -35,6 +36,9 @@ class _FakeRepository:
 
     async def flush(self) -> None:
         self.flushes += 1
+
+    async def get_generation(self, generation_id: uuid.UUID) -> models.NatalReportGeneration | None:
+        return self.generations.get(generation_id)
 
 
 def _theme(theme_id: str, section: str, evidence_id: str) -> SynthesisThemeV2:
@@ -144,3 +148,37 @@ async def test_llm_segments_persist_failed_validation_rows_without_losing_ready_
     assert by_key["perception_and_mind"].payload["error"]["class"] == "SegmentValidationError"
     assert by_key["perception_and_mind"].payload["request"]["section_id"] == "perception_and_mind"
     assert repository.session.commits >= 1
+
+
+@pytest.mark.asyncio
+async def test_worker_generation_status_transition_persists_report_and_diagnostics() -> None:
+    from workers.tasks import astrotype_v2
+
+    generation_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+    repository = _FakeRepository()
+    repository.generations[generation_id] = models.NatalReportGeneration(
+        generation_id=generation_id,
+        user_id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        status="queued",
+        diagnostics={"force": True},
+    )
+
+    await astrotype_v2._persist_generation_status(
+        repository=cast(Any, repository),
+        generation_id=generation_id,
+        status="partial",
+        report_id=report_id,
+        diagnostics={"stage": "assembled", "failed_sections": ["perception_and_mind"]},
+    )
+
+    generation = repository.generations[generation_id]
+    assert generation.status == "partial"
+    assert generation.report_id == report_id
+    assert generation.diagnostics == {
+        "force": True,
+        "stage": "assembled",
+        "failed_sections": ["perception_and_mind"],
+    }
+    assert repository.flushes == 1

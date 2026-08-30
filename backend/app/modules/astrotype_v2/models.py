@@ -282,6 +282,27 @@ class ReportSegmentGeneration(BaseModel):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class NatalReportGeneration(BaseModel):
+    """Durable status row for one v2 report generation request."""
+
+    __tablename__ = "astrotype_v2_natal_report_generations"
+    __table_args__ = (UniqueConstraint("generation_id", name="uq_astrotype_v2_report_generations_generation_id"),)
+
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    celery_task_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("person_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("astrotype_v2_natal_reports.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
+    diagnostics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+
 class NatalInfographicData(BaseModel):
     """Deterministic calculation-layer view-model data for the canonical v2 sample UI."""
 

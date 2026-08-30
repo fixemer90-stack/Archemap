@@ -110,6 +110,15 @@ docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail
 docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail=200 caddy
 ```
 
+## Astrotype v2 report-generation incidents
+
+For v2 report generation, use the operator runbook at
+`docs/features/E16-v2-e17-section-evidence-grounding/RUNBOOK.md`.
+
+Important production safety rule: retry/regenerate with a new `generation_id`; do not
+truncate v2 generated tables and do not delete generated content directories during
+incident response.
+
 ## Backups
 
 Database volume backup:

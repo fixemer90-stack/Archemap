@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -56,18 +56,29 @@ The status endpoint must return real state:
 
 ## Acceptance criteria
 
-- [ ] `generation_id` from POST response can be looked up later.
-- [ ] Status endpoint returns 404 for unknown ids, not fake queued state.
-- [ ] Status endpoint is owner-scoped.
-- [ ] Worker logs include `generation_id` for every task start/success/failure.
-- [ ] Section-level failures expose actionable diagnostics without leaking secrets.
+- [x] `generation_id` from POST response can be looked up later.
+- [x] Status endpoint returns 404 for unknown ids, not fake queued state.
+- [x] Status endpoint is owner-scoped.
+- [x] Worker logs include `generation_id` for every task start/success/failure.
+- [x] Section-level failures expose actionable diagnostics without leaking secrets.
 
 ## Verification
 
 ```bash
 cd backend
-uv run pytest tests/unit/test_astrotype_v2/test_api_runtime.py tests/unit/test_astrotype_v2/test_router.py -v --tb=short
+uv run python -m py_compile app/modules/astrotype_v2/router.py app/modules/astrotype_v2/api_runtime.py app/modules/astrotype_v2/models.py app/modules/astrotype_v2/repository.py workers/tasks/astrotype_v2.py
+uv run pytest tests/unit/test_astrotype_v2/test_api_runtime.py tests/unit/test_astrotype_v2/test_worker_runtime.py -q
+uv run pytest tests/unit/test_astrotype_v2 -q
 uv run alembic upgrade head
-uv run ruff check app/modules/astrotype_v2 app/api/v1 workers/tasks tests/unit/test_astrotype_v2
-uv run mypy app/modules/astrotype_v2 app/api/v1 workers/tasks tests/unit/test_astrotype_v2
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy app tests
 ```
+
+Fresh verification on 2026-08-30:
+
+- focused API/runtime tests: `14 passed`;
+- full v2 unit suite: `140 passed`;
+- local Alembic upgrade applied `c2d3e4f5a6b7`;
+- ruff: `All checks passed!`, `291 files already formatted`;
+- mypy: `Success: no issues found in 260 source files`.

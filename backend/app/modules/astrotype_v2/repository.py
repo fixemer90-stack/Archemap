@@ -226,6 +226,27 @@ class AstrotypeV2Repository:
         )
         return result.scalar_one_or_none()
 
+    async def get_generation_for_user(
+        self, *, generation_id: uuid.UUID, user_id: uuid.UUID
+    ) -> models.NatalReportGeneration | None:
+        """Return one generation status row only when owned by the user."""
+
+        result = await self.session.execute(
+            select(models.NatalReportGeneration).where(
+                models.NatalReportGeneration.generation_id == generation_id,
+                models.NatalReportGeneration.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_generation(self, generation_id: uuid.UUID) -> models.NatalReportGeneration | None:
+        """Return one generation status row by id for worker-owned transitions."""
+
+        result = await self.session.execute(
+            select(models.NatalReportGeneration).where(models.NatalReportGeneration.generation_id == generation_id)
+        )
+        return result.scalar_one_or_none()
+
     async def get_latest_report_for_profile(
         self, *, profile_id: uuid.UUID, user_id: uuid.UUID
     ) -> models.NatalReport | None:

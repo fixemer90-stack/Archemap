@@ -11,6 +11,7 @@ from datetime import UTC, datetime, time
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
+import structlog
 from sqlalchemy import select
 
 from app.chart_engine.chart import build_chart
@@ -51,6 +52,7 @@ _ENGINE_VERSION = "0.1.5"
 _DETERMINISTIC_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
 _DETERMINISTIC_PROVIDER = "deterministic"
 _DETERMINISTIC_MODEL = "v2-local-runtime"
+logger = structlog.get_logger()
 
 
 @app.task(  # type: ignore[untyped-decorator]
@@ -92,14 +94,43 @@ async def _generate_natal_report_v2_async(
 
     profile_uuid = uuid.UUID(profile_id)
     user_uuid = uuid.UUID(user_id)
+    generation_uuid = uuid.UUID(generation_id)
     async with async_session_factory() as db:
         repository = AstrotypeV2Repository(db)
         try:
+            logger.info(
+                "astrotype_v2_generation_started",
+                generation_id=generation_id,
+                profile_id=profile_id,
+                user_id=user_id,
+                force=force,
+            )
+            await _persist_generation_status(
+                repository=repository,
+                generation_id=generation_uuid,
+                status="running",
+                diagnostics={"force": force, "stage": "started"},
+            )
+            await db.commit()
             existing_report = await repository.get_latest_report_for_profile(
                 profile_id=profile_uuid,
                 user_id=user_uuid,
             )
             if existing_report is not None and not force:
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status="already_exists",
+                    report_id=existing_report.id,
+                    diagnostics={"stage": "existing_report_reused"},
+                )
+                await db.commit()
+                logger.info(
+                    "astrotype_v2_generation_reused_existing_report",
+                    generation_id=generation_id,
+                    report_id=str(existing_report.id),
+                    profile_id=profile_id,
+                )
                 return _task_payload(
                     generation_id=generation_id,
                     profile_id=profile_uuid,
@@ -114,6 +145,20 @@ async def _generate_natal_report_v2_async(
                     user_id=user_uuid,
                 )
                 if existing_report is not None:
+                    await _persist_generation_status(
+                        repository=repository,
+                        generation_id=generation_uuid,
+                        status="already_exists",
+                        report_id=existing_report.id,
+                        diagnostics={"stage": "existing_report_reused_after_wait"},
+                    )
+                    await db.commit()
+                    logger.info(
+                        "astrotype_v2_generation_reused_existing_report_after_wait",
+                        generation_id=generation_id,
+                        report_id=str(existing_report.id),
+                        profile_id=profile_id,
+                    )
                     return _task_payload(
                         generation_id=generation_id,
                         profile_id=profile_uuid,
@@ -195,6 +240,13 @@ async def _generate_natal_report_v2_async(
             deterministic_payload = dict(report.assembled_payload or {})
             report.status = "narrative_generating"
             report.assembled_payload = report.assembled_payload | {"status": "narrative_generating"}
+            await _persist_generation_status(
+                repository=repository,
+                generation_id=generation_uuid,
+                status="narrative_generating",
+                report_id=report_id,
+                diagnostics={"stage": "segments"},
+            )
             await repository.flush()
             await db.commit()
 
@@ -227,13 +279,27 @@ async def _generate_natal_report_v2_async(
                 report.deterministic_payload = complete_report.deterministic_payload
                 report.narrative_payload = complete_report.narrative_payload
                 report.assembled_payload = complete_report.assembled_payload
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status=complete_report.status,
+                    report_id=report_id,
+                    diagnostics={"stage": "assembled"},
+                )
                 await repository.flush()
                 await db.commit()
+                logger.info(
+                    "astrotype_v2_generation_finished",
+                    generation_id=generation_id,
+                    report_id=str(report_id),
+                    profile_id=profile_id,
+                    status=report.status,
+                )
                 return _task_payload(
                     generation_id=generation_id,
                     profile_id=profile_uuid,
                     report=report,
-                    status="ready",
+                    status=report.status,
                     force=force,
                 )
             except Exception as exc:
@@ -246,8 +312,22 @@ async def _generate_natal_report_v2_async(
                     "status": "narrative_failed",
                     "error": str(exc),
                 }
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status="narrative_failed",
+                    report_id=report_id,
+                    diagnostics={"stage": "segments", "error": str(exc)},
+                )
                 await repository.flush()
                 await db.commit()
+                logger.error(
+                    "astrotype_v2_generation_narrative_failed",
+                    generation_id=generation_id,
+                    report_id=str(report_id),
+                    profile_id=profile_id,
+                    error=str(exc),
+                )
                 return _task_payload(
                     generation_id=generation_id,
                     profile_id=profile_uuid,
@@ -255,8 +335,22 @@ async def _generate_natal_report_v2_async(
                     status="narrative_failed",
                     force=force,
                 )
-        except Exception:
+        except Exception as exc:
             await db.rollback()
+            await _persist_generation_status(
+                repository=repository,
+                generation_id=generation_uuid,
+                status="failed",
+                diagnostics={"stage": "pipeline", "error": "generation aborted"},
+            )
+            await db.commit()
+            logger.exception(
+                "astrotype_v2_generation_failed",
+                generation_id=generation_id,
+                profile_id=profile_id,
+                user_id=user_id,
+                error=str(exc),
+            )
             raise
 
 
@@ -332,6 +426,25 @@ async def _get_or_create_chart(
     )
     await persist_natal_chart_rows(repository, rows)
     return rows.chart
+
+
+async def _persist_generation_status(
+    *,
+    repository: AstrotypeV2Repository,
+    generation_id: uuid.UUID,
+    status: str,
+    report_id: uuid.UUID | None = None,
+    diagnostics: dict[str, Any] | None = None,
+) -> None:
+    generation = await repository.get_generation(generation_id)
+    if generation is None:
+        return
+    generation.status = status
+    if report_id is not None:
+        generation.report_id = report_id
+    if diagnostics:
+        generation.diagnostics = {**dict(generation.diagnostics or {}), **diagnostics}
+    await repository.flush()
 
 
 async def _create_fact_rows(

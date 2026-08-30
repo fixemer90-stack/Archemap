@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Annotated, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, Response
@@ -14,10 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_db
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.api_runtime import (
+    EnqueuedGenerationResponse,
+    build_generation_accepted_response,
     build_generation_status_payload,
     build_report_progress_v2,
     build_report_read_payload_v2,
-    enqueue_v2_report_generation,
 )
 from app.modules.astrotype_v2.fact_view import build_fact_evidence_payload
 from app.modules.astrotype_v2.infographic_data import build_infographic_api_payload_v2
@@ -61,7 +62,9 @@ async def generate_v2_report(
 
     from workers.tasks.astrotype_v2 import generate_natal_report_v2
 
-    response = enqueue_v2_report_generation(
+    response = await _enqueue_persisted_v2_generation(
+        repository=repository,
+        db=db,
         profile_id=body.profile_id,
         user_id=current_user,
         queue=generate_natal_report_v2,
@@ -76,14 +79,16 @@ async def get_v2_generation_status(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
-    """Return coarse status for an accepted generation id."""
+    """Return persisted status for an accepted generation id."""
 
     repository = AstrotypeV2Repository(db)
-    report = await repository.get_report_for_generation(
-        generation_id=generation_id,
-        user_id=current_user,
-    )
-    return build_generation_status_payload(generation_id=generation_id, report=report)
+    generation = await repository.get_generation_for_user(generation_id=generation_id, user_id=current_user)
+    if generation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
+    report = await repository.get_report_for_generation(generation_id=generation_id, user_id=current_user)
+    outline = await repository.get_outline_for_chart(report.chart_id) if report is not None else None
+    segments = await repository.list_segments_for_outline(outline.id) if outline is not None else []
+    return build_generation_status_payload(generation=generation, report=report, outline=outline, segments=segments)
 
 
 @router.get("/reports/{report_id}")
@@ -231,7 +236,9 @@ async def regenerate_v2_report(
 
     from workers.tasks.astrotype_v2 import generate_natal_report_v2
 
-    response = enqueue_v2_report_generation(
+    response = await _enqueue_persisted_v2_generation(
+        repository=repository,
+        db=db,
         profile_id=chart.profile_id,
         user_id=current_user,
         queue=generate_natal_report_v2,
@@ -239,6 +246,46 @@ async def regenerate_v2_report(
     )
     payload = {**response.payload, "previous_report_id": str(report.id)}
     return JSONResponse(status_code=response.status_code, content=payload)
+
+
+async def _enqueue_persisted_v2_generation(
+    *,
+    repository: AstrotypeV2Repository,
+    db: AsyncSession,
+    profile_id: UUID,
+    user_id: UUID,
+    queue: Any,
+    force: bool,
+) -> EnqueuedGenerationResponse:
+    generation_id = uuid4()
+    generation = models.NatalReportGeneration(
+        generation_id=generation_id,
+        user_id=user_id,
+        profile_id=profile_id,
+        status="queued",
+        diagnostics={"force": force},
+    )
+    await repository.add(generation)
+    await repository.flush()
+    await db.commit()
+
+    task = queue.delay(
+        profile_id=str(profile_id),
+        user_id=str(user_id),
+        generation_id=str(generation_id),
+        force=force,
+    )
+    generation.celery_task_id = str(getattr(task, "id", "")) or None
+    await repository.flush()
+    await db.commit()
+    payload = build_generation_accepted_response(
+        profile_id=profile_id,
+        user_id=user_id,
+        generation_id=generation_id,
+        force=force,
+    )
+    payload["celery_task_id"] = generation.celery_task_id
+    return EnqueuedGenerationResponse(payload=payload)
 
 
 async def _load_report_for_user(

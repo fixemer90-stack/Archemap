@@ -127,26 +127,32 @@ def build_report_read_payload_v2(
 
 def build_generation_status_payload(
     *,
-    generation_id: uuid.UUID,
+    generation: models.NatalReportGeneration,
     report: models.NatalReport | None = None,
+    outline: models.ReportOutline | None = None,
+    segments: list[models.ReportSegmentGeneration] | None = None,
 ) -> dict[str, Any]:
-    """Return status for an accepted generation id, exposing the report row when present."""
-    if report is None:
-        return {
-            "contract_version": "astrotype_v2_generation_status_v1",
-            "generation_id": str(generation_id),
-            "status": "queued_or_running",
-        }
-    return {
+    """Return persisted status and section diagnostics for an accepted generation id."""
+
+    segment_items = _generation_section_diagnostics(outline=outline, segments=segments or [])
+    payload = {
         "contract_version": "astrotype_v2_generation_status_v1",
-        "generation_id": str(generation_id),
-        "status": report.status,
-        "report_id": str(report.id),
-        "links": {
+        "generation_id": str(generation.generation_id),
+        "status": generation.status,
+        "profile_id": str(generation.profile_id),
+        "report_id": str(report.id if report is not None else generation.report_id)
+        if (report is not None or generation.report_id)
+        else None,
+        "celery_task_id": generation.celery_task_id,
+        "sections": segment_items,
+        "diagnostics": generation.diagnostics,
+    }
+    if report is not None:
+        payload["links"] = {
             "report": f"/api/v1/astrotype-v2/reports/{report.id}",
             "progress": f"/api/v1/astrotype-v2/reports/{report.id}/progress",
-        },
-    }
+        }
+    return payload
 
 
 def _overall_status(*, report: models.NatalReport, failed_segments: int, running_segments: int) -> str:
@@ -157,6 +163,39 @@ def _overall_status(*, report: models.NatalReport, failed_segments: int, running
     if running_segments:
         return "running"
     return report.status
+
+
+def _generation_section_diagnostics(
+    *,
+    outline: models.ReportOutline | None,
+    segments: list[models.ReportSegmentGeneration],
+) -> list[dict[str, Any]]:
+    segment_by_key = {segment.section_key: segment for segment in segments}
+    outline_sections = outline.outline.get("sections", []) if outline is not None else []
+    section_keys = list(outline.section_keys) if outline is not None and outline.section_keys else []
+    if not section_keys:
+        section_keys = [str(section.get("id")) for section in outline_sections if section.get("id")]
+    if not section_keys:
+        section_keys = sorted(segment_by_key)
+
+    outline_by_key = {str(section.get("id")): section for section in outline_sections if section.get("id")}
+    diagnostics: list[dict[str, Any]] = []
+    for section_key in section_keys:
+        outline_section = outline_by_key.get(section_key, {})
+        segment = segment_by_key.get(section_key)
+        diagnostics.append(
+            {
+                "section_id": section_key,
+                "grounding_status": outline_section.get("grounding_status"),
+                "owned_evidence_count": outline_section.get("owned_evidence_count"),
+                "reference_evidence_count": outline_section.get("reference_evidence_count"),
+                "segment_status": segment.status if segment is not None else "pending",
+                "provider": segment.provider if segment is not None else None,
+                "model": segment.model if segment is not None else None,
+                "error": segment.error if segment is not None else None,
+            }
+        )
+    return diagnostics
 
 
 def _ordered_segments(

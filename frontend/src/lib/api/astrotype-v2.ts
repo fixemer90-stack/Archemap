@@ -12,6 +12,41 @@ export interface AstrotypeV2GenerationResponse {
   };
 }
 
+export type AstrotypeV2GenerationStatus =
+  | "queued"
+  | "running"
+  | "narrative_generating"
+  | "partial"
+  | "complete"
+  | "narrative_failed"
+  | "failed"
+  | "already_exists"
+  | string;
+
+export interface AstrotypeV2GenerationStatusResponse {
+  contract_version: "astrotype_v2_generation_status_v1";
+  generation_id: string;
+  status: AstrotypeV2GenerationStatus;
+  profile_id: string;
+  report_id: string | null;
+  celery_task_id?: string | null;
+  sections: Array<{
+    section_id: string;
+    grounding_status: string | null;
+    owned_evidence_count: number | null;
+    reference_evidence_count: number | null;
+    segment_status: string;
+    provider: string | null;
+    model: string | null;
+    error: string | null;
+  }>;
+  diagnostics: Record<string, unknown>;
+  links?: {
+    report?: string;
+    progress?: string;
+  };
+}
+
 export interface AstrotypeV2ProgressResponse {
   contract_version: "astrotype_v2_report_progress_v1";
   report_id: string;
@@ -88,6 +123,14 @@ export function fetchAstrotypeV2Report(
 ): Promise<AstrotypeV2ReportResponse> {
   return api.get<AstrotypeV2ReportResponse>(
     `/api/v1/astrotype-v2/reports/${reportId}`,
+  );
+}
+
+export function fetchAstrotypeV2GenerationStatus(
+  generationId: string,
+): Promise<AstrotypeV2GenerationStatusResponse> {
+  return api.get<AstrotypeV2GenerationStatusResponse>(
+    `/api/v1/astrotype-v2/reports/generations/${generationId}`,
   );
 }
 

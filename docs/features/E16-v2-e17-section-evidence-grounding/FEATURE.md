@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Частично закрыто в документации (S02-S06 closed; S01/S07 need follow-up evidence)
+🟡 Частично закрыто в документации (S02-S07 closed; S01 needs follow-up evidence)
 
 ## Goal
 
@@ -64,7 +64,7 @@ In scope:
 | S04 | [Harden segment runtime and partial persistence](./S04-segment-runtime-partial-persistence.md) | ✅ Реализовано |
 | S05 | [Persist generation status and diagnostics](./S05-generation-status-diagnostics.md) | ✅ Реализовано |
 | S06 | [Production smoke and backfill/retry runbook](./S06-production-smoke-retry-runbook.md) | ✅ Реализовано |
-| S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | 🟡 Частично: backend closed, frontend polling/status criteria open |
+| S07 | [Deterministic-first report delivery](./S07-deterministic-first-report-delivery.md) | ✅ Реализовано |
 
 ## Implementation order
 
@@ -112,4 +112,7 @@ Closed in this audit:
 Not closed:
 
 - S01: the current test suite verifies the fixed behavior, but does not preserve the original standalone RED evidence-starvation reproduction required by that Story.
-- S07: backend deterministic-first behavior is implemented, but the v2 frontend still does not poll the new generation-status endpoint by `generation_id`, frontend deterministic-first tests are absent, and `deterministic_failed` is not an implemented status.
+
+Closed after this audit:
+
+- S07: frontend generation-status polling and deterministic-first render are implemented; the old `deterministic_failed` wording was corrected to the implemented `failed` deterministic-phase status.

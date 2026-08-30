@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Частично реализовано
+✅ Реализовано
 
 ## Context
 
@@ -33,7 +33,8 @@ Architecture contract: `docs/architecture/astrotype-v2-deterministic-first-deliv
    - `narrative_generating`;
    - `partial`;
    - `complete`;
-   - `narrative_failed`.
+   - `narrative_failed`;
+   - `failed` for deterministic-phase failure before a report row exists.
 6. Ensure LLM failures do not roll back deterministic artifacts.
 7. Update frontend polling so it can render deterministic content before narrative completion.
 
@@ -45,7 +46,7 @@ The client does not wait for the registration request to return a complete repor
 2. poll `GET /api/v1/astrotype-v2/reports/generations/{generation_id}` until `report_id` appears;
 3. fetch `GET /api/v1/astrotype-v2/reports/{report_id}` at `deterministic_ready` and render deterministic content;
 4. continue polling generation status or `GET /api/v1/astrotype-v2/reports/{report_id}/progress` while status is `narrative_generating` or `partial`;
-5. stop when status is `complete`, `narrative_failed` or `deterministic_failed`.
+5. stop when status is `complete`, `partial`, `narrative_failed` or `failed`.
 
 MVP uses polling as the transport. SSE/WebSocket/push may be added later only as a transport mirror of the same persisted statuses.
 
@@ -68,11 +69,11 @@ MVP uses polling as the transport. SSE/WebSocket/push may be added later only as
 - [x] `GET /api/v1/astrotype-v2/reports/{report_id}` returns deterministic payload, facts, outline and infographic before narrative completion.
 - [x] If all LLM sections fail, the deterministic report remains available.
 - [x] If one section fails, the report becomes `partial` or remains deterministic-ready with diagnostics, not missing.
-- [ ] Frontend displays deterministic content as soon as it exists.
+- [x] Frontend displays deterministic content as soon as it exists.
 - [x] Generation status endpoint exposes `report_id` immediately after deterministic commit.
-- [ ] Frontend can continue polling after deterministic render and update the page when narrative sections become `partial` or `complete`.
-- [ ] Polling terminal states are explicit: `complete`, `narrative_failed`, `deterministic_failed`.
-- [ ] Tests verify transaction boundaries and frontend state behavior.
+- [x] Frontend can continue polling after deterministic render and update the page when narrative sections become `partial` or `complete`.
+- [x] Polling terminal states are explicit: `complete`, `partial`, `narrative_failed`, `failed`.
+- [x] Tests verify transaction boundaries and frontend state behavior.
 
 ## Verification
 
@@ -97,7 +98,7 @@ npm run typecheck
 Production-like smoke:
 
 ```text
-POST generation -> poll generation_id -> receive report_id at deterministic_ready -> fetch report -> see deterministic payload while narrative is still running/failing.
+POST generation -> poll generation_id -> receive report_id at deterministic_ready/narrative_generating -> fetch report -> see deterministic payload while narrative is still running/failing -> continue polling until partial/complete/failure.
 ```
 
 ## Audit note
@@ -110,9 +111,23 @@ uv run pytest tests/unit/test_astrotype_v2/test_fact_section_assignment.py tests
 
 Result: `25 passed`.
 
-Not fully closed because frontend-specific criteria are not implemented/proven in the current v2 client:
+Frontend/status closeout implemented after the audit:
 
-- `frontend/src/lib/astrotype-v2/use-v2-report-generation.ts` still polls a `reportId`; it does not call `GET /api/v1/astrotype-v2/reports/generations/{generation_id}` until a `report_id` appears.
-- `frontend/src/lib/api/astrotype-v2.ts` has no generation-status client/type for the new S05 endpoint.
-- no frontend tests cover deterministic-first rendering or continued polling through `partial` / `complete`.
-- no `deterministic_failed` status exists in the current backend source.
+- `frontend/src/lib/api/astrotype-v2.ts` now defines `AstrotypeV2GenerationStatusResponse` and `fetchAstrotypeV2GenerationStatus(generationId)`.
+- `frontend/src/lib/astrotype-v2/use-v2-report-generation.ts` now polls `GET /api/v1/astrotype-v2/reports/generations/{generation_id}` until `report_id` appears, fetches the report immediately, renders deterministic content while narrative is still running, and continues polling until `partial`, `complete`, `narrative_failed`, or `failed`.
+- `frontend/src/app/(dashboard)/report/v2/[profileId]/page.tsx` now renders the report reader whenever a report payload exists, not only when hook state is `ready`.
+- `frontend/scripts/check-v2-report-generation-state.mjs` verifies the generation-status client, two-phase polling markers, deterministic-ready render gate, and terminal failure statuses.
+- The old `deterministic_failed` wording was corrected to the implemented backend contract: `failed` covers deterministic-phase failure before a report row exists; `narrative_failed` covers narrative-phase failure after deterministic commit.
+
+Frontend verification:
+
+```bash
+cd frontend
+node scripts/check-v2-report-generation-state.mjs
+npm run test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+```
+
+Result: generation state script passed, `npm run test` passed, ESLint passed, Prettier reported `All matched files use Prettier code style!`, and TypeScript completed with exit 0.

@@ -25,11 +25,27 @@ for (const state of [
 assert.match(hook, /MAX_POLL_ATTEMPTS/);
 assert.match(hook, /clearPollTimer/);
 assert.match(hook, /generateAstrotypeV2Report/);
+assert.match(hook, /fetchAstrotypeV2GenerationStatus/);
 assert.match(hook, /fetchAstrotypeV2Report/);
 assert.match(hook, /regenerate/);
 assert.match(hook, /retry/);
+assert.match(hook, /generationId/);
+assert.match(hook, /scheduleGenerationPoll/);
+assert.match(hook, /pollGenerationStatus/);
+assert.match(hook, /TERMINAL_GENERATION_STATUSES/);
+assert.match(hook, /VISIBLE_REPORT_STATUSES/);
+assert.match(hook, /deterministic_ready/);
+assert.match(hook, /narrative_generating/);
+assert.match(hook, /partial/);
+assert.match(hook, /complete/);
 
 assert.match(page, /useV2ReportGeneration/);
+assert.match(page, /if \(generation\.report\)/);
+assert.doesNotMatch(
+  page,
+  /generation\.state === "ready" && generation\.report/,
+  "page must render deterministic-ready reports before final ready state",
+);
 assert.equal(
   page.includes("window.setTimeout"),
   false,
@@ -53,6 +69,19 @@ const apiSource = readFileSync(
   "utf8",
 );
 const pageSource = readFileSync(join(root, pagePath), "utf8");
+for (const marker of [
+  "AstrotypeV2GenerationStatusResponse",
+  "fetchAstrotypeV2GenerationStatus",
+  "/api/v1/astrotype-v2/reports/generations/${generationId}",
+  "narrative_failed",
+  "failed",
+]) {
+  assert.equal(
+    apiSource.includes(marker),
+    true,
+    `missing generation status marker: ${marker}`,
+  );
+}
 for (const marker of [
   "downloadAstrotypeV2ReportPdf",
   "/api/v1/astrotype-v2/reports/${reportId}/pdf",

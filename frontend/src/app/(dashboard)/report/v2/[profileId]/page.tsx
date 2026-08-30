@@ -50,7 +50,7 @@ export default function AstrotypeV2ReportPage() {
   const profileId = params.profileId as string;
   const generation = useV2ReportGeneration(profileId);
 
-  if (generation.state === "ready" && generation.report) {
+  if (generation.report) {
     return <ReportReady report={generation.report} />;
   }
 
@@ -66,6 +66,11 @@ export default function AstrotypeV2ReportPage() {
           <p className="text-xs text-muted-foreground">
             state: {generation.state}
           </p>
+          {generation.generationId && (
+            <p className="text-xs text-muted-foreground">
+              generation_id: {generation.generationId}
+            </p>
+          )}
           {generation.reportId && (
             <p className="text-xs text-muted-foreground">
               report_id: {generation.reportId}

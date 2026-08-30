@@ -26,12 +26,21 @@ from app.modules.astrotype_v2.fact_extractor import (
     build_placement_fact_rows,
 )
 from app.modules.astrotype_v2.infographic_data import build_natal_infographic_data_row
-from app.modules.astrotype_v2.llm_segments import StructuredSegmentProviderAdapter, run_segment_generation_v2
+from app.modules.astrotype_v2.llm_segments import (
+    DEFAULT_SEGMENT_PROMPT_VERSION,
+    StructuredSegmentProviderAdapter,
+    run_segment_generation_v2,
+)
 from app.modules.astrotype_v2.outline import ReportOutlineV2, build_report_outline_row, build_report_outline_v2
-from app.modules.astrotype_v2.report_assembler import build_deterministic_natal_report_row, build_natal_report_row
+from app.modules.astrotype_v2.report_assembler import (
+    build_deterministic_natal_report_row,
+    build_natal_report_row,
+    build_partial_natal_report_row,
+)
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2
 from app.modules.astrotype_v2.segment_inputs import build_section_render_inputs_v2
+from app.modules.astrotype_v2.segment_validation import SegmentValidationError
 from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, build_natal_synthesis_row
 from app.modules.llm.provider import get_llm_provider
 from app.modules.profiles.models import PersonProfile
@@ -196,14 +205,24 @@ async def _generate_natal_report_v2_async(
                     outline=outline,
                     synthesis=_synthesis_contract(chart.id, synthesis),
                 )
-                complete_report = build_natal_report_row(
-                    chart_id=chart.id,
-                    synthesis_row=synthesis,
-                    outline_row=outline,
-                    infographic_row=infographic,
-                    segment_rows=segments,
-                    previous_version=report.version - 1,
-                )
+                if _all_required_segments_ready(outline=outline, segments=segments):
+                    complete_report = build_natal_report_row(
+                        chart_id=chart.id,
+                        synthesis_row=synthesis,
+                        outline_row=outline,
+                        infographic_row=infographic,
+                        segment_rows=segments,
+                        previous_version=report.version - 1,
+                    )
+                else:
+                    complete_report = build_partial_natal_report_row(
+                        chart_id=chart.id,
+                        synthesis_row=synthesis,
+                        outline_row=outline,
+                        infographic_row=infographic,
+                        segment_rows=segments,
+                        previous_version=report.version - 1,
+                    )
                 report.status = complete_report.status
                 report.deterministic_payload = complete_report.deterministic_payload
                 report.narrative_payload = complete_report.narrative_payload
@@ -395,9 +414,19 @@ async def _ensure_llm_segments(
             and existing.model == settings.LLM_MODEL
         )
     ]
+    running_segments = [
+        _running_segment(section_input=section_input, outline_id=outline.id) for section_input in generation_inputs
+    ]
+    new_running_segments = _upsert_segments(existing_by_key=by_key, new_segments=running_segments)
+    if new_running_segments:
+        await repository.add_many(new_running_segments)
+    if running_segments:
+        await repository.flush()
+        await repository.session.commit()
+
     generated_segments = await asyncio.gather(
         *(
-            run_segment_generation_v2(
+            _generate_llm_segment_safely(
                 provider=segment_provider,
                 section_input=section_input,
                 outline_id=outline.id,
@@ -406,9 +435,95 @@ async def _ensure_llm_segments(
         )
     )
 
-    new_segments: list[models.ReportSegmentGeneration] = []
-    for segment in generated_segments:
-        existing = by_key.get(segment.section_key)
+    new_segments = _upsert_segments(existing_by_key=by_key, new_segments=generated_segments)
+    if new_segments:
+        await repository.add_many(new_segments)
+    await repository.flush()
+    existing_segments = await repository.list_segments_for_outline(outline.id)
+    return existing_segments
+
+
+async def _generate_llm_segment_safely(
+    *,
+    provider: Any,
+    section_input: Any,
+    outline_id: uuid.UUID,
+) -> models.ReportSegmentGeneration:
+    try:
+        return await run_segment_generation_v2(
+            provider=provider,
+            section_input=section_input,
+            outline_id=outline_id,
+        )
+    except SegmentValidationError as exc:
+        return _failed_segment(
+            section_input=section_input,
+            outline_id=outline_id,
+            status="failed_validation",
+            exc=exc,
+        )
+    except Exception as exc:
+        return _failed_segment(
+            section_input=section_input,
+            outline_id=outline_id,
+            status="failed_provider",
+            exc=exc,
+        )
+
+
+def _running_segment(*, section_input: Any, outline_id: uuid.UUID) -> models.ReportSegmentGeneration:
+    return models.ReportSegmentGeneration(
+        chart_id=section_input.chart_id,
+        outline_id=outline_id,
+        section_key=section_input.section_id,
+        status="running",
+        provider=settings.LLM_PROVIDER,
+        model=settings.LLM_MODEL,
+        prompt_version=DEFAULT_SEGMENT_PROMPT_VERSION,
+        payload={"request": section_input.to_payload(), "request_hash": _stable_hash(section_input.to_payload())},
+        error=None,
+    )
+
+
+def _failed_segment(
+    *,
+    section_input: Any,
+    outline_id: uuid.UUID,
+    status: str,
+    exc: Exception,
+) -> models.ReportSegmentGeneration:
+    error_class = type(exc).__name__
+    message = str(exc)
+    request_payload = section_input.to_payload()
+    return models.ReportSegmentGeneration(
+        chart_id=section_input.chart_id,
+        outline_id=outline_id,
+        section_key=section_input.section_id,
+        status=status,
+        provider=settings.LLM_PROVIDER,
+        model=settings.LLM_MODEL,
+        prompt_version=DEFAULT_SEGMENT_PROMPT_VERSION,
+        payload={
+            "request": request_payload,
+            "request_hash": _stable_hash(request_payload),
+            "error": {
+                "class": error_class,
+                "message": message,
+                "retry_scope": "section_only",
+            },
+        },
+        error=f"{error_class}: {message}",
+    )
+
+
+def _upsert_segments(
+    *,
+    existing_by_key: dict[str, models.ReportSegmentGeneration],
+    new_segments: list[models.ReportSegmentGeneration],
+) -> list[models.ReportSegmentGeneration]:
+    created: list[models.ReportSegmentGeneration] = []
+    for segment in new_segments:
+        existing = existing_by_key.get(segment.section_key)
         if existing is not None:
             existing.status = segment.status
             existing.provider = segment.provider
@@ -417,12 +532,22 @@ async def _ensure_llm_segments(
             existing.payload = segment.payload
             existing.error = segment.error
             continue
-        new_segments.append(segment)
-    if new_segments:
-        await repository.add_many(new_segments)
-        await repository.flush()
-        existing_segments = await repository.list_segments_for_outline(outline.id)
-    return existing_segments
+        existing_by_key[segment.section_key] = segment
+        created.append(segment)
+    return created
+
+
+def _all_required_segments_ready(
+    *, outline: models.ReportOutline, segments: list[models.ReportSegmentGeneration]
+) -> bool:
+    required_section_keys = outline.section_keys or [
+        str(section["id"]) for section in outline.outline.get("sections", []) if "id" in section
+    ]
+    by_key = {segment.section_key: segment for segment in segments}
+    return bool(required_section_keys) and all(
+        (segment := by_key.get(section_key)) is not None and segment.status == "ready"
+        for section_key in required_section_keys
+    )
 
 
 async def _ensure_deterministic_segments(

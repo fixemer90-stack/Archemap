@@ -209,6 +209,71 @@ def build_natal_report_row(
     )
 
 
+def build_partial_natal_report_row(
+    *,
+    chart_id: uuid.UUID,
+    synthesis_row: models.NatalSynthesis,
+    outline_row: models.ReportOutline,
+    infographic_row: models.NatalInfographicData,
+    segment_rows: list[models.ReportSegmentGeneration],
+    previous_version: int | None = None,
+) -> models.NatalReport:
+    """Build a report artifact from ready sections plus stored section diagnostics."""
+
+    next_version = (previous_version or 0) + 1
+    required_section_keys = _required_section_keys(outline_row)
+    by_key = {segment.section_key: segment for segment in segment_rows}
+    ready_segments = [by_key[key] for key in required_section_keys if key in by_key and by_key[key].status == "ready"]
+    if not ready_segments:
+        raise ReportAssemblyError("partial report requires at least one ready segment")
+
+    sections = [_section_from_segment(segment) for segment in ready_segments]
+    _validate_sections(sections=sections, synthesis_row=synthesis_row)
+    evidence_index = _build_evidence_index(sections=sections)
+    technical_basis = _build_technical_basis(
+        synthesis_row=synthesis_row,
+        outline_row=outline_row,
+        infographic_row=infographic_row,
+    )
+    diagnostics = _segment_diagnostics(segment_rows=segment_rows)
+    deterministic_payload = {
+        "synthesis": synthesis_row.payload,
+        "outline": outline_row.outline,
+        "technical_basis": technical_basis,
+    }
+    narrative_payload = {
+        "sections": [_section_payload(section, index) for index, section in enumerate(sections, start=1)],
+        "section_order": required_section_keys,
+        "evidence_index": evidence_index,
+        "segment_diagnostics": diagnostics,
+    }
+    assembled_payload = {
+        "contract_version": REPORT_CONTRACT_VERSION,
+        "chart_id": str(chart_id),
+        "version": next_version,
+        "status": "partial",
+        "reader_view": _reader_view_payload(status_label="Часть текстовых разделов готова"),
+        "input_hashes": _input_hashes(
+            synthesis_row=synthesis_row,
+            outline_row=outline_row,
+            infographic_row=infographic_row,
+            segment_rows=ready_segments,
+        ),
+        "version_lineage": {"previous_version": previous_version, "version": next_version},
+    }
+    return models.NatalReport(
+        chart_id=chart_id,
+        synthesis_id=getattr(synthesis_row, "id", None),
+        outline_id=getattr(outline_row, "id", None),
+        infographic_data_id=getattr(infographic_row, "id", None),
+        status="partial",
+        version=next_version,
+        deterministic_payload=deterministic_payload,
+        narrative_payload=narrative_payload,
+        assembled_payload=assembled_payload,
+    )
+
+
 def _required_section_keys(outline_row: models.ReportOutline) -> list[str]:
     if outline_row.section_keys:
         return list(outline_row.section_keys)
@@ -252,6 +317,18 @@ def _section_from_segment(segment_row: models.ReportSegmentGeneration) -> NatalR
         evidence_ids=list(response.evidence_ids),
         source_segment_hash=segment_row.payload.get("response_hash"),
     )
+
+
+def _segment_diagnostics(segment_rows: list[models.ReportSegmentGeneration]) -> list[dict[str, Any]]:
+    return [
+        {
+            "section_key": segment.section_key,
+            "status": segment.status,
+            "error": segment.error,
+        }
+        for segment in segment_rows
+        if segment.status != "ready"
+    ]
 
 
 def _section_payload(section: NatalReportSectionV2, index: int) -> dict[str, Any]:

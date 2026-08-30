@@ -279,6 +279,39 @@ def test_build_natal_report_row_versions_without_overwriting_prior_artifacts() -
     assert report.assembled_payload["input_hashes"]["segments"]
 
 
+def test_build_partial_natal_report_row_preserves_ready_sections_and_failed_diagnostics() -> None:
+    from app.modules.astrotype_v2.report_assembler import build_partial_natal_report_row
+
+    chart_id = uuid.uuid4()
+    failed = _segment("perception_and_mind", _BODY_MIND, "theme:mind:mercury", "ev:mercury")
+    failed.status = "failed_validation"
+    failed.error = "SegmentValidationError: missing depth moves"
+    failed.payload = {"error": {"class": "SegmentValidationError", "message": "missing depth moves"}}
+
+    report = build_partial_natal_report_row(
+        chart_id=chart_id,
+        synthesis_row=_synthesis_row(chart_id),
+        outline_row=_outline_row(chart_id),
+        infographic_row=_infographic_row(chart_id),
+        segment_rows=[
+            _segment("core_pattern", _BODY_CORE, "theme:core:sun", "ev:sun"),
+            failed,
+        ],
+        previous_version=7,
+    )
+
+    assert report.status == "partial"
+    assert report.version == 8
+    assert report.narrative_payload["sections"][0]["section_id"] == "core_pattern"
+    assert report.narrative_payload["section_order"] == ["core_pattern", "perception_and_mind"]
+    assert report.narrative_payload["segment_diagnostics"] == [
+        {"section_key": "perception_and_mind", "status": "failed_validation", "error": failed.error}
+    ]
+    assert report.assembled_payload["status"] == "partial"
+    assert report.assembled_payload["reader_view"]["hero"]["status_label"] == "Часть текстовых разделов готова"
+    assert report.assembled_payload["input_hashes"]["segments"]["core_pattern"]
+
+
 def test_report_assembler_source_is_legacy_isolated_and_does_not_import_llm_runtime() -> None:
     source = Path("app/modules/astrotype_v2/report_assembler.py").read_text()
 

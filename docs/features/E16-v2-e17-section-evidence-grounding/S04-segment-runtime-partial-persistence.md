@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -42,11 +42,11 @@ Required statuses:
 
 ## Acceptance criteria
 
-- [ ] One failed section no longer deletes chart/facts/synthesis/outline/infographic work.
-- [ ] Failed sections are visible in stored segment rows.
-- [ ] A partial report can be served when at least one segment is ready.
-- [ ] Complete reports still require all required sections to be ready.
-- [ ] Provider non-JSON and validation errors are classified separately.
+- [x] One failed section no longer deletes chart/facts/synthesis/outline/infographic work.
+- [x] Failed sections are visible in stored segment rows.
+- [x] A partial report can be served when at least one segment is ready.
+- [x] Complete reports still require all required sections to be ready.
+- [x] Provider non-JSON and validation errors are classified separately.
 
 ## Verification
 
@@ -56,4 +56,28 @@ uv run pytest tests/unit/test_astrotype_v2/test_worker_runtime.py -v --tb=short
 uv run pytest tests/unit/test_astrotype_v2/test_report_assembler.py -v --tb=short
 uv run ruff check workers/tasks/astrotype_v2.py app/modules/astrotype_v2 tests/unit/test_astrotype_v2
 uv run mypy workers/tasks/astrotype_v2.py app/modules/astrotype_v2 tests/unit/test_astrotype_v2
+```
+
+## Implementation notes
+
+- `workers/tasks/astrotype_v2.py` now writes `running` segment rows before provider calls and commits that state separately from the final report assembly.
+- LLM segment generation is isolated per section: `SegmentValidationError` becomes `failed_validation`; other provider/schema/runtime exceptions become `failed_provider`.
+- `report_assembler.build_partial_natal_report_row(...)` assembles ready sections plus `segment_diagnostics` when at least one narrative segment is usable.
+- Complete report assembly still requires every required section to be `ready`; failed sections are not accepted as complete prose.
+
+Fresh verification on 2026-08-30:
+
+```bash
+cd backend
+uv run pytest tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_report_assembler.py tests/unit/test_astrotype_v2/test_api_runtime.py -q
+# 20 passed
+
+uv run ruff check workers/tasks/astrotype_v2.py app/modules/astrotype_v2/report_assembler.py tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_report_assembler.py
+# All checks passed!
+
+uv run ruff format --check workers/tasks/astrotype_v2.py app/modules/astrotype_v2/report_assembler.py tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_report_assembler.py
+# 4 files already formatted
+
+uv run mypy workers/tasks/astrotype_v2.py app/modules/astrotype_v2 tests/unit/test_astrotype_v2/test_worker_runtime.py tests/unit/test_astrotype_v2/test_report_assembler.py
+# Success: no issues found in 25 source files
 ```

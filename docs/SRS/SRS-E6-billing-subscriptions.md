@@ -2,7 +2,7 @@
 
 Версия: 1.0
 Дата: 2026-06-07
-Статус: Planned
+Статус: Partially implemented — checkout/webhook/entitlement grant implemented; access-state API and report/product gates still pending
 Источник: `docs/features/E6-billing-subscriptions/`
 
 ---
@@ -26,26 +26,27 @@ E6 покрывает не только payment processing, но и весь acc
 
 ### 1.3 Определения
 
-| Термин | Определение |
-|---|---|
-| Free | Базовый бесплатный режим доступа |
-| Plus | Платный режим доступа с полным контентом |
+| Термин       | Определение                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| Free         | Базовый бесплатный режим доступа                                                               |
+| Plus         | Платный режим доступа с полным контентом                                                       |
 | Access state | Текущее коммерческое состояние пользователя (`free`, `checkout_pending`, `plus_active` и т.д.) |
-| Entitlement | Backend-запись, подтверждающая доступ пользователя к продукту/плану |
-| Preview | Ограниченная бесплатная версия контента |
-| Full | Полная платная версия контента |
-| PSP | Payment service provider, в MVP — YooKassa |
+| Entitlement  | Backend-запись, подтверждающая доступ пользователя к продукту/плану                            |
+| Preview      | Ограниченная бесплатная версия контента                                                        |
+| Full         | Полная платная версия контента                                                                 |
+| PSP          | Payment service provider, в MVP — YooKassa                                                     |
 
 ### 1.4 Ссылки
 
-| Документ | Путь |
-|---|---|
-| Feature docs | `docs/features/E6-billing-subscriptions/` |
-| Workflow explainer | `docs/features/E6-billing-subscriptions/WORKFLOW.md` |
-| API explainer | `docs/features/E6-billing-subscriptions/API.md` |
-| Reports feature | `docs/features/E5-products-reports/` |
-| Report UX | `docs/features/E10-report-ux-redesign/` |
-| LLM narrative | `docs/features/E11-llm-report-narrative/` |
+| Документ                     | Путь                                                     |
+| ---------------------------- | -------------------------------------------------------- |
+| Feature docs                 | `docs/features/E6-billing-subscriptions/`                |
+| Workflow explainer           | `docs/features/E6-billing-subscriptions/WORKFLOW.md`     |
+| API explainer                | `docs/features/E6-billing-subscriptions/API.md`          |
+| Current implementation audit | `docs/architecture/current-payment-confirmation-flow.md` |
+| Reports feature              | `docs/features/E5-products-reports/`                     |
+| Report UX                    | `docs/features/E10-report-ux-redesign/`                  |
+| LLM narrative                | `docs/features/E11-llm-report-narrative/`                |
 
 ---
 
@@ -69,25 +70,25 @@ flowchart TD
 
 ### 2.2 Функции
 
-| Функция | Описание | Story |
-|---|---|---|
-| F6.1 | Плановый каталог и access matrix | S01 |
-| F6.2 | Lifecycle access state | S02 |
-| F6.3 | YooKassa checkout baseline | S03 |
-| F6.4 | Billing/account summary API | S04 |
-| F6.5 | Payment-to-access orchestration | S05 |
-| F6.6 | Report/product preview/full gating | S06 |
-| F6.7 | Entitlement policy engine | S07 |
-| F6.8 | Frontend billing/upsell flow | S08 |
+| Функция | Описание                           | Story |
+| ------- | ---------------------------------- | ----- |
+| F6.1    | Плановый каталог и access matrix   | S01   |
+| F6.2    | Lifecycle access state             | S02   |
+| F6.3    | YooKassa checkout baseline         | S03   |
+| F6.4    | Billing/account summary API        | S04   |
+| F6.5    | Payment-to-access orchestration    | S05   |
+| F6.6    | Report/product preview/full gating | S06   |
+| F6.7    | Entitlement policy engine          | S07   |
+| F6.8    | Frontend billing/upsell flow       | S08   |
 
 ### 2.3 Ограничения
 
-| ID | Ограничение |
-|---|---|
-| C6.1 | Коммерческие параметры принадлежат backend catalog, а не frontend |
-| C6.2 | MVP использует единый план Plus и YooKassa как primary PSP |
-| C6.3 | Free доступ не должен раскрывать full paid content через API |
-| C6.4 | Direct route access не должен обходить entitlement checks |
+| ID   | Ограничение                                                                                |
+| ---- | ------------------------------------------------------------------------------------------ |
+| C6.1 | Коммерческие параметры принадлежат backend catalog, а не frontend                          |
+| C6.2 | MVP использует единый план Plus и YooKassa как primary PSP                                 |
+| C6.3 | Free доступ не должен раскрывать full paid content через API                               |
+| C6.4 | Direct route access не должен обходить entitlement checks                                  |
 | C6.5 | Возврат с PSP не считается активацией доступа без backend-confirmed webhook/reconciliation |
 
 ---
@@ -136,6 +137,8 @@ FR-6.5.3 Успешная оплата ДОЛЖНА приводить к соз
 
 FR-6.5.4 Повторная доставка одного webhook не ДОЛЖНА дублировать entitlement.
 
+Текущее состояние реализации: YooKassa checkout, webhook storage, server-side reconciliation, `succeeded + paid=true` success rule and entitlement grant are implemented and covered by `backend/tests/unit/test_payments.py`. See `docs/architecture/current-payment-confirmation-flow.md` for the current audited flow.
+
 ### 3.6 Report/product gating (FR-6.6)
 
 FR-6.6.1 Report endpoints ДОЛЖНЫ поддерживать `preview` и `full` access modes.
@@ -168,13 +171,13 @@ FR-6.8.4 Frontend ДОЛЖЕН различать состояния ожида�
 
 ## 4. Нефункциональные требования
 
-| ID | Требование | Значение |
-|---|---|---|
-| NFR-6.1 | Security | Коммерческие параметры не доверяются frontend |
-| NFR-6.2 | Reliability | Повторный webhook не создаёт дубли доступа |
-| NFR-6.3 | UX clarity | Пользователь всегда понимает, есть ли у него доступ или только preview |
-| NFR-6.4 | Auditability | Payment и entitlement события имеют проверяемый trail |
-| NFR-6.5 | Consistency | Billing page, checkout и grants используют один catalog source of truth |
+| ID      | Требование   | Значение                                                                |
+| ------- | ------------ | ----------------------------------------------------------------------- |
+| NFR-6.1 | Security     | Коммерческие параметры не доверяются frontend                           |
+| NFR-6.2 | Reliability  | Повторный webhook не создаёт дубли доступа                              |
+| NFR-6.3 | UX clarity   | Пользователь всегда понимает, есть ли у него доступ или только preview  |
+| NFR-6.4 | Auditability | Payment и entitlement события имеют проверяемый trail                   |
+| NFR-6.5 | Consistency  | Billing page, checkout и grants используют один catalog source of truth |
 
 ---
 
@@ -222,13 +225,13 @@ FR-6.8.4 Frontend ДОЛЖЕН различать состояния ожида�
 
 ### 6.1 Слои
 
-| Слой | Ответственность |
-|---|---|
-| Catalog | Коммерческая truth-модель планов и grants |
-| Payments | Create/list/get payment, webhook reconciliation |
-| Authorization/Entitlements | Активация и проверка доступа |
-| Reports/Products | Применение access policy к данным и ответам |
-| Frontend billing/report pages | Рендер access state, preview/full и CTA |
+| Слой                          | Ответственность                                 |
+| ----------------------------- | ----------------------------------------------- |
+| Catalog                       | Коммерческая truth-модель планов и grants       |
+| Payments                      | Create/list/get payment, webhook reconciliation |
+| Authorization/Entitlements    | Активация и проверка доступа                    |
+| Reports/Products              | Применение access policy к данным и ответам     |
+| Frontend billing/report pages | Рендер access state, preview/full и CTA         |
 
 ### 6.2 Backend decision rule
 
@@ -242,14 +245,14 @@ Backend должен принимать решение о full-доступе п
 
 ### 7.1 Required endpoints
 
-| Endpoint | Назначение |
-|---|---|
-| `GET /api/v1/catalog/plans` | Читать server-owned plan catalog |
-| `POST /api/v1/payments` | Создать checkout по plan/product id |
-| `GET /api/v1/payments/{id}` | Получить статус попытки оплаты |
-| `POST /api/v1/payments/webhooks/yookassa` | Подтвердить оплату через webhook |
-| `GET /api/v1/billing/access` | Получить current access state |
-| `GET /api/v1/reports/...` | Получить preview/full report contract |
+| Endpoint                                  | Назначение                            |
+| ----------------------------------------- | ------------------------------------- |
+| `GET /api/v1/catalog/plans`               | Читать server-owned plan catalog      |
+| `POST /api/v1/payments`                   | Создать checkout по plan/product id   |
+| `GET /api/v1/payments/{id}`               | Получить статус попытки оплаты        |
+| `POST /api/v1/payments/webhooks/yookassa` | Подтвердить оплату через webhook      |
+| `GET /api/v1/billing/access`              | Получить current access state         |
+| `GET /api/v1/reports/...`                 | Получить preview/full report contract |
 
 ### 7.2 Response principles
 

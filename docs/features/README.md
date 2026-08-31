@@ -76,3 +76,4 @@ Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 Section evidence grounding remediation: `docs/architecture/astrotype-v2-section-evidence-grounding.md`
 Deterministic-first delivery contract: `docs/architecture/astrotype-v2-deterministic-first-delivery.md`
+Current payment confirmation flow: `docs/architecture/current-payment-confirmation-flow.md`

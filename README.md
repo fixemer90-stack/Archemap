@@ -290,25 +290,26 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ                                                                                                                                       | Назначение                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md)                                                                                                     | Активная дорожная карта v2                             |
-| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md)                                                   | Umbrella SRS для v2 cloud-core natal platform          |
-| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)                                       | C4 architecture, progressive delivery, v1 quarantine   |
-| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md)                                       | v2 PostgreSQL source-of-truth schema                   |
-| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md)                   | Natal report pipeline and section architecture         |
-| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy      |
-| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references           |
-| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                              |
-| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                      |
-| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json)                         | Sample data for v2 report visual contract              |
-| [`docs/features/README.md`](docs/features/README.md)                                                                                           | Active v2 feature/story index                          |
-| [`docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`](docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md)                   | Real-provider LLM runtime integration and smoke gates  |
-| [`docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`](docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md)                   | Narrative depth quality contract and validation gates  |
-| [`docs/archive/README.md`](docs/archive/README.md)                                                                                             | Archive rules: v1 is reference-only                    |
-| [`docs/archive/v1/`](docs/archive/v1/)                                                                                                         | Historical v1 docs retained away from active contracts |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                                             | REST API contract, when present                        |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                                           | Async/event contract, when present                     |
+| Документ                                                                                                                                       | Назначение                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md)                                                                                                     | Активная дорожная карта v2                                 |
+| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md)                                                   | Umbrella SRS для v2 cloud-core natal platform              |
+| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)                                       | C4 architecture, progressive delivery, v1 quarantine       |
+| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md)                                       | v2 PostgreSQL source-of-truth schema                       |
+| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md)                   | Natal report pipeline and section architecture             |
+| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy          |
+| [`docs/architecture/current-payment-confirmation-flow.md`](docs/architecture/current-payment-confirmation-flow.md)                             | Current YooKassa payment confirmation and entitlement flow |
+| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references               |
+| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                                  |
+| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                          |
+| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json)                         | Sample data for v2 report visual contract                  |
+| [`docs/features/README.md`](docs/features/README.md)                                                                                           | Active v2 feature/story index                              |
+| [`docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`](docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md)                   | Real-provider LLM runtime integration and smoke gates      |
+| [`docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`](docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md)                   | Narrative depth quality contract and validation gates      |
+| [`docs/archive/README.md`](docs/archive/README.md)                                                                                             | Archive rules: v1 is reference-only                        |
+| [`docs/archive/v1/`](docs/archive/v1/)                                                                                                         | Historical v1 docs retained away from active contracts     |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                                             | REST API contract, when present                            |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                                           | Async/event contract, when present                         |
 
 ---
 

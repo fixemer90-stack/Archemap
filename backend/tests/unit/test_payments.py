@@ -11,6 +11,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy.orm import configure_mappers
 from starlette.requests import Request
 
 from app.modules.payments.router import yookassa_webhook
@@ -101,6 +102,11 @@ def _canonical_yookassa_payment(
         },
         "payment_method": {"type": "bank_card"},
     }
+
+
+def test_payment_mapper_matches_existing_schema_without_subscription_table() -> None:
+    """Payment mapper must not reference a non-existent subscriptions table."""
+    configure_mappers()
 
 
 def test_create_payment_request_rejects_client_controlled_amount() -> None:

@@ -2,13 +2,25 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const billingPath = resolve("src/app/(dashboard)/billing/page.tsx");
+const checkoutButtonPath = resolve(
+  "src/components/billing/billing-checkout-button.tsx",
+);
+const paymentsApiPath = resolve("src/lib/api/payments.ts");
 const sidebarPath = resolve("src/components/layout/sidebar.tsx");
 
 if (!existsSync(billingPath)) {
   throw new Error("Missing billing page");
 }
+if (!existsSync(checkoutButtonPath)) {
+  throw new Error("Missing billing checkout button");
+}
+if (!existsSync(paymentsApiPath)) {
+  throw new Error("Missing payments API client");
+}
 
 const billingPage = readFileSync(billingPath, "utf8");
+const checkoutButton = readFileSync(checkoutButtonPath, "utf8");
+const paymentsApi = readFileSync(paymentsApiPath, "utf8");
 const sidebar = readFileSync(sidebarPath, "utf8");
 
 for (const marker of [
@@ -32,7 +44,9 @@ for (const marker of [
   "Сохранение нескольких профилей",
   "Free — вход в систему. Plus — полная карта личности, отношений",
   "и карьеры.",
-  "Frontend-only",
+  "Создаём оплату через YooKassa",
+  "Оплата открывается на стороне YooKassa",
+  "Доступ включается",
 ]) {
   if (!billingPage.includes(marker)) {
     throw new Error(`Billing page missing marker: ${marker}`);
@@ -47,11 +61,10 @@ for (const forbidden of [
   "стиль привязанности",
   "Сила функций и архетипов",
   "10–30 персональных AI-вопросов",
-  "/api/v1/payments",
-  "createPayment",
-  "product_id",
+  "Frontend-only",
+  'aria-disabled="true"',
+  'href="#plus"',
   "amount:",
-  "fetch(",
 ]) {
   if (billingPage.includes(forbidden)) {
     throw new Error(
@@ -65,6 +78,37 @@ if (
   !sidebar.includes('href: "/billing"')
 ) {
   throw new Error("Sidebar must expose billing page as Оплата");
+}
+
+for (const marker of [
+  'PLUS_PRODUCT_ID = "self_full"',
+  "createPayment({",
+  "product_id: PLUS_PRODUCT_ID",
+  "return_url: getBillingReturnUrl()",
+  "window.location.assign(payment.confirmation_url)",
+]) {
+  if (!checkoutButton.includes(marker)) {
+    throw new Error(`Checkout button missing marker: ${marker}`);
+  }
+}
+
+for (const marker of [
+  "type CreatePaymentRequest",
+  "product_id: string",
+  "return_url?: string",
+  'api.post<PaymentResponse>("/api/v1/payments", request)',
+]) {
+  if (!paymentsApi.includes(marker)) {
+    throw new Error(`Payments API client missing marker: ${marker}`);
+  }
+}
+
+for (const forbidden of ["amount:", "currency:", "description:"]) {
+  if (checkoutButton.includes(forbidden)) {
+    throw new Error(
+      `Checkout button must not send commercial fields: ${forbidden}`,
+    );
+  }
 }
 
 console.log("Billing UX structure check passed");

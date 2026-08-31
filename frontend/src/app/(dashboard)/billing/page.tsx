@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
 
+import { BillingCheckoutButton } from "@/components/billing/billing-checkout-button";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -104,8 +105,9 @@ export default function BillingPage() {
               <span className="pb-2 text-sm text-[#D8DCE8]">/ месяц</span>
             </div>
             <p className="mt-5 text-sm leading-6 text-[rgba(216,220,232,0.78)]">
-              Единая подписка без выбора пакетов. Сейчас кнопка подготовлена
-              только визуально — без checkout и без backend-вызовов.
+              Создаём оплату через YooKassa: цена и продукт берутся из
+              backend-каталога, после подтверждения доступ активируется
+              webhook’ом.
             </p>
           </div>
         </div>
@@ -184,13 +186,10 @@ export default function BillingPage() {
                   Free — вход в систему. Plus — полная карта личности, отношений
                   и карьеры.
                 </p>
-                <Button asChild className="mt-7 w-full">
-                  <a href="#plus" aria-disabled="true">
-                    Оформить Plus
-                  </a>
-                </Button>
+                <BillingCheckoutButton />
                 <p className="mt-4 text-xs leading-5 text-[rgba(216,220,232,0.62)]">
-                  Frontend-only: checkout будет подключён отдельным шагом.
+                  Оплата открывается на стороне YooKassa. Доступ включается
+                  после подтверждения платежа, а не по факту возврата на сайт.
                 </p>
               </aside>
             </div>

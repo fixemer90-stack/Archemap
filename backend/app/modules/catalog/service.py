@@ -22,9 +22,9 @@ PRODUCT_CATALOG: dict[str, ProductPrice] = {
     "self_full": ProductPrice(
         product_id="self_full",
         product="self",
-        amount=990.0,
+        amount=999.0,
         currency="RUB",
-        description="Astrotype Self — полный отчёт",
+        description="Astrotype Plus — полный доступ",
     ),
     "career_full": ProductPrice(
         product_id="career_full",

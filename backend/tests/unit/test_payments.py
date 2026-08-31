@@ -70,7 +70,7 @@ def _payment(metadata_json: dict[str, object] | None = None) -> SimpleNamespace:
         user_id=uuid4(),
         provider="yookassa",
         provider_payment_id="provider-payment-id",
-        amount=990.0,
+        amount=999.0,
         currency="RUB",
         status="pending",
         metadata_json=metadata_json or {"product_id": "self_full", "product": "self"},
@@ -92,7 +92,7 @@ def _canonical_yookassa_payment(
         "id": "provider-payment-id",
         "status": "succeeded",
         "paid": paid,
-        "amount": {"value": "990.00", "currency": "RUB"},
+        "amount": {"value": "999.00", "currency": "RUB"},
         "metadata": {
             "payment_id": str(payment.id),
             "user_id": user_id or str(payment.user_id),
@@ -145,9 +145,9 @@ async def test_create_payment_for_product_uses_server_catalog_price() -> None:
             return_url="https://app.example/thanks",
         )
 
-    assert payment.amount == 990.0
+    assert payment.amount == 999.0
     assert payment.currency == "RUB"
-    assert payment.description == "Astrotype Self — полный отчёт"
+    assert payment.description == "Astrotype Plus — полный доступ"
     assert payment.metadata_json is not None
     assert payment.metadata_json["product_id"] == "self_full"
     assert payment.metadata_json["product"] == "self"
@@ -160,7 +160,7 @@ async def test_yookassa_webhook_acknowledges_invalid_signature_and_processes_pay
         {
             "type": "notification",
             "event": "payment.succeeded",
-            "object": {"id": "provider-payment-id", "status": "succeeded", "amount": {"value": "990.00"}},
+            "object": {"id": "provider-payment-id", "status": "succeeded", "amount": {"value": "999.00"}},
         }
     )
 
@@ -202,7 +202,7 @@ async def test_successful_yookassa_webhook_grants_product_entitlement() -> None:
                 "object": {
                     "id": "provider-payment-id",
                     "status": "succeeded",
-                    "amount": {"value": "990.00", "currency": "RUB"},
+                    "amount": {"value": "999.00", "currency": "RUB"},
                     "metadata": {
                         "payment_id": str(payment.id),
                         "user_id": str(payment.user_id),

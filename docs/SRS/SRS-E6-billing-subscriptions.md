@@ -44,6 +44,7 @@ E6 покрывает не только payment processing, но и весь acc
 | Workflow explainer           | `docs/features/E6-billing-subscriptions/WORKFLOW.md`     |
 | API explainer                | `docs/features/E6-billing-subscriptions/API.md`          |
 | Current implementation audit | `docs/architecture/current-payment-confirmation-flow.md` |
+| Account tier foundation      | `docs/architecture/account-tier-role-foundation.md`      |
 | Reports feature              | `docs/features/E5-products-reports/`                     |
 | Report UX                    | `docs/features/E10-report-ux-redesign/`                  |
 | LLM narrative                | `docs/features/E11-llm-report-narrative/`                |
@@ -113,6 +114,10 @@ FR-6.2.2 Переходы между состояниями ДОЛЖНЫ упр�
 
 FR-6.2.3 При неуспешной оплате пользователь ДОЛЖЕН оставаться в Free-compatible режиме.
 
+FR-6.2.4 Система ДОЛЖНА иметь account-level tier/status `free`/`plus` на уровне пользователя.
+
+FR-6.2.5 В первой реализации `free` и `plus` ДОЛЖНЫ отличаться только отображаемым/возвращаемым статусом аккаунта; ограничения функций по tier НЕ ДОЛЖНЫ включаться до отдельной gating-истории.
+
 ### 3.3 Checkout (FR-6.3)
 
 FR-6.3.1 `POST /api/v1/payments` ДОЛЖЕН принимать только server-owned identifier плана/продукта и `return_url`.
@@ -136,6 +141,8 @@ FR-6.5.2 Backend ДОЛЖЕН сверять canonical provider object пере�
 FR-6.5.3 Успешная оплата ДОЛЖНА приводить к созданию или обновлению entitlement.
 
 FR-6.5.4 Повторная доставка одного webhook не ДОЛЖНА дублировать entitlement.
+
+FR-6.5.5 Успешная backend-confirmed оплата ДОЛЖНА переводить account tier пользователя в `plus` без включения новых ограничений для `free`.
 
 Текущее состояние реализации: YooKassa checkout, webhook storage, server-side reconciliation, `succeeded + paid=true` success rule and entitlement grant are implemented and covered by `backend/tests/unit/test_payments.py`. See `docs/architecture/current-payment-confirmation-flow.md` for the current audited flow.
 
@@ -215,9 +222,11 @@ FR-6.8.4 Frontend ДОЛЖЕН различать состояния ожида�
 Для MVP достаточно следующей логики:
 
 - `free` — entitlement отсутствует
-- `plus_active` — active entitlement существует
+- `plus_active` — account tier равен `plus` и/или active entitlement существует, в зависимости от endpoint contract
 - `plus_inactive` — entitlement истёк или отключён
 - `checkout_pending` — payment создан/обновляется, но доступ ещё не активирован
+
+Account-tier foundation documented separately in `docs/architecture/account-tier-role-foundation.md`: first implementation stores and exposes `free`/`plus` status only; it must not restrict API or UI functionality until later gating stories.
 
 ---
 
@@ -235,9 +244,11 @@ FR-6.8.4 Frontend ДОЛЖЕН различать состояния ожида�
 
 ### 6.2 Backend decision rule
 
-Backend должен принимать решение о full-доступе по формуле:
+Будущая backend-формула full-доступа:
 
 `confirmed payment + active entitlement + allowed grant for product`
+
+До реализации отдельных gating stories `account_tier` используется только как статус аккаунта. Наличие `account_tier='free'` не должно само по себе блокировать существующие endpoints.
 
 ---
 

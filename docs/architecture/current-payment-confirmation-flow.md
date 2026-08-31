@@ -30,6 +30,8 @@ entitlements.status = 'active'
 entitlements.source_payment_id = payments.id
 ```
 
+Account-tier note: the current implementation does not yet upgrade the user account from `free` to `plus`. The target contract for that next step is documented in `docs/architecture/account-tier-role-foundation.md`.
+
 ## Source files
 
 | Concern                   | Current source                                                |
@@ -248,21 +250,23 @@ Payment confirmation and entitlement creation are implemented.
 
 What is not fully wired yet:
 
-1. A current access-state endpoint such as:
+1. Account-tier role foundation: successful payment should set `users.account_tier = 'plus'`, but the new role must initially be status-only and must not restrict features. See `docs/architecture/account-tier-role-foundation.md`.
+
+2. A current access-state endpoint such as:
 
 ```http
 GET /api/v1/billing/access
 ```
 
-2. A reusable backend policy check like:
+3. A reusable backend policy check like:
 
 ```text
 has_active_entitlement(user_id, product, access_mode)
 ```
 
-3. Enforcement of that policy in paid report/product endpoints.
+4. Enforcement of that policy in paid report/product endpoints.
 
-4. Frontend rendering that reads backend access state and switches between:
+5. Frontend rendering that reads backend access state and switches between:
 
 ```text
 free
@@ -322,5 +326,6 @@ Before relying on live payments, verify:
 | Entitlement grant on success       | Implemented     | Grants active entitlement for product metadata                       |
 | Unit coverage                      | Implemented     | `backend/tests/unit/test_payments.py` passes                         |
 | Billing return UX polling          | Missing         | `/billing?checkout=return` does not yet refresh access state         |
+| Account-tier Free/Plus role        | Missing         | Target contract: `docs/architecture/account-tier-role-foundation.md` |
 | Access-state API                   | Missing         | SRS target exists, implementation not found in current audit         |
 | Report/product entitlement gating  | Missing/unclear | Entitlement creation exists; broad use as backend gate was not found |

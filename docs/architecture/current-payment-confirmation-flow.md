@@ -3,6 +3,7 @@
 Status: current implementation audit
 Last checked: 2026-08-31
 Scope: YooKassa checkout, webhook confirmation, local payment state and entitlement activation.
+Feature contract: `docs/features/E6-billing-subscriptions/FEATURE.md`
 
 This document describes how Astrotype currently decides that a client has paid. It is an implementation explainer, not a future-state wish list.
 

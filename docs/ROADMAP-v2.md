@@ -67,6 +67,7 @@ v2 foundation is not:
 | V2-E14 | QA, smoke, rollout               | ✅ Completed             | Verify generation quality, runtime reliability and rollout safety.                                      | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`             |
 | V2-E15 | LLM runtime integration          | ✅ Completed             | Connect V2 narrative segments to the configured real LLM provider with honest progress/failure states.  | `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`      |
 | V2-E16 | Narrative depth quality          | ✅ Completed             | Harden prompts, synthesis inputs and validators so report prose is deep rather than shallow.            | `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`      |
+| V2-E18 | Product surface redesign         | ⬜ Planned               | Redesign homepage, dashboard and billing so they match the v2 report visual language.                   | `docs/features/E16-v2-e18-product-surface-redesign/FEATURE.md`     |
 
 ---
 

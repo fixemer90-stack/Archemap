@@ -42,7 +42,7 @@ The implementation should preserve the direction: wide dark report-style pages, 
 
 ## Out of scope
 
-- Changing the canonical v2 report reader itself.
+- Broad redesign of the canonical v2 report reader itself, beyond the small report-to-dashboard return action in S06.
 - Implementing account-tier database fields or payment-to-plus role upgrade.
 - Enforcing Free/Plus access restrictions.
 - New billing/access API endpoints.
@@ -75,6 +75,7 @@ The implementation should preserve the direction: wide dark report-style pages, 
 - [ ] Responsive behavior works at mobile, tablet and desktop widths.
 - [ ] Frontend lint, format and TypeScript checks pass.
 - [ ] A targeted visual/content regression script covers homepage, dashboard and billing markers.
+- [ ] Report pages have a visible return action to `/dashboard` without losing standalone report focus.
 - [ ] GitHub CI for pushed HEAD is green or any unrelated failure is documented precisely.
 
 ## Stories
@@ -86,6 +87,7 @@ The implementation should preserve the direction: wide dark report-style pages, 
 | S03 | [Implement dashboard redesign](./S03-dashboard-redesign.md)                             | ⬜ Не начато |
 | S04 | [Implement billing redesign](./S04-billing-redesign.md)                                 | ⬜ Не начато |
 | S05 | [Add responsive/content regression gates](./S05-responsive-content-regression-gates.md) | ⬜ Не начато |
+| S06 | [Add report-to-dashboard return action](./S06-report-dashboard-return-action.md)        | ⬜ Не начато |
 
 ## Implementation order
 
@@ -97,6 +99,7 @@ flowchart LR
   S02 --> S05[S05 regression gates]
   S03 --> S05
   S04 --> S05
+  S05 --> S06[S06 report return action]
 ```
 
 ## Verification commands

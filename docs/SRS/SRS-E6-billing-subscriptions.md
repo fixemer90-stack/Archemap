@@ -132,6 +132,8 @@ FR-6.4.1 Система ДОЛЖНА иметь endpoint для чтения т�
 
 FR-6.4.2 Этот endpoint ДОЛЖЕН возвращать текущий plan/access status, grants и summary последней активной попытки оплаты при необходимости.
 
+Текущее состояние реализации: `GET /api/v1/billing/access` реализован и возвращает backend-owned `account_tier`, `access_state`, entitlements и безопасный summary последней оплаты. Frontend consumption still tracked by S08.
+
 ### 3.5 Payment confirmation and access activation (FR-6.5)
 
 FR-6.5.1 Webhook handler ДОЛЖЕН сохранять raw webhook payload.

@@ -50,3 +50,32 @@ class WebhookEventResponse(BaseModel):
     payment_id: str | None
     status: str | None
     message: str
+
+
+class BillingPaymentSummary(BaseModel):
+    """Safe latest payment summary for billing access UI."""
+
+    id: str
+    product_id: str | None
+    product: str | None
+    status: str
+    created_at: datetime
+    paid_at: datetime | None
+
+
+class BillingEntitlementSummary(BaseModel):
+    """Safe entitlement summary for billing access UI."""
+
+    product: str
+    status: str
+    starts_at: datetime | None
+    expires_at: datetime | None
+
+
+class BillingAccessResponse(BaseModel):
+    """Current backend-owned billing/access state for the user."""
+
+    account_tier: str
+    access_state: str
+    entitlements: list[BillingEntitlementSummary]
+    latest_payment: BillingPaymentSummary | None

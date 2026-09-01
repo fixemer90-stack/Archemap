@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,6 +15,7 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import configure_mappers
 from starlette.requests import Request
 
+from app.modules.billing.router import get_billing_access
 from app.modules.payments.router import yookassa_webhook
 from app.modules.payments.schemas import CreatePaymentRequest
 from app.modules.payments.service import PaymentsService
@@ -80,8 +82,87 @@ def _payment(metadata_json: dict[str, object] | None = None) -> SimpleNamespace:
         cancelled_at=None,
         error_code=None,
         payment_method_type=None,
+        created_at=datetime.now(UTC),
     )
 
+
+
+
+class _ListScalarResult:
+    def __init__(self, values: list[object]) -> None:
+        self.values = values
+
+    def scalars(self) -> _ListScalarResult:
+        return self
+
+    def all(self) -> list[object]:
+        return self.values
+
+
+class _BillingStateDb:
+    def __init__(self, payments: list[object], entitlements: list[object]) -> None:
+        self.results = [_ListScalarResult(payments), _ListScalarResult(entitlements)]
+
+    async def execute(self, _query: object) -> _ListScalarResult:
+        return self.results.pop(0)
+
+
+def _payment_attempt(status: str, *, product: str = "self") -> SimpleNamespace:
+    payment = _payment({"product_id": "self_full", "product": product})
+    payment.status = status
+    return payment
+
+
+def _entitlement(status: str = "active", *, product: str = "self") -> SimpleNamespace:
+    return SimpleNamespace(
+        product=product,
+        status=status,
+        starts_at=None,
+        expires_at=None,
+    )
+
+
+async def test_billing_access_state_is_free_without_payments_or_entitlements() -> None:
+    service = PaymentsService(_BillingStateDb([], []))  # type: ignore[arg-type]
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
+    assert state.access_state == "free"
+    assert state.account_tier == "free"
+    assert state.latest_payment is None
+    assert state.entitlements == []
+
+
+async def test_billing_access_state_reports_checkout_pending_from_latest_payment() -> None:
+    service = PaymentsService(_BillingStateDb([_payment_attempt("pending")], []))  # type: ignore[arg-type]
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
+    assert state.access_state == "checkout_pending"
+    assert state.account_tier == "free"
+    assert state.latest_payment is not None
+    assert state.latest_payment.status == "pending"
+
+
+async def test_billing_access_state_reports_plus_active_from_active_entitlement() -> None:
+    service = PaymentsService(
+        _BillingStateDb([_payment_attempt("succeeded")], [_entitlement()])  # type: ignore[arg-type]
+    )
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
+    assert state.access_state == "plus_active"
+    assert state.account_tier == "plus"
+    assert state.entitlements[0].product == "self"
+
+
+async def test_billing_access_state_reports_payment_failed_from_latest_failed_payment() -> None:
+    service = PaymentsService(_BillingStateDb([_payment_attempt("cancelled")], []))  # type: ignore[arg-type]
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
+    assert state.access_state == "payment_failed"
+    assert state.account_tier == "free"
 
 def _canonical_yookassa_payment(
     payment: SimpleNamespace,
@@ -158,6 +239,20 @@ async def test_create_payment_for_product_uses_server_catalog_price() -> None:
     assert payment.metadata_json["product_id"] == "self_full"
     assert payment.metadata_json["product"] == "self"
     create_provider_payment.assert_awaited_once()
+
+
+async def test_billing_access_endpoint_returns_backend_owned_state() -> None:
+    user_id = uuid4()
+    expected = SimpleNamespace(access_state="free", account_tier="free", entitlements=[], latest_payment=None)
+
+    with patch(
+        "app.modules.billing.router.PaymentsService.get_billing_access_state",
+        new=AsyncMock(return_value=expected),
+    ) as access_state:
+        response = await get_billing_access(db=AsyncMock(), current_user=user_id)
+
+    assert response is expected
+    access_state.assert_awaited_once_with(user_id)
 
 
 async def test_yookassa_webhook_acknowledges_invalid_signature_and_processes_payload() -> None:

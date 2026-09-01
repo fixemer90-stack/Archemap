@@ -249,25 +249,29 @@ Current frontend gap:
 
 Payment confirmation and entitlement creation are implemented.
 
-What is not fully wired yet:
+What is now partially wired:
 
-1. Account-tier role foundation: successful payment should set `users.account_tier = 'plus'`, but the new role must initially be status-only and must not restrict features. See `docs/architecture/account-tier-role-foundation.md`.
-
-2. A current access-state endpoint such as:
+- A backend access-state endpoint exists:
 
 ```http
 GET /api/v1/billing/access
 ```
 
-3. A reusable backend policy check like:
+It returns `account_tier`, `access_state`, current entitlements and a safe latest-payment summary.
+
+What is still not fully wired yet:
+
+1. Account-tier role foundation: successful payment should set `users.account_tier = 'plus'`, but the new role must initially be status-only and must not restrict features. See `docs/architecture/account-tier-role-foundation.md`.
+
+2. A reusable backend policy check like:
 
 ```text
 has_active_entitlement(user_id, product, access_mode)
 ```
 
-4. Enforcement of that policy in paid report/product endpoints.
+3. Enforcement of that policy in paid report/product endpoints.
 
-5. Frontend rendering that reads backend access state and switches between:
+4. Frontend rendering that reads backend access state and switches between:
 
 ```text
 free
@@ -317,16 +321,16 @@ Before relying on live payments, verify:
 
 ## Implementation status
 
-| Area                               | Status          | Notes                                                                |
-| ---------------------------------- | --------------- | -------------------------------------------------------------------- |
-| Server-owned checkout creation     | Implemented     | `POST /api/v1/payments` accepts product id and return URL only       |
-| YooKassa provider adapter          | Implemented     | Creates and fetches payments through YooKassa API                    |
-| Webhook route                      | Implemented     | `/api/v1/payments/webhooks/yookassa`                                 |
-| Server-side payment reconciliation | Implemented     | Fetches canonical provider object before activation                  |
-| Payment success criteria           | Implemented     | Requires `status='succeeded'` and `paid=true`                        |
-| Entitlement grant on success       | Implemented     | Grants active entitlement for product metadata                       |
-| Unit coverage                      | Implemented     | `backend/tests/unit/test_payments.py` passes                         |
-| Billing return UX polling          | Missing         | `/billing?checkout=return` does not yet refresh access state         |
-| Account-tier Free/Plus role        | Missing         | Target contract: `docs/architecture/account-tier-role-foundation.md` |
-| Access-state API                   | Missing         | SRS target exists, implementation not found in current audit         |
-| Report/product entitlement gating  | Missing/unclear | Entitlement creation exists; broad use as backend gate was not found |
+| Area                               | Status          | Notes                                                                   |
+| ---------------------------------- | --------------- | ----------------------------------------------------------------------- |
+| Server-owned checkout creation     | Implemented     | `POST /api/v1/payments` accepts product id and return URL only          |
+| YooKassa provider adapter          | Implemented     | Creates and fetches payments through YooKassa API                       |
+| Webhook route                      | Implemented     | `/api/v1/payments/webhooks/yookassa`                                    |
+| Server-side payment reconciliation | Implemented     | Fetches canonical provider object before activation                     |
+| Payment success criteria           | Implemented     | Requires `status='succeeded'` and `paid=true`                           |
+| Entitlement grant on success       | Implemented     | Grants active entitlement for product metadata                          |
+| Unit coverage                      | Implemented     | `backend/tests/unit/test_payments.py` passes                            |
+| Billing return UX polling          | Missing         | `/billing?checkout=return` does not yet refresh access state            |
+| Account-tier Free/Plus role        | Missing         | Target contract: `docs/architecture/account-tier-role-foundation.md`    |
+| Access-state API                   | Implemented     | `GET /api/v1/billing/access` returns backend-owned billing/access state |
+| Report/product entitlement gating  | Missing/unclear | Entitlement creation exists; broad use as backend gate was not found    |

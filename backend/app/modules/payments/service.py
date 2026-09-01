@@ -12,10 +12,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.modules.authorization.models import Entitlement
 from app.modules.authorization.service import EntitlementsService
 from app.modules.catalog.service import CatalogService
 from app.modules.payments.models import Payment, PaymentWebhook
 from app.modules.payments.providers.yookassa import YooKassaProvider
+from app.modules.payments.schemas import BillingAccessResponse, BillingEntitlementSummary, BillingPaymentSummary
 
 logger = structlog.get_logger()
 
@@ -146,6 +148,68 @@ class PaymentsService:
         total = count_result.scalar() or 0
 
         return payments, total
+
+    async def get_billing_access_state(self, user_id: UUID) -> BillingAccessResponse:
+        """Return backend-owned billing/access state for the user."""
+        latest_payment_result = await self.db.execute(
+            select(Payment).where(Payment.user_id == user_id).order_by(Payment.created_at.desc()).limit(1)
+        )
+        latest_payment = latest_payment_result.scalars().all()
+        payment = latest_payment[0] if latest_payment else None
+
+        entitlements_result = await self.db.execute(
+            select(Entitlement).where(Entitlement.user_id == user_id).order_by(Entitlement.created_at.desc())
+        )
+        entitlements = list(entitlements_result.scalars().all())
+
+        now = datetime.now(UTC)
+        active_entitlements = [
+            entitlement
+            for entitlement in entitlements
+            if entitlement.status == "active" and (entitlement.expires_at is None or entitlement.expires_at > now)
+        ]
+
+        if active_entitlements:
+            access_state = "plus_active"
+            account_tier = "plus"
+        elif payment and payment.status in {"pending", "processing"}:
+            access_state = "checkout_pending"
+            account_tier = "free"
+        elif payment and payment.status in {"failed", "cancelled", "refunded"}:
+            access_state = "payment_failed"
+            account_tier = "free"
+        elif entitlements:
+            access_state = "plus_inactive"
+            account_tier = "free"
+        else:
+            access_state = "free"
+            account_tier = "free"
+
+        return BillingAccessResponse(
+            account_tier=account_tier,
+            access_state=access_state,
+            entitlements=[
+                BillingEntitlementSummary(
+                    product=entitlement.product,
+                    status=entitlement.status,
+                    starts_at=entitlement.starts_at,
+                    expires_at=entitlement.expires_at,
+                )
+                for entitlement in entitlements
+            ],
+            latest_payment=(
+                BillingPaymentSummary(
+                    id=str(payment.id),
+                    product_id=(payment.metadata_json or {}).get("product_id"),
+                    product=(payment.metadata_json or {}).get("product"),
+                    status=payment.status,
+                    created_at=payment.created_at,
+                    paid_at=payment.paid_at,
+                )
+                if payment
+                else None
+            ),
+        )
 
     async def handle_webhook(
         self,

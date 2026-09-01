@@ -65,7 +65,7 @@ Backend responsibilities:
 
 ### GET /api/v1/billing/access
 
-Returns the current billing/access state for the authenticated user.
+Implemented. Returns the current billing/access state for the authenticated user.
 
 Suggested response:
 

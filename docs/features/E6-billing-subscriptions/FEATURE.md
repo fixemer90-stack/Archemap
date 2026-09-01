@@ -94,7 +94,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [x] `succeeded` without `paid=true` does not activate access.
 - [x] Confirmed successful payment stores `paid_at` and grants an entitlement.
 - [ ] Production webhook URL is configured and verified against live YooKassa delivery.
-- [ ] Billing/access-state API returns `free`, `checkout_pending`, `plus_active`, `payment_failed`, or `plus_inactive`.
+- [x] Billing/access-state API returns `free`, `checkout_pending`, `plus_active`, `payment_failed`, or `plus_inactive`.
 - [ ] Frontend refreshes backend billing/access state after returning from YooKassa.
 - [ ] Backend-confirmed payment upgrades account tier to `plus` as status-only.
 - [ ] Free/Plus status does not restrict functionality until separate gating is enabled.
@@ -110,7 +110,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S02 | [YooKassa webhook reconciliation](./S02-yookassa-webhook-reconciliation.md)            | ✅ Реализовано     |
 | S03 | [Payment success state and entitlement grant](./S03-payment-success-entitlement.md)    | ✅ Реализовано     |
 | S04 | [Production webhook readiness](./S04-production-webhook-readiness.md)                  | ⬜ Не начато       |
-| S05 | [Billing access-state API](./S05-billing-access-state-api.md)                          | ⬜ Не начато       |
+| S05 | [Billing access-state API](./S05-billing-access-state-api.md)                          | ✅ Реализовано     |
 | S06 | [Payment-to-account-tier status update](./S06-payment-to-account-tier-status.md)       | ⬜ Не начато       |
 | S07 | [Report and product entitlement gates](./S07-report-product-entitlement-gates.md)      | ⬜ Не начато       |
 | S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)    | ⬜ Не начато       |

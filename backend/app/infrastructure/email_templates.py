@@ -19,7 +19,7 @@ def verify_email_template(link: str) -> tuple[str, str]:
     Подтвердить email
   </a>
   <p style="margin: 24px 0 0; color: #999; font-size: 13px;">
-    Ссылка действует 24 часа. Если вы не регистрировались, просто ignore this email.
+    Ссылка действует 24 часа. Если вы не регистрировались, просто проигнорируйте это письмо.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
   <p style="color: #999; font-size: 12px;">Astrotype — астрологический анализ личности</p>
@@ -32,7 +32,7 @@ def verify_email_template(link: str) -> tuple[str, str]:
 
 {link}
 
-Ссылка действует 24 часа. Если вы не регистрировались, ignore this email.
+Ссылка действует 24 часа. Если вы не регистрировались, проигнорируйте это письмо.
 
 --
 Astrotype
@@ -95,7 +95,7 @@ def password_reset_template(link: str) -> tuple[str, str]:
     Сбросить пароль
   </a>
   <p style="margin: 24px 0 0; color: #999; font-size: 13px;">
-    Ссылка действует 1 час. Если вы не запрашивали сброс, ignore this email.
+    Ссылка действует 1 час. Если вы не запрашивали сброс, проигнорируйте это письмо.
   </p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;">
   <p style="color: #999; font-size: 12px;">Astrotype — астрологический анализ личности</p>
@@ -108,7 +108,7 @@ def password_reset_template(link: str) -> tuple[str, str]:
 
 {link}
 
-Ссылка действует 1 час. Если вы не запрашивали сброс, ignore this email.
+Ссылка действует 1 час. Если вы не запрашивали сброс, проигнорируйте это письмо.
 
 --
 Astrotype

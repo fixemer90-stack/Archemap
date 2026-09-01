@@ -230,7 +230,7 @@ class AuthService:
             raise AuthorizationError("Account is deactivated")
 
         if not user.is_verified:
-            raise AuthorizationError("Email not verified. Please check your inbox.")
+            raise AuthorizationError("Email не подтверждён. Проверьте почту и перейдите по ссылке подтверждения.")
 
         access_token, _ = create_access_token(subject=str(user.id))
         refresh_token, _ = create_refresh_token(subject=str(user.id))
@@ -303,7 +303,7 @@ class AuthService:
             raise AuthorizationError("Account is deactivated")
 
         if not user.is_verified:
-            raise AuthorizationError("Email not verified. Please check your inbox.")
+            raise AuthorizationError("Email не подтверждён. Проверьте почту и перейдите по ссылке подтверждения.")
 
         # Blacklist old refresh token
         if jti:

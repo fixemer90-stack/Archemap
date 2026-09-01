@@ -126,7 +126,7 @@ async def verify_email(
     """Verify email address using token from email."""
     service = VerificationService(db)
     await service.verify_email(token=body.token)
-    return MessageResponse(message="Email verified successfully. You can now sign in.")
+    return MessageResponse(message="Email подтверждён. Теперь вы можете войти.")
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
@@ -147,7 +147,7 @@ async def resend_verification(
         service = VerificationService(db)
         await service.resend_verification(body.email)
 
-    return MessageResponse(message="If an account with that email exists, a verification link has been sent.")
+    return MessageResponse(message="Если аккаунт для этого email найден, мы отправили ссылку для подтверждения.")
 
 
 @router.post(

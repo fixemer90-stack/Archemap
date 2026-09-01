@@ -177,7 +177,7 @@ class TestLogin:
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=True),
-            pytest.raises(AuthorizationError, match="not verified"),
+            pytest.raises(AuthorizationError, match="не подтверждён"),
         ):
             await service.login("unverified@example.com", TEST_PASSWORD)
 
@@ -196,7 +196,7 @@ class TestLogin:
         with (
             patch("app.modules.auth.service.decode_refresh_token", return_value=refresh_payload),
             patch("app.modules.auth.service.is_token_blacklisted", new=AsyncMock(return_value=False)),
-            pytest.raises(AuthorizationError, match="not verified"),
+            pytest.raises(AuthorizationError, match="не подтверждён"),
         ):
             await service.refresh_tokens("refresh")
 

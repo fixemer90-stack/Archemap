@@ -37,7 +37,7 @@ async def test_get_current_user_rejects_unverified_user() -> None:
         await get_current_user(request=request, credentials=credentials, db=db)
 
     assert exc_info.value.status_code == 403
-    assert exc_info.value.detail == "Email not verified"
+    assert exc_info.value.detail == "Email не подтверждён. Проверьте почту и перейдите по ссылке подтверждения."
 
 
 @pytest.mark.asyncio

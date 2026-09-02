@@ -13,7 +13,8 @@ This feature answers one core question: Astrotype must treat a user as paid only
 ## Source architecture
 
 - Current audit: `../../architecture/current-payment-confirmation-flow.md`
-- Account tier target: `../../architecture/account-tier-role-foundation.md`
+- Account tier architecture: `../../architecture/account-tier-role-foundation.md`
+- Account tier feature: `../E7-account-tier-role-foundation/FEATURE.md`
 - SRS: `../../SRS/SRS-E6-billing-subscriptions.md`
 
 ## Current implementation baseline

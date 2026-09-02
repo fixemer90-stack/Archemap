@@ -79,5 +79,7 @@ Section evidence grounding remediation: `docs/architecture/astrotype-v2-section-
 Deterministic-first delivery contract: `docs/architecture/astrotype-v2-deterministic-first-delivery.md`
 Current payment confirmation flow: `docs/architecture/current-payment-confirmation-flow.md`
 Billing/payment feature contract: `docs/features/E6-billing-subscriptions/FEATURE.md`
-Account tier foundation: `docs/architecture/account-tier-role-foundation.md`
+Account tier architecture: `docs/architecture/account-tier-role-foundation.md`
+Account tier feature contract: `docs/features/E7-account-tier-role-foundation/FEATURE.md`
+Account tier SRS: `docs/SRS/SRS-E7-account-tier-role-foundation.md`
 Product surface redesign samples: `docs/design/astrotype-v2-homepage-sample.html`, `docs/design/astrotype-v2-dashboard-sample.html`, `docs/design/astrotype-v2-billing-sample.html`

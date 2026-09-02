@@ -1,8 +1,10 @@
 # Account tier role foundation
 
-Status: implemented baseline; gating remains future work
-Last updated: 2026-09-01
+Status: implemented in main; production deploy/migration still pending
+Last updated: 2026-09-02
 Scope: account-level Free/Plus status after payment confirmation.
+Feature contract: `../features/E7-account-tier-role-foundation/FEATURE.md`
+SRS: `../SRS/SRS-E7-account-tier-role-foundation.md`
 
 This document defines the first account-tier role layer for Astrotype.
 
@@ -36,7 +38,7 @@ In the first implementation, free and plus differ only by displayed/account stat
 No API endpoint, report section, calculation, profile action, or frontend route is restricted by account_tier yet.
 ```
 
-Future stories may use `account_tier` to gate Plus features, but that must be implemented as separate explicit work.
+Future stories may use `account_tier` for product presentation, but authorization must stay entitlement-based. The first paid self-report gates now use active `entitlements`, not `account_tier` alone.
 
 ## Why entitlements are not enough
 
@@ -234,14 +236,14 @@ Later gating must be added through backend policy checks, not by changing this b
 
 ## Relationship to future access gating
 
-Future stories can build on this foundation:
+Implemented/future access gating builds on this foundation:
 
 - `GET /api/v1/billing/access` returns `account_tier`, entitlements and payment state;
-- report/product endpoints enforce Plus access for selected sections;
-- frontend uses backend-provided access mode (`preview`, `full`, `locked`);
+- Astrotype v2 self-report endpoints enforce paid access through active `self` entitlement;
+- frontend uses backend-provided access mode (`full`, `locked`);
 - subscription expiry/downgrade moves accounts back to `free` or another explicit state.
 
-Those later behaviors require their own docs, migrations, services and tests.
+Subscription expiry/downgrade remains future work and requires its own docs, migrations, services and tests.
 
 ## Acceptance criteria for implementation
 
@@ -253,7 +255,7 @@ The account-tier foundation is complete when:
 - [x] Failed/cancelled/mismatched/unpaid YooKassa events do not change the user's tier.
 - [x] Replayed successful webhook is idempotent and keeps tier as `plus`.
 - [x] `/auth/me` or equivalent current-user endpoint returns `account_tier`.
-- [ ] Frontend can display Free/Plus status without using it as a paywall.
+- [x] Frontend can display Free/Plus/status-oriented billing state without using `account_tier` alone as a paywall.
 - [x] Tests prove that Free and Plus currently have no functional access difference caused by the new field.
 
 ## Required tests
@@ -296,17 +298,17 @@ If historical paid users must be upgraded, perform an explicit audited backfill 
 
 ## Status marker
 
-As of this document, account-tier role foundation is not implemented in code.
+As of 2026-09-02, account-tier role foundation is implemented in `main` and covered by the E6 payment slice.
 
 Current code has:
 
-- `users.is_active`, `users.is_verified`, `users.is_superuser`;
-- payment confirmation through YooKassa reconciliation;
-- product entitlement grant after successful payment.
+- `users.account_tier` with default `free`;
+- Free/Plus account-level role service: `AccountTierService.upgrade_to_plus()`;
+- successful YooKassa webhook path upgrades account tier after backend-confirmed `succeeded + paid=true`;
+- `/users/me` and `GET /api/v1/billing/access` expose `account_tier`;
+- product/report authorization gates use active entitlements rather than trusting `account_tier` alone.
 
-Current code does not have:
+Deployment note:
 
-- `users.account_tier`;
-- Free/Plus account-level role service;
-- payment-to-account-tier update;
-- `account_tier` in current-user API response.
+- production observed on 2026-09-02 still had no `users.account_tier` column and no `/api/v1/billing/access` endpoint, so production needs deployment and migration before this foundation is live there;
+- production payment entitlements for `fixemer90@gmail.com` and `balthier90@mail.ru` were confirmed separately through YooKassa reconciliation and active `self` entitlement rows.

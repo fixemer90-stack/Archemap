@@ -38,16 +38,17 @@ E6 покрывает не только payment processing, но и весь acc
 
 ### 1.4 Ссылки
 
-| Документ                     | Путь                                                     |
-| ---------------------------- | -------------------------------------------------------- |
-| Feature docs                 | `docs/features/E6-billing-subscriptions/`                |
-| Workflow explainer           | `docs/features/E6-billing-subscriptions/WORKFLOW.md`     |
-| API explainer                | `docs/features/E6-billing-subscriptions/API.md`          |
-| Current implementation audit | `docs/architecture/current-payment-confirmation-flow.md` |
-| Account tier foundation      | `docs/architecture/account-tier-role-foundation.md`      |
-| Reports feature              | `docs/features/E5-products-reports/`                     |
-| Report UX                    | `docs/features/E10-report-ux-redesign/`                  |
-| LLM narrative                | `docs/features/E11-llm-report-narrative/`                |
+| Документ                     | Путь                                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Feature docs                 | `docs/features/E6-billing-subscriptions/`                                                                     |
+| Workflow explainer           | `docs/features/E6-billing-subscriptions/WORKFLOW.md`                                                          |
+| API explainer                | `docs/features/E6-billing-subscriptions/API.md`                                                               |
+| Current implementation audit | `docs/architecture/current-payment-confirmation-flow.md`                                                      |
+| Account tier architecture    | `docs/architecture/account-tier-role-foundation.md`                                                           |
+| Account tier feature/SRS     | `docs/features/E7-account-tier-role-foundation/FEATURE.md`, `docs/SRS/SRS-E7-account-tier-role-foundation.md` |
+| Reports feature              | `docs/features/E5-products-reports/`                                                                          |
+| Report UX                    | `docs/features/E10-report-ux-redesign/`                                                                       |
+| LLM narrative                | `docs/features/E11-llm-report-narrative/`                                                                     |
 
 ---
 
@@ -228,7 +229,7 @@ FR-6.8.4 Frontend ДОЛЖЕН различать состояния ожида�
 - `plus_inactive` — entitlement истёк или отключён
 - `checkout_pending` — payment создан/обновляется, но доступ ещё не активирован
 
-Account-tier foundation documented separately in `docs/architecture/account-tier-role-foundation.md`: first implementation stores and exposes `free`/`plus` status only; it must not restrict API or UI functionality until later gating stories.
+Account-tier foundation documented separately in `docs/architecture/account-tier-role-foundation.md`, `docs/features/E7-account-tier-role-foundation/FEATURE.md`, and `docs/SRS/SRS-E7-account-tier-role-foundation.md`: first implementation stores and exposes `free`/`plus` status only; product access must remain entitlement-based.
 
 ---
 

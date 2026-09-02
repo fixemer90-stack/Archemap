@@ -2,11 +2,11 @@
 
 ## Status
 
-⬜ Не начато
+🟡 Production deploy/migration/backfill verified; new payment smoke pending
 
 ## Context
 
-The code is implemented in `main`, but production observed on 2026-09-02 still did not have `users.account_tier` or `GET /api/v1/billing/access`. Production needs a deploy, database migration and a narrow paid-user audit/backfill.
+The code is implemented in `main`. Production was behind on 2026-09-02, then the latest source was deployed to `/opt/astrotype`, the backend restarted, Alembic reached `d3e4f5a6b7c8`, and the narrow paid-user backfill was applied for confirmed paid users.
 
 ## Source architecture
 
@@ -24,6 +24,20 @@ The code is implemented in `main`, but production observed on 2026-09-02 still d
 - `entitlements`
 - `payment_webhooks`
 
+## Rollback plan recorded before production mutation
+
+Recorded: 2026-09-02T19:00:32Z.
+
+Before deploy/migration/backfill, create a production PostgreSQL dump on the server and preserve the previous `/opt/astrotype` source tree by relying on the existing Docker images/containers until the new build is healthy.
+
+Rollback path:
+
+1. stop the newly built services if health checks fail;
+2. restore the previous source tree or previous image set from Docker cache;
+3. run `docker compose -f docker-compose.prod.yml up -d backend worker frontend`;
+4. if the migration/backfill corrupted tier data, restore the PostgreSQL dump captured immediately before deploy;
+5. verify `https://astrotype.ru/api/v1/health` before re-opening payment smoke.
+
 ## What to do
 
 1. Deploy the latest `main` that contains E6/E7 account-tier code.
@@ -40,14 +54,32 @@ The code is implemented in `main`, but production observed on 2026-09-02 still d
 
 ## Acceptance criteria
 
-- [ ] Production is running a build that includes `GET /api/v1/billing/access`.
-- [ ] Production migration adds `users.account_tier` without data loss.
-- [ ] All existing users have non-null `account_tier`.
-- [ ] Existing paid users are backfilled to `plus` only from succeeded payment + active entitlement evidence.
-- [ ] Existing free users remain `free`.
-- [ ] `fixemer90@gmail.com` and `balthier90@mail.ru` are verified after backfill.
+- [x] Production is running a build that includes `GET /api/v1/billing/access`.
+- [x] Production migration adds `users.account_tier` without data loss.
+- [x] All existing users have non-null `account_tier`.
+- [x] Existing paid users are backfilled to `plus` only from succeeded payment + active entitlement evidence.
+- [x] Existing free users remain `free`.
+- [x] `fixemer90@gmail.com` and `balthier90@mail.ru` are verified after backfill.
 - [ ] New YooKassa payment upgrades both entitlement and tier through normal webhook processing.
-- [ ] Rollback plan is recorded before production mutation.
+- [x] Rollback plan is recorded before production mutation.
+
+## Production verification evidence
+
+Recorded on 2026-09-02 after deploy/backfill:
+
+- pre-mutation dump: `/opt/astrotype/backups/pre-e7-tier-20260902T193726Z.sql` (`9,790,184` bytes);
+- `.deploy-sha`: `f17a23a3a2df05fedc4fe0057873277e95826f4f`;
+- backend local health: `{"status":"ok","database":"ok","redis":"ok"}`;
+- backend container: healthy after restart;
+- worker/frontend containers: restarted successfully;
+- Alembic version: `d3e4f5a6b7c8`;
+- `users.account_tier`: exists, default `'free'`, non-null;
+- user counts after backfill: `14` total, `0` null tiers, `12` free, `2` plus;
+- `balthier90@mail.ru`: `account_tier=plus`, provider payment `322a72ec-000f-5001-9000-194494557f3e`, payment `succeeded`, active `self` entitlement;
+- `fixemer90@gmail.com`: `account_tier=plus`, provider payment `322a6fd6-000f-5000-b000-14a40d255910`, payment `succeeded`, active `self` entitlement;
+- unauthenticated public `GET https://astrotype.ru/api/v1/billing/access`: `401 Not authenticated`, proving the deployed endpoint is present and auth-gated rather than missing/404.
+
+Fresh automatic YooKassa delivery smoke is still pending because it requires a new checkout/payment cycle.
 
 ## Verification
 

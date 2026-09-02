@@ -58,7 +58,7 @@ Acceptance criteria:
 - [x] Existing users are preserved by migration.
 - [x] First allowed values are `free` and `plus`.
 - [x] Tier is not derived from `is_superuser`.
-- [ ] Production database has the deployed column after migration.
+- [x] Production database has the deployed column after migration.
 
 ### FR-E7.2 Tier service boundary
 
@@ -90,7 +90,7 @@ Acceptance criteria:
 - [x] Current-user response exposes account tier in the current codebase.
 - [x] Billing access response exposes account tier in the current codebase.
 - [x] API response does not imply payment success from browser return URL.
-- [ ] Production deployed endpoint returns auth-gated access state instead of 404.
+- [x] Production deployed endpoint returns auth-gated access state instead of 404.
 
 ### FR-E7.5 Frontend status behavior
 
@@ -120,10 +120,10 @@ Production rollout shall safely deploy the tier column and backfill only confirm
 
 Acceptance criteria:
 
-- [ ] Production migration is applied.
-- [ ] Existing paid users are identified by succeeded payment plus active entitlement.
-- [ ] Existing free users remain `free`.
-- [ ] `fixemer90@gmail.com` and `balthier90@mail.ru` are verified after backfill.
+- [x] Production migration is applied.
+- [x] Existing paid users are identified by succeeded payment plus active entitlement.
+- [x] Existing free users remain `free`.
+- [x] `fixemer90@gmail.com` and `balthier90@mail.ru` are verified after backfill.
 - [ ] New payment smoke proves webhook -> payment -> entitlement -> tier.
 
 ## 4. Non-functional requirements
@@ -243,11 +243,11 @@ git diff --check -- docs/features/E7-account-tier-role-foundation docs/SRS/SRS-E
 
 ### Rollout
 
-1. Deploy latest main.
-2. Apply migration.
-3. Verify endpoint availability.
-4. Run paid-user audit/backfill.
-5. Run new payment smoke.
+1. Deploy latest main. ✅ Done on 2026-09-02; `.deploy-sha = f17a23a3a2df05fedc4fe0057873277e95826f4f`.
+2. Apply migration. ✅ Alembic reached `d3e4f5a6b7c8`.
+3. Verify endpoint availability. ✅ `/api/v1/billing/access` returns auth error instead of 404 for unauthenticated requests.
+4. Run paid-user audit/backfill. ✅ `fixemer90@gmail.com` and `balthier90@mail.ru` are `plus` from succeeded payment + active `self` entitlement.
+5. Run new payment smoke. ⬜ Pending; requires a fresh YooKassa checkout and automatic webhook delivery proof.
 
 ### Risks
 

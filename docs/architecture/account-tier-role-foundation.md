@@ -1,6 +1,6 @@
 # Account tier role foundation
 
-Status: implemented in main; production deploy/migration still pending
+Status: implemented in main and deployed to production; new-payment webhook smoke pending
 Last updated: 2026-09-02
 Scope: account-level Free/Plus status after payment confirmation.
 Feature contract: `../features/E7-account-tier-role-foundation/FEATURE.md`
@@ -310,5 +310,6 @@ Current code has:
 
 Deployment note:
 
-- production observed on 2026-09-02 still had no `users.account_tier` column and no `/api/v1/billing/access` endpoint, so production needs deployment and migration before this foundation is live there;
-- production payment entitlements for `fixemer90@gmail.com` and `balthier90@mail.ru` were confirmed separately through YooKassa reconciliation and active `self` entitlement rows.
+- production deployed/backfilled on 2026-09-02: Alembic reached `d3e4f5a6b7c8`, `users.account_tier` exists with default `free`, `GET /api/v1/billing/access` is present and auth-gated;
+- production payment entitlements for `fixemer90@gmail.com` and `balthier90@mail.ru` were confirmed through YooKassa reconciliation and active `self` entitlement rows, then both accounts were backfilled to `plus`;
+- fresh automatic YooKassa delivery smoke remains open and tracked in `../features/E7-account-tier-role-foundation/S05-production-deploy-migration-backfill.md`.

@@ -40,7 +40,7 @@ Frontend needs to show the account/access state after checkout without inventing
 - [x] Frontend calls backend after payment return.
 - [x] Frontend can display status without unlocking content purely by tier.
 - [x] Regression script checks billing state copy markers.
-- [ ] Production backend exposes the deployed endpoint after release.
+- [x] Production backend exposes the deployed endpoint after release; unauthenticated smoke returns auth error instead of 404.
 
 ## Verification
 

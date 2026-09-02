@@ -31,7 +31,7 @@ For implemented code, keep this document as the acceptance contract and regressi
 - [x] Migration preserves users, auth data, profiles, payments, webhooks, entitlements and v2 artifacts.
 - [x] Allowed first values are `free` and `plus`.
 - [x] The column is not modeled as admin/RBAC permission.
-- [ ] Production database has the column after deploy/migration.
+- [x] Production database has the column after deploy/migration.
 
 ## Verification
 

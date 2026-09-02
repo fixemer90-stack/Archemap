@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Implemented in main; production deploy/migration pending
+🟡 Production deploy/backfill verified; new-payment webhook smoke pending
 
 ## Goal
 
@@ -27,11 +27,18 @@ Implemented in `main`:
 - `/users/me` and billing access state expose `account_tier` in the current codebase.
 - Free/Plus tier is status-oriented; paid content gates use entitlements.
 
-Production observed on 2026-09-02 still needs deploy/migration:
+Production deployed/backfilled on 2026-09-02:
 
-- production database did not yet have `users.account_tier`;
-- production backend did not yet expose `GET /api/v1/billing/access`;
-- existing production paid users were confirmed through active `self` entitlement rows, not tier state.
+- production source deployed to `/opt/astrotype` with `.deploy-sha = f17a23a3a2df05fedc4fe0057873277e95826f4f`;
+- backend/worker/frontend containers rebuilt and restarted;
+- Alembic reached `d3e4f5a6b7c8`;
+- production database has non-null `users.account_tier` for all users;
+- public `GET /api/v1/billing/access` returns auth error for unauthenticated requests instead of 404;
+- existing paid users `fixemer90@gmail.com` and `balthier90@mail.ru` were backfilled to `plus` from succeeded payment + active `self` entitlement.
+
+Still open:
+
+- one fresh YooKassa payment smoke through normal automatic webhook delivery.
 
 ## Scope
 
@@ -88,19 +95,19 @@ mark payment successful from return_url/query params
 - [x] Current-user or billing-access API exposes `account_tier`.
 - [x] Frontend can display status/access state without treating tier alone as a paywall.
 - [x] Paid report/product authorization uses active entitlements, not tier alone.
-- [ ] Production deploy applies the account-tier migration.
-- [ ] Existing production paid users are audited/backfilled only by confirmed succeeded payment + active entitlement.
-- [ ] Production smoke proves both new and historical paid users get the expected account tier after deploy/backfill.
+- [x] Production deploy applies the account-tier migration.
+- [x] Existing production paid users are audited/backfilled only by confirmed succeeded payment + active entitlement.
+- [ ] Production smoke proves a new paid checkout upgrades the expected account tier through normal automatic webhook delivery.
 
 ## Stories
 
-| ID  | Story                                                                                                | Status         |
-| --- | ---------------------------------------------------------------------------------------------------- | -------------- |
-| S01 | [User tier data model and migration](./S01-user-tier-data-model-migration.md)                        | ✅ Реализовано |
-| S02 | [Payment-to-tier service integration](./S02-payment-to-tier-service-integration.md)                  | ✅ Реализовано |
-| S03 | [Tier visibility in APIs and frontend status](./S03-tier-visibility-api-frontend.md)                 | ✅ Реализовано |
-| S04 | [Tier vs entitlement authorization boundary](./S04-tier-entitlement-authorization-boundary.md)       | ✅ Реализовано |
-| S05 | [Production deploy, migration and paid-user backfill](./S05-production-deploy-migration-backfill.md) | ⬜ Не начато   |
+| ID  | Story                                                                                                | Status                       |
+| --- | ---------------------------------------------------------------------------------------------------- | ---------------------------- |
+| S01 | [User tier data model and migration](./S01-user-tier-data-model-migration.md)                        | ✅ Реализовано               |
+| S02 | [Payment-to-tier service integration](./S02-payment-to-tier-service-integration.md)                  | ✅ Реализовано               |
+| S03 | [Tier visibility in APIs and frontend status](./S03-tier-visibility-api-frontend.md)                 | ✅ Реализовано               |
+| S04 | [Tier vs entitlement authorization boundary](./S04-tier-entitlement-authorization-boundary.md)       | ✅ Реализовано               |
+| S05 | [Production deploy, migration and paid-user backfill](./S05-production-deploy-migration-backfill.md) | 🟡 New-payment smoke pending |
 
 ## Implementation order
 

@@ -17,7 +17,7 @@ from starlette.requests import Request
 
 from app.modules.billing.router import get_billing_access
 from app.modules.payments.router import yookassa_webhook
-from app.modules.payments.schemas import CreatePaymentRequest
+from app.modules.payments.schemas import BillingAccessResponse, CreatePaymentRequest
 from app.modules.payments.service import PaymentsService
 
 
@@ -247,7 +247,7 @@ async def test_create_payment_for_product_uses_server_catalog_price() -> None:
 
 async def test_billing_access_endpoint_returns_backend_owned_state() -> None:
     user_id = uuid4()
-    expected = SimpleNamespace(access_state="free", account_tier="free", entitlements=[], latest_payment=None)
+    expected = BillingAccessResponse(access_state="free", account_tier="free", entitlements=[], latest_payment=None)
 
     with patch(
         "app.modules.billing.router.PaymentsService.get_billing_access_state",

@@ -6,9 +6,11 @@ import {
   fetchAstrotypeV2GenerationStatus,
   fetchAstrotypeV2Report,
   generateAstrotypeV2Report,
+  isLockedAstrotypeV2Report,
+  type AstrotypeV2FullReportResponse,
   type AstrotypeV2GenerationStatusResponse,
+  type AstrotypeV2LockedReportResponse,
   type AstrotypeV2ProgressResponse,
-  type AstrotypeV2ReportResponse,
 } from "@/lib/api/astrotype-v2";
 
 const POLL_INTERVAL_MS = 5_000;
@@ -36,13 +38,15 @@ export type V2ReportGenerationState =
   | "polling"
   | "ready"
   | "failed"
-  | "regenerating";
+  | "regenerating"
+  | "locked";
 
 export interface UseV2ReportGenerationResult {
   state: V2ReportGenerationState;
   generationId: string | null;
   reportId: string | null;
-  report: AstrotypeV2ReportResponse | null;
+  report: AstrotypeV2FullReportResponse | null;
+  lockedAccess: AstrotypeV2LockedReportResponse | null;
   generationStatus: AstrotypeV2GenerationStatusResponse | null;
   progress: AstrotypeV2ProgressResponse | null;
   message: string;
@@ -78,7 +82,11 @@ export function useV2ReportGeneration(
   const [state, setState] = useState<V2ReportGenerationState>("idle");
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
-  const [report, setReport] = useState<AstrotypeV2ReportResponse | null>(null);
+  const [report, setReport] = useState<AstrotypeV2FullReportResponse | null>(
+    null,
+  );
+  const [lockedAccess, setLockedAccess] =
+    useState<AstrotypeV2LockedReportResponse | null>(null);
   const [generationStatus, setGenerationStatus] =
     useState<AstrotypeV2GenerationStatusResponse | null>(null);
   const [progress, setProgress] = useState<AstrotypeV2ProgressResponse | null>(
@@ -110,6 +118,14 @@ export function useV2ReportGeneration(
 
   const loadReport = useCallback(async (id: string) => {
     const data = await fetchAstrotypeV2Report(id);
+    if (isLockedAstrotypeV2Report(data)) {
+      setLockedAccess(data);
+      setState("locked");
+      setMessage(data.upgrade.description);
+      inFlightRef.current = false;
+      return true;
+    }
+    setLockedAccess(null);
     const reportStatus = data.report.status;
     setReport(data);
     setProgress(data.progress);
@@ -195,6 +211,7 @@ export function useV2ReportGeneration(
       pollAttemptsRef.current = 0;
       clearPollTimer();
       setState(force ? "regenerating" : "loading");
+      setLockedAccess(null);
       setError(null);
       setMessage(force ? "Перегенерируем отчёт..." : "Запрашиваем отчёт...");
       try {
@@ -278,6 +295,7 @@ export function useV2ReportGeneration(
     generationId,
     reportId,
     report,
+    lockedAccess,
     generationStatus,
     progress,
     message,

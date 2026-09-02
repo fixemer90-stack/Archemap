@@ -102,6 +102,8 @@ Repeated webhook delivery must be safe:
 | `payment_failed`   | Latest attempt failed/cancelled/mismatched     | “Оплата не завершена. Можно попробовать ещё раз.”     |
 | `plus_inactive`    | Previous Plus is no longer active, if expiring | “Plus сейчас не активен”                              |
 
-## Current gaps
+## Current implementation frontier
 
-The backend confirmation core exists. The user-visible lifecycle is not complete until the access-state API and frontend return-state UX are implemented.
+The local implementation now covers backend confirmation, access-state API, account-tier status, frontend return-state UX, and first v2 self-report entitlement gates.
+
+The remaining non-local production proof is YooKassa merchant-cabinet webhook registration plus a deployed HTTPS smoke run. The checklist is in `../../implementation/payment-confirmation-production-smoke.md`.

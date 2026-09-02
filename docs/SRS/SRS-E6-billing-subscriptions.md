@@ -2,7 +2,7 @@
 
 Версия: 1.0
 Дата: 2026-06-07
-Статус: Partially implemented — checkout/webhook/entitlement grant implemented; access-state API and report/product gates still pending
+Статус: Locally implemented except live YooKassa production/staging smoke
 Источник: `docs/features/E6-billing-subscriptions/`
 
 ---
@@ -132,7 +132,7 @@ FR-6.4.1 Система ДОЛЖНА иметь endpoint для чтения т�
 
 FR-6.4.2 Этот endpoint ДОЛЖЕН возвращать текущий plan/access status, grants и summary последней активной попытки оплаты при необходимости.
 
-Текущее состояние реализации: `GET /api/v1/billing/access` реализован и возвращает backend-owned `account_tier`, `access_state`, entitlements и безопасный summary последней оплаты. Frontend consumption still tracked by S08.
+Текущее состояние реализации: `GET /api/v1/billing/access` реализован и возвращает backend-owned `account_tier`, `access_state`, entitlements и безопасный summary последней оплаты. `/billing?checkout=return` читает этот endpoint и показывает pending/active/failure states.
 
 ### 3.5 Payment confirmation and access activation (FR-6.5)
 
@@ -150,25 +150,25 @@ FR-6.5.5 Успешная backend-confirmed оплата ДОЛЖНА перев
 
 ### 3.6 Report/product gating (FR-6.6)
 
-FR-6.6.1 Report endpoints ДОЛЖНЫ поддерживать `preview` и `full` access modes.
+FR-6.6.1 Report endpoints ДОЛЖНЫ поддерживать locked/full access modes.
 
-FR-6.6.2 Career и другие платные вертикали НЕ ДОЛЖНЫ быть доступны бесплатно через прямой вызов route/API.
+FR-6.6.2 Платные report/product payloads НЕ ДОЛЖНЫ быть доступны бесплатно через прямой вызов route/API.
 
 FR-6.6.3 Free-ответ НЕ ДОЛЖЕН содержать полный закрытый payload с расчётом на визуальное скрытие на frontend.
 
-FR-6.6.4 API ДОЛЖЕН возвращать `upgrade_required`, `locked_sections` и CTA metadata там, где это нужно UX.
+FR-6.6.4 API ДОЛЖЕН возвращать locked access state и CTA metadata там, где это нужно UX.
 
 ### 3.7 Entitlement policy (FR-6.7)
 
 FR-6.7.1 Система ДОЛЖНА иметь backend policy-check, отвечающий, есть ли у пользователя доступ к конкретному продукту/режиму.
 
-FR-6.7.2 Policy-check ДОЛЖЕН учитывать user, product, access mode, статус entitlement и срок действия.
+FR-6.7.2 Policy-check ДОЛЖЕН учитывать user, product, статус entitlement и срок действия. Access mode is represented by route-level policy for the first self-report gate.
 
-FR-6.7.3 Policy-check ДОЛЖЕН использоваться и в billing/account flows, и в report/product endpoints.
+FR-6.7.3 Policy-check ДОЛЖЕН использоваться в report/product endpoints; billing/account flow reads aggregate payment/access state from the payments service.
 
 ### 3.8 Frontend flow (FR-6.8)
 
-FR-6.8.1 `/billing` ДОЛЖЕН показывать реальный access state пользователя, а не только маркетинговую заглушку.
+FR-6.8.1 `/billing?checkout=return` ДОЛЖЕН показывать реальный access state пользователя, а не только маркетинговую заглушку.
 
 FR-6.8.2 После возврата с PSP frontend ДОЛЖЕН перечитывать backend access state.
 
@@ -288,9 +288,9 @@ Frontend должен строиться вокруг трёх проверок:
 
 Особенно важно:
 
-- `/billing` читает не только каталог, но и user access state;
-- report page не предполагает full access заранее;
-- direct route в Career не раскрывает контент без backend-grant.
+- `/billing?checkout=return` читает user access state;
+- v2 report page не предполагает full access заранее и умеет показать locked CTA;
+- direct route не раскрывает paid report content без backend-grant.
 
 ---
 
@@ -301,9 +301,9 @@ Frontend должен строиться вокруг трёх проверок:
 - unit/integration tests на catalog lookup и запрет client-owned pricing;
 - webhook reconciliation tests;
 - entitlement idempotency tests;
-- backend tests на preview/full gating;
+- backend tests на locked/full gating;
 - frontend regression checks на free/plus billing states и locked report sections;
-- ручной smoke flow: free user → upgrade → webhook → plus active → full report.
+- ручной smoke flow: free user → upgrade → webhook → plus active → full report. Live execution tracked by `docs/implementation/payment-confirmation-production-smoke.md`.
 
 ---
 

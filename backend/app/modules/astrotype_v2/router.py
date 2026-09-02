@@ -24,9 +24,11 @@ from app.modules.astrotype_v2.fact_view import build_fact_evidence_payload
 from app.modules.astrotype_v2.infographic_data import build_infographic_api_payload_v2
 from app.modules.astrotype_v2.pdf import generate_v2_report_pdf
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
+from app.modules.authorization.service import EntitlementsService, build_locked_product_response
 from app.modules.profiles.models import PersonProfile
 
 router = APIRouter(prefix="/astrotype-v2", tags=["astrotype-v2"])
+SELF_REPORT_PRODUCT = "self"
 
 
 class GenerateV2ReportRequest(BaseModel):
@@ -101,6 +103,12 @@ async def get_v2_report(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    has_access = await EntitlementsService(db).has_active_product_access(
+        user_id=current_user,
+        product=SELF_REPORT_PRODUCT,
+    )
+    if not has_access:
+        return build_locked_product_response(product=SELF_REPORT_PRODUCT, reason="missing_entitlement")
     outline = await repository.get_outline_for_chart(report.chart_id)
     chart = await repository.get_chart(report.chart_id)
     profile = await _load_profile(db=db, chart=chart, user_id=current_user)
@@ -128,6 +136,7 @@ async def get_v2_report_pdf(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await _require_self_report_access(db=db, user_id=current_user)
     chart = await repository.get_chart(report.chart_id)
     profile = await _load_profile(db=db, chart=chart, user_id=current_user)
     pdf_bytes = generate_v2_report_pdf(
@@ -156,6 +165,7 @@ async def get_v2_report_progress(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await _require_self_report_access(db=db, user_id=current_user)
     outline = await repository.get_outline_for_chart(report.chart_id)
     segments = await repository.list_segments_for_outline(outline.id) if outline is not None else []
     return build_report_progress_v2(report=report, outline=outline, segments=segments)
@@ -171,6 +181,7 @@ async def get_v2_report_facts(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await _require_self_report_access(db=db, user_id=current_user)
     facts = await repository.list_facts_for_chart(report.chart_id)
     evidence = [row for fact in facts for row in await repository.list_fact_evidence(fact.id)]
     return build_fact_evidence_payload(facts=facts, evidence=evidence)
@@ -186,6 +197,7 @@ async def get_v2_report_infographic(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await _require_self_report_access(db=db, user_id=current_user)
     infographic = await repository.get_infographic_data_for_chart(report.chart_id)
     if infographic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Infographic data is not ready")
@@ -209,6 +221,7 @@ async def get_v2_report_segments(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await _require_self_report_access(db=db, user_id=current_user)
     outline = await repository.get_outline_for_chart(report.chart_id)
     if outline is None:
         return []
@@ -230,6 +243,7 @@ async def regenerate_v2_report(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await _require_self_report_access(db=db, user_id=current_user)
     chart = await repository.get_chart(report.chart_id)
     if chart is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chart is not available")
@@ -298,6 +312,19 @@ async def _load_report_for_user(
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return report
+
+
+async def _require_self_report_access(*, db: AsyncSession, user_id: UUID) -> None:
+    has_access = await EntitlementsService(db).has_active_product_access(
+        user_id=user_id,
+        product=SELF_REPORT_PRODUCT,
+    )
+    if has_access:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        detail=build_locked_product_response(product=SELF_REPORT_PRODUCT, reason="missing_entitlement"),
+    )
 
 
 async def _load_profile(

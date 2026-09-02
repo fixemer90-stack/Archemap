@@ -93,10 +93,49 @@ for (const marker of [
 }
 
 for (const marker of [
+  "useSearchParams",
+  'checkout === "return"',
+  "getBillingAccess()",
+  "Проверяем оплату",
+  "Это может занять немного времени",
+  "Plus активен",
+  "Оплата не завершена",
+  "Попробовать ещё раз",
+]) {
+  if (!billingPage.includes(marker)) {
+    throw new Error(`Billing return status UX missing marker: ${marker}`);
+  }
+}
+
+if (
+  billingPage.includes('checkout === "return"') &&
+  !billingPage.includes("getBillingAccess()")
+) {
+  throw new Error(
+    "Billing page must fetch backend access state after checkout return",
+  );
+}
+
+for (const forbidden of [
+  "Оплата прошла",
+  "успешно оплачено",
+  "checkout=return значит",
+]) {
+  if (billingPage.includes(forbidden)) {
+    throw new Error(
+      `Billing page must not infer success from query params: ${forbidden}`,
+    );
+  }
+}
+
+for (const marker of [
   "type CreatePaymentRequest",
   "product_id: string",
   "return_url?: string",
+  "type BillingAccessResponse",
+  "access_state: BillingAccessState",
   'api.post<PaymentResponse>("/api/v1/payments", request)',
+  'api.get<BillingAccessResponse>("/api/v1/billing/access")',
 ]) {
   if (!paymentsApi.includes(marker)) {
     throw new Error(`Payments API client missing marker: ${marker}`);

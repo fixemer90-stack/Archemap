@@ -6,24 +6,20 @@
 
 ## Context
 
-Payment confirmation is security-sensitive and needs regression tests plus operational visibility. Unit tests already cover the core backend path; broader API/frontend/production smoke coverage remains.
+Payment confirmation is security-sensitive and needs regression tests plus operational visibility. Backend and frontend regression checks now cover the implemented slices; live production smoke remains environment-dependent.
 
 ## Source architecture
 
 - `../../architecture/current-payment-confirmation-flow.md`
 - Parent feature: `./FEATURE.md`
+- Production smoke runbook: `../../implementation/payment-confirmation-production-smoke.md`
 
 ## Files affected
 
 - `backend/tests/unit/test_payments.py`
-- future backend API tests
-- future frontend billing UX tests
-- backend logs/metrics
-- deployment runbook
-
-## What to do
-
-For implemented stories, keep this document as the acceptance contract and regression checklist. For pending stories, implement only this slice and update the status after code/tests pass.
+- `frontend/scripts/check-billing-ux.mjs`
+- backend payment/authorization logs
+- `docs/implementation/payment-confirmation-production-smoke.md`
 
 ## Acceptance criteria
 
@@ -31,15 +27,33 @@ For implemented stories, keep this document as the acceptance contract and regre
 - [x] Unit tests cover metadata mismatch.
 - [x] Unit tests cover `succeeded` without `paid=true`.
 - [x] Unit tests cover provider reconciliation failure.
-- [ ] API tests cover access-state endpoint.
-- [ ] Frontend script covers billing return UX.
-- [ ] Production smoke runbook records exact database/log checks.
-- [ ] Observability distinguishes invalid webhook, provider failure, mismatch, pending and success.
+- [x] API tests cover access-state endpoint.
+- [x] Frontend script covers billing return UX.
+- [x] Production smoke runbook records exact database/log checks.
+- [x] Observability distinguishes invalid webhook, provider failure, mismatch, pending and success.
+- [ ] Live YooKassa staging/production smoke has been executed against the deployed HTTPS webhook.
 
 ## Verification
 
 ```bash
-./backend/.venv/bin/python -m pytest backend/tests/unit/test_payments.py -q
+cd backend
+./.venv/bin/python -m pytest tests/unit/test_payments.py -q
+./.venv/bin/ruff check app/modules/payments app/modules/billing app/modules/authorization app/modules/astrotype_v2 tests/unit/test_payments.py
+./.venv/bin/python -m mypy .
+
+cd ../frontend
+node scripts/check-billing-ux.mjs
+npx eslint src/app/\(dashboard\)/billing/page.tsx src/lib/api/payments.ts scripts/check-billing-ux.mjs src/lib/api/astrotype-v2.ts src/lib/astrotype-v2/use-v2-report-generation.ts src/app/\(dashboard\)/report/v2/\[profileId\]/page.tsx src/lib/astrotype-v2/report-view-model.ts
+npx tsc --noEmit --pretty false
 ```
 
-Add narrower or broader checks in the implementation PR when this story touches additional modules.
+Latest local result:
+
+```text
+backend/tests/unit/test_payments.py: 22 passed
+ruff: All checks passed!
+mypy: Success: no issues found in 291 source files
+Billing UX structure check passed
+frontend eslint: passed
+frontend TypeScript: passed
+```

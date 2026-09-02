@@ -1,7 +1,7 @@
 # Current payment confirmation flow
 
 Status: current implementation audit
-Last checked: 2026-08-31
+Last checked: 2026-09-02
 Scope: YooKassa checkout, webhook confirmation, local payment state and entitlement activation.
 Feature contract: `docs/features/E6-billing-subscriptions/FEATURE.md`
 
@@ -31,7 +31,7 @@ entitlements.status = 'active'
 entitlements.source_payment_id = payments.id
 ```
 
-Account-tier note: the current implementation does not yet upgrade the user account from `free` to `plus`. The target contract for that next step is documented in `docs/architecture/account-tier-role-foundation.md`.
+Account-tier note: backend-confirmed payment now upgrades `users.account_tier` from `free` to `plus` as status-only. Entitlement gates use active entitlements, not browser return state.
 
 ## Source files
 
@@ -238,18 +238,14 @@ Current frontend implementation:
 - `BillingCheckoutButton` calls `createPayment({ product_id: 'self_full', return_url })`.
 - if backend returns `confirmation_url`, frontend redirects the browser to YooKassa.
 - copy on `/billing` correctly says access is activated after payment confirmation, not after return to site.
-
-Current frontend gap:
-
-- after `/billing?checkout=return`, the page does not yet poll or refresh a backend access-state endpoint;
-- there is no visible current-access state component on the billing page;
-- frontend payment client currently exposes `createPayment()` only, not `getPayment()`/`listPayments()`/`getAccessState()` helpers.
+- `/billing?checkout=return` calls `GET /api/v1/billing/access` through `getBillingAccess()` and renders pending, active, failed/inactive states from backend state.
+- frontend does not infer success from the URL query params.
 
 ## Current access-gating gap
 
 Payment confirmation and entitlement creation are implemented.
 
-What is now partially wired:
+What is now wired:
 
 - A backend access-state endpoint exists:
 
@@ -260,28 +256,11 @@ GET /api/v1/billing/access
 It returns `account_tier`, `access_state`, current entitlements and a safe latest-payment summary.
 
 - Account-tier baseline exists: `users.account_tier` defaults to `free`, and backend-confirmed payment upgrades it to `plus` as status-only.
+- `EntitlementsService.has_active_product_access(user_id, product)` checks active, unexpired, matching-product entitlements.
+- Astrotype v2 self-report payloads are gated by active `self` entitlement; locked responses return safe upgrade metadata instead of full paid payload.
+- Frontend v2 report flow recognises locked responses and renders an upgrade CTA.
 
-What is still not fully wired yet:
-
-1. A reusable backend policy check like:
-
-```text
-has_active_entitlement(user_id, product, access_mode)
-```
-
-2. Enforcement of that policy in paid report/product endpoints.
-
-3. Frontend rendering that reads backend access state and switches between:
-
-```text
-free
-checkout_pending
-plus_active
-payment_failed
-plus_inactive
-```
-
-Until those pieces are added, the backend can confirm payment and create entitlements, but product screens still need explicit entitlement gates to use that state consistently.
+Remaining production proof: live YooKassa merchant-cabinet webhook registration and deployed HTTPS smoke.
 
 ## Verification
 
@@ -291,10 +270,10 @@ Current targeted unit test command:
 ./backend/.venv/bin/python -m pytest backend/tests/unit/test_payments.py -q
 ```
 
-Latest local result on 2026-08-31:
+Latest local result on 2026-09-02:
 
 ```text
-9 passed
+22 passed
 ```
 
 Covered by tests:
@@ -317,20 +296,21 @@ Before relying on live payments, verify:
 - production logs show webhook delivery and provider reconciliation;
 - a test payment creates a local `payments.status='succeeded'` row with `paid_at`;
 - the same test payment creates an `entitlements.status='active'` row;
-- paid product/report endpoints actually check entitlements before returning full content.
+- paid product/report endpoints actually check entitlements before returning full content;
+- see `docs/implementation/payment-confirmation-production-smoke.md` for exact DB/log checks.
 
 ## Implementation status
 
-| Area                               | Status          | Notes                                                                   |
-| ---------------------------------- | --------------- | ----------------------------------------------------------------------- |
-| Server-owned checkout creation     | Implemented     | `POST /api/v1/payments` accepts product id and return URL only          |
-| YooKassa provider adapter          | Implemented     | Creates and fetches payments through YooKassa API                       |
-| Webhook route                      | Implemented     | `/api/v1/payments/webhooks/yookassa`                                    |
-| Server-side payment reconciliation | Implemented     | Fetches canonical provider object before activation                     |
-| Payment success criteria           | Implemented     | Requires `status='succeeded'` and `paid=true`                           |
-| Entitlement grant on success       | Implemented     | Grants active entitlement for product metadata                          |
-| Unit coverage                      | Implemented     | `backend/tests/unit/test_payments.py` passes                            |
-| Billing return UX polling          | Missing         | `/billing?checkout=return` does not yet refresh access state            |
-| Account-tier Free/Plus role        | Implemented     | `users.account_tier` defaults to `free`; confirmed payment sets `plus`  |
-| Access-state API                   | Implemented     | `GET /api/v1/billing/access` returns backend-owned billing/access state |
-| Report/product entitlement gating  | Missing/unclear | Entitlement creation exists; broad use as backend gate was not found    |
+| Area                               | Status      | Notes                                                                   |
+| ---------------------------------- | ----------- | ----------------------------------------------------------------------- |
+| Server-owned checkout creation     | Implemented | `POST /api/v1/payments` accepts product id and return URL only          |
+| YooKassa provider adapter          | Implemented | Creates and fetches payments through YooKassa API                       |
+| Webhook route                      | Implemented | `/api/v1/payments/webhooks/yookassa`                                    |
+| Server-side payment reconciliation | Implemented | Fetches canonical provider object before activation                     |
+| Payment success criteria           | Implemented | Requires `status='succeeded'` and `paid=true`                           |
+| Entitlement grant on success       | Implemented | Grants active entitlement for product metadata                          |
+| Unit coverage                      | Implemented | `backend/tests/unit/test_payments.py` passes                            |
+| Billing return UX polling          | Implemented | `/billing?checkout=return` refreshes backend access state               |
+| Account-tier Free/Plus role        | Implemented | `users.account_tier` defaults to `free`; confirmed payment sets `plus`  |
+| Access-state API                   | Implemented | `GET /api/v1/billing/access` returns backend-owned billing/access state |
+| Report/product entitlement gating  | Implemented | v2 self-report paid payload routes check active `self` entitlement      |

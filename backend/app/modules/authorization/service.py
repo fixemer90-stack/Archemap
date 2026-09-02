@@ -44,6 +44,29 @@ class EntitlementsService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def has_active_product_access(self, user_id: UUID, product: str) -> bool:
+        """Return whether the user has an active, unexpired entitlement for a product."""
+        result = await self.db.execute(
+            select(Entitlement).where(
+                Entitlement.user_id == user_id,
+                Entitlement.product == product,
+                Entitlement.status == "active",
+            )
+        )
+        entitlement = result.scalar_one_or_none()
+        if entitlement is None or entitlement.product != product or entitlement.status != "active":
+            return False
+
+        expires_at = entitlement.expires_at
+        return not (expires_at is not None and expires_at <= datetime.now(UTC))
+
+    async def build_product_access_state(self, user_id: UUID, product: str) -> dict[str, Any]:
+        """Return safe product access state for API gates and clients."""
+        has_access = await self.has_active_product_access(user_id=user_id, product=product)
+        if has_access:
+            return {"access_state": "active", "required_product": product}
+        return build_locked_product_response(product=product, reason="missing_entitlement")
+
     async def grant_paid_product(
         self,
         user_id: UUID,
@@ -77,3 +100,17 @@ class EntitlementsService:
         self.db.add(entitlement)
         await self.db.flush()
         return entitlement
+
+
+def build_locked_product_response(product: str, reason: str) -> dict[str, Any]:
+    """Build a safe locked response without paid report/product payload fields."""
+    return {
+        "access_state": "locked",
+        "required_product": product,
+        "reason": reason,
+        "upgrade": {
+            "title": "Нужен Plus",
+            "description": "Полный отчёт открывается после подтверждения оплаты.",
+            "href": "/billing",
+        },
+    }

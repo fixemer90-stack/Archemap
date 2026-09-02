@@ -2,11 +2,11 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
-After YooKassa redirects the user back, the billing page must ask the backend what happened. It must not show success merely because `checkout=return` is present.
+After YooKassa redirects the user back, the billing page asks the backend what happened. It does not show success merely because `checkout=return` is present.
 
 ## Source architecture
 
@@ -18,27 +18,39 @@ After YooKassa redirects the user back, the billing page must ask the backend wh
 - `frontend/src/app/(dashboard)/billing/page.tsx`
 - `frontend/src/components/billing/billing-checkout-button.tsx`
 - `frontend/src/lib/api/payments.ts`
-- billing/access frontend query hook
 - `frontend/scripts/check-billing-ux.mjs`
 
-## What to do
+## Implemented behavior
 
-For implemented stories, keep this document as the acceptance contract and regression checklist. For pending stories, implement only this slice and update the status after code/tests pass.
+- `/billing?checkout=return` reads `GET /api/v1/billing/access` through `getBillingAccess()`.
+- Pending state says the system is checking the payment and confirmation can take a moment.
+- Active state says Plus is active only after backend state says so.
+- Failed/inactive states offer retry without blaming the user.
+- The billing page copy continues to state that access is enabled after YooKassa/backend confirmation, not after browser return.
 
 ## Acceptance criteria
 
-- [ ] `/billing?checkout=return` fetches backend access state.
-- [ ] Pending state says payment is being checked.
-- [ ] Active state says Plus is active.
-- [ ] Failed/cancelled state offers retry without blaming the user.
-- [ ] Success is never inferred only from URL/query params.
-- [ ] UX copy explains that confirmation can take a moment.
-- [ ] Frontend regression script covers pending/active/failure copy markers.
+- [x] `/billing?checkout=return` fetches backend access state.
+- [x] Pending state says payment is being checked.
+- [x] Active state says Plus is active.
+- [x] Failed/cancelled state offers retry without blaming the user.
+- [x] Success is never inferred only from URL/query params.
+- [x] UX copy explains that confirmation can take a moment.
+- [x] Frontend regression script covers pending/active/failure copy markers.
 
 ## Verification
 
 ```bash
-./backend/.venv/bin/python -m pytest backend/tests/unit/test_payments.py -q
+cd frontend
+node scripts/check-billing-ux.mjs
+npx eslint src/app/\(dashboard\)/billing/page.tsx src/lib/api/payments.ts scripts/check-billing-ux.mjs
+npx tsc --noEmit --pretty false
 ```
 
-Add narrower or broader checks in the implementation PR when this story touches additional modules.
+Latest local result:
+
+```text
+Billing UX structure check passed
+eslint: passed
+TypeScript: passed
+```

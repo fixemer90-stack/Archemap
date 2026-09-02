@@ -1,4 +1,4 @@
-import type { AstrotypeV2ReportResponse } from "@/lib/api/astrotype-v2";
+import type { AstrotypeV2FullReportResponse } from "@/lib/api/astrotype-v2";
 
 export const CANONICAL_V2_SECTION_ORDER = [
   "core_pattern",
@@ -127,11 +127,11 @@ export interface V2ReportReaderViewModel {
   hero: V2ReportHeroViewModel;
   sections: V2NarrativeSectionViewModel[];
   calculationLayer: V2CalculationLayerViewModel;
-  progress: AstrotypeV2ReportResponse["progress"];
+  progress: AstrotypeV2FullReportResponse["progress"];
 }
 
 export function buildV2ReportReaderViewModel(
-  payload: AstrotypeV2ReportResponse,
+  payload: AstrotypeV2FullReportResponse,
 ): V2ReportReaderViewModel {
   const report = payload.report;
   const assembled = asRecord(report.assembled_payload);
@@ -153,7 +153,7 @@ export function buildV2ReportReaderViewModel(
 
 function toHeroViewModel(
   hero: Record<string, unknown>,
-  profile: AstrotypeV2ReportResponse["profile"],
+  profile: AstrotypeV2FullReportResponse["profile"],
 ): V2ReportHeroViewModel {
   const displayName = profile?.name?.trim() || "для вас";
   return {
@@ -181,7 +181,7 @@ function toPremiumHeroEyebrow(value: unknown): string {
 }
 
 function toBirthDataItems(
-  profile: AstrotypeV2ReportResponse["profile"],
+  profile: AstrotypeV2FullReportResponse["profile"],
 ): Array<{ label: string; value: string }> {
   if (!profile) return [];
   return [

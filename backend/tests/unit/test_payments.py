@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -15,10 +16,13 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import configure_mappers
 from starlette.requests import Request
 
+from app.modules.authorization.service import EntitlementsService, build_locked_product_response
 from app.modules.billing.router import get_billing_access
 from app.modules.payments.router import yookassa_webhook
 from app.modules.payments.schemas import BillingAccessResponse, CreatePaymentRequest
 from app.modules.payments.service import PaymentsService
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class _ScalarResult:
@@ -123,6 +127,64 @@ def _entitlement(status: str = "active", *, product: str = "self") -> SimpleName
         starts_at=None,
         expires_at=None,
     )
+
+
+class _EntitlementAccessDb:
+    def __init__(self, entitlement: object | None) -> None:
+        self.entitlement = entitlement
+
+    async def execute(self, _query: object) -> _ScalarResult:
+        return _ScalarResult(self.entitlement)
+
+
+async def test_entitlement_policy_allows_active_unexpired_matching_product() -> None:
+    entitlement = SimpleNamespace(status="active", product="self", expires_at=datetime.now(UTC) + timedelta(days=1))
+    service = EntitlementsService(_EntitlementAccessDb(entitlement))  # type: ignore[arg-type]
+
+    assert await service.has_active_product_access(user_id=uuid4(), product="self") is True
+
+
+@pytest.mark.parametrize(
+    "entitlement",
+    [
+        None,
+        SimpleNamespace(status="inactive", product="self", expires_at=None),
+        SimpleNamespace(status="active", product="self", expires_at=datetime.now(UTC) - timedelta(days=1)),
+        SimpleNamespace(status="active", product="career", expires_at=None),
+    ],
+)
+async def test_entitlement_policy_denies_missing_inactive_expired_or_mismatched_product(
+    entitlement: object | None,
+) -> None:
+    service = EntitlementsService(_EntitlementAccessDb(entitlement))  # type: ignore[arg-type]
+
+    assert await service.has_active_product_access(user_id=uuid4(), product="self") is False
+
+
+def test_locked_product_response_contains_safe_upgrade_metadata_without_paid_payload() -> None:
+    payload = build_locked_product_response(product="self", reason="missing_entitlement")
+
+    assert payload == {
+        "access_state": "locked",
+        "required_product": "self",
+        "reason": "missing_entitlement",
+        "upgrade": {
+            "title": "Нужен Plus",
+            "description": "Полный отчёт открывается после подтверждения оплаты.",
+            "href": "/billing",
+        },
+    }
+    assert "narrative_payload" not in payload
+    assert "assembled_payload" not in payload
+
+
+def test_v2_report_routes_use_backend_entitlement_gate_for_paid_payloads() -> None:
+    router_source = (ROOT / "app" / "modules" / "astrotype_v2" / "router.py").read_text()
+
+    assert 'SELF_REPORT_PRODUCT = "self"' in router_source
+    assert "EntitlementsService(db).has_active_product_access" in router_source
+    assert "build_locked_product_response(product=SELF_REPORT_PRODUCT" in router_source
+    assert "_require_self_report_access" in router_source
 
 
 async def test_billing_access_state_is_free_without_payments_or_entitlements() -> None:

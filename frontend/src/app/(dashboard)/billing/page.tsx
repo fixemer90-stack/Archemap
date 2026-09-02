@@ -1,13 +1,17 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 import { BillingCheckoutButton } from "@/components/billing/billing-checkout-button";
 import { Button } from "@/components/ui/button";
-
-export const metadata: Metadata = {
-  title: "Оплата",
-};
+import {
+  getBillingAccess,
+  type BillingAccessResponse,
+  type BillingAccessState,
+} from "@/lib/api/payments";
 
 const freeFeatures = [
   "Расчёт натальной карты",
@@ -45,6 +49,134 @@ const principles = [
   ],
 ];
 
+const returnStatusCopy: Record<
+  BillingAccessState,
+  {
+    title: string;
+    description: string;
+    tone: "neutral" | "success" | "warning";
+  }
+> = {
+  free: {
+    title: "Статус аккаунта ещё базовый",
+    description:
+      "Если вы только что вернулись из YooKassa, подтверждение может прийти не сразу. Мы проверяем статус на стороне сервера.",
+    tone: "neutral",
+  },
+  checkout_pending: {
+    title: "Проверяем оплату",
+    description:
+      "Это может занять немного времени: доступ включается только после подтверждения YooKassa и проверки платежа на сервере.",
+    tone: "neutral",
+  },
+  plus_active: {
+    title: "Plus активен",
+    description:
+      "Оплата подтверждена, полный доступ привязан к вашему аккаунту.",
+    tone: "success",
+  },
+  payment_failed: {
+    title: "Оплата не завершена",
+    description:
+      "Похоже, платёж был отменён или не подтвердился. Можно спокойно попробовать ещё раз — деньги не списываются повторно без подтверждения YooKassa.",
+    tone: "warning",
+  },
+  plus_inactive: {
+    title: "Plus сейчас не активен",
+    description:
+      "В аккаунте есть прошлый доступ, но сейчас он не действует. Можно обновить оплату и снова открыть полный отчёт.",
+    tone: "warning",
+  },
+};
+
+function BillingReturnStatus() {
+  const searchParams = useSearchParams();
+  const checkout = searchParams.get("checkout");
+  const [access, setAccess] = useState<BillingAccessResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(checkout === "return");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (checkout !== "return") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function refreshAccess() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const nextAccess = await getBillingAccess();
+        if (!cancelled) {
+          setAccess(nextAccess);
+        }
+      } catch {
+        if (!cancelled) {
+          setErrorMessage(
+            "Не удалось обновить статус оплаты. Попробуйте открыть страницу ещё раз через минуту.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void refreshAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkout]);
+
+  if (checkout !== "return") {
+    return null;
+  }
+
+  const copy = access
+    ? returnStatusCopy[access.access_state]
+    : returnStatusCopy.checkout_pending;
+  const toneClass =
+    copy.tone === "success"
+      ? "border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.08)] text-[#BFF5CF]"
+      : copy.tone === "warning"
+        ? "border-[rgba(255,180,168,0.30)] bg-[rgba(255,180,168,0.08)] text-[#FFD1CA]"
+        : "border-[rgba(216,180,90,0.28)] bg-[rgba(216,180,90,0.08)] text-[#F6F1E8]";
+
+  return (
+    <section className={`rounded-[24px] border p-5 ${toneClass}`} role="status">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-2">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {copy.title}
+          </p>
+          <p className="max-w-3xl text-sm leading-6 text-[rgba(246,241,232,0.78)]">
+            {errorMessage ?? copy.description}
+          </p>
+        </div>
+        {access?.access_state === "payment_failed" ||
+        access?.access_state === "plus_inactive" ? (
+          <button
+            type="button"
+            className="text-left text-sm font-medium text-[#F6F1E8] underline underline-offset-4"
+            onClick={() =>
+              document
+                .getElementById("plus")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Попробовать ещё раз
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function FeatureList({
   items,
   accent = "gold",
@@ -72,6 +204,7 @@ function FeatureList({
 export default function BillingPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-10">
+      <BillingReturnStatus />
       <section className="relative overflow-hidden rounded-[32px] border border-[rgba(216,220,232,0.14)] bg-[linear-gradient(135deg,rgba(18,15,36,0.96)_0%,rgba(35,26,72,0.92)_47%,rgba(23,20,42,0.98)_100%)] px-7 py-10 shadow-2xl shadow-black/30 md:px-12 md:py-14">
         <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(216,180,90,0.65)] to-transparent" />
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[rgba(91,63,214,0.30)] blur-3xl" />

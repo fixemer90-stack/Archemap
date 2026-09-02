@@ -61,11 +61,11 @@ Backend responsibilities:
 | Product          | Provider metadata `product` equals local payment metadata `product`       |
 | Paid success     | `status='succeeded'` requires `paid=true`                                 |
 
-## Planned endpoints
+## Implemented access-state endpoint
 
 ### GET /api/v1/billing/access
 
-Implemented. Returns the current billing/access state for the authenticated user.
+Returns the current billing/access state for the authenticated user.
 
 Suggested response:
 
@@ -99,9 +99,36 @@ Allowed `access_state` values:
 - `payment_failed`
 - `plus_inactive`
 
+### Astrotype v2 report entitlement gates
+
+Paid self-report payloads require active `self` entitlement:
+
+- `GET /api/v1/astrotype-v2/reports/{report_id}` returns safe locked metadata instead of full paid payload when access is missing.
+- `GET /api/v1/astrotype-v2/reports/{report_id}/pdf` returns HTTP 402 when access is missing.
+- `GET /api/v1/astrotype-v2/reports/{report_id}/progress` returns HTTP 402 when access is missing.
+- `GET /api/v1/astrotype-v2/reports/{report_id}/facts` returns HTTP 402 when access is missing.
+- `GET /api/v1/astrotype-v2/reports/{report_id}/infographic` returns HTTP 402 when access is missing.
+- `GET /api/v1/astrotype-v2/reports/{report_id}/segments` returns HTTP 402 when access is missing.
+- `POST /api/v1/astrotype-v2/reports/{report_id}/regenerate` returns HTTP 402 when access is missing.
+
+Locked response shape:
+
+```json
+{
+  "access_state": "locked",
+  "required_product": "self",
+  "reason": "missing_entitlement",
+  "upgrade": {
+    "title": "Нужен Plus",
+    "description": "Полный отчёт открывается после подтверждения оплаты.",
+    "href": "/billing"
+  }
+}
+```
+
 ### GET /api/v1/payments/{payment_id}
 
-Optional helper if the frontend needs payment-attempt-specific status. It must not expose provider secrets, raw webhook payloads, or internal reconciliation errors beyond safe user-facing categories.
+Optional helper if the frontend later needs payment-attempt-specific status. It must not expose provider secrets, raw webhook payloads, or internal reconciliation errors beyond safe user-facing categories.
 
 ## Frontend integration rules
 

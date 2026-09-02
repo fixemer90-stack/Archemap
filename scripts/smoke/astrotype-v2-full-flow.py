@@ -144,8 +144,14 @@ def assert_canonical_report(payload: dict[str, Any]) -> None:
     assembled = report["assembled_payload"]
     narrative = report["narrative_payload"]
     layer = payload["infographic"]["calculation_layer"]
-    assert assembled["reader_view"]["layout_order"] == ["hero", "narrative", "calculation_layer"]
-    assert assembled["reader_view"]["hero"]["eyebrow"] == "Astrotype v2 · натальный отчёт"
+    assert assembled["reader_view"]["layout_order"] == [
+        "hero",
+        "narrative",
+        "calculation_layer",
+    ]
+    assert (
+        assembled["reader_view"]["hero"]["eyebrow"] == "Astrotype v2 · натальный отчёт"
+    )
     assert narrative["section_order"] == [
         "core_pattern",
         "perception_and_mind",
@@ -174,7 +180,12 @@ def assert_canonical_report(payload: dict[str, Any]) -> None:
     assert layer["aspect_network"]["nodes"]
     assert layer["aspect_network"]["edges"]
     assert layer["key_aspects"]
-    assert set(layer["calculation_matrix"]) >= {"house_mode", "hemispheres", "quadrants", "aspect_profile"}
+    assert set(layer["calculation_matrix"]) >= {
+        "house_mode",
+        "hemispheres",
+        "quadrants",
+        "aspect_profile",
+    }
     assert_no_forbidden(payload)
 
 
@@ -233,18 +244,34 @@ def assert_expected_segment_provider(
 ) -> None:
     if expect_provider is None and expect_model is None:
         return
-    segments = payload.get("segments") or payload.get("progress", {}).get("segments") or []
+    segments = (
+        payload.get("segments") or payload.get("progress", {}).get("segments") or []
+    )
     if not segments:
-        raise AssertionError("provider/model assertion requested, but report payload has no segments")
+        raise AssertionError(
+            "provider/model assertion requested, but report payload has no segments"
+        )
     mismatches: list[dict[str, Any]] = []
     for segment in segments:
         provider = segment.get("provider")
         model = segment.get("model")
         if expect_provider is not None and provider != expect_provider:
-            mismatches.append({"section_key": segment.get("section_key"), "provider": provider, "model": model})
+            mismatches.append(
+                {
+                    "section_key": segment.get("section_key"),
+                    "provider": provider,
+                    "model": model,
+                }
+            )
             continue
         if expect_model is not None and model != expect_model:
-            mismatches.append({"section_key": segment.get("section_key"), "provider": provider, "model": model})
+            mismatches.append(
+                {
+                    "section_key": segment.get("section_key"),
+                    "provider": provider,
+                    "model": model,
+                }
+            )
     if mismatches:
         raise AssertionError(
             "segment provider/model mismatch: "
@@ -329,7 +356,8 @@ def main() -> None:
         report_id = asyncio.run(latest_v2_report_id_for_profile(profile_id))
         if report_id:
             _, report_payload = request_json(
-                f"{args.backend_url}/api/v1/astrotype-v2/reports/{report_id}", token=access_token
+                f"{args.backend_url}/api/v1/astrotype-v2/reports/{report_id}",
+                token=access_token,
             )
             if report_payload["progress"]["status"] in {"ready", "complete"}:
                 break
@@ -339,7 +367,9 @@ def main() -> None:
         )
         time.sleep(5)
     if report_payload is None:
-        raise RuntimeError(f"report not ready before timeout; last_generation={last_generation}")
+        raise RuntimeError(
+            f"report not ready before timeout; last_generation={last_generation}"
+        )
 
     assert_canonical_report(report_payload)
     assert_report_progress_ready(report_payload["progress"])
@@ -370,7 +400,9 @@ def main() -> None:
             }
             for segment in report_payload.get("segments", [])
         ],
-        "reader_blocks": report_payload["infographic"]["calculation_layer"]["reader_blocks"],
+        "reader_blocks": report_payload["infographic"]["calculation_layer"][
+            "reader_blocks"
+        ],
         "frontend_route_http": page_status,
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))

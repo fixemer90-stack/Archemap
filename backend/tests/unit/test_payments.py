@@ -91,8 +91,6 @@ def _payment(metadata_json: dict[str, object] | None = None) -> SimpleNamespace:
     )
 
 
-
-
 class _ListScalarResult:
     def __init__(self, values: list[object]) -> None:
         self.values = values
@@ -168,6 +166,7 @@ async def test_billing_access_state_reports_payment_failed_from_latest_failed_pa
 
     assert state.access_state == "payment_failed"
     assert state.account_tier == "free"
+
 
 def _canonical_yookassa_payment(
     payment: SimpleNamespace,

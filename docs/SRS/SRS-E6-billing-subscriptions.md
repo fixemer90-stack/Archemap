@@ -146,7 +146,7 @@ FR-6.5.4 Повторная доставка одного webhook не ДОЛЖ�
 
 FR-6.5.5 Успешная backend-confirmed оплата ДОЛЖНА переводить account tier пользователя в `plus` без включения новых ограничений для `free`.
 
-Текущее состояние реализации: YooKassa checkout, webhook storage, server-side reconciliation, `succeeded + paid=true` success rule and entitlement grant are implemented and covered by `backend/tests/unit/test_payments.py`. See `docs/architecture/current-payment-confirmation-flow.md` for the current audited flow.
+Текущее состояние реализации: YooKassa checkout, webhook storage, server-side reconciliation, `succeeded + paid=true` success rule, entitlement grant, and status-only account-tier upgrade to `plus` are implemented and covered by `backend/tests/unit/test_payments.py`. See `docs/architecture/current-payment-confirmation-flow.md` for the current audited flow.
 
 ### 3.6 Report/product gating (FR-6.6)
 

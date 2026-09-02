@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.authorization.models import Entitlement
-from app.modules.authorization.service import EntitlementsService
+from app.modules.authorization.service import AccountTierService, EntitlementsService
 from app.modules.catalog.service import CatalogService
 from app.modules.payments.models import Payment, PaymentWebhook
 from app.modules.payments.providers.yookassa import YooKassaProvider
@@ -310,6 +310,7 @@ class PaymentsService:
                     source_payment_id=payment.id,
                     metadata={"product_id": product_id} if product_id else None,
                 )
+            await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
         elif new_status == "succeeded":
             logger.warning(
                 "webhook_succeeded_without_paid_true",

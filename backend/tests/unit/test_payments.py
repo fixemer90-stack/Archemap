@@ -30,8 +30,10 @@ class _ScalarResult:
 
 
 class _FakeDb:
-    def __init__(self, payment: object | None = None) -> None:
+    def __init__(self, payment: object | None = None, user: object | None = None) -> None:
         self.payment = payment
+        self.user = user
+        self.execute_count = 0
         self.added: list[object] = []
         self.flushed = 0
 
@@ -42,7 +44,10 @@ class _FakeDb:
         self.flushed += 1
 
     async def execute(self, _query: object) -> _ScalarResult:
-        return _ScalarResult(self.payment)
+        self.execute_count += 1
+        if self.execute_count == 1:
+            return _ScalarResult(self.payment)
+        return _ScalarResult(self.user)
 
 
 def _request_with_json(payload: dict[str, object]) -> Request:
@@ -324,6 +329,30 @@ async def test_successful_yookassa_webhook_grants_product_entitlement() -> None:
         source_payment_id=payment.id,
         metadata={"product_id": "self_full"},
     )
+
+
+async def test_successful_yookassa_webhook_updates_account_tier_to_plus() -> None:
+    payment = _payment()
+    user = SimpleNamespace(id=payment.user_id, account_tier="free")
+    service = PaymentsService(_FakeDb(payment, user))  # type: ignore[arg-type]
+
+    with (
+        patch(
+            "app.modules.payments.service.YooKassaProvider.get_payment",
+            new=AsyncMock(return_value=_canonical_yookassa_payment(payment)),
+        ),
+        patch(
+            "app.modules.payments.service.EntitlementsService.grant_paid_product",
+            new=AsyncMock(return_value=MagicMock(id=uuid4())),
+        ),
+    ):
+        result = await service.handle_webhook(
+            provider="yookassa",
+            payload={"event": "payment.succeeded", "object": {"id": "provider-payment-id"}},
+        )
+
+    assert result["processed"] is True
+    assert user.account_tier == "plus"
 
 
 async def test_yookassa_webhook_rejects_metadata_mismatch() -> None:

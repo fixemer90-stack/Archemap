@@ -1,7 +1,7 @@
 # Account tier role foundation
 
-Status: target contract for next implementation
-Last updated: 2026-08-31
+Status: implemented baseline; gating remains future work
+Last updated: 2026-09-01
 Scope: account-level Free/Plus status after payment confirmation.
 
 This document defines the first account-tier role layer for Astrotype.
@@ -247,14 +247,14 @@ Those later behaviors require their own docs, migrations, services and tests.
 
 The account-tier foundation is complete when:
 
-- [ ] `users` has an `account_tier` field with default `free`.
-- [ ] Existing users are backfilled or defaulted to `free` without losing auth/profile/payment data.
-- [ ] Successful YooKassa payment changes the user's tier to `plus`.
-- [ ] Failed/cancelled/mismatched/unpaid YooKassa events do not change the user's tier.
-- [ ] Replayed successful webhook is idempotent and keeps tier as `plus`.
-- [ ] `/auth/me` or equivalent current-user endpoint returns `account_tier`.
+- [x] `users` has an `account_tier` field with default `free`.
+- [x] Existing users are backfilled or defaulted to `free` without losing auth/profile/payment data.
+- [x] Successful YooKassa payment changes the user's tier to `plus`.
+- [x] Failed/cancelled/mismatched/unpaid YooKassa events do not change the user's tier.
+- [x] Replayed successful webhook is idempotent and keeps tier as `plus`.
+- [x] `/auth/me` or equivalent current-user endpoint returns `account_tier`.
 - [ ] Frontend can display Free/Plus status without using it as a paywall.
-- [ ] Tests prove that Free and Plus currently have no functional access difference caused by the new field.
+- [x] Tests prove that Free and Plus currently have no functional access difference caused by the new field.
 
 ## Required tests
 

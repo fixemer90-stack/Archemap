@@ -35,6 +35,7 @@ async def get_me(
         email=user.email,
         name=user.name,
         birth_date=user.birth_date,
+        account_tier=user.account_tier,
         is_active=user.is_active,
         is_verified=user.is_verified,
     )
@@ -60,6 +61,7 @@ async def update_me(
         email=user.email,
         name=user.name,
         birth_date=user.birth_date,
+        account_tier=user.account_tier,
         is_active=user.is_active,
         is_verified=user.is_verified,
     )

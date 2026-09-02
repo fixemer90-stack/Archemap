@@ -259,19 +259,19 @@ GET /api/v1/billing/access
 
 It returns `account_tier`, `access_state`, current entitlements and a safe latest-payment summary.
 
+- Account-tier baseline exists: `users.account_tier` defaults to `free`, and backend-confirmed payment upgrades it to `plus` as status-only.
+
 What is still not fully wired yet:
 
-1. Account-tier role foundation: successful payment should set `users.account_tier = 'plus'`, but the new role must initially be status-only and must not restrict features. See `docs/architecture/account-tier-role-foundation.md`.
-
-2. A reusable backend policy check like:
+1. A reusable backend policy check like:
 
 ```text
 has_active_entitlement(user_id, product, access_mode)
 ```
 
-3. Enforcement of that policy in paid report/product endpoints.
+2. Enforcement of that policy in paid report/product endpoints.
 
-4. Frontend rendering that reads backend access state and switches between:
+3. Frontend rendering that reads backend access state and switches between:
 
 ```text
 free
@@ -331,6 +331,6 @@ Before relying on live payments, verify:
 | Entitlement grant on success       | Implemented     | Grants active entitlement for product metadata                          |
 | Unit coverage                      | Implemented     | `backend/tests/unit/test_payments.py` passes                            |
 | Billing return UX polling          | Missing         | `/billing?checkout=return` does not yet refresh access state            |
-| Account-tier Free/Plus role        | Missing         | Target contract: `docs/architecture/account-tier-role-foundation.md`    |
+| Account-tier Free/Plus role        | Implemented     | `users.account_tier` defaults to `free`; confirmed payment sets `plus`  |
 | Access-state API                   | Implemented     | `GET /api/v1/billing/access` returns backend-owned billing/access state |
 | Report/product entitlement gating  | Missing/unclear | Entitlement creation exists; broad use as backend gate was not found    |

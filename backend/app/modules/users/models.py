@@ -20,6 +20,7 @@ class User(BaseModel):
     name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    account_tier: Mapped[str] = mapped_column(String(20), nullable=False, default="free", server_default="free")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

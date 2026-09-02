@@ -81,6 +81,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     birth_date: date | None
+    account_tier: str = "free"
     is_active: bool
     is_verified: bool
 

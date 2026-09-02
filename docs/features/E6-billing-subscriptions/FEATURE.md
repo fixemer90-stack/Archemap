@@ -96,8 +96,8 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [ ] Production webhook URL is configured and verified against live YooKassa delivery.
 - [x] Billing/access-state API returns `free`, `checkout_pending`, `plus_active`, `payment_failed`, or `plus_inactive`.
 - [ ] Frontend refreshes backend billing/access state after returning from YooKassa.
-- [ ] Backend-confirmed payment upgrades account tier to `plus` as status-only.
-- [ ] Free/Plus status does not restrict functionality until separate gating is enabled.
+- [x] Backend-confirmed payment upgrades account tier to `plus` as status-only.
+- [x] Free/Plus status does not restrict functionality until separate gating is enabled.
 - [ ] Report/product endpoints use backend entitlement checks where paid access is required.
 - [ ] Regression tests cover checkout, webhook reconciliation, entitlements, access-state API and frontend status UX.
 - [ ] Production smoke proves one test payment creates both a succeeded payment and the expected access record.
@@ -111,7 +111,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S03 | [Payment success state and entitlement grant](./S03-payment-success-entitlement.md)    | ✅ Реализовано     |
 | S04 | [Production webhook readiness](./S04-production-webhook-readiness.md)                  | ⬜ Не начато       |
 | S05 | [Billing access-state API](./S05-billing-access-state-api.md)                          | ✅ Реализовано     |
-| S06 | [Payment-to-account-tier status update](./S06-payment-to-account-tier-status.md)       | ⬜ Не начато       |
+| S06 | [Payment-to-account-tier status update](./S06-payment-to-account-tier-status.md)       | ✅ Реализовано     |
 | S07 | [Report and product entitlement gates](./S07-report-product-entitlement-gates.md)      | ⬜ Не начато       |
 | S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)    | ⬜ Не начато       |
 | S09 | [Payment confirmation regression and observability](./S09-regression-observability.md) | 🟡 Частично готово |

@@ -6,14 +6,36 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.authorization.models import Entitlement
+from app.modules.users.models import User
+
+logger = structlog.get_logger()
 
 
 class AuthorizationService:
     """RBAC and permission checks."""
+
+
+class AccountTierService:
+    """Manage status-only Free/Plus account tier."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def upgrade_to_plus(self, user_id: UUID) -> User | None:
+        """Upgrade a user to Plus after backend-confirmed payment success."""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user is None:
+            logger.warning("account_tier_user_not_found", user_id=str(user_id))
+            return None
+        user.account_tier = "plus"
+        await self.db.flush()
+        return user
 
 
 class EntitlementsService:

@@ -12,6 +12,8 @@ const dashboard = read("src/app/(dashboard)/dashboard/page.tsx");
 const billing = read("src/app/(dashboard)/billing/page.tsx");
 const surface = read("src/components/product-surface/product-surface.tsx");
 const globals = read("src/app/globals.css");
+const rootLayout = read("src/app/layout.tsx");
+const header = read("src/components/layout/header.tsx");
 const reportPage = read("src/app/(dashboard)/report/v2/[profileId]/page.tsx");
 const legacyReportPage = read(
   "src/app/(dashboard)/report/[profileId]/page.tsx",
@@ -22,7 +24,7 @@ const reportReader = read(
 
 function assertMarkers(name, source, markers) {
   for (const marker of markers) {
-    assert.match(source, new RegExp(marker), `${name}: missing ${marker}`);
+    assert.equal(source.includes(marker), true, `${name}: missing ${marker}`);
   }
 }
 
@@ -35,19 +37,35 @@ assertMarkers("surface", surface, [
   "ProductSurfaceCard",
 ]);
 assert.equal(
-  surface.includes(
-    "radial-gradient(circle_at_16%_0%,#26304a_0%,#0b0d13_45%,#07080c_100%)",
-  ),
+  surface.includes("bg-[var(--surface-background)] text-[var(--surface-text)]"),
   true,
-  "surface: product shell must use canonical report background",
+  "surface: product shell must use theme-controlled background",
 );
 
 assertMarkers("global background", globals, [
+  "--background: #f6f1e8;",
   "--background: #0d0f16;",
+  "--surface-background: var(--page-background);",
+  "#fff7e8",
   "circle at 16% 0",
   "#26304a",
   "#0b0d13 45%",
   "#07080c",
+]);
+assert.equal(
+  globals.includes("--page-background: radial-gradient("),
+  true,
+  "global background: missing theme background variable",
+);
+
+assertMarkers("theme toggle", rootLayout + header, [
+  'defaultTheme="dark"',
+  "enableSystem={false}",
+  "activeTheme",
+  "resolvedTheme",
+  "setTheme(nextTheme)",
+  "Включить светлую тему",
+  "Включить тёмную тему",
 ]);
 
 assertMarkers("homepage", homepage, [

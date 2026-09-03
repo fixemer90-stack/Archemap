@@ -9,27 +9,36 @@
    ──────────────────────────────────────────────────────────── */
 
 :root {
-  /* Light mode — используем тёмную тему как default для Archemap */
-  --background: #0d0f16;
-  --foreground: #f6f1e8;
-  --card: rgba(255, 255, 255, 0.06);
-  --card-foreground: #f6f1e8;
-  --popover: #1e1a33;
-  --popover-foreground: #f6f1e8;
+  /* Light mode */
+  --background: #f6f1e8;
+  --foreground: #17142a;
+  --card: rgba(255, 255, 255, 0.72);
+  --card-foreground: #17142a;
+  --popover: #fffaf0;
+  --popover-foreground: #17142a;
   --primary: #5b3fd6;
   --primary-foreground: #f6f1e8;
-  --secondary: rgba(216, 220, 232, 0.12);
-  --secondary-foreground: #d8dce8;
-  --muted: rgba(216, 220, 232, 0.1);
-  --muted-foreground: #d8dce8;
+  --secondary: rgba(91, 63, 214, 0.1);
+  --secondary-foreground: #35255f;
+  --muted: rgba(13, 15, 22, 0.08);
+  --muted-foreground: #596173;
   --accent: #d8b45a;
   --accent-foreground: #17142a;
   --destructive: #e54d4d;
   --destructive-foreground: #f6f1e8;
-  --border: rgba(216, 220, 232, 0.18);
-  --input: rgba(216, 220, 232, 0.18);
+  --border: rgba(23, 20, 42, 0.16);
+  --input: rgba(23, 20, 42, 0.18);
   --ring: #5b3fd6;
   --radius: 1.25rem;
+  --page-background: radial-gradient(
+    circle at 16% 0,
+    #fff7e8,
+    #f6f1e8 45%,
+    #d8dce8
+  );
+  --surface-background: var(--page-background);
+  --surface-text: #17142a;
+  --surface-muted: #596173;
 
   /* Archemap-specific tokens */
   --deep-space: #17142a;
@@ -49,7 +58,7 @@
 }
 
 .dark {
-  /* Dark mode — те же токены (Archemap по умолчанию тёмный) */
+  /* Dark mode — matches the canonical report sample background. */
   --background: #0d0f16;
   --foreground: #f6f1e8;
   --card: rgba(255, 255, 255, 0.06);
@@ -69,6 +78,15 @@
   --border: rgba(216, 220, 232, 0.18);
   --input: rgba(216, 220, 232, 0.18);
   --ring: #5b3fd6;
+  --page-background: radial-gradient(
+    circle at 16% 0,
+    #26304a,
+    #0b0d13 45%,
+    #07080c
+  );
+  --surface-background: var(--page-background);
+  --surface-text: #f6f1e8;
+  --surface-muted: #d8dce8;
 }
 
 @theme inline {
@@ -131,8 +149,7 @@
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
-    /* Match the canonical report sample background across every page. */
-    background: radial-gradient(circle at 16% 0, #26304a, #0b0d13 45%, #07080c);
+    background: var(--page-background);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -146,6 +163,20 @@
     font-family:
       "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype",
       "Book Antiqua", Georgia, serif;
+  }
+}
+
+@layer utilities {
+  html:not(.dark) [class*="text-[#F6F1E8]"],
+  html:not(.dark) [class*="text-[#F5E9D0]"],
+  html:not(.dark) [class*="text-[#F4EADB]"] {
+    color: var(--surface-text) !important;
+  }
+
+  html:not(.dark) [class*="text-[#D8DCE8]"],
+  html:not(.dark) [class*="text-[rgba(216,220,232"],
+  html:not(.dark) [class*="text-[rgba(246,241,232"] {
+    color: var(--surface-muted) !important;
   }
 }
 

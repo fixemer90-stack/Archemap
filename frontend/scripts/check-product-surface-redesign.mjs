@@ -89,6 +89,11 @@ assertMarkers("dashboard", dashboard, [
   "Личные карты и портреты",
   "Создайте первую карту рождения",
   "Оплата и доступ",
+  "Статус Plus",
+  "Аккаунт Plus",
+  "Plus активен",
+  "Plus не активен",
+  "Где это видно",
 ]);
 assert.equal(
   dashboard.includes("href={`/report/v2/${primaryProfile.id}`}"),
@@ -108,6 +113,9 @@ assertMarkers("billing", billing, [
   "Возврат на сайт сам по себе не считается успешной оплатой",
   "Проверяем оплату",
   "Плюс активен",
+  "Текущий статус аккаунта",
+  "Аккаунт Plus",
+  "Plus не активен",
   "Оплата не завершена",
   "getBillingAccess",
   "BillingCheckoutButton",

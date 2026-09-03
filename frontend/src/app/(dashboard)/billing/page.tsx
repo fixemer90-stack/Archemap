@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Check, Clock3, Loader2, ShieldCheck } from "lucide-react";
+import { Check, Clock3, Crown, Loader2, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 import { BillingCheckoutButton } from "@/components/billing/billing-checkout-button";
@@ -12,6 +12,7 @@ import {
   SurfaceEyebrow,
 } from "@/components/product-surface";
 import { Button } from "@/components/ui/button";
+import { useBillingAccess } from "@/hooks/use-billing-access";
 import {
   getBillingAccess,
   type BillingAccessResponse,
@@ -191,6 +192,75 @@ function FeatureList({ items }: { items: string[] }) {
   );
 }
 
+function BillingAccountStatus() {
+  const { access, isLoadingAccess, accessError, isPlusActive } =
+    useBillingAccess();
+  const latestPaymentStatus = access?.latest_payment?.status;
+  const activeEntitlement = access?.entitlements.find(
+    (entitlement) => entitlement.status === "active",
+  );
+
+  return (
+    <ProductSurfaceCard className="border-[rgba(216,180,90,0.26)] bg-[linear-gradient(135deg,rgba(216,180,90,0.11),rgba(255,255,255,0.045))]">
+      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(216,180,90,0.34)] bg-[rgba(216,180,90,0.14)] text-[#D8B45A]">
+            <Crown className="h-5 w-5" />
+          </span>
+          <div className="space-y-2">
+            <SurfaceEyebrow>Текущий статус аккаунта</SurfaceEyebrow>
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+              {isLoadingAccess
+                ? "Проверяем Plus"
+                : isPlusActive
+                  ? "Plus активен"
+                  : "Plus не активен"}
+            </h2>
+            <p className="max-w-3xl text-sm leading-6 text-[#D8DCE8]">
+              {accessError
+                ? "Не удалось получить статус доступа. Попробуйте обновить страницу или повторить проверку позже."
+                : isPlusActive
+                  ? "Оплата подтверждена сервером: полный личный отчёт открыт для этого аккаунта."
+                  : "Сейчас аккаунт в базовом статусе. Plus появится здесь после подтверждения оплаты YooKassa."}
+            </p>
+          </div>
+        </div>
+        <span
+          className={
+            isPlusActive
+              ? "rounded-full border border-[rgba(124,242,154,0.34)] bg-[rgba(124,242,154,0.10)] px-4 py-2 text-sm font-semibold text-[#BFF5CF]"
+              : "rounded-full border border-[rgba(216,220,232,0.16)] bg-[rgba(255,255,255,0.045)] px-4 py-2 text-sm font-semibold text-[#D8DCE8]"
+          }
+        >
+          {isPlusActive ? "Аккаунт Plus" : "Базовый аккаунт"}
+        </span>
+      </div>
+      <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+          <dt className="text-[rgba(216,220,232,0.58)]">Доступ</dt>
+          <dd className="mt-1 font-medium text-[#F6F1E8]">
+            {isPlusActive ? "полный отчёт открыт" : "полный отчёт закрыт"}
+          </dd>
+        </div>
+        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+          <dt className="text-[rgba(216,220,232,0.58)]">Последняя оплата</dt>
+          <dd className="mt-1 font-medium text-[#F6F1E8]">
+            {latestPaymentStatus ?? "нет подтверждённой оплаты"}
+          </dd>
+        </div>
+        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+          <dt className="text-[rgba(216,220,232,0.58)]">Привязка</dt>
+          <dd className="mt-1 font-medium text-[#F6F1E8]">
+            {activeEntitlement
+              ? "есть активный доступ"
+              : "активного доступа нет"}
+          </dd>
+        </div>
+      </dl>
+    </ProductSurfaceCard>
+  );
+}
+
 export default function BillingPage() {
   return (
     <div
@@ -198,6 +268,8 @@ export default function BillingPage() {
       className="mx-auto max-w-7xl space-y-7"
     >
       <BillingReturnStatus />
+
+      <BillingAccountStatus />
 
       <ProductSurfaceHero
         eyebrow="Бесплатный / Плюс"

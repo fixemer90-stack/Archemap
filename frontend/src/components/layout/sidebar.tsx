@@ -10,9 +10,11 @@ import {
   Baby,
   Briefcase,
   CreditCard,
+  Crown,
   Settings,
   LogOut,
 } from "lucide-react";
+import { useBillingAccess } from "@/hooks/use-billing-access";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -76,6 +78,7 @@ export function Sidebar() {
   const router = useRouter();
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const logout = useAuthStore((s) => s.logout);
+  const { isPlusActive, isLoadingAccess } = useBillingAccess();
 
   async function handleLogout() {
     try {
@@ -114,6 +117,42 @@ export function Sidebar() {
             A
           </Link>
         )}
+      </div>
+
+      <div className="px-2 pb-2">
+        <Link
+          href="/billing"
+          className={cn(
+            "flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition-all",
+            isPlusActive
+              ? "border-[rgba(216,180,90,0.36)] bg-[rgba(216,180,90,0.12)] text-[#F6F1E8]"
+              : "border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.045)] text-[#D8DCE8] hover:border-[rgba(216,180,90,0.28)] hover:text-[#F6F1E8]",
+            !sidebarOpen && "justify-center px-2",
+          )}
+          aria-label={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
+          title={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
+        >
+          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(216,180,90,0.14)] text-[#D8B45A]">
+            <Crown className="h-4 w-4" />
+            {isPlusActive ? (
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#7CF29A] ring-2 ring-[#171426]" />
+            ) : null}
+          </span>
+          {sidebarOpen && (
+            <span className="min-w-0">
+              <span className="block font-semibold">
+                {isLoadingAccess
+                  ? "Проверяем Plus"
+                  : isPlusActive
+                    ? "Plus активен"
+                    : "Plus не активен"}
+              </span>
+              <span className="block text-xs text-[rgba(216,220,232,0.62)]">
+                Статус аккаунта
+              </span>
+            </span>
+          )}
+        </Link>
       </div>
 
       {/* Main nav */}

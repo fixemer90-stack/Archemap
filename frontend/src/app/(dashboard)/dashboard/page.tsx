@@ -7,6 +7,7 @@ import {
   Baby,
   Briefcase,
   CalendarDays,
+  Crown,
   Heart,
   MapPin,
   PlusCircle,
@@ -20,6 +21,7 @@ import {
   SurfaceEyebrow,
 } from "@/components/product-surface";
 import { Button } from "@/components/ui/button";
+import { useBillingAccess } from "@/hooks/use-billing-access";
 import { bootstrapSession } from "@/lib/auth-session";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -84,9 +86,50 @@ function formatProfileDate(value: string) {
   }).format(date);
 }
 
+function getAccessStatusCopy({
+  isPlusActive,
+  isLoadingAccess,
+  accessError,
+}: {
+  isPlusActive: boolean;
+  isLoadingAccess: boolean;
+  accessError: boolean;
+}) {
+  if (isLoadingAccess) {
+    return {
+      eyebrow: "Проверяем доступ",
+      title: "Статус аккаунта обновляется",
+      text: "Сейчас сверяем данные оплаты с сервером.",
+      cta: "Оплата и доступ",
+      href: "/billing",
+    };
+  }
+
+  if (isPlusActive) {
+    return {
+      eyebrow: "Аккаунт Plus",
+      title: "Plus активен",
+      text: "Полный личный отчёт открыт и привязан к этому аккаунту.",
+      cta: "Управлять доступом",
+      href: "/billing",
+    };
+  }
+
+  return {
+    eyebrow: accessError ? "Статус недоступен" : "Базовый аккаунт",
+    title: accessError ? "Не удалось проверить Plus" : "Plus не активен",
+    text: accessError
+      ? "Откройте оплату, чтобы повторить проверку статуса."
+      : "Полный личный отчёт откроется после подтверждения оплаты.",
+    cta: "Открыть Plus",
+    href: "/billing",
+  };
+}
+
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const { isPlusActive, isLoadingAccess, accessError } = useBillingAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -126,6 +169,11 @@ export default function DashboardPage() {
 
   const primaryProfile = useMemo(() => profiles[0], [profiles]);
   const greetingName = user?.name?.trim() || user?.email?.split("@")[0];
+  const accessStatus = getAccessStatusCopy({
+    isPlusActive,
+    isLoadingAccess,
+    accessError,
+  });
 
   return (
     <div
@@ -222,6 +270,42 @@ export default function DashboardPage() {
           </Button>
         </SurfaceActionRow>
       </ProductSurfaceHero>
+
+      <section
+        className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"
+        aria-label="Статус Plus"
+      >
+        <ProductSurfaceCard className="border-[rgba(216,180,90,0.24)] bg-[linear-gradient(135deg,rgba(216,180,90,0.10),rgba(255,255,255,0.045))]">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(216,180,90,0.30)] bg-[rgba(216,180,90,0.14)] text-[#D8B45A]">
+                <Crown className="h-5 w-5" />
+              </span>
+              <div className="space-y-2">
+                <SurfaceEyebrow>{accessStatus.eyebrow}</SurfaceEyebrow>
+                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+                  {accessStatus.title}
+                </h2>
+                <p className="max-w-2xl text-sm leading-6 text-[#D8DCE8]">
+                  {accessStatus.text}
+                </p>
+              </div>
+            </div>
+            <Button asChild variant={isPlusActive ? "outline" : "default"}>
+              <Link href={accessStatus.href}>{accessStatus.cta}</Link>
+            </Button>
+          </div>
+        </ProductSurfaceCard>
+
+        <ProductSurfaceCard className="space-y-3 text-sm leading-6 text-[#D8DCE8]">
+          <SurfaceEyebrow>Где это видно</SurfaceEyebrow>
+          <p>
+            Статус Plus теперь вынесен в кабинет, левую панель и страницу
+            оплаты, чтобы не приходилось искать подтверждение доступа внутри
+            отчёта.
+          </p>
+        </ProductSurfaceCard>
+      </section>
 
       <section className="space-y-4" aria-labelledby="reports-heading">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

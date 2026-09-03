@@ -38,6 +38,11 @@ for (const marker of [
   "доступ включается только после подтверждения",
   "возврат не равен успеху оплаты",
   "Бесплатный статус и Плюс сейчас не режут продукт",
+  "Текущий статус аккаунта",
+  "Plus активен",
+  "Plus не активен",
+  "Аккаунт Plus",
+  "полный отчёт открыт",
 ]) {
   if (!billingPage.includes(marker)) {
     throw new Error(`Billing page missing marker: ${marker}`);
@@ -75,6 +80,17 @@ if (
   !sidebar.includes('href: "/billing"')
 ) {
   throw new Error("Sidebar must expose billing page as Оплата");
+}
+
+for (const marker of [
+  "useBillingAccess",
+  "Аккаунт Plus активен",
+  "Plus не активен",
+  "Статус аккаунта",
+]) {
+  if (!sidebar.includes(marker)) {
+    throw new Error(`Sidebar missing explicit Plus status marker: ${marker}`);
+  }
 }
 
 for (const marker of [

@@ -481,8 +481,8 @@ function RegisterForm() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        После регистрации сразу будет рассчитана ваша натальная карта и
-        подготовлен V2 natal-only отчёт.
+        После регистрации мы сразу рассчитаем вашу натальную карту и подготовим
+        персональный отчёт.
       </p>
 
       <div className="flex gap-2">

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -45,14 +45,14 @@ Design direction:
 
 ## Acceptance criteria
 
-- [ ] `/billing` uses report-style surfaces and no longer reads as a generic pricing page.
-- [ ] `BillingCheckoutButton` still creates payment for `self_full` and redirects to YooKassa confirmation URL.
-- [ ] Page clearly says access/status changes only after payment confirmation.
-- [ ] Page does not claim return from YooKassa equals payment success.
-- [ ] Page does not add account-tier feature restrictions.
-- [ ] Outdated archetype/teaser wording is removed.
-- [ ] User-facing copy avoids forbidden technical/legacy terms.
-- [ ] Mobile layout keeps price, CTA and confirmation explanation readable.
+- [x] `/billing` uses report-style surfaces and no longer reads as a generic pricing page.
+- [x] `BillingCheckoutButton` still creates payment for `self_full` and redirects to YooKassa confirmation URL.
+- [x] Page clearly says access/status changes only after payment confirmation.
+- [x] Page does not claim return from YooKassa equals payment success.
+- [x] Page does not add account-tier feature restrictions.
+- [x] Outdated archetype/teaser wording is removed.
+- [x] User-facing copy avoids forbidden technical/legacy terms.
+- [x] Mobile layout keeps price, CTA and confirmation explanation readable.
 
 ## Verification
 
@@ -69,3 +69,18 @@ Runtime smoke when available:
 /billing
 /billing?checkout=return
 ```
+
+## Implementation evidence
+
+Implemented and verified with:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

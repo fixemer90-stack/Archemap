@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -50,14 +50,14 @@ Design direction:
 
 ## Acceptance criteria
 
-- [ ] `/` has a new report-style hero and no longer uses the old visual structure as the main design.
-- [ ] Primary CTA goes to `/register`.
-- [ ] Existing login path remains available.
-- [ ] Page explains the chain: birth data → calculated foundation → report.
-- [ ] Report-preview/proof section is illustrative and does not claim a real user report.
-- [ ] Page does not mention forbidden legacy/technical terms in user-facing copy.
-- [ ] Mobile layout stacks cleanly and keeps CTA visible.
-- [ ] Desktop layout uses the available width similarly to report samples.
+- [x] `/` has a new report-style hero and no longer uses the old visual structure as the main design.
+- [x] Primary CTA goes to `/register`.
+- [x] Existing login path remains available.
+- [x] Page explains the chain: birth data → calculated foundation → report.
+- [x] Report-preview/proof section is illustrative and does not claim a real user report.
+- [x] Page does not mention forbidden legacy/technical terms in user-facing copy.
+- [x] Mobile layout stacks cleanly and keeps CTA visible.
+- [x] Desktop layout uses the available width similarly to report samples.
 
 ## Verification
 
@@ -80,3 +80,18 @@ At widths:
 - 768px
 - 1440px
 - 1920px
+
+## Implementation evidence
+
+Implemented and verified with:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

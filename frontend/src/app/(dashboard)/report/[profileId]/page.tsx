@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { CalculationParameters } from "@/components/report/calculation-parameters";
 import { ArchetypeProfileSummary } from "@/components/report/archetype-profile-summary";
@@ -113,9 +114,7 @@ function CareerReportContent({ data }: { data: ReportData }) {
     <div className="mx-auto max-w-5xl space-y-6">
       <Card className="border-[#C28A2E]/30 bg-[#C28A2E]/5">
         <CardHeader>
-          <CardDescription>
-            Career-report · профессиональный профиль
-          </CardDescription>
+          <CardDescription>Карьерный профиль</CardDescription>
           <CardTitle className="text-3xl">{data.profile.name}</CardTitle>
         </CardHeader>
         <CardContent>
@@ -141,7 +140,7 @@ function CareerReportContent({ data }: { data: ReportData }) {
 
       <Card>
         <CardHeader>
-          <CardDescription>Главный карьерный архетип</CardDescription>
+          <CardDescription>Главный карьерный профиль</CardDescription>
           <CardTitle>{report.archetype}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
@@ -571,12 +570,17 @@ export default function ReportPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <Button variant="outline" asChild>
+          <Link href="/dashboard">В кабинет</Link>
+        </Button>
+      </div>
       {!isLoading && data && currentReport && data.product === "career" && (
         <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
           <div>
             <div className="text-sm font-medium">{data.profile.name}</div>
             <div className="text-xs text-muted-foreground">
-              PDF собирается на лету из JSON в базе
+              PDF собирается из сохранённого отчёта
             </div>
           </div>
           <Button onClick={handleDownloadPdf} disabled={isDownloadingPdf}>

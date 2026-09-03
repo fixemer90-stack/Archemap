@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -41,14 +41,14 @@ As a user reading my Astrotype report, I want a visible button back to my dashbo
 
 ## Acceptance criteria
 
-- [ ] `/report/v2/[profileId]` ready state contains a link/button with `href="/dashboard"`.
-- [ ] Loading/error/progress state for `/report/v2/[profileId]` contains the same return action.
-- [ ] The report route remains standalone: no dashboard sidebar/header is added for `/report/v2/*`.
-- [ ] PDF download button still works from the report hero.
-- [ ] Report polling/generation state still renders while waiting for the report.
-- [ ] The return-action copy is Russian and does not expose internal route jargon.
-- [ ] Targeted report reader DOM regression check covers the return action.
-- [ ] Frontend lint/typecheck pass for the changed files.
+- [x] `/report/v2/[profileId]` ready state contains a link/button with `href="/dashboard"`.
+- [x] Loading/error/progress state for `/report/v2/[profileId]` contains the same return action.
+- [x] The report route remains standalone: no dashboard sidebar/header is added for `/report/v2/*`.
+- [x] PDF download button still works from the report hero.
+- [x] Report polling/generation state still renders while waiting for the report.
+- [x] The return-action copy is Russian and does not expose internal route jargon.
+- [x] Targeted report reader DOM regression check covers the return action.
+- [x] Frontend lint/typecheck pass for the changed files.
 
 ## Suggested implementation
 
@@ -81,3 +81,18 @@ cd frontend
 npm run dev
 # open /report/v2/<profileId>, confirm the button navigates to /dashboard
 ```
+
+## Implementation evidence
+
+Implemented and verified with:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

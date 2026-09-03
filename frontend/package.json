@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "test": "node scripts/check-report-ux.mjs && node scripts/check-auth-ux.mjs && node scripts/check-billing-ux.mjs && node scripts/check-v2-report-view-model.mjs && node scripts/check-v2-report-reader-dom.mjs && node scripts/check-v2-report-generation-state.mjs"
+    "test": "node scripts/check-report-ux.mjs && node scripts/check-auth-ux.mjs && node scripts/check-billing-ux.mjs && node scripts/check-v2-report-view-model.mjs && node scripts/check-v2-report-reader-dom.mjs && node scripts/check-v2-report-generation-state.mjs && node scripts/check-product-surface-redesign.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

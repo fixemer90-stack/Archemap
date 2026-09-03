@@ -18,7 +18,7 @@ function getBillingReturnUrl(): string {
 function getCheckoutErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) {
-      return "Чтобы оформить Plus, войдите в аккаунт.";
+      return "Чтобы оформить Плюс, войдите в аккаунт.";
     }
     return error.message || "Не удалось создать оплату.";
   }
@@ -70,7 +70,7 @@ export function BillingCheckoutButton() {
             Открываем оплату…
           </>
         ) : (
-          "Оформить Plus"
+          "Оформить Плюс"
         )}
       </Button>
       {errorMessage ? (

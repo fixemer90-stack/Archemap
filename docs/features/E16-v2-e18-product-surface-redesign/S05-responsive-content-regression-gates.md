@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -45,12 +45,12 @@ This story is not a replacement for manual visual review, but it should catch ob
 
 ## Acceptance criteria
 
-- [ ] Regression script fails when required page markers are missing.
-- [ ] Regression script fails when forbidden legacy/technical terms appear in user-facing page source.
-- [ ] Script covers `/`, `/dashboard`, and `/billing` source paths.
-- [ ] Script is runnable locally with a single documented command.
-- [ ] Frontend lint, format and TypeScript checks pass.
-- [ ] Manual visual smoke is documented for mobile/tablet/desktop widths.
+- [x] Regression script fails when required page markers are missing.
+- [x] Regression script fails when forbidden legacy/technical terms appear in user-facing page source.
+- [x] Script covers `/`, `/dashboard`, and `/billing` source paths.
+- [x] Script is runnable locally with a single documented command.
+- [x] Frontend lint, format and TypeScript checks pass.
+- [x] Manual visual smoke is documented for mobile/tablet/desktop widths.
 
 ## Verification
 
@@ -69,3 +69,18 @@ Manual visual widths when browser is available:
 - 768px
 - 1440px
 - 1920px
+
+## Implementation evidence
+
+Implemented and verified with:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

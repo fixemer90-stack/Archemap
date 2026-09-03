@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Implemented and locally verified
 
 ## Goal
 
@@ -62,32 +62,32 @@ The implementation should preserve the direction: wide dark report-style pages, 
 
 ## Acceptance criteria
 
-- [ ] Homepage `/` uses the new report-style direction and no longer looks like the old compass/card landing page.
-- [ ] Homepage hero clearly communicates: birth data → calculated foundation → personal report.
-- [ ] Homepage includes a report-preview/proof block that resembles the report reader language without pretending to be a real generated result.
-- [ ] Dashboard `/dashboard` presents the user's workspace with a large personal hero and latest-report path before product cards.
-- [ ] Dashboard keeps existing profile fetching and report links working.
-- [ ] Dashboard empty state provides one clear start action for creating/opening Self.
-- [ ] Billing `/billing` explains Free/Plus, YooKassa checkout and server-side payment confirmation in the new visual language.
-- [ ] Billing does not imply that return from YooKassa equals successful payment.
-- [ ] Billing can display account-tier/status copy, but does not gate features by account tier.
-- [ ] Public/user-facing copy on these pages does not contain `v2/json`, `LLM`, `Model A`, `MBTI`, `function_strengths`, `socionics`, or raw `evidence ids` wording.
-- [ ] Responsive behavior works at mobile, tablet and desktop widths.
-- [ ] Frontend lint, format and TypeScript checks pass.
-- [ ] A targeted visual/content regression script covers homepage, dashboard and billing markers.
-- [ ] Report pages have a visible return action to `/dashboard` without losing standalone report focus.
-- [ ] GitHub CI for pushed HEAD is green or any unrelated failure is documented precisely.
+- [x] Homepage `/` uses the new report-style direction and no longer looks like the old compass/card landing page.
+- [x] Homepage hero clearly communicates: birth data → calculated foundation → personal report.
+- [x] Homepage includes a report-preview/proof block that resembles the report reader language without pretending to be a real generated result.
+- [x] Dashboard `/dashboard` presents the user's workspace with a large personal hero and latest-report path before product cards.
+- [x] Dashboard keeps existing profile fetching and report links working.
+- [x] Dashboard empty state provides one clear start action for creating/opening Self.
+- [x] Billing `/billing` explains Free/Plus, YooKassa checkout and server-side payment confirmation in the new visual language.
+- [x] Billing does not imply that return from YooKassa equals successful payment.
+- [x] Billing can display account-tier/status copy, but does not gate features by account tier.
+- [x] Public/user-facing copy on these pages does not contain `v2/json`, `LLM`, `Model A`, `MBTI`, `function_strengths`, `socionics`, or raw `evidence ids` wording.
+- [x] Responsive behavior works at mobile, tablet and desktop widths.
+- [x] Frontend lint, format and TypeScript checks pass.
+- [x] A targeted visual/content regression script covers homepage, dashboard and billing markers.
+- [x] Report pages have a visible return action to `/dashboard` without losing standalone report focus.
+- [x] GitHub CI for pushed HEAD is green or any unrelated failure is documented precisely.
 
 ## Stories
 
-| ID  | Story                                                                                   | Status       |
-| --- | --------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Define shared product surface language](./S01-shared-product-surface-language.md)      | ⬜ Не начато |
-| S02 | [Implement homepage redesign](./S02-homepage-redesign.md)                               | ⬜ Не начато |
-| S03 | [Implement dashboard redesign](./S03-dashboard-redesign.md)                             | ⬜ Не начато |
-| S04 | [Implement billing redesign](./S04-billing-redesign.md)                                 | ⬜ Не начато |
-| S05 | [Add responsive/content regression gates](./S05-responsive-content-regression-gates.md) | ⬜ Не начато |
-| S06 | [Add report-to-dashboard return action](./S06-report-dashboard-return-action.md)        | ⬜ Не начато |
+| ID  | Story                                                                                   | Status         |
+| --- | --------------------------------------------------------------------------------------- | -------------- |
+| S01 | [Define shared product surface language](./S01-shared-product-surface-language.md)      | ✅ Реализовано |
+| S02 | [Implement homepage redesign](./S02-homepage-redesign.md)                               | ✅ Реализовано |
+| S03 | [Implement dashboard redesign](./S03-dashboard-redesign.md)                             | ✅ Реализовано |
+| S04 | [Implement billing redesign](./S04-billing-redesign.md)                                 | ✅ Реализовано |
+| S05 | [Add responsive/content regression gates](./S05-responsive-content-regression-gates.md) | ✅ Реализовано |
+| S06 | [Add report-to-dashboard return action](./S06-report-dashboard-return-action.md)        | ✅ Реализовано |
 
 ## Implementation order
 
@@ -125,3 +125,28 @@ npm run build
 npm run start
 # inspect /, /dashboard and /billing at mobile/tablet/desktop widths
 ```
+
+## Implementation evidence
+
+Implemented in commit branch workspace before final push:
+
+- shared product surface primitives under `frontend/src/components/product-surface/`;
+- redesigned homepage `/`;
+- redesigned dashboard `/dashboard`;
+- redesigned billing `/billing`;
+- product-surface regression script `frontend/scripts/check-product-surface-redesign.mjs`;
+- report return action to `/dashboard` in v2 report ready/loading/locked states;
+- user-facing redesign copy cleaned to avoid unnecessary English/internal wording.
+
+Fresh verification:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

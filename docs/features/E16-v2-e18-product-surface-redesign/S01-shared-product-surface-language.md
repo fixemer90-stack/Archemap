@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -48,11 +48,11 @@ The static samples are direction references, not pixel-perfect contracts.
 
 ## Acceptance criteria
 
-- [ ] Shared approach is chosen and implemented without over-abstracting.
-- [ ] The chosen primitives or route-local patterns can support homepage, dashboard and billing.
-- [ ] No route behavior changes are introduced by this story alone.
-- [ ] No user-facing copy contains forbidden technical/legacy terms.
-- [ ] Frontend lint/format/typecheck pass after this story.
+- [x] Shared approach is chosen and implemented without over-abstracting.
+- [x] The chosen primitives or route-local patterns can support homepage, dashboard and billing.
+- [x] No route behavior changes are introduced by this story alone.
+- [x] No user-facing copy contains forbidden technical/legacy terms.
+- [x] Frontend lint/format/typecheck pass after this story.
 
 ## Verification
 
@@ -62,3 +62,18 @@ npx eslint .
 npx prettier --check .
 npx tsc --noEmit
 ```
+
+## Implementation evidence
+
+Implemented and verified with:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато
+✅ Реализовано
 
 ## Context
 
@@ -50,14 +50,14 @@ Design direction:
 
 ## Acceptance criteria
 
-- [ ] Existing dashboard data loading still works.
-- [ ] If profiles exist, user sees a prominent path to the latest/first report.
-- [ ] Profile cards link to `/report/v2/{profile.id}`.
-- [ ] If profiles are empty, dashboard shows one clear “build first chart” path.
-- [ ] Product cards remain available/coming soon according to current product behavior.
-- [ ] Dashboard does not introduce account-tier gating.
-- [ ] User-facing copy avoids forbidden legacy/technical terms.
-- [ ] Mobile layout is readable without horizontal overflow.
+- [x] Existing dashboard data loading still works.
+- [x] If profiles exist, user sees a prominent path to the latest/first report.
+- [x] Profile cards link to `/report/v2/{profile.id}`.
+- [x] If profiles are empty, dashboard shows one clear “build first chart” path.
+- [x] Product cards remain available/coming soon according to current product behavior.
+- [x] Dashboard does not introduce account-tier gating.
+- [x] User-facing copy avoids forbidden legacy/technical terms.
+- [x] Mobile layout is readable without horizontal overflow.
 
 ## Verification
 
@@ -74,3 +74,18 @@ Runtime smoke when available:
 /dashboard with at least one profile
 /dashboard with no profiles
 ```
+
+## Implementation evidence
+
+Implemented and verified with:
+
+```bash
+cd frontend
+npm test
+npx eslint .
+npx prettier --check .
+npx tsc --noEmit --pretty false
+npm run build
+```
+
+Result: all commands passed; Next production build completed successfully.

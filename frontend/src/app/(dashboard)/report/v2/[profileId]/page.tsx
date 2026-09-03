@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
+
 import { V2ReportReader } from "@/components/astrotype-v2/report/V2ReportReader";
 import {
   Card,
@@ -19,6 +20,16 @@ import {
 } from "@/lib/api/astrotype-v2";
 import { buildV2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { useV2ReportGeneration } from "@/lib/astrotype-v2/use-v2-report-generation";
+
+function ReportReturnAction() {
+  return (
+    <div className="flex justify-start">
+      <Button variant="outline" asChild>
+        <Link href="/dashboard">В кабинет</Link>
+      </Button>
+    </div>
+  );
+}
 
 function ReportReady({ report }: { report: AstrotypeV2FullReportResponse }) {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -54,7 +65,8 @@ function LockedReportAccess({
   locked: AstrotypeV2LockedReportResponse;
 }) {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 py-6">
+      <ReportReturnAction />
       <Card className="border-[rgba(216,180,90,0.30)] bg-[rgba(216,180,90,0.06)]">
         <CardHeader>
           <CardDescription>Доступ к отчёту</CardDescription>
@@ -85,33 +97,21 @@ export default function AstrotypeV2ReportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 py-6">
+      <ReportReturnAction />
       <Card>
         <CardHeader>
-          <CardDescription>Astrotype V2 · natal-only</CardDescription>
-          <CardTitle>Ваш V2 отчёт</CardTitle>
+          <CardDescription>Натальный портрет</CardDescription>
+          <CardTitle>Готовим ваш отчёт</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-[#D8DCE8]">
           <p>{generation.error || generation.message}</p>
-          <p className="text-xs text-muted-foreground">
-            state: {generation.state}
-          </p>
-          {generation.generationId && (
+          {generation.progress ? (
             <p className="text-xs text-muted-foreground">
-              generation_id: {generation.generationId}
-            </p>
-          )}
-          {generation.reportId && (
-            <p className="text-xs text-muted-foreground">
-              report_id: {generation.reportId}
-            </p>
-          )}
-          {generation.progress && (
-            <p className="text-xs text-muted-foreground">
-              segments: {generation.progress.ready_segments}/
+              Готово разделов: {generation.progress.ready_segments}/
               {generation.progress.total_segments}
             </p>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>

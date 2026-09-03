@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 import { BillingCheckoutButton } from "@/components/billing/billing-checkout-button";
+import {
+  ProductSurfaceCard,
+  ProductSurfaceHero,
+  SurfaceEyebrow,
+} from "@/components/product-surface";
 import { Button } from "@/components/ui/button";
 import {
   getBillingAccess,
@@ -14,39 +19,32 @@ import {
 } from "@/lib/api/payments";
 
 const freeFeatures = [
-  "Расчёт натальной карты",
-  "Базовый тип и архетип",
-  "Краткое описание личности",
-  "3 сильные стороны",
-  "1–2 зоны риска",
-  "Teaser платного отчёта",
+  "первый вход в кабинет",
+  "создание профиля рождения",
+  "расчёт карты и базовые пояснения",
+  "сохранение результата в аккаунте",
 ];
 
 const plusFeatures = [
-  "Полный личностный отчёт",
-  "Сильные стороны мышления и поведения",
-  "Слабые зоны и точки роста",
-  "Профессиональный профиль",
-  "Отношения и типичные сценарии близости",
-  "Совместимость с другими людьми",
-  "20 персональных вопросов к карте в месяц",
-  "Сохранение нескольких профилей",
-  "Обновление отчёта после ответов на вопросы",
+  "полный личный отчёт",
+  "подробные разделы о реакциях, мотивах и опорах",
+  "возврат к отчёту из кабинета",
+  "PDF и дальнейшие обновления продукта",
 ];
 
-const principles = [
-  [
-    "Доступ, а не витрина",
-    "Free остаётся входом в систему, Plus — рабочим пространством для собственной карты.",
-  ],
-  [
-    "Один сильный выбор",
-    "Без лестницы мелких пакетов: пользователь понимает, что именно открывает подписка.",
-  ],
-  [
-    "Ценность растёт со временем",
-    "Отчёт можно уточнять вопросами, сохранять профили и возвращаться к обновлённой версии.",
-  ],
+const trustSteps = [
+  {
+    title: "Оплата открывается в YooKassa",
+    text: "Вы переходите на защищённую страницу платёжного сервиса. Astrotype не хранит данные карты.",
+  },
+  {
+    title: "Мы ждём подтверждение",
+    text: "Возврат на сайт сам по себе не считается успешной оплатой. Статус меняется только после проверки платёжной системой.",
+  },
+  {
+    title: "Доступ привязывается к аккаунту",
+    text: "Когда подтверждение получено, в аккаунте появляется Плюс и активный доступ к полному отчёту.",
+  },
 ];
 
 const returnStatusCopy: Record<
@@ -60,17 +58,17 @@ const returnStatusCopy: Record<
   free: {
     title: "Статус аккаунта ещё базовый",
     description:
-      "Если вы только что вернулись из YooKassa, подтверждение может прийти не сразу. Мы проверяем статус на стороне сервера.",
+      "Если вы только что вернулись из YooKassa, подтверждение может прийти не сразу. Мы обновляем статус по данным платёжной системы.",
     tone: "neutral",
   },
   checkout_pending: {
     title: "Проверяем оплату",
     description:
-      "Это может занять немного времени: доступ включается только после подтверждения YooKassa и проверки платежа на сервере.",
+      "Это может занять немного времени: доступ включается только после подтверждения YooKassa и серверной проверки платежа.",
     tone: "neutral",
   },
   plus_active: {
-    title: "Plus активен",
+    title: "Плюс активен",
     description:
       "Оплата подтверждена, полный доступ привязан к вашему аккаунту.",
     tone: "success",
@@ -78,11 +76,11 @@ const returnStatusCopy: Record<
   payment_failed: {
     title: "Оплата не завершена",
     description:
-      "Похоже, платёж был отменён или не подтвердился. Можно спокойно попробовать ещё раз — деньги не списываются повторно без подтверждения YooKassa.",
+      "Похоже, платёж был отменён или не подтвердился. Можно спокойно попробовать ещё раз.",
     tone: "warning",
   },
   plus_inactive: {
-    title: "Plus сейчас не активен",
+    title: "Плюс сейчас не активен",
     description:
       "В аккаунте есть прошлый доступ, но сейчас он не действует. Можно обновить оплату и снова открыть полный отчёт.",
     tone: "warning",
@@ -177,15 +175,7 @@ function BillingReturnStatus() {
   );
 }
 
-function FeatureList({
-  items,
-  accent = "gold",
-}: {
-  items: string[];
-  accent?: "gold" | "blue";
-}) {
-  const iconColor = accent === "gold" ? "text-[#D8B45A]" : "text-[#8DA8FF]";
-
+function FeatureList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-3.5">
       {items.map((item) => (
@@ -193,7 +183,7 @@ function FeatureList({
           key={item}
           className="flex gap-3 text-sm leading-relaxed text-[#D8DCE8]"
         >
-          <Check className={`mt-0.5 h-4 w-4 shrink-0 ${iconColor}`} />
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#D8B45A]" />
           <span>{item}</span>
         </li>
       ))}
@@ -203,149 +193,136 @@ function FeatureList({
 
 export default function BillingPage() {
   return (
-    <div className="mx-auto max-w-7xl space-y-10">
+    <div
+      data-product-surface-page="billing"
+      className="mx-auto max-w-7xl space-y-7"
+    >
       <BillingReturnStatus />
-      <section className="relative overflow-hidden rounded-[32px] border border-[rgba(216,220,232,0.14)] bg-[linear-gradient(135deg,rgba(18,15,36,0.96)_0%,rgba(35,26,72,0.92)_47%,rgba(23,20,42,0.98)_100%)] px-7 py-10 shadow-2xl shadow-black/30 md:px-12 md:py-14">
-        <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(216,180,90,0.65)] to-transparent" />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[rgba(91,63,214,0.30)] blur-3xl" />
-        <div className="absolute -bottom-28 left-16 h-64 w-64 rounded-full bg-[rgba(216,180,90,0.13)] blur-3xl" />
 
-        <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
-          <div className="max-w-3xl space-y-7">
-            <p className="text-xs font-medium uppercase tracking-[0.34em] text-[#D8B45A]">
-              Astrotype Membership
-            </p>
-            <div className="space-y-5">
-              <h1 className="font-[family-name:var(--font-cormorant)] text-5xl font-semibold leading-[0.95] tracking-tight text-[#F6F1E8] md:text-6xl">
-                Откройте полную карту своей личности
-              </h1>
-              <p className="max-w-2xl text-base leading-8 text-[rgba(246,241,232,0.78)] md:text-lg">
-                Free даёт первый точный срез. Plus открывает полный отчёт,
-                профессиональный слой, отношения и совместимость, вопросы для
-                уточнения и сохранение нескольких профилей.
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-[rgba(246,241,232,0.16)] bg-[rgba(246,241,232,0.07)] p-6 backdrop-blur-xl">
+      <ProductSurfaceHero
+        eyebrow="Бесплатный / Плюс"
+        title="Статус аккаунта и доступ к полному отчёту"
+        lead="Страница оплаты в Astrotype — не витрина с мелкими пакетами, а спокойное объяснение: что открывает Плюс, как проходит оплата и почему доступ включается только после подтверждения."
+        aside={
+          <ProductSurfaceCard className="space-y-5 border-[rgba(216,180,90,0.24)] bg-[rgba(255,255,255,0.06)]">
             <p className="text-xs uppercase tracking-[0.28em] text-[#D8DCE8]">
-              Цена Plus
+              Цена Плюс
             </p>
-            <div className="mt-4 flex items-end gap-2">
+            <div className="flex items-end gap-2">
               <span className="text-6xl font-semibold tracking-tight text-[#F6F1E8]">
                 999 ₽
               </span>
               <span className="pb-2 text-sm text-[#D8DCE8]">/ месяц</span>
             </div>
-            <p className="mt-5 text-sm leading-6 text-[rgba(216,220,232,0.78)]">
-              Создаём оплату через YooKassa: цена и продукт берутся из
-              backend-каталога, после подтверждения доступ активируется
-              webhook’ом.
+            <p className="text-sm leading-6 text-[rgba(216,220,232,0.78)]">
+              Оплата открывается в YooKassa. После подтверждения статус аккаунта
+              обновится автоматически.
+            </p>
+            <div id="plus">
+              <BillingCheckoutButton />
+            </div>
+          </ProductSurfaceCard>
+        }
+      >
+        <div className="grid gap-3 pt-2 text-sm text-[#D8DCE8] sm:grid-cols-3">
+          {[
+            "без данных карты в Astrotype",
+            "возврат не равен успеху оплаты",
+            "доступ включается после проверки",
+          ].map((item) => (
+            <div
+              key={item}
+              className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.045)] px-4 py-3"
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      </ProductSurfaceHero>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <ProductSurfaceCard className="space-y-6">
+          <div className="space-y-2">
+            <SurfaceEyebrow>Бесплатный</SurfaceEyebrow>
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+              Базовый статус
+            </h2>
+            <p className="text-sm leading-6 text-[#D8DCE8]">
+              Подходит, чтобы войти в продукт, создать профиль и увидеть первый
+              слой карты без ощущения закрытой двери.
             </p>
           </div>
+          <FeatureList items={freeFeatures} />
+          <Button variant="outline" asChild>
+            <Link href="/dashboard">Вернуться в кабинет</Link>
+          </Button>
+        </ProductSurfaceCard>
+
+        <ProductSurfaceCard className="space-y-6 border-[rgba(216,180,90,0.28)] bg-[rgba(216,180,90,0.055)]">
+          <div className="space-y-2">
+            <SurfaceEyebrow>Плюс</SurfaceEyebrow>
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+              Полный личный отчёт
+            </h2>
+            <p className="text-sm leading-6 text-[#D8DCE8]">
+              Плюс открывает подробный личный отчёт и сохраняет доступ в вашем
+              аккаунте после подтверждения оплаты.
+            </p>
+          </div>
+          <FeatureList items={plusFeatures} />
+          <BillingCheckoutButton />
+        </ProductSurfaceCard>
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+        <ProductSurfaceCard className="space-y-4">
+          <SurfaceEyebrow>Как подтверждается оплата</SurfaceEyebrow>
+          <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+            Сначала подтверждение, потом доступ
+          </h2>
+          <p className="text-sm leading-7 text-[#D8DCE8]">
+            Эта страница может показать, что вы вернулись из YooKassa, но не
+            делает вывод об оплате сама. Astrotype ждёт проверенный статус и
+            только потом меняет доступ.
+          </p>
+        </ProductSurfaceCard>
+
+        <div className="grid gap-4">
+          {trustSteps.map((step, index) => (
+            <ProductSurfaceCard key={step.title} className="flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(216,180,90,0.16)] text-sm font-semibold text-[#D8B45A]">
+                {index + 1}
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+                  {step.title}
+                </h3>
+                <p className="text-sm leading-6 text-[#D8DCE8]">{step.text}</p>
+              </div>
+            </ProductSurfaceCard>
+          ))}
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <article className="self-start rounded-[28px] border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.035)] p-7 md:p-8">
-          <div className="flex items-start justify-between gap-6 border-b border-[rgba(216,220,232,0.10)] pb-7">
-            <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-[0.30em] text-[#8DA8FF]">
-                Free
-              </p>
-              <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
-                Бесплатный вход
-              </h2>
-              <p className="max-w-md text-sm leading-6 text-[#D8DCE8]">
-                Первый контакт с системой: карта, базовый тип и достаточно
-                смысла, чтобы понять точность сервиса.
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-semibold text-[#F6F1E8]">0 ₽</div>
-              <div className="mt-1 text-xs text-[#D8DCE8]">навсегда</div>
-            </div>
-          </div>
-
-          <div className="pt-7">
-            <FeatureList items={freeFeatures} accent="blue" />
-          </div>
-
-          <div className="mt-8 rounded-[20px] border border-[rgba(141,168,255,0.18)] bg-[rgba(141,168,255,0.06)] p-5 text-sm leading-6 text-[#D8DCE8]">
-            Free должен доказать: “это не случайная генерация — здесь есть
-            узнаваемый паттерн”.
-          </div>
-
-          <Button asChild variant="outline" className="mt-8 w-full">
-            <Link href="/register">Начать бесплатно</Link>
-          </Button>
-        </article>
-
-        <article
-          id="plus"
-          className="relative overflow-hidden rounded-[32px] border border-[rgba(216,180,90,0.32)] bg-[rgba(255,255,255,0.055)] p-7 shadow-2xl shadow-black/20 md:p-8"
-        >
-          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#D8B45A] to-transparent" />
-          <div className="absolute right-0 top-0 h-40 w-40 bg-[rgba(216,180,90,0.10)] blur-3xl" />
-
-          <div className="relative space-y-8">
-            <div className="grid gap-7 border-b border-[rgba(216,220,232,0.10)] pb-7 xl:grid-cols-[minmax(0,1fr)_260px] xl:items-start">
-              <div className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-[0.30em] text-[#D8B45A]">
-                  Plus
-                </p>
-                <h2 className="max-w-xl font-[family-name:var(--font-cormorant)] text-4xl font-semibold leading-[1.04] text-[#F6F1E8]">
-                  Полный доступ к персональной карте
-                </h2>
-                <p className="max-w-2xl text-sm leading-6 text-[#D8DCE8]">
-                  Не “подписка на гороскоп”, а полный профиль личности,
-                  отношений и карьеры с персональными уточнениями по вашей
-                  карте.
-                </p>
-              </div>
-
-              <aside className="rounded-[24px] border border-[rgba(216,180,90,0.22)] bg-[rgba(23,20,42,0.56)] p-6">
-                <p className="text-xs uppercase tracking-[0.26em] text-[#D8B45A]">
-                  Подписка
-                </p>
-                <div className="mt-5 space-y-1">
-                  <div className="text-5xl font-semibold tracking-tight text-[#F6F1E8]">
-                    999 ₽
-                  </div>
-                  <div className="text-sm text-[#D8DCE8]">в месяц</div>
-                </div>
-                <div className="my-6 h-px bg-[rgba(216,220,232,0.12)]" />
-                <p className="text-sm leading-6 text-[#D8DCE8]">
-                  Free — вход в систему. Plus — полная карта личности, отношений
-                  и карьеры.
-                </p>
-                <BillingCheckoutButton />
-                <p className="mt-4 text-xs leading-5 text-[rgba(216,220,232,0.62)]">
-                  Оплата открывается на стороне YooKassa. Доступ включается
-                  после подтверждения платежа, а не по факту возврата на сайт.
-                </p>
-              </aside>
-            </div>
-
-            <FeatureList items={plusFeatures} />
-          </div>
-        </article>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {principles.map(([title, description]) => (
-          <div
-            key={title}
-            className="rounded-[24px] border border-[rgba(216,220,232,0.10)] bg-[rgba(255,255,255,0.03)] p-6"
-          >
-            <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
-              {title}
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-[#D8DCE8]">
-              {description}
+      <section className="rounded-[28px] border border-[rgba(141,168,255,0.22)] bg-[rgba(141,168,255,0.06)] p-6 md:p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-sm font-semibold text-[#F6F1E8]">
+              <ShieldCheck className="h-4 w-4 text-[#8DA8FF]" />
+              Бесплатный статус и Плюс сейчас не режут продукт по скрытым
+              правилам
+            </p>
+            <p className="max-w-3xl text-sm leading-6 text-[#D8DCE8]">
+              Статус виден в аккаунте, а доступ к платным материалам проверяется
+              на стороне сервиса. Так пользователь не зависит от случайного
+              состояния страницы после оплаты.
             </p>
           </div>
-        ))}
+          <div className="flex items-center gap-2 text-sm text-[#D8DCE8]">
+            <Clock3 className="h-4 w-4 text-[#D8B45A]" />
+            Проверка обычно занимает меньше минуты
+          </div>
+        </div>
       </section>
     </div>
   );

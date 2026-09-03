@@ -128,6 +128,29 @@ class TestLogin:
         assert tokens["refresh_token"] == "refresh"
         assert tokens["token_type"] == "bearer"
 
+    async def test_login_normalizes_email_case_and_whitespace(self, service: AuthService, mock_db: AsyncMock) -> None:
+        user = MagicMock()
+        user.id = "user-id"
+        user.email = "balthier90@mail.ru"
+        user.hashed_password = "hashed"
+        user.is_active = True
+        user.is_verified = True
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = user
+        mock_db.execute.return_value = mock_result
+
+        with (
+            patch("app.modules.auth.service.verify_password", return_value=True),
+            patch("app.modules.auth.service.create_access_token", return_value=("access", "jti1")),
+            patch("app.modules.auth.service.create_refresh_token", return_value=("refresh", "jti2")),
+        ):
+            tokens = await service.login("  Balthier90@mail.ru  ", TEST_PASSWORD)
+
+        compiled_query = str(mock_db.execute.await_args.args[0].compile(compile_kwargs={"literal_binds": True}))
+        assert "lower(users.email) = 'balthier90@mail.ru'" in compiled_query
+        assert tokens["access_token"] == "access"
+
     async def test_login_wrong_password(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
         user.hashed_password = "hashed"

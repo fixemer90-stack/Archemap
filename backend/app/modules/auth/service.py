@@ -8,7 +8,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chart_engine.chart import build_chart
@@ -220,7 +220,8 @@ class AuthService:
 
     async def login(self, email: str, password: str) -> dict[str, str]:
         """Authenticate user and return tokens."""
-        result = await self.db.execute(select(User).where(User.email == email))
+        normalized_email = email.strip().lower()
+        result = await self.db.execute(select(User).where(func.lower(User.email) == normalized_email))
         user = result.scalar_one_or_none()
 
         if user is None or not verify_password(password, user.hashed_password):

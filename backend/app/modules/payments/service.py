@@ -156,6 +156,8 @@ class PaymentsService:
         )
         latest_payment = latest_payment_result.scalars().all()
         payment = latest_payment[0] if latest_payment else None
+        if payment is not None:
+            await self.reconcile_pending_provider_payment(payment)
 
         entitlements_result = await self.db.execute(
             select(Entitlement).where(Entitlement.user_id == user_id).order_by(Entitlement.created_at.desc())
@@ -210,6 +212,70 @@ class PaymentsService:
                 else None
             ),
         )
+
+    async def reconcile_pending_provider_payment(self, payment: Payment) -> None:
+        """Reconcile a pending provider payment before access state is shown.
+
+        This is an idempotent fallback for cases where YooKassa captured the
+        payment but webhook delivery did not reach the app yet. Provider truth
+        still comes from YooKassa; the browser return URL is not trusted.
+        """
+        if payment.provider != "yookassa" or payment.status not in {"pending", "processing"}:
+            return
+        if not payment.provider_payment_id:
+            return
+
+        yookassa = YooKassaProvider()
+        canonical_payload = await yookassa.get_payment(payment.provider_payment_id)
+        event = yookassa.parse_webhook_event({"object": canonical_payload})
+        if not self._event_matches_payment(payment, event):
+            logger.warning(
+                "pending_payment_reconciliation_mismatch",
+                provider=payment.provider,
+                payment_id=payment.provider_payment_id,
+                local_payment_id=str(payment.id),
+            )
+            return
+
+        new_status = self._map_provider_status(event["status"])
+        if new_status == "succeeded" and event.get("paid") is True:
+            payment.status = "succeeded"
+            if payment.paid_at is None:
+                payment.paid_at = datetime.now(UTC)
+            payment.payment_method_type = event.get("payment_method", {}).get("type")
+            product = (payment.metadata_json or {}).get("product")
+            product_id = (payment.metadata_json or {}).get("product_id")
+            if product:
+                await EntitlementsService(self.db).grant_paid_product(
+                    user_id=payment.user_id,
+                    product=product,
+                    source_payment_id=payment.id,
+                    metadata={"product_id": product_id} if product_id else None,
+                )
+            await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+            await self.db.flush()
+        elif new_status == "failed":
+            payment.status = "failed"
+            payment.failed_at = datetime.now(UTC)
+            payment.error_code = event.get("status")
+            await self.db.flush()
+        elif new_status == "cancelled":
+            payment.status = "cancelled"
+            payment.cancelled_at = datetime.now(UTC)
+            await self.db.flush()
+
+    async def reconcile_latest_pending_provider_payment(self, user_id: UUID) -> None:
+        """Reconcile the user's latest pending provider payment if one exists."""
+        latest_payment_result = await self.db.execute(
+            select(Payment)
+            .where(Payment.user_id == user_id, Payment.status.in_(["pending", "processing"]))
+            .order_by(Payment.created_at.desc())
+            .limit(1)
+        )
+        latest_payment = latest_payment_result.scalars().all()
+        payment = latest_payment[0] if latest_payment else None
+        if payment is not None:
+            await self.reconcile_pending_provider_payment(payment)
 
     async def handle_webhook(
         self,

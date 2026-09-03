@@ -199,9 +199,14 @@ async def test_billing_access_state_is_free_without_payments_or_entitlements() -
 
 
 async def test_billing_access_state_reports_checkout_pending_from_latest_payment() -> None:
-    service = PaymentsService(_BillingStateDb([_payment_attempt("pending")], []))  # type: ignore[arg-type]
+    payment = _payment_attempt("pending")
+    service = PaymentsService(_BillingStateDb([payment], []))  # type: ignore[arg-type]
 
-    state = await service.get_billing_access_state(user_id=uuid4())
+    with patch(
+        "app.modules.payments.service.YooKassaProvider.get_payment",
+        new=AsyncMock(return_value={"id": payment.provider_payment_id, "status": "pending"}),
+    ):
+        state = await service.get_billing_access_state(user_id=uuid4())
 
     assert state.access_state == "checkout_pending"
     assert state.account_tier == "free"

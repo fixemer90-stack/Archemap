@@ -25,6 +25,7 @@ from app.modules.astrotype_v2.infographic_data import build_infographic_api_payl
 from app.modules.astrotype_v2.pdf import generate_v2_report_pdf
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.authorization.service import EntitlementsService, build_locked_product_response
+from app.modules.payments.service import PaymentsService
 from app.modules.profiles.models import PersonProfile
 
 router = APIRouter(prefix="/astrotype-v2", tags=["astrotype-v2"])
@@ -103,6 +104,7 @@ async def get_v2_report(
 
     repository = AstrotypeV2Repository(db)
     report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
+    await PaymentsService(db).reconcile_latest_pending_provider_payment(current_user)
     has_access = await EntitlementsService(db).has_active_product_access(
         user_id=current_user,
         product=SELF_REPORT_PRODUCT,
@@ -315,6 +317,7 @@ async def _load_report_for_user(
 
 
 async def _require_self_report_access(*, db: AsyncSession, user_id: UUID) -> None:
+    await PaymentsService(db).reconcile_latest_pending_provider_payment(user_id)
     has_access = await EntitlementsService(db).has_active_product_access(
         user_id=user_id,
         product=SELF_REPORT_PRODUCT,

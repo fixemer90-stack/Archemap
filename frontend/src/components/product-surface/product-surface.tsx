@@ -13,7 +13,7 @@ export function ProductSurfaceShell({
     <main
       data-product-surface="shell"
       className={cn(
-        "relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_16%_0%,rgba(91,63,214,0.32),transparent_34%),radial-gradient(circle_at_82%_16%,rgba(216,180,90,0.16),transparent_30%),linear-gradient(180deg,#17142a_0%,#0b0d16_100%)] text-[#F6F1E8]",
+        "relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_16%_0%,#26304a_0%,#0b0d13_45%,#07080c_100%)] text-[#F6F1E8]",
         className,
       )}
     >

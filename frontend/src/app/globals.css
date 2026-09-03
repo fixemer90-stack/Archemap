@@ -10,7 +10,7 @@
 
 :root {
   /* Light mode — используем тёмную тему как default для Archemap */
-  --background: #17142a;
+  --background: #0d0f16;
   --foreground: #f6f1e8;
   --card: rgba(255, 255, 255, 0.06);
   --card-foreground: #f6f1e8;
@@ -50,7 +50,7 @@
 
 .dark {
   /* Dark mode — те же токены (Archemap по умолчанию тёмный) */
-  --background: #17142a;
+  --background: #0d0f16;
   --foreground: #f6f1e8;
   --card: rgba(255, 255, 255, 0.06);
   --card-foreground: #f6f1e8;
@@ -131,10 +131,8 @@
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
-    /* Deep Space radial gradient background */
-    background:
-      radial-gradient(circle at top, rgba(91, 63, 214, 0.35), transparent 40%),
-      linear-gradient(180deg, #17142a 0%, #0f1224 100%);
+    /* Match the canonical report sample background across every page. */
+    background: radial-gradient(circle at 16% 0, #26304a, #0b0d13 45%, #07080c);
     background-attachment: fixed;
     min-height: 100vh;
   }

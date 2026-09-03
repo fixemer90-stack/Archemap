@@ -11,6 +11,7 @@ const homepage = read("src/app/page.tsx");
 const dashboard = read("src/app/(dashboard)/dashboard/page.tsx");
 const billing = read("src/app/(dashboard)/billing/page.tsx");
 const surface = read("src/components/product-surface/product-surface.tsx");
+const globals = read("src/app/globals.css");
 const reportPage = read("src/app/(dashboard)/report/v2/[profileId]/page.tsx");
 const legacyReportPage = read(
   "src/app/(dashboard)/report/[profileId]/page.tsx",
@@ -32,6 +33,21 @@ assertMarkers("surface", surface, [
   "ProductSurfaceShell",
   "ProductSurfaceHero",
   "ProductSurfaceCard",
+]);
+assert.equal(
+  surface.includes(
+    "radial-gradient(circle_at_16%_0%,#26304a_0%,#0b0d13_45%,#07080c_100%)",
+  ),
+  true,
+  "surface: product shell must use canonical report background",
+);
+
+assertMarkers("global background", globals, [
+  "--background: #0d0f16;",
+  "circle at 16% 0",
+  "#26304a",
+  "#0b0d13 45%",
+  "#07080c",
 ]);
 
 assertMarkers("homepage", homepage, [

@@ -128,7 +128,7 @@ npm run start
 
 ## Implementation evidence
 
-Implemented in commit branch workspace before final push:
+Implemented on `main`:
 
 - shared product surface primitives under `frontend/src/components/product-surface/`;
 - redesigned homepage `/`;
@@ -150,3 +150,5 @@ npm run build
 ```
 
 Result: all commands passed; Next production build completed successfully.
+
+GitHub verification: all check-runs completed successfully or were skipped by workflow conditions. Real production deploy jobs remained skipped by current workflow gating, so this feature is verified in code/CI, not released as a live production deployment.

@@ -55,8 +55,9 @@ class AuthService:
         Automatically computes natal chart and socionics type.
         Returns user data, tokens, and chart results.
         """
-        existing = await self.db.execute(select(User).where(User.email == email))
-        if existing.scalar_one_or_none():
+        normalized_email = email.strip().lower()
+        existing = await self.db.execute(select(User).where(func.lower(User.email) == normalized_email))
+        if existing.scalars().first():
             raise ConflictError("User with this email already exists")
 
         if len(password) < 8:
@@ -68,7 +69,7 @@ class AuthService:
             birth_time_accuracy = "unknown"
 
         user = User(
-            email=email,
+            email=normalized_email,
             name=name.strip(),
             hashed_password=hash_password(password),
             birth_date=birth_date,
@@ -124,7 +125,7 @@ class AuthService:
 
         return {
             "user_id": str(user.id),
-            "email": email,
+            "email": normalized_email,
             "birth_date": birth_date.isoformat(),
             "profile_id": str(profile.id),
             "requires_verification": True,
@@ -222,7 +223,11 @@ class AuthService:
         """Authenticate user and return tokens."""
         normalized_email = email.strip().lower()
         result = await self.db.execute(select(User).where(func.lower(User.email) == normalized_email))
-        user = result.scalar_one_or_none()
+        users = list(result.scalars().all())
+        exact_email = email.strip()
+        user = next((candidate for candidate in users if candidate.email == exact_email), None)
+        if user is None and users:
+            user = users[0]
 
         if user is None or not verify_password(password, user.hashed_password):
             raise AuthorizationError("Invalid email or password")

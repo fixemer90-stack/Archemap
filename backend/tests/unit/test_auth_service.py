@@ -31,11 +31,19 @@ def service(mock_db: AsyncMock) -> AuthService:
     return AuthService(mock_db)
 
 
+def _query_result(*, first: object | None = None, all_: list[object] | None = None) -> MagicMock:
+    result = MagicMock()
+    scalars = MagicMock()
+    scalars.first.return_value = first
+    scalars.all.return_value = [] if all_ is None else all_
+    result.scalars.return_value = scalars
+    result.scalar_one_or_none.return_value = first
+    return result
+
+
 class TestRegister:
     async def test_register_new_user(self, service: AuthService, mock_db: AsyncMock) -> None:
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result()
 
         with (
             patch("app.modules.auth.service.hash_password", return_value="hashed"),
@@ -66,9 +74,7 @@ class TestRegister:
 
     async def test_register_duplicate_email(self, service: AuthService, mock_db: AsyncMock) -> None:
         existing_user = MagicMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result(first=existing_user)
 
         with pytest.raises(ConflictError, match="already exists"):
             await service.register(
@@ -85,9 +91,7 @@ class TestRegister:
             )
 
     async def test_register_short_password(self, service: AuthService, mock_db: AsyncMock) -> None:
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result()
 
         with pytest.raises(ValidationError, match="at least 8"):
             await service.register(
@@ -113,9 +117,7 @@ class TestLogin:
         user.is_active = True
         user.is_verified = True
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result(all_=[user])
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=True),
@@ -136,9 +138,7 @@ class TestLogin:
         user.is_active = True
         user.is_verified = True
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result(all_=[user])
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=True),
@@ -151,13 +151,58 @@ class TestLogin:
         assert "lower(users.email) = 'balthier90@mail.ru'" in compiled_query
         assert tokens["access_token"] == "access"
 
+    async def test_login_prefers_exact_email_when_case_duplicate_exists(
+        self, service: AuthService, mock_db: AsyncMock
+    ) -> None:
+        yandex_user = MagicMock()
+        yandex_user.id = "yandex-user-id"
+        yandex_user.email = "Berthier90@yandex.ru"
+        yandex_user.hashed_password = ""
+        yandex_user.is_active = True
+        yandex_user.is_verified = True
+
+        password_user = MagicMock()
+        password_user.id = "password-user-id"
+        password_user.email = "berthier90@yandex.ru"
+        password_user.hashed_password = "hashed"
+        password_user.is_active = True
+        password_user.is_verified = True
+
+        mock_db.execute.return_value = _query_result(all_=[yandex_user, password_user])
+
+        with (
+            patch("app.modules.auth.service.verify_password", return_value=True) as mock_verify,
+            patch("app.modules.auth.service.create_access_token", return_value=("access", "jti1")),
+            patch("app.modules.auth.service.create_refresh_token", return_value=("refresh", "jti2")),
+        ):
+            tokens = await service.login("berthier90@yandex.ru", TEST_PASSWORD)
+
+        mock_verify.assert_called_once_with(TEST_PASSWORD, "hashed")
+        assert tokens["access_token"] == "access"
+
+    async def test_register_rejects_case_insensitive_duplicate(self, service: AuthService, mock_db: AsyncMock) -> None:
+        existing_user = MagicMock()
+        mock_db.execute.return_value = _query_result(first=existing_user)
+
+        with pytest.raises(ConflictError, match="already exists"):
+            await service.register(
+                email="Berthier90@yandex.ru",
+                password=TEST_PASSWORD,
+                name="Test User",
+                birth_date=TEST_BIRTH_DATE,
+                birth_place=TEST_BIRTH_PLACE,
+                latitude=TEST_LATITUDE,
+                longitude=TEST_LONGITUDE,
+                timezone=TEST_TIMEZONE,
+                birth_time=TEST_BIRTH_TIME,
+                birth_time_accuracy=TEST_TIME_ACCURACY,
+            )
+
     async def test_login_wrong_password(self, service: AuthService, mock_db: AsyncMock) -> None:
         user = MagicMock()
         user.hashed_password = "hashed"
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result(all_=[user])
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=False),
@@ -166,9 +211,7 @@ class TestLogin:
             await service.login("test@example.com", "wrong")
 
     async def test_login_user_not_found(self, service: AuthService, mock_db: AsyncMock) -> None:
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result()
 
         with pytest.raises(AuthorizationError, match="Invalid"):
             await service.login("nobody@example.com", TEST_PASSWORD)
@@ -178,9 +221,7 @@ class TestLogin:
         user.hashed_password = "hashed"
         user.is_active = False
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result(all_=[user])
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=True),
@@ -194,9 +235,7 @@ class TestLogin:
         user.is_active = True
         user.is_verified = False
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = user
-        mock_db.execute.return_value = mock_result
+        mock_db.execute.return_value = _query_result(all_=[user])
 
         with (
             patch("app.modules.auth.service.verify_password", return_value=True),

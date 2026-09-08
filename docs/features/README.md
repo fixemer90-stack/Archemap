@@ -78,6 +78,7 @@ Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contra
 Section evidence grounding remediation: `docs/architecture/astrotype-v2-section-evidence-grounding.md`
 Deterministic-first delivery contract: `docs/architecture/astrotype-v2-deterministic-first-delivery.md`
 Current payment confirmation flow: `docs/architecture/current-payment-confirmation-flow.md`
+Target monthly Plus subscription contract: `docs/architecture/monthly-plus-subscription-contract.md`
 Billing/payment feature contract: `docs/features/E6-billing-subscriptions/FEATURE.md`
 Account tier architecture: `docs/architecture/account-tier-role-foundation.md`
 Account tier feature contract: `docs/features/E7-account-tier-role-foundation/FEATURE.md`

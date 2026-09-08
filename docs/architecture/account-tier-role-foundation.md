@@ -243,6 +243,8 @@ Implemented/future access gating builds on this foundation:
 - frontend uses backend-provided access mode (`full`, `locked`);
 - subscription expiry/downgrade moves accounts back to `free` or another explicit state.
 
+Target monthly SaaS subscription is now specified in `monthly-plus-subscription-contract.md`. In that target model, `account_tier` is a derived/display cache of active subscription state; it must not unlock access without an unexpired subscription period.
+
 Subscription expiry/downgrade remains future work and requires its own docs, migrations, services and tests.
 
 ## Acceptance criteria for implementation

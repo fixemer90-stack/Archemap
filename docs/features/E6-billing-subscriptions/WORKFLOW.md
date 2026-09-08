@@ -107,3 +107,78 @@ Repeated webhook delivery must be safe:
 The local implementation now covers backend confirmation, access-state API, account-tier status, frontend return-state UX, and first v2 self-report entitlement gates.
 
 The remaining non-local production proof is YooKassa merchant-cabinet webhook registration plus a deployed HTTPS smoke run. The checklist is in `../../implementation/payment-confirmation-production-smoke.md`.
+
+---
+
+## Target monthly SaaS workflow
+
+Status: target contract, not current implementation.
+
+For a full SaaS model, Astrotype Plus is a monthly account subscription with explicit period control.
+
+### Initial subscription path
+
+1. User opens `/billing`.
+2. User chooses monthly `Astrotype Plus`.
+3. Frontend calls `POST /api/v1/subscriptions/checkout` with `plan_code='astrotype_plus_monthly'`.
+4. Backend creates a subscription shell in `checkout_pending` / `incomplete` state.
+5. Backend creates a local payment attempt and provider checkout.
+6. User pays in YooKassa.
+7. Backend reconciles provider payment server-to-server.
+8. If successful and paid, backend sets:
+   - `subscriptions.status='active'`;
+   - `current_period_start=paid_at`;
+   - `current_period_end=paid_at + 1 month`;
+   - `users.account_tier='plus'` as display/status cache;
+   - product entitlements with `expires_at=current_period_end`.
+9. Frontend reads billing access and shows `Plus активен до <date>`.
+
+### Renewal path
+
+```mermaid
+sequenceDiagram
+    participant Yoo as YooKassa
+    participant API as Backend API
+    participant DB as Database
+    participant FE as Frontend billing
+
+    Yoo->>API: Renewal event / recurring payment update
+    API->>DB: Store webhook/payment event
+    API->>Yoo: Fetch canonical payment object
+    Yoo-->>API: status=succeeded, paid=true
+    API->>DB: Extend current_period_end by one month
+    API->>DB: Extend entitlement expires_at
+    FE->>API: GET /api/v1/billing/access
+    API-->>FE: plus_active + updated next_billing_at
+```
+
+Renewal failure does not extend the period. If the current period has already ended, access becomes `past_due` or `plus_expired` depending on the configured policy.
+
+### Cancellation path
+
+1. User clicks cancel/manage subscription.
+2. Backend calls provider cancellation or records a cancellation request only after provider confirmation/reconciliation.
+3. Subscription becomes `cancel_scheduled` with `cancel_at_period_end=true`.
+4. Plus remains active until `current_period_end`.
+5. At period end, subscription becomes `plus_expired` / `cancelled`, account tier returns to `free`, and paid APIs lock.
+
+### User-visible monthly states
+
+| State | Meaning | Required UI direction |
+| --- | --- | --- |
+| `free` | No active monthly subscription | Offer monthly Plus |
+| `checkout_pending` | Initial payment not confirmed | Checking payment, no fake success |
+| `plus_active` | Paid period is active and renewal is enabled | Show active-until and next billing date |
+| `cancel_scheduled` | Renewal disabled, paid period still active | Show active-until and no next charge |
+| `past_due` | Renewal failed and policy is unresolved | Ask user to update payment |
+| `plus_expired` | Paid period ended | Lock paid APIs and offer reactivation |
+| `plus_suspended` | Provider/legal block | Explain support/retry path safely |
+
+### Monthly workflow invariants
+
+- `Plus активен` must always be backed by `current_period_end > now`.
+- Billing UI must show when Plus ends.
+- A browser return from YooKassa still does not prove payment.
+- A successful initial payment creates one paid month, not lifetime Plus.
+- A successful renewal extends exactly one billing interval.
+- Cancellation stops future billing but does not erase the paid period.

@@ -31,6 +31,8 @@ entitlements.status = 'active'
 entitlements.source_payment_id = payments.id
 ```
 
+Target SaaS note: monthly Plus is specified separately in `docs/architecture/monthly-plus-subscription-contract.md`. In that target model, `entitlements.expires_at` must equal the subscription `current_period_end`; non-expiring `expires_at=NULL` grants are historical/current one-time access behavior, not the monthly Plus target.
+
 Account-tier note: backend-confirmed payment now upgrades `users.account_tier` from `free` to `plus` as status-only. Entitlement gates use active entitlements, not browser return state.
 
 ## Source files

@@ -147,3 +147,103 @@ Optional helper if the frontend later needs payment-attempt-specific status. It 
 - `succeeded` without `paid=true` must not activate access.
 - Duplicate webhook delivery must be idempotent.
 - Secrets and full payment-card data must never be returned to frontend or committed to docs.
+
+---
+
+## Target monthly SaaS subscription API
+
+Status: target contract, not current implementation.
+
+Monthly Plus must move from product-only payment creation to subscription-owned checkout and lifecycle endpoints.
+
+### POST /api/v1/subscriptions/checkout
+
+Creates a checkout attempt for the server-owned monthly Plus plan.
+
+Request:
+
+```json
+{
+  "plan_code": "astrotype_plus_monthly",
+  "return_url": "https://astrotype.ru/billing?checkout=return"
+}
+```
+
+Response:
+
+```json
+{
+  "subscription_id": "uuid",
+  "payment_id": "uuid",
+  "status": "checkout_pending",
+  "confirmation_url": "https://yookassa.ru/checkout/...",
+  "current_period_start": null,
+  "current_period_end": null
+}
+```
+
+### GET /api/v1/billing/access target shape
+
+For monthly Plus, billing access must expose subscription period and renewal state:
+
+```json
+{
+  "account_tier": "plus",
+  "access_state": "plus_active",
+  "subscription": {
+    "id": "uuid",
+    "plan_code": "astrotype_plus_monthly",
+    "status": "active",
+    "current_period_start": "2026-09-04T10:34:18Z",
+    "current_period_end": "2026-10-04T10:34:18Z",
+    "cancel_at_period_end": false,
+    "next_billing_at": "2026-10-04T10:34:18Z",
+    "grace_until": null
+  },
+  "entitlements": [
+    {
+      "product": "self",
+      "status": "active",
+      "starts_at": "2026-09-04T10:34:18Z",
+      "expires_at": "2026-10-04T10:34:18Z"
+    }
+  ],
+  "latest_payment": {
+    "id": "uuid",
+    "product_id": "astrotype_plus_monthly",
+    "status": "succeeded",
+    "created_at": "2026-09-04T10:33:00Z",
+    "paid_at": "2026-09-04T10:34:18Z"
+  }
+}
+```
+
+### Additional monthly subscription states
+
+Target `access_state` values extend the current list:
+
+- `free`
+- `checkout_pending`
+- `plus_active`
+- `cancel_scheduled`
+- `past_due`
+- `payment_failed`
+- `plus_expired`
+- `plus_suspended`
+
+### POST /api/v1/subscriptions/{subscription_id}/cancel
+
+Cancels future renewal after provider-side cancellation/reconciliation succeeds. Access remains active until `current_period_end` unless provider/legal state requires immediate suspension.
+
+### POST /api/v1/subscriptions/{subscription_id}/resume
+
+Resumes renewal before `current_period_end` when provider capability allows it.
+
+### Monthly Plus API invariants
+
+- Monthly Plus cannot be active without `current_period_end`.
+- Monthly Plus entitlements must have `expires_at = current_period_end`.
+- Renewals extend `current_period_end` only after backend-confirmed successful provider payment.
+- Failed renewal does not extend access.
+- Cancellation does not revoke already-paid access before period end.
+- Frontend renders dates from backend only; it must not synthesize expiry or renewal dates.

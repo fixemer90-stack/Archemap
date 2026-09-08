@@ -49,6 +49,7 @@ E6 покрывает не только payment processing, но и весь acc
 | Reports feature              | `docs/features/E5-products-reports/`                                                                          |
 | Report UX                    | `docs/features/E10-report-ux-redesign/`                                                                       |
 | LLM narrative                | `docs/features/E11-llm-report-narrative/`                                                                     |
+| Target monthly SaaS contract | `docs/architecture/monthly-plus-subscription-contract.md`                                                     |
 
 ---
 
@@ -117,7 +118,13 @@ FR-6.2.3 При неуспешной оплате пользователь ДО�
 
 FR-6.2.4 Система ДОЛЖНА иметь account-level tier/status `free`/`plus` на уровне пользователя.
 
-FR-6.2.5 В первой реализации `free` и `plus` ДОЛЖНЫ отличаться только отображаемым/возвращаемым статусом аккаунта; ограничения функций по tier НЕ ДОЛЖНЫ включаться до отдельной gating-истории.
+FR-6.2.5 In the current implementation baseline, `free` and `plus` differ first by displayed/returned account status; monthly subscription expiry and renewal control are target SaaS requirements below.
+
+FR-6.2.6 Target SaaS Plus MUST be a monthly account subscription with explicit `current_period_start` and `current_period_end`.
+
+FR-6.2.7 Plus access MUST be active only while the current paid period is active and unexpired.
+
+FR-6.2.8 Cancellation MUST stop future renewal but preserve access until the paid period end unless refund/chargeback/provider suspension requires immediate deactivation.
 
 ### 3.3 Checkout (FR-6.3)
 
@@ -320,9 +327,71 @@ Frontend должен строиться вокруг трёх проверок:
 
 ---
 
-## 11. Риски и открытые вопросы
+## 11. Target SaaS monthly Plus requirements
+
+Status: target contract, documentation only until S10-S15 are implemented.
+
+### 11.1 Functional requirements
+
+| ID | Requirement |
+| --- | --- |
+| FR-6.9.1 | System MUST define a monthly plan `astrotype_plus_monthly` in the backend-owned catalog. |
+| FR-6.9.2 | System MUST create a subscription shell before initial checkout and must not activate Plus before provider confirmation. |
+| FR-6.9.3 | Initial successful paid payment MUST set `current_period_start` and `current_period_end = current_period_start + 1 month`. |
+| FR-6.9.4 | Renewal success MUST extend `current_period_end` by exactly one billing interval after server-to-server reconciliation. |
+| FR-6.9.5 | Renewal failure MUST NOT extend access. |
+| FR-6.9.6 | `GET /api/v1/billing/access` MUST return subscription status, period end, next billing date and cancellation state. |
+| FR-6.9.7 | Paid APIs MUST deny Plus-only access after `current_period_end`. |
+| FR-6.9.8 | Monthly Plus entitlements MUST have `expires_at=current_period_end`; `expires_at=NULL` is invalid for subscription-derived access. |
+| FR-6.9.9 | User cancellation MUST set cancel-at-period-end semantics, not immediate loss of already-paid access. |
+| FR-6.9.10 | Subscription state changes MUST be auditable through append-only events. |
+
+### 11.2 Target data model additions
+
+| Table | Purpose |
+| --- | --- |
+| `subscription_plans` | Server-owned monthly Plus plan, price, currency, interval and grants. |
+| `subscriptions` | User subscription lifecycle, provider identity, status, current paid period and cancellation flags. |
+| `subscription_events` | Append-only lifecycle audit trail for provider/local subscription events. |
+
+### 11.3 Target API additions
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/v1/subscriptions/checkout` | Create monthly Plus checkout attempt. |
+| `POST /api/v1/subscriptions/{id}/cancel` | Stop future renewal while keeping current paid-period access. |
+| `POST /api/v1/subscriptions/{id}/resume` | Resume renewal before current period ends. |
+| `GET /api/v1/billing/access` | Extended response with subscription period and renewal/cancellation state. |
+
+### 11.4 Target UI requirements
+
+Billing and account surfaces MUST show:
+
+- monthly Plus plan and price;
+- active-until date;
+- next billing date when renewal is active;
+- cancellation scheduled state;
+- expired/past-due retry CTA;
+- no active Plus state without an explicit period end.
+
+### 11.5 Target verification
+
+Monthly SaaS implementation cannot close until tests prove:
+
+- active access inside paid period;
+- inactive access after exact expiry boundary;
+- renewal success extends period;
+- renewal failure does not extend period;
+- cancellation preserves current-period access;
+- billing UI renders period and next billing date;
+- no subscription-derived entitlement has `expires_at=NULL`.
+
+---
+
+## 12. Риски и открытые вопросы
 
 1. Текущий backend catalog описывает разовые продукты `self_full` и `career_full`, а frontend продаёт единый Plus — это нужно унифицировать до активной реализации checkout UX.
-2. Нужно решить, является ли Plus действительно подпиской с renew/cancel, или на первом этапе это membership/entitlement без полного recurring lifecycle.
+2. Target decision: Plus is a monthly SaaS subscription. Existing non-expiring access must be handled by an explicit migration/legal/product policy, not silently converted.
 3. Нужно определить точный состав preview для Self и точный locked-mode для Career, чтобы backend не раздавал лишние данные.
 4. Нужно выбрать единственный source of truth для `plan_code/product_id` naming, чтобы billing page, catalog и payment API не разъехались.
+5. Нужно проверить точную recurring/autopayment capability YooKassa для текущего merchant account перед реализацией renewal code.

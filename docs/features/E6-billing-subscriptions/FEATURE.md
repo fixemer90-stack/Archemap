@@ -8,11 +8,15 @@
 
 Turn the audited payment-confirmation architecture in `docs/architecture/current-payment-confirmation-flow.md` into an implementation contract for billing, payment reconciliation, entitlement activation, account access state and frontend payment UX.
 
-This feature answers one core question: Astrotype must treat a user as paid only after backend-confirmed YooKassa reconciliation, not after a browser redirect back from checkout.
+This feature answers two billing questions:
+
+1. Current payment confirmation: Astrotype must treat a user as paid only after backend-confirmed YooKassa reconciliation, not after a browser redirect back from checkout.
+2. Target SaaS model: Astrotype Plus must become a monthly account subscription with explicit period control (`current_period_start`, `current_period_end`, renewal/cancellation status), not an implicit non-expiring entitlement.
 
 ## Source architecture
 
 - Current audit: `../../architecture/current-payment-confirmation-flow.md`
+- Target SaaS contract: `../../architecture/monthly-plus-subscription-contract.md`
 - Account tier architecture: `../../architecture/account-tier-role-foundation.md`
 - Account tier feature: `../E7-account-tier-role-foundation/FEATURE.md`
 - SRS: `../../SRS/SRS-E6-billing-subscriptions.md`
@@ -35,7 +39,8 @@ Already implemented and covered by `backend/tests/unit/test_payments.py`:
 Still missing or environment-dependent:
 
 - live production/staging YooKassa webhook registration and external HTTPS delivery proof;
-- live YooKassa smoke proving deployed webhook -> succeeded payment -> active entitlement.
+- live YooKassa smoke proving deployed webhook -> succeeded payment -> active entitlement;
+- target monthly SaaS subscription lifecycle: monthly plan, recurring renewal, explicit period end, cancellation/resume, expiry enforcement and billing UI period management.
 
 Implemented in code/docs:
 
@@ -56,6 +61,12 @@ Implemented in code/docs:
 - Account-tier status update to `plus` as status-only, without feature restrictions.
 - Report/product entitlement checks in later gated slices.
 - Regression tests and production smoke checklist.
+- Monthly Plus subscription model.
+- Subscription period storage and expiry enforcement.
+- Renewal success/failure lifecycle.
+- Cancellation/resume and optional grace-period states.
+- Billing UI period, next-payment and management copy.
+- Subscription audit trail and support/admin observability.
 
 ## Out of scope
 
@@ -65,6 +76,9 @@ Implemented in code/docs:
 - Introducing Free/Plus feature restrictions before the dedicated gating story.
 - Replacing YooKassa with another PSP.
 - Storing full payment card data.
+- Treating monthly Plus as lifetime access.
+- Creating monthly Plus entitlements with `expires_at=NULL`.
+- Silently converting historical non-expiring access into an expiring subscription without a product/legal decision.
 
 ## Payment proof rule
 
@@ -106,6 +120,13 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [x] Report/product endpoints use backend entitlement checks where paid access is required.
 - [x] Regression tests cover checkout, webhook reconciliation, entitlements, access-state API and frontend status UX.
 - [ ] Production smoke proves one test payment creates both a succeeded payment and the expected access record.
+- [ ] Monthly Plus plan is defined as a server-owned SaaS subscription plan (`astrotype_plus_monthly`).
+- [ ] Subscription records store `current_period_start`, `current_period_end`, renewal/cancellation status and provider identifiers.
+- [ ] Plus access is active only inside the paid monthly period.
+- [ ] Renewals extend access only after backend-confirmed successful provider payment.
+- [ ] Cancellation stops future renewal but preserves access until paid period end.
+- [ ] Billing UI shows active-until date, next billing date and cancellation/expired/past-due states.
+- [ ] Support/admin observability can answer who has Plus, until when, and why it changed.
 
 ## Stories
 
@@ -120,6 +141,12 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S07 | [Report and product entitlement gates](./S07-report-product-entitlement-gates.md)      | ✅ Реализовано     |
 | S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)    | ✅ Реализовано     |
 | S09 | [Payment confirmation regression and observability](./S09-regression-observability.md) | 🟡 Готово локально |
+| S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md) | ⬜ Не начато |
+| S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md) | ⬜ Не начато |
+| S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md) | ⬜ Не начато |
+| S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md) | ⬜ Не начато |
+| S14 | [Billing UI for monthly Plus period and management](./S14-billing-ui-expiry-management.md) | ⬜ Не начато |
+| S15 | [Subscription observability, admin repair and audit trail](./S15-subscription-observability-admin.md) | ⬜ Не начато |
 
 ## Implementation order
 
@@ -134,6 +161,13 @@ flowchart TD
   S06 --> S07[S07 product/report gates]
   S07 --> S09[S09 regression and observability]
   S08 --> S09
+  S09 --> S10[S10 monthly Plus subscription]
+  S10 --> S11[S11 expiry access control]
+  S10 --> S12[S12 renewal lifecycle]
+  S11 --> S13[S13 cancel grace expiry]
+  S12 --> S13
+  S13 --> S14[S14 billing UI management]
+  S13 --> S15[S15 observability admin]
 ```
 
 ## Verification commands
@@ -161,3 +195,13 @@ npx tsc --noEmit --pretty false
 ```
 
 Production smoke checklist is defined in `S04-production-webhook-readiness.md` and must be run with YooKassa test credentials before live reliance.
+
+Target monthly SaaS implementation must additionally verify:
+
+```bash
+cd backend
+./.venv/bin/python -m pytest tests/unit/test_subscriptions*.py tests/unit/test_billing_access.py tests/unit/test_payments.py -q
+cd ../frontend
+node scripts/check-billing-ux.mjs
+npx tsc --noEmit --pretty false
+```

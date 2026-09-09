@@ -46,6 +46,8 @@ plus
 
 The tier must not become an admin permission or a frontend-only paywall. Paid product access must use backend entitlement checks.
 
+The successor report policy is defined by `docs/SRS/SRS-E8-account-level-report-access.md`: the basic natal report is account-wide, while every other report requires active Plus. This E7 document remains the foundation/current-baseline contract and does not mark that successor policy implemented.
+
 ## 3. Functional requirements
 
 ### FR-E7.1 User tier model

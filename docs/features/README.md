@@ -83,4 +83,7 @@ Billing/payment feature contract: `docs/features/E6-billing-subscriptions/FEATUR
 Account tier architecture: `docs/architecture/account-tier-role-foundation.md`
 Account tier feature contract: `docs/features/E7-account-tier-role-foundation/FEATURE.md`
 Account tier SRS: `docs/SRS/SRS-E7-account-tier-role-foundation.md`
+Account-level report access policy: `docs/architecture/account-levels-report-access-policy.md`
+Account-level report access feature: `docs/features/E8-account-level-report-access/FEATURE.md`
+Account-level report access SRS: `docs/SRS/SRS-E8-account-level-report-access.md`
 Product surface redesign samples: `docs/design/astrotype-v2-homepage-sample.html`, `docs/design/astrotype-v2-dashboard-sample.html`, `docs/design/astrotype-v2-billing-sample.html`

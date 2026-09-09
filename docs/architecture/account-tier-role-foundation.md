@@ -10,6 +10,8 @@ This document defines the first account-tier role layer for Astrotype.
 
 The initial implementation must create and maintain the role/status value, but it must not restrict product behavior yet. Free and Plus users must keep the same functional access until later gating stories explicitly implement differences.
 
+That later target policy is now specified in `account-levels-report-access-policy.md`: the basic natal report remains available to every authenticated account level; all other reports require active Plus. This foundation document describes the already implemented tier layer, not completion of that policy.
+
 ## Decision
 
 Astrotype needs an account-level commercial role in addition to payment records and product entitlements.

@@ -23,6 +23,15 @@ user subscribes to plan astrotype_plus_monthly
 
 A one-time report purchase may exist later as a separate product, but it must not be called Plus and must not reuse subscription copy.
 
+Plus controls report breadth, not access to the whole Astrotype product:
+
+```text
+basic natal report -> every authenticated account, including Free
+all other reports -> active Plus only
+```
+
+The canonical matrix and endpoint rules are defined in `account-levels-report-access-policy.md`. Expiry must leave the basic report available and must not delete any generated report data.
+
 ## Definitions
 
 | Term | Meaning |

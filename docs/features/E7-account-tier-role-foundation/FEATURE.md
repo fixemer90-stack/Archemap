@@ -10,6 +10,8 @@ Turn `docs/architecture/account-tier-role-foundation.md` into an implementation 
 
 This feature answers one product/platform question: Astrotype may show a user as Free or Plus, but access to paid products must be proven by backend-confirmed payment and active entitlements, not by frontend state or by `account_tier` alone.
 
+Successor policy: `../E8-account-level-report-access/FEATURE.md` defines the target report matrix—basic report for every authenticated account, all other reports only with active Plus. E7 remains the implemented tier foundation and does not claim that E8 gating is already shipped.
+
 ## Source architecture
 
 - Architecture: `../../architecture/account-tier-role-foundation.md`
@@ -53,7 +55,7 @@ Still open:
 ## Out of scope
 
 - Admin/RBAC permission checks based on `plus`.
-- Restricting API routes only because `account_tier == 'free'`.
+- Report-type access classification and gating; this is owned by E8 and still must not rely on `account_tier` alone.
 - Subscription expiry/renewal lifecycle.
 - Trial/family/past_due/cancelled tier states.
 - Retrofitting historical payments into roles without an audited backfill.

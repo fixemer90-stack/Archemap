@@ -25,6 +25,8 @@
 
 Astrotype — это full‑stack SaaS для персональных натальных отчётов. Активное направление v2 — natal‑only cloud‑core платформа: после регистрации/заполнения профиля backend рассчитывает проверяемую deterministic foundation, сразу показывает пользователю базовую натальную карту/факты/синтез, а LLM‑нарратив догружается асинхронно поверх сохранённых evidence‑backed данных.
 
+Базовый натальный отчёт доступен на любом уровне зарегистрированного аккаунта. Все остальные отчёты доступны только при активном Plus.
+
 Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым; LLM не рассчитывает карту, не добавляет факты и не блокирует первый полезный экран.
 
 ```text
@@ -299,8 +301,10 @@ Astrotype/
 | [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md)                   | Natal report pipeline and section architecture             |
 | [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy          |
 | [`docs/architecture/account-tier-role-foundation.md`](docs/architecture/account-tier-role-foundation.md)                                       | Free/Plus account-tier role foundation                     |
+| [`docs/architecture/account-levels-report-access-policy.md`](docs/architecture/account-levels-report-access-policy.md)                           | Матрица уровней аккаунта и доступа к отчётам                |
 | [`docs/architecture/current-payment-confirmation-flow.md`](docs/architecture/current-payment-confirmation-flow.md)                             | Current YooKassa payment confirmation and entitlement flow |
 | [`docs/features/E6-billing-subscriptions/FEATURE.md`](docs/features/E6-billing-subscriptions/FEATURE.md)                                       | Billing/payment feature contract and atomic stories        |
+| [`docs/features/E8-account-level-report-access/FEATURE.md`](docs/features/E8-account-level-report-access/FEATURE.md)                             | Basic-for-all / Plus-only report access contract            |
 | [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references               |
 | [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                                  |
 | [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                          |

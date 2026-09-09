@@ -28,8 +28,8 @@ E6 покрывает не только payment processing, но и весь acc
 
 | Термин       | Определение                                                                                    |
 | ------------ | ---------------------------------------------------------------------------------------------- |
-| Free         | Базовый бесплатный режим доступа                                                               |
-| Plus         | Платный режим доступа с полным контентом                                                       |
+| Free         | Базовый бесплатный режим: доступен базовый натальный отчёт                                     |
+| Plus         | Платный режим: базовый и все остальные отчёты при активном доступе                             |
 | Access state | Текущее коммерческое состояние пользователя (`free`, `checkout_pending`, `plus_active` и т.д.) |
 | Entitlement  | Backend-запись, подтверждающая доступ пользователя к продукту/плану                            |
 | Preview      | Ограниченная бесплатная версия контента                                                        |
@@ -152,7 +152,7 @@ FR-6.5.3 Успешная оплата ДОЛЖНА приводить к соз
 
 FR-6.5.4 Повторная доставка одного webhook не ДОЛЖНА дублировать entitlement.
 
-FR-6.5.5 Успешная backend-confirmed оплата ДОЛЖНА переводить account tier пользователя в `plus` без включения новых ограничений для `free`.
+FR-6.5.5 Успешная backend-confirmed оплата ДОЛЖНА переводить account tier пользователя в `plus`; наличие display-tier само по себе не заменяет active-access proof.
 
 Текущее состояние реализации: YooKassa checkout, webhook storage, server-side reconciliation, `succeeded + paid=true` success rule, entitlement grant, and status-only account-tier upgrade to `plus` are implemented and covered by `backend/tests/unit/test_payments.py`. See `docs/architecture/current-payment-confirmation-flow.md` for the current audited flow.
 
@@ -165,6 +165,10 @@ FR-6.6.2 Платные report/product payloads НЕ ДОЛЖНЫ быть до�
 FR-6.6.3 Free-ответ НЕ ДОЛЖЕН содержать полный закрытый payload с расчётом на визуальное скрытие на frontend.
 
 FR-6.6.4 API ДОЛЖЕН возвращать locked access state и CTA metadata там, где это нужно UX.
+
+FR-6.6.5 Базовый натальный отчёт ДОЛЖЕН быть доступен каждому аутентифицированному аккаунту независимо от уровня Free/Plus.
+
+FR-6.6.6 Каждый другой тип отчёта ДОЛЖЕН требовать активный Plus. Полная матрица и требования к операциям определены в `docs/architecture/account-levels-report-access-policy.md` и `docs/SRS/SRS-E8-account-level-report-access.md`.
 
 ### 3.7 Entitlement policy (FR-6.7)
 
@@ -392,6 +396,6 @@ Monthly SaaS implementation cannot close until tests prove:
 
 1. Текущий backend catalog описывает разовые продукты `self_full` и `career_full`, а frontend продаёт единый Plus — это нужно унифицировать до активной реализации checkout UX.
 2. Target decision: Plus is a monthly SaaS subscription. Existing non-expiring access must be handled by an explicit migration/legal/product policy, not silently converted.
-3. Нужно определить точный состав preview для Self и точный locked-mode для Career, чтобы backend не раздавал лишние данные.
+3. Решение по уровням принято: базовый Self/natal report доступен Free и Plus; Career, Love, Child и любой другой не-базовый отчёт требуют активный Plus. Детали payload/locked-mode реализуются по E8.
 4. Нужно выбрать единственный source of truth для `plan_code/product_id` naming, чтобы billing page, catalog и payment API не разъехались.
 5. Нужно проверить точную recurring/autopayment capability YooKassa для текущего merchant account перед реализацией renewal code.

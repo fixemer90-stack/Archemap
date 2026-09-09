@@ -4,6 +4,8 @@
 
 Astrotype v2 is a cloud-core, natal-only, multi-client report platform.
 
+Account access rule: the basic Astrotype natal report is available to every authenticated account level; every other report requires active Plus. The target contract is `docs/architecture/account-levels-report-access-policy.md`.
+
 The goal is not to patch the legacy Self report. The goal is to build a clean v2 pipeline:
 
 ```text
@@ -69,6 +71,7 @@ v2 foundation is not:
 | V2-E16 | Narrative depth quality          | ✅ Completed             | Harden prompts, synthesis inputs and validators so report prose is deep rather than shallow.            | `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`      |
 | V2-E18 | Product surface redesign         | ⬜ Planned               | Redesign homepage, dashboard and billing so they match the v2 report visual language.                   | `docs/features/E16-v2-e18-product-surface-redesign/FEATURE.md`     |
 | E6     | Monthly Plus SaaS billing        | ⬜ Target docs ready     | Convert payment-confirmed access into monthly Plus subscription with explicit period, renewal and expiry control. | `docs/features/E6-billing-subscriptions/FEATURE.md`                |
+| E8     | Account-level report access      | ⬜ Target docs ready     | Keep the basic report available to every account and require active Plus for all other reports.                    | `docs/features/E8-account-level-report-access/FEATURE.md`          |
 
 ---
 

@@ -59,7 +59,7 @@ Implemented in code/docs:
 - Billing/access-state API.
 - Frontend billing return and pending/success/failure states.
 - Account-tier status update to `plus` as status-only, without feature restrictions.
-- Report/product entitlement checks in later gated slices.
+- Report/product access proof used by the dedicated E8 matrix: basic report for every account, all other reports with active Plus.
 - Regression tests and production smoke checklist.
 - Monthly Plus subscription model.
 - Subscription period storage and expiry enforcement.
@@ -73,7 +73,7 @@ Implemented in code/docs:
 - Changing YooKassa merchant pricing outside the server-owned catalog.
 - Trusting return URLs, browser state, query params, or frontend flags as payment proof.
 - Allowing frontend to provide amount/currency/description/commercial metadata.
-- Introducing Free/Plus feature restrictions before the dedicated gating story.
+- Implementing the report access matrix itself; it is owned by `../E8-account-level-report-access/FEATURE.md`.
 - Replacing YooKassa with another PSP.
 - Storing full payment card data.
 - Treating monthly Plus as lifetime access.
@@ -116,8 +116,9 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [x] Billing/access-state API returns `free`, `checkout_pending`, `plus_active`, `payment_failed`, or `plus_inactive`.
 - [x] Frontend refreshes backend billing/access state after returning from YooKassa.
 - [x] Backend-confirmed payment upgrades account tier to `plus` as status-only.
-- [x] Free/Plus status does not restrict functionality until separate gating is enabled.
+- [x] The E6 baseline does not infer paid access from the display tier alone.
 - [x] Report/product endpoints use backend entitlement checks where paid access is required.
+- [ ] E8 integration preserves the basic report for Free while requiring active Plus for every other report.
 - [x] Regression tests cover checkout, webhook reconciliation, entitlements, access-state API and frontend status UX.
 - [ ] Production smoke proves one test payment creates both a succeeded payment and the expected access record.
 - [ ] Monthly Plus plan is defined as a server-owned SaaS subscription plan (`astrotype_plus_monthly`).

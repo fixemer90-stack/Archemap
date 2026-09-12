@@ -124,4 +124,5 @@ volumes:
 
 networks:
   edge:
+    external: true
     name: astrotype_edge

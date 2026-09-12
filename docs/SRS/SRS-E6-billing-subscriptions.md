@@ -50,6 +50,7 @@ E6 покрывает не только payment processing, но и весь acc
 | Report UX                    | `docs/features/E10-report-ux-redesign/`                                                                       |
 | LLM narrative                | `docs/features/E11-llm-report-narrative/`                                                                     |
 | Target monthly SaaS contract | `docs/architecture/monthly-plus-subscription-contract.md`                                                     |
+| YooKassa production cutover  | `docs/deployment/yookassa-production-cutover.md`                                                             |
 
 ---
 

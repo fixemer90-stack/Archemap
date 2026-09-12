@@ -4,6 +4,10 @@ Status: runbook ready; live YooKassa merchant-cabinet execution is environment-d
 
 Use this checklist before relying on live payments. Do not treat browser return to `/billing?checkout=return` as proof of payment.
 
+For the complete test-shop to production-shop procedure, including the
+54-FZ/receipt gate, production credentials, provider probe, event selection and
+rollback, use `docs/deployment/yookassa-production-cutover.md`.
+
 ## Prerequisites
 
 - Production/staging backend is deployed behind HTTPS.
@@ -27,7 +31,9 @@ Expected: 2xx health response from the same host that receives YooKassa webhooks
 1. Log in as the test user.
 2. Open `/billing`.
 3. Click `Оформить Plus`.
-4. Complete YooKassa test payment.
+4. Complete a YooKassa test payment when using test-shop credentials. After the
+   test flow passes, the production cutover runbook requires a separate,
+   controlled real payment with production-shop credentials.
 5. Return to `/billing?checkout=return`.
 6. Confirm UI shows pending first if webhook is not yet processed, then `Plus активен` after backend confirmation.
 

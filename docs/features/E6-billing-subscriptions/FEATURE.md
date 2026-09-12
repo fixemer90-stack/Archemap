@@ -17,6 +17,7 @@ This feature answers two billing questions:
 
 - Current audit: `../../architecture/current-payment-confirmation-flow.md`
 - Target SaaS contract: `../../architecture/monthly-plus-subscription-contract.md`
+- YooKassa production cutover: `../../deployment/yookassa-production-cutover.md`
 - Account tier architecture: `../../architecture/account-tier-role-foundation.md`
 - Account tier feature: `../E7-account-tier-role-foundation/FEATURE.md`
 - SRS: `../../SRS/SRS-E6-billing-subscriptions.md`
@@ -40,6 +41,8 @@ Still missing or environment-dependent:
 
 - live production/staging YooKassa webhook registration and external HTTPS delivery proof;
 - live YooKassa smoke proving deployed webhook -> succeeded payment -> active entitlement;
+- merchant/accounting confirmation of the production receipt/54-FZ scheme;
+- an application-level checkout kill switch and automated refund lifecycle;
 - target monthly SaaS subscription lifecycle: monthly plan, recurring renewal, explicit period end, cancellation/resume, expiry enforcement and billing UI period management.
 
 Implemented in code/docs:
@@ -195,7 +198,11 @@ npx eslint src/app/\(dashboard\)/billing/page.tsx src/components/billing src/lib
 npx tsc --noEmit --pretty false
 ```
 
-Production smoke checklist is defined in `S04-production-webhook-readiness.md` and must be run with YooKassa test credentials before live reliance.
+Production smoke checklist is defined in `S04-production-webhook-readiness.md`.
+The full test-to-production sequence is defined in
+`../../deployment/yookassa-production-cutover.md`: first prove the deployed flow
+with test credentials, then switch to the production shop and run one controlled
+real payment with provider, webhook, database and entitlement readback.
 
 Target monthly SaaS implementation must additionally verify:
 

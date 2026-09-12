@@ -303,6 +303,7 @@ Astrotype/
 | [`docs/architecture/account-tier-role-foundation.md`](docs/architecture/account-tier-role-foundation.md)                                       | Free/Plus account-tier role foundation                     |
 | [`docs/architecture/account-levels-report-access-policy.md`](docs/architecture/account-levels-report-access-policy.md)                           | Матрица уровней аккаунта и доступа к отчётам                |
 | [`docs/architecture/current-payment-confirmation-flow.md`](docs/architecture/current-payment-confirmation-flow.md)                             | Current YooKassa payment confirmation and entitlement flow |
+| [`docs/deployment/yookassa-production-cutover.md`](docs/deployment/yookassa-production-cutover.md)                                             | Test-to-production YooKassa cutover and rollback runbook    |
 | [`docs/features/E6-billing-subscriptions/FEATURE.md`](docs/features/E6-billing-subscriptions/FEATURE.md)                                       | Billing/payment feature contract and atomic stories        |
 | [`docs/features/E8-account-level-report-access/FEATURE.md`](docs/features/E8-account-level-report-access/FEATURE.md)                             | Basic-for-all / Plus-only report access contract            |
 | [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references               |

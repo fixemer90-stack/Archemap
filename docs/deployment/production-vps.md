@@ -63,6 +63,7 @@ Required values:
 - `POSTGRES_PASSWORD`
 - `SECRET_KEY`
 - `YANDEX_CLIENT_ID` / `YANDEX_CLIENT_SECRET` when OAuth is enabled
+- `YOOKASSA_SHOP_ID` / `YOOKASSA_SECRET_KEY` when live payments are enabled
 - `LLM_API_KEY` when real DeepSeek generation is enabled
 - SMTP values for registration email. Current production mailbox is
   `noreply@astrotype.ru` via BeGet SMTP:
@@ -72,6 +73,21 @@ Required values:
   - `SMTP_USER=noreply@astrotype.ru`
   - `SMTP_PASSWORD=<mailbox password>`
   - `SMTP_FROM_EMAIL=noreply@astrotype.ru`
+
+## YooKassa production cutover
+
+Do not replace test credentials ad hoc. The exact preflight, fiscalization
+decision, webhook registration, credential probe, live-payment readback and
+rollback procedure is documented in
+`docs/deployment/yookassa-production-cutover.md`.
+
+Current production webhook URL:
+
+```text
+https://astrotype.ru/api/v1/payments/webhooks/yookassa
+```
+
+The browser return to `/billing?checkout=return` is not payment proof.
 
 ## Start/update
 

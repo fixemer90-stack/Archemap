@@ -13,6 +13,7 @@ The code path is not production-ready until YooKassa can reach the live webhook 
 - `../../architecture/current-payment-confirmation-flow.md`
 - Parent feature: `./FEATURE.md`
 - Production smoke runbook: `../../implementation/payment-confirmation-production-smoke.md`
+- Production cutover runbook: `../../deployment/yookassa-production-cutover.md`
 
 ## Files affected
 
@@ -29,17 +30,23 @@ The code path is not production-ready until YooKassa can reach the live webhook 
 - Webhook processing stores raw events before reconciliation.
 - Reconciliation fetches YooKassa canonical payment server-to-server.
 - Production smoke runbook records exact HTTPS, UI, database and log checks.
+- Production cutover runbook records credentials, merchant-cabinet setup,
+  fiscalization gate, deployment order, provider probe and rollback.
 
 ## Acceptance criteria
 
 - [ ] Production `YOOKASSA_SHOP_ID` and `YOOKASSA_SECRET_KEY` are configured in the deployed runtime.
+- [ ] Production credentials pass a server-side YooKassa API probe without being printed.
+- [ ] Merchant/accounting owner confirms the receipt/54-FZ scheme used by production.
 - [ ] YooKassa webhook URL is registered for the production/staging backend.
+- [ ] The current endpoint is subscribed only to supported payment events (`payment.succeeded`, `payment.canceled`).
 - [ ] Webhook URL is externally reachable over HTTPS.
 - [ ] Test payment produces a stored webhook event.
 - [ ] Test payment produces `payments.status='succeeded'` and non-null `paid_at`.
 - [ ] Test payment produces an active entitlement.
 - [ ] Failure/cancelled payment does not produce active access.
 - [x] Operator runbook exists with exact database/log checks for the criteria above.
+- [x] Test-to-production cutover runbook exists with explicit go/no-go gates and rollback.
 
 ## Verification
 
@@ -54,6 +61,12 @@ Production smoke command/checklist:
 
 ```text
 docs/implementation/payment-confirmation-production-smoke.md
+```
+
+Test-to-production cutover:
+
+```text
+docs/deployment/yookassa-production-cutover.md
 ```
 
 Live merchant-cabinet registration and deployed HTTPS webhook delivery require environment access outside this local repo checkout.

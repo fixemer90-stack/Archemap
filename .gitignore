@@ -49,7 +49,10 @@ Thumbs.db
 # ── Environment & secrets ──────────────────────────────────────────────────
 .env
 .env.local
+.env.production
+.env.staging
 .env.*.local
+deploy/staging-basic-auth.caddy
 
 # ── Docker ──────────────────────────────────────────────────────────────────
 docker-compose.override.yml

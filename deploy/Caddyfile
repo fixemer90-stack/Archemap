@@ -17,3 +17,17 @@ astrotype.ru, www.astrotype.ru {
     X-Frame-Options "SAMEORIGIN"
   }
 }
+
+staging.astrotype.ru {
+  encode zstd gzip
+
+  reverse_proxy staging-gateway:8080
+
+  header {
+    X-Robots-Tag "noindex, nofollow, noarchive"
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    X-Frame-Options "SAMEORIGIN"
+  }
+}

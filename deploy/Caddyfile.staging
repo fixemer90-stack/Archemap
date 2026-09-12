@@ -1,0 +1,19 @@
+:8080 {
+  encode zstd gzip
+
+  basic_auth {
+    import /run/secrets/staging-basic-auth.caddy
+  }
+
+  @api path /api/*
+  reverse_proxy @api staging-backend:8000
+
+  reverse_proxy staging-frontend:3000
+
+  header {
+    X-Robots-Tag "noindex, nofollow, noarchive"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    X-Frame-Options "SAMEORIGIN"
+  }
+}

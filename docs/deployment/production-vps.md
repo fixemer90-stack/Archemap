@@ -89,6 +89,13 @@ https://astrotype.ru/api/v1/payments/webhooks/yookassa
 
 The browser return to `/billing?checkout=return` is not payment proof.
 
+## Staging environment
+
+The isolated `staging.astrotype.ru` runtime has its own Compose project,
+PostgreSQL/Redis volumes, environment file, Basic Auth gateway and YooKassa
+test-shop contract. Use `docs/deployment/staging-vps.md`; never point staging at
+production payment credentials or production data volumes.
+
 ## Start/update
 
 ```bash

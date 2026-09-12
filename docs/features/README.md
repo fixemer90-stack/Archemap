@@ -73,12 +73,17 @@ Active v2 features:
 - `V2-E17` — [Section evidence grounding remediation](./E16-v2-e17-section-evidence-grounding/FEATURE.md) ([workflow](./E16-v2-e17-section-evidence-grounding/WORKFLOW.md))
 - `V2-E18` — [Product surface redesign: homepage, dashboard, billing](./E16-v2-e18-product-surface-redesign/FEATURE.md)
 
+Platform runtime features:
+
+- `E9` — [Isolated staging environment](./E9-staging-environment/FEATURE.md)
+
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 Section evidence grounding remediation: `docs/architecture/astrotype-v2-section-evidence-grounding.md`
 Deterministic-first delivery contract: `docs/architecture/astrotype-v2-deterministic-first-delivery.md`
 Current payment confirmation flow: `docs/architecture/current-payment-confirmation-flow.md`
 YooKassa production cutover runbook: `docs/deployment/yookassa-production-cutover.md`
+Staging VPS runbook: `docs/deployment/staging-vps.md`
 Target monthly Plus subscription contract: `docs/architecture/monthly-plus-subscription-contract.md`
 Billing/payment feature contract: `docs/features/E6-billing-subscriptions/FEATURE.md`
 Account tier architecture: `docs/architecture/account-tier-role-foundation.md`

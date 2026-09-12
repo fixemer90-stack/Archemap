@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Инфраструктура в реализации; публичный runtime зависит от DNS.
+🟡 Runtime развёрнут на VPS; публичный HTTPS зависит от DNS.
 
 ## Цель
 
@@ -33,10 +33,10 @@
 - [x] Staging topology и isolation contract документированы.
 - [x] Отдельные Compose/env/Caddy contracts добавлены.
 - [ ] `staging.astrotype.ru` указывает на production VPS.
-- [ ] Staging containers запущены под отдельным Compose project.
+- [x] Staging containers запущены под отдельным Compose project.
 - [ ] Публичный HTTPS требует Basic Auth и отдаёт `X-Robots-Tag`.
-- [ ] Staging health возвращает HTTP 200 после Basic Auth.
-- [ ] Production health остаётся HTTP 200 после подключения edge network.
+- [x] Внутренний staging health возвращает HTTP 200 после Basic Auth.
+- [x] Production health остаётся HTTP 200 после подключения edge network.
 - [ ] YooKassa test-shop checkout/webhook/readback smoke пройден.
 
 ## Stories

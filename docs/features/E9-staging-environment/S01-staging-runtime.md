@@ -30,8 +30,9 @@
 - [x] Runbook содержит bootstrap, health, logs, payment smoke и teardown.
 - [x] Compose contracts проверены Compose CLI v5.5.1.
 - [x] Caddy contracts проверены `caddy validate` на `caddy:2-alpine`.
-- [ ] Runtime развернут и проверен снаружи.
-- [ ] Production regression health прошёл после deploy.
+- [x] Runtime развёрнут на VPS и проверен через внутренний staging gateway.
+- [x] Production regression health прошёл после deploy.
+- [ ] Публичный HTTPS smoke пройден после настройки DNS.
 
 ## Verification evidence
 
@@ -40,6 +41,18 @@
 - `docker:29-cli compose ... config --quiet` — staging contract valid;
 - `caddy:2-alpine caddy validate` — production и staging Caddyfiles valid;
 - YAML parse — production/staging services, volumes и edge network разделены.
+
+VPS 2026-09-12:
+
+- Compose CLI `2.40.3`, отдельный project `astrotype-staging`;
+- backend, frontend, gateway, worker, PostgreSQL и Redis запущены;
+- staging backend health: HTTP 200, database/Redis `ok`;
+- gateway без Basic Auth: HTTP 401; с Basic Auth: HTTP 200;
+- staging frontend через gateway: HTTP 200;
+- `X-Robots-Tag: noindex, nofollow, noarchive` присутствует;
+- credentials YooKassa приняты API, существующие payment objects имеют `test=true`;
+- production health и frontend после подключения `astrotype_edge`: HTTP 200;
+- внешний TLS пока не проверен: DNS `staging.astrotype.ru` отсутствует.
 
 ## Rollback
 

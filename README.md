@@ -307,6 +307,8 @@ Astrotype/
 | [`docs/deployment/staging-vps.md`](docs/deployment/staging-vps.md)                                                                             | Isolated staging runtime and YooKassa test-shop runbook    |
 | [`docs/features/E6-billing-subscriptions/FEATURE.md`](docs/features/E6-billing-subscriptions/FEATURE.md)                                       | Billing/payment feature contract and atomic stories        |
 | [`docs/features/E8-account-level-report-access/FEATURE.md`](docs/features/E8-account-level-report-access/FEATURE.md)                           | Basic-for-all / Plus-only report access contract           |
+| [`docs/features/E10-birth-data-refinement/FEATURE.md`](docs/features/E10-birth-data-refinement/FEATURE.md)                                     | Settings workflow for birth time/place refinement          |
+| [`docs/SRS/SRS-E10-birth-data-refinement.md`](docs/SRS/SRS-E10-birth-data-refinement.md)                                                       | 24-hour cooldown, revision and recalculation contract      |
 | [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references               |
 | [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                                  |
 | [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                          |

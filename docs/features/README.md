@@ -78,6 +78,10 @@ Platform runtime features:
 - `E9` — [Isolated staging environment](./E9-staging-environment/FEATURE.md)
 - `E10` — [Birth data refinement in Settings](./E10-birth-data-refinement/FEATURE.md) ([workflow](./E10-birth-data-refinement/WORKFLOW.md), [SRS](../SRS/SRS-E10-birth-data-refinement.md))
 
+Product report features:
+
+- `E19` — [Astrotype Career Report](./E19-career-report/FEATURE.md) ([design](../design/astrotype_career_report.md), [SRS](../SRS/SRS-E19-career-report.md))
+
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
 Section evidence grounding remediation: `docs/architecture/astrotype-v2-section-evidence-grounding.md`
@@ -94,4 +98,6 @@ Account-level report access policy: `docs/architecture/account-levels-report-acc
 Account-level report access feature: `docs/features/E8-account-level-report-access/FEATURE.md`
 Account-level report access SRS: `docs/SRS/SRS-E8-account-level-report-access.md`
 Birth data refinement SRS: `docs/SRS/SRS-E10-birth-data-refinement.md`
+Career Report design: `docs/design/astrotype_career_report.md`
+Career Report SRS: `docs/SRS/SRS-E19-career-report.md`
 Product surface redesign samples: `docs/design/astrotype-v2-homepage-sample.html`, `docs/design/astrotype-v2-dashboard-sample.html`, `docs/design/astrotype-v2-billing-sample.html`

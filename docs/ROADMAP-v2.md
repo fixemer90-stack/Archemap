@@ -72,6 +72,7 @@ v2 foundation is not:
 | V2-E18 | Product surface redesign         | ⬜ Planned               | Redesign homepage, dashboard and billing so they match the v2 report visual language.                   | `docs/features/E16-v2-e18-product-surface-redesign/FEATURE.md`     |
 | E6     | Monthly Plus SaaS billing        | ⬜ Target docs ready     | Convert payment-confirmed access into monthly Plus subscription with explicit period, renewal and expiry control. | `docs/features/E6-billing-subscriptions/FEATURE.md`                |
 | E8     | Account-level report access      | ⬜ Target docs ready     | Keep the basic report available to every account and require active Plus for all other reports.                    | `docs/features/E8-account-level-report-access/FEATURE.md`          |
+| E19    | Career Report                    | ⬜ Target docs ready     | Build an evidence-backed professional report from v2 natal data, user answers and deterministic Career Dimensions. | `docs/features/E19-career-report/FEATURE.md`                       |
 
 ---
 

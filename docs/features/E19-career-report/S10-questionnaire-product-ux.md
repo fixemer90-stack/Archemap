@@ -1,0 +1,40 @@
+# S10: Questionnaire и product UX
+
+## Статус
+
+⬜ Не начато
+
+## Контекст
+
+Пользовательский вход должен объяснять ценность отчёта, проверить доступ и собрать контекст до запуска дорогой генерации. Текущая страница сразу вызывает synchronous generation и не задаёт вопросов.
+
+## Что сделать
+
+1. Обновить `/products/career` под target flow.
+2. Показать, что отчёт объясняет механику работы, а не обещает профессию.
+3. Выбрать профиль и проверить наличие готовой натальной карты.
+4. Показать access state и корректный Plus/legacy entitlement CTA.
+5. Реализовать 8–12 вопросов с progress, autosave draft, back/forward и resume.
+6. Разделить choice questions и ограниченный current-context input.
+7. Перед completion показать consent/объяснение использования ответов.
+8. После запуска перейти на generation progress и progressive report.
+9. Обработать incomplete answers, auth expiry, locked, conflict, timeout и provider failure.
+
+## UX-принципы
+
+- Не показывать внутренние dimension keys и англоязычный жаргон без перевода.
+- Не обещать «идеальную профессию» или гарантированный результат.
+- Объяснить, что ответы уточняют применение склонностей, а не подгоняют карту.
+- Не заставлять повторно отвечать при network retry.
+- Mobile-first, keyboard navigation, accessible labels и сохраняемый прогресс.
+
+## Критерии приёмки
+
+- [ ] Новый flow не вызывает legacy synchronous Career generation.
+- [ ] Draft восстанавливается после reload/session return.
+- [ ] Обязательные вопросы нельзя пропустить без понятной ошибки.
+- [ ] Profile/access states читаются с backend, не выводятся из checkout URL.
+- [ ] Один completion создаёт максимум одну generation.
+- [ ] UI показывает deterministic-ready результат до полного narrative.
+- [ ] Locked пользователь не видит protected preview payload.
+- [ ] Responsive/accessibility tests и реальный browser smoke проходят.

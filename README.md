@@ -309,6 +309,9 @@ Astrotype/
 | [`docs/features/E8-account-level-report-access/FEATURE.md`](docs/features/E8-account-level-report-access/FEATURE.md)                           | Basic-for-all / Plus-only report access contract           |
 | [`docs/features/E10-birth-data-refinement/FEATURE.md`](docs/features/E10-birth-data-refinement/FEATURE.md)                                     | Settings workflow for birth time/place refinement          |
 | [`docs/SRS/SRS-E10-birth-data-refinement.md`](docs/SRS/SRS-E10-birth-data-refinement.md)                                                       | 24-hour cooldown, revision and recalculation contract      |
+| [`docs/design/astrotype_career_report.md`](docs/design/astrotype_career_report.md)                                                             | Career Report product and scoring design                   |
+| [`docs/features/E19-career-report/FEATURE.md`](docs/features/E19-career-report/FEATURE.md)                                                     | Career Report feature and atomic implementation Stories    |
+| [`docs/SRS/SRS-E19-career-report.md`](docs/SRS/SRS-E19-career-report.md)                                                                       | Career Report functional, data, API and quality contract   |
 | [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references               |
 | [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                                  |
 | [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                          |

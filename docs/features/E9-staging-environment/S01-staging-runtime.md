@@ -32,7 +32,7 @@
 - [x] Caddy contracts проверены `caddy validate` на `caddy:2-alpine`.
 - [x] Runtime развёрнут на VPS и проверен через внутренний staging gateway.
 - [x] Production regression health прошёл после deploy.
-- [ ] Публичный HTTPS smoke пройден после настройки DNS.
+- [x] Публичный HTTPS smoke пройден после настройки DNS.
 
 ## Verification evidence
 
@@ -52,7 +52,9 @@ VPS 2026-09-12:
 - `X-Robots-Tag: noindex, nofollow, noarchive` присутствует;
 - credentials YooKassa приняты API, существующие payment objects имеют `test=true`;
 - production health и frontend после подключения `astrotype_edge`: HTTP 200;
-- внешний TLS пока не проверен: DNS `staging.astrotype.ru` отсутствует.
+- DNS `staging.astrotype.ru` указывает на `46.173.16.113`;
+- публичный TLS валиден: без Basic Auth HTTP 401, с Basic Auth health HTTP 200;
+- публичный payment route за Basic Auth доступен и без app session корректно возвращает HTTP 401 `Not authenticated`.
 
 ## Rollback
 

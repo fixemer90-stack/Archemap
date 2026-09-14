@@ -4,6 +4,7 @@
 
 - Feature и атомарные Stories: [`../features/E19-career-report/FEATURE.md`](../features/E19-career-report/FEATURE.md)
 - SRS: [`../SRS/SRS-E19-career-report.md`](../SRS/SRS-E19-career-report.md)
+- Канонический дизайн-образец: [`astrotype-career-report-sample.html`](./astrotype-career-report-sample.html)
 
 Статус: design source утверждён как основа целевого контракта; реализация E19 не начата. Существующий legacy Career flow не считается реализацией этого документа.
 

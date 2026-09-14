@@ -80,7 +80,7 @@ Platform runtime features:
 
 Product report features:
 
-- `E19` — [Astrotype Career Report](./E19-career-report/FEATURE.md) ([design](../design/astrotype_career_report.md), [SRS](../SRS/SRS-E19-career-report.md))
+- `E19` — [Astrotype Career Report](./E19-career-report/FEATURE.md) ([design](../design/astrotype_career_report.md), [UI sample](../design/astrotype-career-report-sample.html), [SRS](../SRS/SRS-E19-career-report.md))
 
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`

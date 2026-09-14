@@ -193,6 +193,8 @@ LLM запрещено:
 
 Для каждой секции фиксируются owned/reference/forbidden fact keys. Web и PDF используют один assembled persisted payload.
 
+Канонический визуальный контракт: `docs/design/astrotype-career-report-sample.html`. Он задаёт широкий standalone reader, narrative-first порядок, тёмные полноразмерные секции, сдержанную золотую палитру и поддерживающий расчётный слой после основного отчёта. Текущий legacy dashboard reader не является визуальной целью.
+
 ## 12. Lifecycle
 
 ```text

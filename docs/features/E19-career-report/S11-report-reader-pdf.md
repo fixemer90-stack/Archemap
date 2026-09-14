@@ -8,6 +8,8 @@
 
 Текущий Career reader отражает legacy rules output. Target reader должен быть narrative-first, объяснять scores простым языком и сохранять одинаковую структуру web/PDF.
 
+Канонический дизайн-образец: [`../../design/astrotype-career-report-sample.html`](../../design/astrotype-career-report-sample.html). Desktop и mobile PNG рядом с HTML используются как preview, но HTML остаётся источником визуального контракта.
+
 ## Что сделать
 
 1. Создать Career-specific view model из persisted assembled payload.
@@ -43,4 +45,5 @@
 - [ ] Deterministic-ready reader полезен до завершения LLM.
 - [ ] Narrative failure не скрывает deterministic content.
 - [ ] Mobile, print/PDF, typography и whole-word tooltips проверены.
-- [ ] Canonical sample/screenshot и parity smoke приложены до закрытия Story.
+- [x] Canonical HTML sample и desktop/mobile previews созданы.
+- [ ] Реальный reader проходит visual parity smoke относительно sample.

@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — additive ORM/migration/DTO/repository foundation и PostgreSQL restore proof готовы; dimension-engine completeness остаётся открытой
+✅ Завершено
 
 ## Контекст
 
@@ -40,7 +40,7 @@ DTO должны отделять persisted deterministic contracts от LLM res
 - [x] Миграции additive и reversible без удаления существующих reports/charts.
 - [x] Pydantic/ORM schemas фиксируют ranges, enums и version fields.
 - [x] Career artifact можно восстановить из PostgreSQL без Redis/LLM cache.
-- [ ] Каждый dimension имеет evidence и scoring version.
+- [x] Каждый dimension имеет evidence и scoring version.
 - [x] Answers, resolver output и report versions имеют явный lineage.
 - [x] Повторная генерация не создаёт дубликаты при одном idempotency key/generation ID.
 - [x] Repository tests доказывают ownership и immutable history.
@@ -55,4 +55,4 @@ DTO должны отделять persisted deterministic contracts от LLM res
 - Reversibility smoke: downgrade до `d3e4f5a6b7c8` удалил только `career_*` tables, legacy row counts не изменились; повторный upgrade вернул DB на `e4f5a6b7c8d9 (head)`.
 - Backup перед migration: `backend/backups/pre-e19-career-20260916T063852Z.dump`.
 
-Открытый proof gate: S03 должен доказать, что все 12 dimensions реально сохраняются с непустым evidence.
+S03 adapter и golden contract доказали построение всех 12 persisted score rows с `scoring_version` и связанными evidence rows.

@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -34,11 +34,19 @@ Leadership, Analytical Thinking, Systems Thinking, Communication, Creativity, St
 
 ## Критерии приёмки
 
-- [ ] Ни один dimension не определяется одним фактором или одной прямой rule.
-- [ ] Все 12 dimensions возвращают score, confidence и evidence.
-- [ ] Формулы/weights находятся в versioned config/catalog, а не в prompt.
-- [ ] Correlated evidence не завышает confidence.
-- [ ] Missing houses/ASC при неизвестном времени обрабатываются без выдуманного сигнала.
-- [ ] Golden fixtures имеют воспроизводимый результат.
-- [ ] Boundary/property tests покрывают ranges, normalization и порядок evidence.
-- [ ] В модуле нет вызовов LLM и соционических данных.
+- [x] Ни один dimension не определяется одним фактором или одной прямой rule.
+- [x] Все 12 dimensions возвращают score, confidence и evidence.
+- [x] Формулы/weights находятся в versioned config/catalog, а не в prompt.
+- [x] Correlated evidence не завышает confidence.
+- [x] Missing houses/ASC при неизвестном времени обрабатываются без выдуманного сигнала.
+- [x] Golden fixtures имеют воспроизводимый результат.
+- [x] Boundary/property tests покрывают ranges, normalization и порядок evidence.
+- [x] В модуле нет вызовов LLM и соционических данных.
+
+## Реализация и evidence
+
+- `backend/app/modules/career/factor_catalog.py` — versioned weights, normalization/confidence versions, correlation cap и минимум независимых families.
+- `backend/app/modules/career/dimension_engine.py` — pure deterministic `NatalFact` → 12 dimension results; score/confidence разделены.
+- `backend/app/modules/career/dimension_persistence.py` — side-effect-free adapter в `career_dimension_scores` и `career_dimension_evidence` с preassigned IDs.
+- `backend/tests/unit/test_career/test_dimension_engine.py` — golden snapshot, one-factor neutralization, source-quality confidence, correlation cap, missing-house, persistence и stable-order contracts.
+- `uv run pytest tests/unit/test_career/test_dimension_engine.py -q` → `6 passed`.

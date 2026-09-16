@@ -1,0 +1,1 @@
+"""Career report bounded context."""

@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: int = 30
     LLM_MAX_RETRIES: int = 2
 
+    # ── Career report rollout ──────────────────────────────────────────
+    CAREER_REPORT_ENABLED: bool = False
+
     # ── Sentry ────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1

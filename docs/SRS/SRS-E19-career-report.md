@@ -1,6 +1,6 @@
 # SRS-E19: Astrotype Career Report
 
-Статус: целевой контракт; реализация не начата
+Статус: реализация начата; S01–S02 backend foundation частично готов, runtime flow не завершён
 
 Feature: `docs/features/E19-career-report/FEATURE.md`
 

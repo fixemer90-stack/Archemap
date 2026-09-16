@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Частично — additive ORM/migration/DTO/repository foundation и PostgreSQL restore proof готовы; dimension-engine completeness остаётся открытой
 
 ## Контекст
 
@@ -37,10 +37,22 @@ DTO должны отделять persisted deterministic contracts от LLM res
 
 ## Критерии приёмки
 
-- [ ] Миграции additive и reversible без удаления существующих reports/charts.
-- [ ] Pydantic/ORM schemas фиксируют ranges, enums и version fields.
-- [ ] Career artifact можно восстановить из PostgreSQL без Redis/LLM cache.
+- [x] Миграции additive и reversible без удаления существующих reports/charts.
+- [x] Pydantic/ORM schemas фиксируют ranges, enums и version fields.
+- [x] Career artifact можно восстановить из PostgreSQL без Redis/LLM cache.
 - [ ] Каждый dimension имеет evidence и scoring version.
-- [ ] Answers, resolver output и report versions имеют явный lineage.
-- [ ] Повторная генерация не создаёт дубликаты при одном idempotency key/generation ID.
-- [ ] Repository tests доказывают ownership и immutable history.
+- [x] Answers, resolver output и report versions имеют явный lineage.
+- [x] Повторная генерация не создаёт дубликаты при одном idempotency key/generation ID.
+- [x] Repository tests доказывают ownership и immutable history.
+
+## Evidence
+
+- `backend/app/modules/career/models.py`, `schemas.py`, `repository.py`
+- `backend/alembic/versions/e4f5a6b7c8d9_add_career_report_foundation.py`
+- `backend/tests/unit/test_career/test_storage_contract.py`
+- `uv run pytest tests/unit/test_career/test_storage_contract.py -q` → `4 passed`
+- Local PostgreSQL: upgrade до `e4f5a6b7c8d9`, `13` Career tables; committed Career artifact восстановлен через repository только из PostgreSQL, затем smoke rows удалены.
+- Reversibility smoke: downgrade до `d3e4f5a6b7c8` удалил только `career_*` tables, legacy row counts не изменились; повторный upgrade вернул DB на `e4f5a6b7c8d9 (head)`.
+- Backup перед migration: `backend/backups/pre-e19-career-20260916T063852Z.dump`.
+
+Открытый proof gate: S03 должен доказать, что все 12 dimensions реально сохраняются с непустым evidence.

@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато — целевой контракт подготовлен, текущий Career считается legacy baseline
+🟡 В работе — S01–S02 foundation реализован частично, S03–S12 не начаты
 
 ## Цель
 
@@ -139,8 +139,8 @@ Career — специализированный отчёт. Целевой до�
 
 | ID  | Story                                                                                         | Статус       |
 | --- | --------------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Зафиксировать product/access/migration contract](./S01-product-access-migration-contract.md) | ⬜ Не начато |
-| S02 | [Добавить Career storage и versioned schemas](./S02-storage-domain-schemas.md)                | ⬜ Не начато |
+| S01 | [Зафиксировать product/access/migration contract](./S01-product-access-migration-contract.md) | 🟡 Частично  |
+| S02 | [Добавить Career storage и versioned schemas](./S02-storage-domain-schemas.md)                | 🟡 Частично  |
 | S03 | [Построить factor и Career Dimension engine](./S03-factor-dimension-engine.md)                | ⬜ Не начато |
 | S04 | [Реализовать контрольные вопросы и Profile Resolver](./S04-questions-profile-resolver.md)     | ⬜ Не начато |
 | S05 | [Рассчитать archetypes и рабочую среду](./S05-archetypes-work-environment.md)                 | ⬜ Не начато |
@@ -184,4 +184,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature готова как контракт для поэтапной разработки, но не как runtime. Каждая Story остаётся открытой до кода, тестов и указанного smoke evidence.
+Feature находится в реализации: backend foundation S01–S02 существует, но обе Story остаются частичными до client/API enforcement и PostgreSQL integration proof. S03–S12 остаются открытыми до кода, тестов и указанного smoke evidence.

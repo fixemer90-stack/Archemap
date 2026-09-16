@@ -16,6 +16,7 @@ class ProductPrice:
     amount: float
     currency: str
     description: str
+    purchasable: bool = True
 
 
 PRODUCT_CATALOG: dict[str, ProductPrice] = {
@@ -32,6 +33,7 @@ PRODUCT_CATALOG: dict[str, ProductPrice] = {
         amount=1490.0,
         currency="RUB",
         description="Astrotype Career — полный отчёт",
+        purchasable=False,
     ),
 }
 
@@ -44,4 +46,6 @@ class CatalogService:
         product = PRODUCT_CATALOG.get(product_id)
         if product is None:
             raise ValidationError(f"Unknown product_id: {product_id}")
+        if not product.purchasable:
+            raise ValidationError(f"Product is retired and not purchasable: {product_id}")
         return product

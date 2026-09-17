@@ -1,6 +1,6 @@
 # SRS-E19: Astrotype Career Report
 
-Статус: реализация начата; S01–S02 backend foundation частично готов, runtime flow не завершён
+Статус: реализация начата; S02–S04 завершены, S01 частично готов, runtime flow не завершён
 
 Feature: `docs/features/E19-career-report/FEATURE.md`
 

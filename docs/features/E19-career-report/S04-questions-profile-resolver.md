@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -31,11 +31,22 @@ high leadership score
 
 ## Критерии приёмки
 
-- [ ] Questionnaire version сохраняется вместе с answers.
-- [ ] Обязательные вопросы валидируются до запуска полного отчёта.
-- [ ] Capability, motivation, preference и current constraints не смешиваются в одно число.
-- [ ] Contradictions сохраняются явно и объяснимо.
-- [ ] Resolver полностью детерминирован и тестируется без LLM.
-- [ ] Raw free text ограничен, очищен и не становится инструкцией для LLM.
-- [ ] Пользователь может вернуться к незавершённому draft.
-- [ ] Adaptive questions остаются отдельным post-MVP расширением.
+- [x] Questionnaire version сохраняется вместе с answers.
+- [x] Обязательные вопросы валидируются до запуска полного отчёта.
+- [x] Capability, motivation, preference и current constraints не смешиваются в одно число.
+- [x] Contradictions сохраняются явно и объяснимо.
+- [x] Resolver полностью детерминирован и тестируется без LLM.
+- [x] Raw free text ограничен, очищен и не становится инструкцией для LLM.
+- [x] Пользователь может вернуться к незавершённому draft.
+- [x] Adaptive questions остаются отдельным post-MVP расширением.
+
+## Реализация и evidence
+
+- `backend/app/modules/career/questionnaire.py` — versioned 10-question bank, draft/completed DTO, bounded sanitization, answer hash и idempotent completion.
+- `backend/app/modules/career/profile_resolver.py` — deterministic capability/preference resolver с explicit contradictions и без raw free text в output.
+- `backend/app/modules/career/questionnaire_persistence.py` — FK-safe ordered persistence parent → answers/resolution.
+- `backend/app/modules/career/repository.py` — чтение существующего draft и его answers.
+- `backend/alembic/versions/f5a6b7c8d9e0_add_career_questionnaire_idempotency.py` — additive completion idempotency lineage.
+- `backend/tests/unit/test_career/test_questionnaire_resolver.py` — обязательность, draft, sanitization, contradiction, idempotency, persistence order и adaptive-extension contracts.
+- Local PostgreSQL smoke: migration upgrade/downgrade/upgrade до `f5a6b7c8d9e0`; completed session и `10` answers восстановлены из DB; smoke rows удалены.
+- Backup перед migration: `backend/backups/pre-e19-s04-20260917T045654Z.dump`.

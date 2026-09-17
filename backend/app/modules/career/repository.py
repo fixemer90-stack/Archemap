@@ -56,6 +56,28 @@ class CareerRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_questionnaire_session(
+        self,
+        *,
+        career_profile_id: UUID,
+        questionnaire_version: str,
+    ) -> models.CareerQuestionnaireSession | None:
+        result = await self.session.execute(
+            select(models.CareerQuestionnaireSession).where(
+                models.CareerQuestionnaireSession.career_profile_id == career_profile_id,
+                models.CareerQuestionnaireSession.questionnaire_version == questionnaire_version,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_questionnaire_answers(self, questionnaire_session_id: UUID) -> list[models.CareerAnswer]:
+        result = await self.session.execute(
+            select(models.CareerAnswer)
+            .where(models.CareerAnswer.questionnaire_session_id == questionnaire_session_id)
+            .order_by(models.CareerAnswer.question_key)
+        )
+        return list(result.scalars().all())
+
     async def get_report_by_generation_id(self, generation_id: UUID) -> models.CareerReport | None:
         result = await self.session.execute(
             select(models.CareerReport).where(models.CareerReport.generation_id == generation_id)

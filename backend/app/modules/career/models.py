@@ -89,6 +89,11 @@ class CareerQuestionnaireSession(BaseModel):
     __tablename__ = "career_questionnaire_sessions"
     __table_args__ = (
         UniqueConstraint("career_profile_id", "questionnaire_version", name="uq_career_questionnaire_profile_version"),
+        UniqueConstraint(
+            "career_profile_id",
+            "completion_idempotency_key",
+            name="uq_career_questionnaire_completion_idempotency",
+        ),
     )
 
     career_profile_id: Mapped[uuid.UUID] = mapped_column(
@@ -101,6 +106,8 @@ class CareerQuestionnaireSession(BaseModel):
     questionnaire_version: Mapped[str] = mapped_column(String(80), nullable=False)
     context_version: Mapped[str] = mapped_column(String(80), nullable=False)
     consent_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    completion_idempotency_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    answers_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

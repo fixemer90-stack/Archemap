@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01 частично, S02–S04 завершены, S05–S12 не начаты
+🟡 В работе — S01 частично, S02–S05 завершены, S06–S12 не начаты
 
 ## Цель
 
@@ -143,7 +143,7 @@ Career — специализированный отчёт. Целевой до�
 | S02 | [Добавить Career storage и versioned schemas](./S02-storage-domain-schemas.md)                | ✅ Завершено |
 | S03 | [Построить factor и Career Dimension engine](./S03-factor-dimension-engine.md)                | ✅ Завершено |
 | S04 | [Реализовать контрольные вопросы и Profile Resolver](./S04-questions-profile-resolver.md)     | ✅ Завершено |
-| S05 | [Рассчитать archetypes и рабочую среду](./S05-archetypes-work-environment.md)                 | ⬜ Не начато |
+| S05 | [Рассчитать archetypes и рабочую среду](./S05-archetypes-work-environment.md)                 | ✅ Завершено |
 | S06 | [Реализовать role matching и карьерные траектории](./S06-role-matching-career-paths.md)       | ⬜ Не начато |
 | S07 | [Собрать Interpretation Facts и quality gates](./S07-interpretation-facts-quality-gates.md)   | ⬜ Не начато |
 | S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                  | ⬜ Не начато |
@@ -184,4 +184,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature находится в реализации: S02–S04 завершены; S01 остаётся частичной до client/API enforcement. S05–S12 остаются открытыми до кода, тестов и указанного smoke evidence.
+Feature находится в реализации: S02–S05 завершены; S01 остаётся частичной до client/API enforcement. S06–S12 остаются открытыми до кода, тестов и указанного smoke evidence.

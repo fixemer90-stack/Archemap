@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -25,10 +25,17 @@ Dimensions должны превращаться в понятные, но не 
 
 ## Критерии приёмки
 
-- [ ] Возвращаются Top-3, а не один обязательный архетип.
-- [ ] Archetype result имеет evidence/confidence и scoring version.
-- [ ] Environment axes детерминированы и нормализованы.
-- [ ] Anti-environment формулируется условно, без категорических запретов.
-- [ ] Contradictions/preferences Profile Resolver влияют предсказуемо и тестируемо.
-- [ ] Нет прямого planet → archetype mapping.
-- [ ] Golden tests покрывают минимум expert leader, people manager и autonomous specialist cases.
+- [x] Возвращаются Top-3, а не один обязательный архетип.
+- [x] Archetype result имеет evidence/confidence и scoring version.
+- [x] Environment axes детерминированы и нормализованы.
+- [x] Anti-environment формулируется условно, без категорических запретов.
+- [x] Contradictions/preferences Profile Resolver влияют предсказуемо и тестируемо.
+- [x] Нет прямого planet → archetype mapping.
+- [x] Golden tests покрывают минимум expert leader, people manager и autonomous specialist cases.
+
+## Реализация и evidence
+
+- `backend/app/modules/career/archetype_engine.py` — versioned multi-dimension catalog, deterministic Top-3, preference/contradiction modifiers и persisted-row adapter.
+- `backend/app/modules/career/environment_engine.py` — 10 normalized axes, preferred conditions и условные risk conditions без запретов.
+- `backend/tests/unit/test_career/test_archetype_environment.py` — expert leader, people manager, autonomous specialist, axis/risk wording и persistence contracts.
+- `uv run pytest tests/unit/test_career/test_archetype_environment.py -q` → `5 passed`.

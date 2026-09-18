@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -46,11 +46,18 @@
 
 ## Критерии приёмки
 
-- [ ] Schema валидируется до любого LLM вызова.
-- [ ] Все выводы имеют source IDs/version lineage.
-- [ ] Section ownership предотвращает повтор и смешение тем.
-- [ ] Low confidence принудительно снижает категоричность будущей прозы.
-- [ ] Unsupported profession/path блокируется до LLM.
-- [ ] Contradictions нельзя удалить assembler/prompt normalizer-ом.
-- [ ] Snapshot tests доказывают отсутствие raw chart и unrestricted free text.
-- [ ] Validation failure не запускает платный provider call.
+- [x] Schema валидируется до любого LLM вызова.
+- [x] Все выводы имеют source IDs/version lineage.
+- [x] Section ownership предотвращает повтор и смешение тем.
+- [x] Low confidence принудительно снижает категоричность будущей прозы.
+- [x] Unsupported profession/path блокируется до LLM.
+- [x] Contradictions нельзя удалить assembler/prompt normalizer-ом.
+- [x] Snapshot tests доказывают отсутствие raw chart и unrestricted free text.
+- [x] Validation failure не запускает платный provider call.
+
+## Реализация и evidence
+
+- `backend/app/modules/career/interpretation_facts.py` — strict curated schema, source/version lineage, section owned/reference/forbidden contracts и pre-provider validation.
+- Валидаторы блокируют missing evidence, потерю contradictions, неподдержанные роли/profession examples/paths, raw chart/answers/free text и low-confidence facts без conditional-language marker.
+- `backend/tests/unit/test_career/test_interpretation_facts.py` — curated payload, section ownership, provider short-circuit, lineage/contradiction и persistence contracts.
+- `uv run pytest tests/unit/test_career/test_interpretation_facts.py -q` → `4 passed`.

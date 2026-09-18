@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -26,11 +26,18 @@
 
 ## Критерии приёмки
 
-- [ ] Role match использует несколько dimensions, environment и preferences.
-- [ ] Каждый результат имеет reasons, tensions, confidence и catalog version.
-- [ ] Профессии не появляются раньше role families.
-- [ ] Категории strong/possible/context-dependent имеют фиксированные пороги.
-- [ ] Career path состоит из versioned graph edges, а не LLM-выдумки.
-- [ ] При отсутствии опыта/цели ограничения явно отражены.
-- [ ] Никакая роль не обещает доход, найм или гарантированный успех.
-- [ ] Golden tests проверяют несколько разных путей при одинаковом chart score и разных preferences.
+- [x] Role match использует несколько dimensions, environment и preferences.
+- [x] Каждый результат имеет reasons, tensions, confidence и catalog version.
+- [x] Профессии не появляются раньше role families.
+- [x] Категории strong/possible/context-dependent имеют фиксированные пороги.
+- [x] Career path состоит из versioned graph edges, а не LLM-выдумки.
+- [x] При отсутствии опыта/цели ограничения явно отражены.
+- [x] Никакая роль не обещает доход, найм или гарантированный успех.
+- [x] Golden tests проверяют несколько разных путей при одинаковом chart score и разных preferences.
+
+## Реализация и evidence
+
+- `backend/app/modules/career/role_matching.py` — versioned catalog из девяти role families, multi-signal scoring, фиксированные пороги, confidence, reasons, tensions, requirements и условные profession examples.
+- `backend/app/modules/career/career_paths.py` — versioned deterministic graph, 2–3 preference-sensitive path и explicit archetypal limitations при неполном контексте.
+- `backend/tests/unit/test_career/test_role_matching_paths.py` — catalog/category, explainability, low-evidence, preference-sensitive path и persistence contracts.
+- `uv run pytest tests/unit/test_career/test_role_matching_paths.py -q` → `6 passed`.

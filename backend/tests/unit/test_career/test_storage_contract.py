@@ -22,7 +22,9 @@ EXPECTED_TABLES = {
     "career_interpretation_facts",
     "career_segment_generations",
     "career_reports",
+    "career_generations",
 }
+FOUNDATION_TABLES = EXPECTED_TABLES - {"career_generations"}
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -91,12 +93,20 @@ def test_orm_declares_all_queryable_career_entities_and_chart_lineage() -> None:
     assert "questionnaire_version" in models.CareerQuestionnaireSession.__table__.columns
     assert "resolver_version" in models.CareerResolution.__table__.columns
     assert "prompt_version" in models.CareerSegmentGeneration.__table__.columns
+    generation = models.CareerGeneration.__table__
+    generation_columns = set(generation.columns.keys())
+    assert {"user_id", "career_profile_id", "report_id", "source_report_id"} <= generation_columns
+    assert {"operation", "idempotency_key", "status", "celery_task_id", "diagnostics"} <= generation_columns
+    assert any(
+        {column.name for column in constraint.columns} == {"user_id", "operation", "idempotency_key"}
+        for constraint in generation.constraints
+    )
 
 
 def test_migration_is_additive_reversible_and_preserves_legacy_tables() -> None:
     path = ROOT / "alembic" / "versions" / "e4f5a6b7c8d9_add_career_report_foundation.py"
     source = path.read_text(encoding="utf-8")
-    for table in EXPECTED_TABLES:
+    for table in FOUNDATION_TABLES:
         assert f'"{table}"' in source
     upgrade = source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
     assert "drop_table" not in upgrade
@@ -108,6 +118,20 @@ def test_migration_is_additive_reversible_and_preserves_legacy_tables() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.down_revision == "d3e4f5a6b7c8"
+
+
+def test_career_generation_migration_is_additive_and_reversible() -> None:
+    path = ROOT / "alembic" / "versions" / "a6b7c8d9e0f1_add_career_generations.py"
+    source = path.read_text(encoding="utf-8")
+    assert '"career_generations"' in source
+    assert '"user_id", "operation", "idempotency_key"' in source
+    upgrade = source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
+    assert "drop_table" not in upgrade
+    spec = importlib.util.spec_from_file_location("career_generation_migration", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.down_revision == "f5a6b7c8d9e0"
 
 
 @pytest.mark.asyncio

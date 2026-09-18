@@ -275,6 +275,43 @@ class CareerSegmentGeneration(BaseModel):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class CareerGeneration(BaseModel):
+    """Durable async create/regenerate job owned by one user."""
+
+    __tablename__ = "career_generations"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "operation",
+            "idempotency_key",
+            name="uq_career_generations_user_operation_idempotency",
+        ),
+        UniqueConstraint("generation_id", name="uq_career_generations_generation"),
+    )
+
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    career_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_PROFILE_FK, ondelete="CASCADE"), index=True
+    )
+    chart_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
+    )
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("career_reports.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_report_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("career_reports.id", ondelete="SET NULL"), nullable=True
+    )
+    operation: Mapped[str] = mapped_column(String(20), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
+    celery_task_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    diagnostics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+
 class CareerReport(BaseModel):
     __tablename__ = "career_reports"
     __table_args__ = (

@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Реализовано; реальный browser smoke остаётся открытым
 
 ## Контекст
 
@@ -30,11 +30,23 @@
 
 ## Критерии приёмки
 
-- [ ] Новый flow не вызывает legacy synchronous Career generation.
-- [ ] Draft восстанавливается после reload/session return.
-- [ ] Обязательные вопросы нельзя пропустить без понятной ошибки.
-- [ ] Profile/access states читаются с backend, не выводятся из checkout URL.
-- [ ] Один completion создаёт максимум одну generation.
-- [ ] UI показывает deterministic-ready результат до полного narrative.
-- [ ] Locked пользователь не видит protected preview payload.
+- [x] Новый flow не вызывает legacy synchronous Career generation.
+- [x] Draft восстанавливается после reload/session return.
+- [x] Обязательные вопросы нельзя пропустить без понятной ошибки.
+- [x] Profile/access states читаются с backend, не выводятся из checkout URL.
+- [x] Один completion создаёт максимум одну generation.
+- [x] UI показывает deterministic-ready результат до полного narrative.
+- [x] Locked пользователь не видит protected preview payload.
 - [ ] Responsive/accessibility tests и реальный browser smoke проходят.
+
+## Реализация и проверка
+
+- `/products/career` использует только `/api/v1/career/*`: persisted draft, completion, async create и polling по `generation_id`.
+- Вопросы, варианты, required-state и access-state приходят с backend; URL оплаты не используется как источник доступа.
+- Idempotency keys переиспользуются при retry в рамках flow, а повторный submit блокируется.
+- Deterministic-ready состояние даёт ссылку на progressive reader до завершения narrative.
+- `npm test` — все UX contract scripts прошли, включая `check-career-product-ux.mjs`.
+- `npx tsc --noEmit --pretty false` — passed.
+- `npx eslint src/app/'(dashboard)'/products/career/page.tsx src/lib/api/career.ts` — passed после устранения hook warning.
+
+Открытый пункт требует реального mobile/desktop browser smoke с backend и активной Plus/legacy entitlement.

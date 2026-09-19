@@ -27,6 +27,7 @@ _SECTION_METADATA: dict[str, tuple[str, str]] = {
     "role_families": ("Подходящие типы ролей", "Объяснить классы ролей до примеров профессий."),
     "career_paths": ("Возможные карьерные траектории", "Показать переходы и prerequisites без гарантий."),
 }
+CAREER_SECTION_ORDER: tuple[str, ...] = tuple(_SECTION_METADATA)
 
 
 class CareerNarrativeValidationError(ValueError):

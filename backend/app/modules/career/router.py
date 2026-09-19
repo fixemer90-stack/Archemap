@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import JSONResponse, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -45,6 +46,7 @@ from app.modules.career.questionnaire import (
 )
 from app.modules.career.repository import CareerRepository
 from app.modules.payments.service import PaymentsService
+from app.modules.profiles.models import PersonProfile
 
 router = APIRouter(prefix="/career", tags=["career"])
 _ERRORS: dict[int | str, dict[str, Any]] = {
@@ -313,9 +315,28 @@ async def get_career_report_pdf(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> Response:
     repository = CareerRepository(db)
-    await _load_owned_report(repository, report_id=report_id, user_id=current_user)
+    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
     await _require_career_access(db=db, user_id=current_user)
-    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Career PDF is not ready")
+    segments = await repository.list_segments_for_generation(report.generation_id)
+    payload = build_progressive_report_payload(report=report, segments=segments)
+    career_profile = await repository.get_profile_for_user(report.career_profile_id, current_user)
+    profile_name = ""
+    if career_profile is not None:
+        result = await db.execute(
+            select(PersonProfile.name).where(
+                PersonProfile.id == career_profile.profile_id,
+                PersonProfile.user_id == current_user,
+            )
+        )
+        profile_name = result.scalar_one_or_none() or ""
+    from app.modules.career.pdf import generate_career_report_pdf
+
+    pdf = generate_career_report_pdf(report_payload=payload, profile_name=profile_name)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="astrotype-career-{report.id}.pdf"'},
+    )
 
 
 def _require_feature_enabled() -> None:

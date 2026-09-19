@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Reader/PDF реализованы; visual parity browser smoke остаётся открытым
 
 ## Контекст
 
@@ -37,13 +37,25 @@
 
 ## Критерии приёмки
 
-- [ ] Reader не использует legacy `generated_report` payload.
-- [ ] Web/PDF читают один persisted source и имеют один порядок секций.
-- [ ] Scores объяснены без good/bad ranking.
-- [ ] Profession examples сформулированы условно, без назначения.
-- [ ] Contradictions и context constraints не теряются.
-- [ ] Deterministic-ready reader полезен до завершения LLM.
-- [ ] Narrative failure не скрывает deterministic content.
+- [x] Reader не использует legacy `generated_report` payload.
+- [x] Web/PDF читают один persisted source и имеют один порядок секций.
+- [x] Scores объяснены без good/bad ranking.
+- [x] Profession examples сформулированы условно, без назначения.
+- [x] Contradictions и context constraints не теряются.
+- [x] Deterministic-ready reader полезен до завершения LLM.
+- [x] Narrative failure не скрывает deterministic content.
 - [ ] Mobile, print/PDF, typography и whole-word tooltips проверены.
 - [x] Canonical HTML sample и desktop/mobile previews созданы.
 - [ ] Реальный reader проходит visual parity smoke относительно sample.
+
+## Реализация и проверка
+
+- `/products/career/report/[reportId]` читает progressive persisted payload `/api/v1/career/reports/{report_id}` без legacy `generated_report`.
+- Web и PDF получают один `career_report_read_v1`; backend нормализует десять секций в каноническом порядке.
+- Deterministic dimensions, contradictions, context constraints и role matches остаются видимыми при `deterministic_ready` и `narrative_failed`.
+- PDF endpoint генерирует artifact из того же payload; profession examples помечены как возможные, scores — как выраженность, не оценка.
+- `uv run pytest tests/unit/test_career -q` — 52 passed; PDF начинается с `%PDF` и превышает 1000 bytes.
+- `npm test` — reader contract script passed.
+- `npx tsc --noEmit --pretty false` и exact-path ESLint — passed.
+
+Открытые пункты требуют реального desktop/mobile/print browser smoke и визуального сравнения с canonical HTML sample.

@@ -89,8 +89,8 @@ def test_progressive_report_exposes_deterministic_data_and_only_ready_sections()
 
     report = _report(status="generating_sections")
     segments = [
-        _segment(report, section_key="professional_summary", status="ready"),
         _segment(report, section_key="work_style", status="generating"),
+        _segment(report, section_key="professional_summary", status="ready"),
     ]
 
     payload = build_progressive_report_payload(report=report, segments=segments)

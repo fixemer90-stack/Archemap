@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.modules.career.models import CareerGeneration, CareerReport, CareerSegmentGeneration
+from app.modules.career.narrative import CAREER_SECTION_ORDER
 
 
 def build_locked_career_payload(*, reason: str) -> dict[str, str]:
@@ -44,9 +45,10 @@ def build_progressive_report_payload(
     report: CareerReport,
     segments: list[CareerSegmentGeneration],
 ) -> dict[str, Any]:
+    ordered_segments = _ordered_segments(segments)
     ready_sections = [
         dict(segment.output_payload)
-        for segment in segments
+        for segment in ordered_segments
         if segment.status == "ready" and segment.output_payload
     ]
     return {
@@ -63,12 +65,13 @@ def build_progressive_report_payload(
         },
         "deterministic_payload": dict(report.deterministic_payload),
         "sections": ready_sections,
-        "section_states": _section_states(segments),
+        "section_states": _section_states(ordered_segments),
         "assembled_payload": dict(report.assembled_payload),
     }
 
 
 def build_sections_payload(*, segments: list[CareerSegmentGeneration]) -> dict[str, Any]:
+    ordered_segments = _ordered_segments(segments)
     return {
         "contract_version": "career_sections_v1",
         "sections": [
@@ -76,9 +79,14 @@ def build_sections_payload(*, segments: list[CareerSegmentGeneration]) -> dict[s
                 **state,
                 "payload": dict(segment.output_payload) if segment.status == "ready" else None,
             }
-            for segment, state in zip(segments, _section_states(segments), strict=True)
+            for segment, state in zip(ordered_segments, _section_states(ordered_segments), strict=True)
         ],
     }
+
+
+def _ordered_segments(segments: list[CareerSegmentGeneration]) -> list[CareerSegmentGeneration]:
+    order = {section_key: index for index, section_key in enumerate(CAREER_SECTION_ORDER)}
+    return sorted(segments, key=lambda segment: (order.get(segment.section_key, len(order)), segment.section_key))
 
 
 def _section_states(segments: list[CareerSegmentGeneration]) -> list[dict[str, Any]]:

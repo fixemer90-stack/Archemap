@@ -47,6 +47,23 @@ export interface CareerGenerationStatus {
   }>;
 }
 
+export interface CareerReportPayload {
+  contract_version: "career_report_read_v1";
+  report_id: string;
+  generation_id: string;
+  status: string;
+  version: number;
+  versions: Record<string, string>;
+  deterministic_payload: Record<string, unknown>;
+  sections: Array<Record<string, unknown>>;
+  section_states: Array<{
+    section_key: string;
+    status: string;
+    error: string | null;
+  }>;
+  assembled_payload: Record<string, unknown>;
+}
+
 export function getCurrentCareerQuestionnaire(profileId: string) {
   return apiClient<CareerQuestionnaire>(
     `/api/v1/career/questionnaires/current?profile_id=${encodeURIComponent(profileId)}`,
@@ -89,4 +106,14 @@ export function getCareerGeneration(generationId: string) {
   return apiClient<CareerGenerationStatus>(
     `/api/v1/career/generations/${generationId}`,
   );
+}
+
+export function getCareerReport(reportId: string) {
+  return apiClient<CareerReportPayload>(
+    `/api/v1/career/reports/${encodeURIComponent(reportId)}`,
+  );
+}
+
+export function getCareerReportPdfUrl(reportId: string) {
+  return `/api/v1/career/reports/${encodeURIComponent(reportId)}/pdf`;
 }

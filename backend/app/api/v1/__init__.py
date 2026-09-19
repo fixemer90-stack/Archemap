@@ -10,6 +10,7 @@ from app.modules.astrotype_v2.router import router as astrotype_v2_router
 from app.modules.auth.router import router as auth_router
 from app.modules.authorization.router import router as authorization_router
 from app.modules.billing.router import router as billing_router
+from app.modules.career.router import router as career_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.charts.router import router as charts_router
 from app.modules.notifications.router import router as notifications_router
@@ -39,5 +40,6 @@ api_router.include_router(admin_router)
 api_router.include_router(profiles_router)
 api_router.include_router(charts_router)
 api_router.include_router(astrotype_v2_router)
+api_router.include_router(career_router)
 api_router.include_router(rules_router)
 api_router.include_router(reports_router)

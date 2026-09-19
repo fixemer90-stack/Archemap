@@ -216,3 +216,31 @@ async def test_provider_failure_keeps_deterministic_report_and_section_retry_is_
     assert retried.section_key == failed.section_key
     assert retried.status == "ready"
     assert report.deterministic_payload == assembled.deterministic_payload
+
+
+@pytest.mark.asyncio
+async def test_mock_provider_generates_distinct_sections_that_assemble_to_ready() -> None:
+    facts = _facts()
+    generation_id = uuid.uuid4()
+    report = build_deterministic_career_report_row(
+        facts=facts,
+        generation_id=generation_id,
+        idempotency_key="career-report-all-sections",
+        version=1,
+    )
+    rows = [
+        await run_career_segment_generation(
+            provider=MockCareerSegmentProvider(),
+            section_input=section_input,
+            career_profile_id=facts.profile_id,
+            chart_id=facts.chart_id,
+            generation_id=generation_id,
+        )
+        for section_input in build_career_section_inputs(facts)
+    ]
+
+    assembled = assemble_career_report_row(report=report, segment_rows=rows)
+
+    assert assembled.status == "ready"
+    assert len(assembled.narrative_payload["sections"]) == 10
+    assert len({section["body"] for section in assembled.narrative_payload["sections"]}) == 10

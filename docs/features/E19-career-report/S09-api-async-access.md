@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Backend API и worker реализованы; DB-backed integration suite остаётся открытым
 
 ## Контекст
 
@@ -36,11 +36,23 @@
 
 ## Критерии приёмки
 
-- [ ] OpenAPI фиксирует request/response/error schemas и statuses.
-- [ ] Create не блокируется до полного LLM completion.
-- [ ] Generation status отражает deterministic и narrative progress отдельно.
-- [ ] Все endpoints имеют одинаковый ownership/access policy.
-- [ ] Free/expired direct requests не получают protected payload.
-- [ ] Idempotent retries не создают второй отчёт/provider calls.
-- [ ] Legacy `/reports/generate product=career` не используется новым client flow.
+- [x] OpenAPI фиксирует request/response/error schemas и statuses.
+- [x] Create не блокируется до полного LLM completion.
+- [x] Generation status отражает deterministic и narrative progress отдельно.
+- [x] Все endpoints имеют одинаковый ownership/access policy.
+- [x] Free/expired direct requests не получают protected payload.
+- [x] Idempotent retries не создают второй отчёт/provider calls.
+- [x] Legacy `/reports/generate product=career` не используется новым client flow.
 - [ ] API integration tests покрывают queued, deterministic_ready, ready, partial/failure и locked states.
+
+## Реализация и проверка
+
+- Отдельный `/api/v1/career` namespace зарегистрирован в FastAPI; legacy `/reports/generate` не импортируется.
+- `career_generations` хранит durable create/regenerate jobs и уникальный `(user_id, operation, idempotency_key)`.
+- Worker сохраняет `deterministic_ready` до provider calls и не пересчитывает deterministic artifacts при regenerate.
+- Locked payload не содержит scores, facts, answers, sections, report IDs или artifact URLs.
+- `uv run pytest tests/unit/test_career -q` — 51 passed.
+- `uv run ruff check app/api/v1/__init__.py app/modules/career workers/tasks/career.py tests/unit/test_career` — passed.
+- `uv run mypy app/modules/career/api_runtime.py app/modules/career/api_schemas.py app/modules/career/repository.py app/modules/career/router.py workers/tasks/career.py` — passed.
+
+Открытый пункт: нужен DB-backed API integration suite с реальной транзакцией/очередью для всех lifecycle и locked states.

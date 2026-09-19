@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано локально; API-публикация статусов закрывается в S09
+✅ Реализовано
 
 ## Контекст
 
@@ -45,7 +45,7 @@ LLM отвечает только за язык и объяснение уже �
 - [x] Один bounded запрос соответствует одной section contract.
 - [x] Payload проходит Pydantic/schema validation.
 - [x] Regenerate section не меняет deterministic artifacts.
-- [ ] Partial/complete/failure statuses persisted и доступны API.
+- [x] Partial/complete/failure statuses persisted и доступны API.
 - [x] Assembler не добавляет новые карьерные факты.
 - [x] Duplicate/generic/overclaim/profession-prescription validators имеют RED/GREEN tests.
 - [x] Mock и реальный provider проходят один output contract.
@@ -57,4 +57,4 @@ LLM отвечает только за язык и объяснение уже �
 - `uv run ruff check app/modules/career/narrative.py app/modules/career/narrative_schemas.py tests/unit/test_career/test_narrative.py`
 - `uv run mypy app/modules/career/narrative.py app/modules/career/narrative_schemas.py`
 
-Открытый пункт требует S09: persisted segment/report statuses должны быть опубликованы ownership-protected API, а не только представлены ORM rows.
+Persisted segment/report statuses опубликованы через ownership-protected generation, report и sections endpoints S09.

@@ -50,7 +50,7 @@ Career объединяет deterministic scoring, пользовательск�
 - Никакого drop/truncate/mutable backfill существующих Career payloads.
 - Rollback выключает новые writes, но сохраняет все новые artifacts.
 
-Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S12-rollout-runbook.md`](./S12-rollout-runbook.md).
+Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S12-rollout-runbook.md`](S13-rollout-runbook.md).
 
 ## Реализация
 

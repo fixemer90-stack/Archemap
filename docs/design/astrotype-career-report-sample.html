@@ -141,6 +141,34 @@
         letter-spacing: 0.03em;
       }
 
+      .nav-start {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 13px;
+        color: var(--paper-soft);
+        font-size: 0.82rem;
+        transition:
+          color 180ms ease,
+          border-color 180ms ease,
+          background 180ms ease;
+      }
+
+      .back-link:hover,
+      .back-link:focus-visible {
+        border-color: var(--line-strong);
+        background: rgba(221, 180, 98, 0.07);
+        color: var(--gold-soft);
+      }
+
       .brand-mark {
         display: grid;
         width: 31px;
@@ -941,6 +969,16 @@
           display: none;
         }
 
+        .nav-start {
+          width: 100%;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .back-link {
+          padding: 7px 11px;
+        }
+
         main {
           padding-top: 18px;
         }
@@ -1104,10 +1142,26 @@
 
     <header class="topbar">
       <nav class="nav" aria-label="Навигация по отчёту">
-        <a class="brand" href="#top">
-          <span class="brand-mark">✦</span>
-          <span>Astrotype Career</span>
-        </a>
+        <div class="nav-start">
+          <a
+            class="back-link"
+            href="./astrotype_career_report.md"
+            onclick="
+              if (window.history.length > 1) {
+                event.preventDefault();
+                window.history.back();
+              }
+            "
+            aria-label="Вернуться на предыдущую страницу"
+          >
+            <span aria-hidden="true">←</span>
+            <span>Назад</span>
+          </a>
+          <a class="brand" href="#top">
+            <span class="brand-mark">✦</span>
+            <span>Astrotype Career</span>
+          </a>
+        </div>
         <div class="nav-links">
           <a href="#profile">Профиль</a>
           <a href="#strengths">Сильные стороны</a>

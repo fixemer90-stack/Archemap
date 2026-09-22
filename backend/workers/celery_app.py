@@ -33,6 +33,10 @@ app.conf.update(
             "task": "workers.tasks.reconciliation.run_payment_reconciliation",
             "schedule": 86400.0,  # daily
         },
+        "monitor-career-pipeline": {
+            "task": "career.monitor_pipeline",
+            "schedule": 300.0,
+        },
     },
 )
 

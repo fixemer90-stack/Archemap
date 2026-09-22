@@ -9,9 +9,11 @@ import re
 from typing import Any, Protocol
 from uuid import UUID
 
+from app.config import settings
 from app.modules.career.interpretation_facts import CareerInterpretationFacts, validate_interpretation_facts
 from app.modules.career.models import CareerReport, CareerSegmentGeneration
 from app.modules.career.narrative_schemas import CareerSectionRenderInput, CareerSegmentOutput
+from app.modules.career.observability import career_telemetry, estimate_provider_usage
 
 CAREER_PROMPT_VERSION = "career-segment-prompt-1"
 
@@ -38,9 +40,7 @@ class CareerSegmentProvider(Protocol):
     provider_name: str
     model_name: str
 
-    async def generate_segment(
-        self, *, prompt: str, section_input: CareerSectionRenderInput
-    ) -> dict[str, Any]: ...
+    async def generate_segment(self, *, prompt: str, section_input: CareerSectionRenderInput) -> dict[str, Any]: ...
 
 
 class StructuredCareerProvider(Protocol):
@@ -67,9 +67,7 @@ class StructuredCareerSegmentProviderAdapter:
         self.provider_name = provider_name
         self.model_name = model_name
 
-    async def generate_segment(
-        self, *, prompt: str, section_input: CareerSectionRenderInput
-    ) -> dict[str, Any]:
+    async def generate_segment(self, *, prompt: str, section_input: CareerSectionRenderInput) -> dict[str, Any]:
         response = await self._provider.generate_structured(
             prompt=prompt,
             narrative_input=section_input,
@@ -82,9 +80,7 @@ class MockCareerSegmentProvider:
     provider_name = "mock"
     model_name = "career-contract-mock-1"
 
-    async def generate_segment(
-        self, *, prompt: str, section_input: CareerSectionRenderInput
-    ) -> dict[str, Any]:
+    async def generate_segment(self, *, prompt: str, section_input: CareerSectionRenderInput) -> dict[str, Any]:
         del prompt
         return CareerSegmentOutput(
             section_key=section_input.section_key,
@@ -140,11 +136,7 @@ def _fact_index(facts: CareerInterpretationFacts) -> dict[str, dict[str, Any]]:
         facts.role_matches,
         facts.career_paths,
     )
-    return {
-        item.fact_key: item.model_dump(mode="json")
-        for collection in collections
-        for item in collection
-    }
+    return {item.fact_key: item.model_dump(mode="json") for collection in collections for item in collection}
 
 
 def build_segment_prompt(section_input: CareerSectionRenderInput) -> str:
@@ -168,9 +160,7 @@ def validate_segment_output(
     if output.section_key != section_input.section_key:
         raise CareerNarrativeValidationError("section mismatch")
     cited = set(output.cited_fact_keys)
-    allowed = set(section_input.owned_fact_keys) | {
-        str(item["fact_key"]) for item in section_input.reference_facts
-    }
+    allowed = set(section_input.owned_fact_keys) | {str(item["fact_key"]) for item in section_input.reference_facts}
     unknown = cited - allowed
     if unknown:
         raise CareerNarrativeValidationError(f"unsupported facts: {sorted(unknown)}")
@@ -189,6 +179,8 @@ def validate_segment_output(
         raise CareerNarrativeValidationError("career overclaim")
     if re.search(r"\b(вам нужно|вы должны|вам следует)\s+(стать|работать)\b", body):
         raise CareerNarrativeValidationError("profession prescription")
+    if re.search(r"\b(диагностирован|диагностировано|расстройство|патология|психическое заболевание)\b", body):
+        raise CareerNarrativeValidationError("diagnostic language")
     if not output.continuation_complete and not output.continuation_cursor:
         raise CareerNarrativeValidationError("continuation cursor required")
     return output
@@ -207,8 +199,17 @@ async def run_career_segment_generation(
     input_payload = section_input.model_dump(mode="json")
     try:
         raw = await provider.generate_segment(prompt=prompt, section_input=section_input)
-        output = validate_segment_output(
-            output=CareerSegmentOutput.model_validate(raw), section_input=section_input
+        output = validate_segment_output(output=CareerSegmentOutput.model_validate(raw), section_input=section_input)
+        usage = estimate_provider_usage(
+            prompt=prompt,
+            output=output.model_dump_json(),
+            input_cost_per_million=settings.CAREER_LLM_INPUT_COST_PER_MILLION,
+            output_cost_per_million=settings.CAREER_LLM_OUTPUT_COST_PER_MILLION,
+        )
+        career_telemetry.record_provider_usage(
+            input_tokens=int(usage["input_tokens"]),
+            output_tokens=int(usage["output_tokens"]),
+            cost_usd=float(usage["cost_usd"]),
         )
         status = "ready" if output.continuation_complete else "generating"
         return CareerSegmentGeneration(
@@ -223,6 +224,20 @@ async def run_career_segment_generation(
             input_payload=input_payload | {"input_hash": _stable_hash(input_payload)},
             output_payload=output.model_dump(mode="json"),
             error=None,
+        )
+    except CareerNarrativeValidationError:
+        return CareerSegmentGeneration(
+            career_profile_id=career_profile_id,
+            chart_id=chart_id,
+            generation_id=generation_id,
+            section_key=section_input.section_key,
+            status="failed",
+            prompt_version=prompt_version,
+            provider=provider.provider_name,
+            model_version=provider.model_name,
+            input_payload=input_payload | {"input_hash": _stable_hash(input_payload)},
+            output_payload={},
+            error="career_validation_failure",
         )
     except Exception:
         return CareerSegmentGeneration(
@@ -269,9 +284,7 @@ def build_deterministic_career_report_row(
     )
 
 
-def assemble_career_report_row(
-    *, report: CareerReport, segment_rows: list[CareerSegmentGeneration]
-) -> CareerReport:
+def assemble_career_report_row(*, report: CareerReport, segment_rows: list[CareerSegmentGeneration]) -> CareerReport:
     ready_sections: list[dict[str, Any]] = []
     seen_bodies: set[str] = set()
     known_fact_keys = _deterministic_fact_keys(report.deterministic_payload)
@@ -325,8 +338,14 @@ def assemble_career_report_row(
 def _deterministic_fact_keys(payload: dict[str, Any]) -> set[str]:
     keys: set[str] = set()
     for name in (
-        "top_dimensions", "low_dimensions", "career_archetypes", "preferred_environment",
-        "risk_environment", "contradictions", "role_matches", "career_paths",
+        "top_dimensions",
+        "low_dimensions",
+        "career_archetypes",
+        "preferred_environment",
+        "risk_environment",
+        "contradictions",
+        "role_matches",
+        "career_paths",
     ):
         keys.update(str(item["fact_key"]) for item in payload.get(name, []))
     return keys

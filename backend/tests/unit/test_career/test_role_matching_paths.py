@@ -155,6 +155,28 @@ def test_same_scores_with_different_preferences_produce_different_graph_paths() 
     assert not any(path.role_family_key == "entrepreneurship" for path in expert_paths)
 
 
+def test_manager_expert_leader_and_entrepreneur_preferences_diverge_on_same_scores() -> None:
+    expert = match_roles(
+        dimensions=_dimensions(),
+        environment=_environment(),
+        resolution=_resolution("expert", "expert_leadership", context=("experience:senior",)),
+    )
+    manager = match_roles(
+        dimensions=_dimensions(),
+        environment=_environment(),
+        resolution=_resolution("manager", context=("experience:senior",)),
+    )
+    entrepreneur = match_roles(
+        dimensions=_dimensions(),
+        environment=_environment(),
+        resolution=_resolution("entrepreneur", context=("experience:senior",)),
+    )
+
+    assert expert[0].role_family_key == "architecture"
+    assert manager[0].role_family_key == "management"
+    assert entrepreneur[0].role_family_key == "entrepreneurship"
+
+
 def test_missing_context_produces_archetypal_paths_with_explicit_limitations() -> None:
     matches = match_roles(
         dimensions=_dimensions(),

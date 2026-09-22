@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 import pytest
 
@@ -46,9 +47,16 @@ def _facts() -> CareerInterpretationFacts:
     }
     sections = {}
     section_keys = (
-        "professional_summary", "work_style", "strengths", "decision_making",
-        "leadership_and_influence", "optimal_environment", "risk_environment",
-        "career_archetypes", "role_families", "career_paths",
+        "professional_summary",
+        "work_style",
+        "strengths",
+        "decision_making",
+        "leadership_and_influence",
+        "optimal_environment",
+        "risk_environment",
+        "career_archetypes",
+        "role_families",
+        "career_paths",
     )
     for key in section_keys:
         owned = ["role:architecture"] if key == "role_families" else ["dimension:systems_thinking"]
@@ -60,23 +68,25 @@ def _facts() -> CareerInterpretationFacts:
                 "dimension:systems_thinking" if owned[0] == "role:architecture" else "role:architecture"
             ],
         }
-    return CareerInterpretationFacts.model_validate({
-        "profile_id": profile_id,
-        "chart_id": chart_id,
-        "scoring_version": "career-mvp-1",
-        "top_dimensions": [dimension],
-        "low_dimensions": [],
-        "career_archetypes": [],
-        "preferred_environment": [],
-        "risk_environment": [],
-        "confirmed_traits": [],
-        "contradictions": [],
-        "user_preferences": ["expert"],
-        "context_constraints": ["experience:senior"],
-        "role_matches": [role],
-        "career_paths": [],
-        "section_contracts": sections,
-    })
+    return CareerInterpretationFacts.model_validate(
+        {
+            "profile_id": profile_id,
+            "chart_id": chart_id,
+            "scoring_version": "career-mvp-1",
+            "top_dimensions": [dimension],
+            "low_dimensions": [],
+            "career_archetypes": [],
+            "preferred_environment": [],
+            "risk_environment": [],
+            "confirmed_traits": [],
+            "contradictions": [],
+            "user_preferences": ["expert"],
+            "context_constraints": ["experience:senior"],
+            "role_matches": [role],
+            "career_paths": [],
+            "section_contracts": sections,
+        }
+    )
 
 
 def test_section_inputs_are_bounded_and_prompt_is_one_section_only() -> None:
@@ -124,7 +134,7 @@ async def test_structured_provider_adapter_uses_career_output_contract() -> None
     section_input = build_career_section_inputs(facts)[0]
 
     class StructuredProvider:
-        async def generate_structured(self, *, prompt, narrative_input, schema):
+        async def generate_structured(self, *, prompt: str, narrative_input: Any, schema: Any) -> CareerSegmentOutput:
             assert prompt
             assert narrative_input is section_input
             assert schema is CareerSegmentOutput
@@ -160,6 +170,7 @@ def test_quality_gates_reject_generic_overclaim_and_profession_prescription() ->
         "Вы уникальны, раскройте свой потенциал и просто найдите баланс.",
         "Эта роль гарантирует высокий доход и успешное трудоустройство.",
         "Вам нужно стать Solution Architect.",
+        "У вас диагностировано профессиональное расстройство принятия решений.",  # noqa: RUF001
     )
     for body in bad_bodies:
         output = CareerSegmentOutput(
@@ -170,6 +181,36 @@ def test_quality_gates_reject_generic_overclaim_and_profession_prescription() ->
         )
         with pytest.raises(CareerNarrativeValidationError):
             validate_segment_output(output=output, section_input=section_input)
+
+
+@pytest.mark.asyncio
+async def test_validator_failure_uses_safe_distinct_error_code() -> None:
+    facts = _facts()
+    section_input = build_career_section_inputs(facts)[0]
+
+    class InvalidProvider:
+        provider_name = "test-provider"
+        model_name = "test-model"
+
+        async def generate_segment(self, *, prompt: str, section_input: Any) -> dict[str, Any]:
+            del prompt
+            return {
+                "section_key": section_input.section_key,
+                "title": "Раздел",
+                "body": "Вам нужно стать архитектором.",
+                "cited_fact_keys": list(section_input.owned_fact_keys),
+            }
+
+    row = await run_career_segment_generation(
+        provider=InvalidProvider(),
+        section_input=section_input,
+        career_profile_id=facts.profile_id,
+        chart_id=facts.chart_id,
+        generation_id=uuid.uuid4(),
+    )
+
+    assert row.status == "failed"
+    assert row.error == "career_validation_failure"
 
 
 @pytest.mark.asyncio
@@ -187,7 +228,8 @@ async def test_provider_failure_keeps_deterministic_report_and_section_retry_is_
         provider_name = "failing"
         model_name = "test"
 
-        async def generate_segment(self, *, prompt, section_input):
+        async def generate_segment(self, *, prompt: str, section_input: Any) -> dict[str, Any]:
+            del prompt, section_input
             raise RuntimeError("provider secret detail")
 
     section_input = build_career_section_inputs(facts)[0]

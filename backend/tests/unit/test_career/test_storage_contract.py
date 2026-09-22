@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import Table, UniqueConstraint
 
 EXPECTED_TABLES = {
     "career_profiles",
@@ -93,13 +95,14 @@ def test_orm_declares_all_queryable_career_entities_and_chart_lineage() -> None:
     assert "questionnaire_version" in models.CareerQuestionnaireSession.__table__.columns
     assert "resolver_version" in models.CareerResolution.__table__.columns
     assert "prompt_version" in models.CareerSegmentGeneration.__table__.columns
-    generation = models.CareerGeneration.__table__
+    generation = cast(Table, models.CareerGeneration.__table__)
     generation_columns = set(generation.columns.keys())
     assert {"user_id", "career_profile_id", "report_id", "source_report_id"} <= generation_columns
     assert {"operation", "idempotency_key", "status", "celery_task_id", "diagnostics"} <= generation_columns
     assert any(
         {column.name for column in constraint.columns} == {"user_id", "operation", "idempotency_key"}
         for constraint in generation.constraints
+        if isinstance(constraint, UniqueConstraint)
     )
 
 

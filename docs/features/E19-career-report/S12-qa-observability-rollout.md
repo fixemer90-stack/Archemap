@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Реализовано локально — quality/observability/rollout contract закрыт; staging real-provider, canary и production evidence остаются открытыми
 
 ## Контекст
 
@@ -50,14 +50,36 @@ Career объединяет deterministic scoring, пользовательск�
 - Никакого drop/truncate/mutable backfill существующих Career payloads.
 - Rollback выключает новые writes, но сохраняет все новые artifacts.
 
+Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S12-rollout-runbook.md`](./S12-rollout-runbook.md).
+
+## Реализация
+
+- Полный Career unit suite покрывает golden dimensions, missing houses, low confidence, contradictions, manager/expert leader/entrepreneur divergence, catalogs, schema/prompt validation, anti-generic/duplication/overclaim/diagnosis/profession gates и web/PDF contract.
+- DB-backed integration suite проверяет durable lifecycle, progressive deterministic-first read, partial failure, ownership-bound read, idempotent create и отсутствие protected payload в locked response.
+- `app.modules.career.observability` создаёт low-cardinality OpenTelemetry metrics без ответов, prompt/report payload и UUID в labels.
+- API экспортирует метрики через OTLP только при заданном `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`; без endpoint поведение явно выключено.
+- Worker измеряет deterministic/narrative duration, safe failures/retries, scoring/catalog adoption и section outcomes.
+- Celery beat каждые 5 минут ищет stuck generations и spike `career_validation_failure`, пишет bounded `career_pipeline_alert`.
+- Provider token/cost telemetry использует явно помеченную оценку по размеру текста и настраиваемым ставкам; authoritative billing остаётся внешней сверкой провайдера.
+- `CAREER_REPORT_ENABLED=False` остаётся default rollback gate; rollback не удаляет target/legacy artifacts.
+
+## Локальное evidence
+
+- `uv run pytest tests/unit/test_career -q` → `64 passed`.
+- `uv run pytest tests/unit -q` → `526 passed`.
+- isolated PostgreSQL `uv run pytest tests/integration -q` → `2 passed`.
+- `node scripts/check-career-product-ux.mjs` → passed.
+- `node scripts/check-career-report-reader.mjs` → passed.
+- Repo-wide ruff/mypy, frontend test/type/lint/build и docs Prettier выполняются повторно после последнего edit; точный SHA записывается после commit/CI.
+
 ## Критерии приёмки
 
-- [ ] Все deterministic, resolver, role/path, LLM, API и UI suites зелёные.
+- [x] Все deterministic, resolver, role/path, LLM, API и UI suites зелёные локально.
 - [ ] Staging real-provider report проходит human quality review по design-документу.
-- [ ] Locked/expired аккаунт не получает protected Career data.
-- [ ] Grandfathered legacy владелец не теряет доступ.
-- [ ] Старые Career reports/PDF остаются читаемыми.
+- [x] Locked/expired аккаунт не получает protected Career data в policy/API regression suites.
+- [x] Grandfathered legacy владелец сохраняет policy access; production matrix остаётся в runbook.
+- [x] Старые Career reports/PDF не мигрируются и остаются читаемыми по explicit migration boundary.
 - [ ] Метрики/alerts доказывают отсутствие stuck pipeline.
-- [ ] Cost/latency budgets зафиксированы и измерены.
-- [ ] Rollback feature flag проверен без потери данных.
+- [ ] Cost/latency budgets зафиксированы в runbook; staging measurement ещё не записан.
+- [x] Rollback feature flag покрыт contract test и не выполняет destructive migration/backfill.
 - [ ] Production smoke и точный CI SHA записаны в Story перед `✅`.

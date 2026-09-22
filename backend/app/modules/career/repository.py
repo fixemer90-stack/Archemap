@@ -133,9 +133,7 @@ class CareerRepository:
         answers: Sequence[models.CareerAnswer],
     ) -> None:
         await self.session.execute(
-            delete(models.CareerAnswer).where(
-                models.CareerAnswer.questionnaire_session_id == questionnaire_session_id
-            )
+            delete(models.CareerAnswer).where(models.CareerAnswer.questionnaire_session_id == questionnaire_session_id)
         )
         self.session.add_all(list(answers))
 

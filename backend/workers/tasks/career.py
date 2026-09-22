@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Any, cast
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -33,10 +35,11 @@ from app.modules.career.narrative import (
     build_deterministic_career_report_row,
     run_career_segment_generation,
 )
+from app.modules.career.observability import bind_career_context, career_telemetry, safe_error_code
 from app.modules.career.profile_resolver import build_resolution_row, resolve_career_profile
 from app.modules.career.questionnaire import CareerQuestionnaireCompleted
 from app.modules.career.repository import CareerRepository
-from app.modules.career.role_matching import build_role_match_rows, match_roles
+from app.modules.career.role_matching import ROLE_CATALOG_VERSION, build_role_match_rows, match_roles
 from app.modules.llm.provider import get_llm_provider
 from workers.celery_app import app
 
@@ -66,6 +69,66 @@ def generate_career_report(
     )
 
 
+@app.task(name="career.monitor_pipeline")  # type: ignore[untyped-decorator]
+def monitor_career_pipeline() -> dict[str, Any]:
+    return run_async_in_worker(_monitor_career_pipeline_async())
+
+
+async def _monitor_career_pipeline_async() -> dict[str, Any]:
+    now = datetime.now(UTC)
+    stuck_cutoff = now - timedelta(minutes=settings.CAREER_STUCK_AFTER_MINUTES)
+    validator_cutoff = now - timedelta(minutes=settings.CAREER_MONITOR_WINDOW_MINUTES)
+    active_stage_by_status = {
+        "queued": "deterministic",
+        "calculating_dimensions": "deterministic",
+        "deterministic_ready": "narrative",
+        "generating_sections": "narrative",
+    }
+    async with async_session_factory() as db:
+        stuck_result = await db.execute(
+            select(models.CareerGeneration.status, func.count())
+            .where(
+                models.CareerGeneration.status.in_(tuple(active_stage_by_status)),
+                models.CareerGeneration.updated_at < stuck_cutoff,
+            )
+            .group_by(models.CareerGeneration.status)
+        )
+        stuck_by_stage = {"deterministic": 0, "narrative": 0}
+        for status_name, count in stuck_result.all():
+            stuck_by_stage[active_stage_by_status[str(status_name)]] += int(count)
+        validator_result = await db.execute(
+            select(func.count())
+            .select_from(models.CareerSegmentGeneration)
+            .where(
+                models.CareerSegmentGeneration.error == "career_validation_failure",
+                models.CareerSegmentGeneration.updated_at >= validator_cutoff,
+            )
+        )
+        validator_failures = int(validator_result.scalar_one())
+
+    for stage_name, count in stuck_by_stage.items():
+        if count:
+            career_telemetry.record(
+                stage=stage_name,
+                outcome="stuck",
+                operation="scan",
+                error_code="career_stuck_generation",
+                amount=count,
+            )
+    alerts = build_career_monitor_alerts(
+        stuck_by_stage=stuck_by_stage,
+        validator_failures=validator_failures,
+        validator_failure_threshold=settings.CAREER_VALIDATOR_ALERT_THRESHOLD,
+    )
+    for alert in alerts:
+        logger.warning("career_pipeline_alert", alert=alert)
+    return {
+        "stuck_by_stage": stuck_by_stage,
+        "validator_failures": validator_failures,
+        "alerts": list(alerts),
+    }
+
+
 async def _generate_career_report_async(
     *,
     generation_id: uuid.UUID,
@@ -76,7 +139,15 @@ async def _generate_career_report_async(
         generation = await _load_generation(db, generation_id)
         if generation is None:
             raise ValueError("Career generation not found")
+        stage = "deterministic"
+        stage_started = perf_counter()
+        event_logger = bind_career_context(
+            generation_id=str(generation.generation_id),
+            report_id=str(generation.report_id) if generation.report_id else None,
+            user_id=str(generation.user_id),
+        )
         try:
+            event_logger.info("career_generation_started", operation=generation.operation)
             generation.status = "calculating_dimensions"
             generation.diagnostics = {"stage": "deterministic"}
             await db.commit()
@@ -189,6 +260,23 @@ async def _generate_career_report_async(
             generation.status = "deterministic_ready"
             generation.diagnostics = {"stage": "deterministic_ready"}
             await db.commit()
+            career_telemetry.record(
+                stage="deterministic",
+                outcome="ready",
+                duration_seconds=perf_counter() - stage_started,
+                operation=generation.operation,
+            )
+            career_telemetry.record(
+                stage="deterministic",
+                outcome="version_observed",
+                operation=generation.operation,
+                scoring_version=report.scoring_version,
+                catalog_version=ROLE_CATALOG_VERSION,
+            )
+            if generation.operation == "regenerate":
+                career_telemetry.record(stage="narrative", outcome="retried", operation="regenerate")
+            stage = "narrative"
+            stage_started = perf_counter()
 
             inputs = build_career_section_inputs(facts)
             if section_keys:
@@ -215,6 +303,13 @@ async def _generate_career_report_async(
                 )
             )
             await repository.add_many(segment_rows)
+            for segment in segment_rows:
+                career_telemetry.record(
+                    stage="narrative",
+                    outcome="ready" if segment.status == "ready" else "failed",
+                    operation=generation.operation,
+                    section_key=segment.section_key,
+                )
             assembled = assemble_career_report_row(report=report, segment_rows=list(segment_rows))
             report.status = assembled.status
             report.narrative_payload = assembled.narrative_payload
@@ -222,6 +317,20 @@ async def _generate_career_report_async(
             generation.status = assembled.status
             generation.diagnostics = {"stage": "complete", "report_status": assembled.status}
             await db.commit()
+            career_telemetry.record(
+                stage="narrative",
+                outcome="ready" if assembled.status == "ready" else "partial_failure",
+                duration_seconds=perf_counter() - stage_started,
+                operation=generation.operation,
+            )
+            event_logger.info(
+                "career_generation_completed",
+                report_id=str(report.id),
+                status=report.status,
+                scoring_version=report.scoring_version,
+                prompt_version=report.prompt_version,
+                model_version=settings.LLM_MODEL,
+            )
             return {
                 "generation_id": str(generation.generation_id),
                 "report_id": str(report.id),
@@ -231,9 +340,23 @@ async def _generate_career_report_async(
             await db.rollback()
             generation = await _load_generation(db, generation_id)
             if generation is not None:
-                generation.status = "failed"
+                generation.status = failure_status_for_generation(report_id=generation.report_id)
                 generation.diagnostics = {"stage": "failed", "error": type(exc).__name__}
+                if generation.report_id is not None:
+                    failed_report = await repository.get_report_for_user(
+                        generation.report_id,
+                        generation.user_id,
+                    )
+                    if failed_report is not None:
+                        failed_report.status = "narrative_failed"
                 await db.commit()
+                career_telemetry.record(
+                    stage=stage,
+                    outcome="failed",
+                    duration_seconds=perf_counter() - stage_started,
+                    operation=generation.operation,
+                    error_code=safe_error_code(exc, stage=stage),
+                )
             logger.exception("career_generation_failed", generation_id=str(generation_id))
             raise
 
@@ -246,6 +369,28 @@ async def _load_generation(
         select(models.CareerGeneration).where(models.CareerGeneration.generation_id == generation_id)
     )
     return result.scalar_one_or_none()
+
+
+def failure_status_for_generation(*, report_id: uuid.UUID | None) -> str:
+    """Keep committed deterministic artifacts readable after narrative failure."""
+
+    return "narrative_failed" if report_id is not None else "failed"
+
+
+def build_career_monitor_alerts(
+    *,
+    stuck_by_stage: dict[str, int],
+    validator_failures: int,
+    validator_failure_threshold: int,
+) -> tuple[str, ...]:
+    alerts = [
+        f"career_stuck_generation:{stage}:{stuck_by_stage[stage]}"
+        for stage in ("deterministic", "narrative")
+        if stuck_by_stage.get(stage, 0) > 0
+    ]
+    if validator_failures >= validator_failure_threshold:
+        alerts.append(f"career_validator_failure_spike:{validator_failures}")
+    return tuple(alerts)
 
 
 def build_regeneration_report_row(

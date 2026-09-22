@@ -35,6 +35,7 @@ from app.modules.career.api_schemas import (
     QuestionnaireResponse,
     RegenerateCareerReportRequest,
 )
+from app.modules.career.observability import career_telemetry
 from app.modules.career.questionnaire import (
     CONTEXT_VERSION,
     QUESTION_BANK,
@@ -135,6 +136,7 @@ async def put_questionnaire_answers(
     )
     await repository.replace_questionnaire_answers(questionnaire_session_id=questionnaire.id, answers=rows)
     await db.commit()
+    career_telemetry.record(stage="questionnaire", outcome="draft_saved", operation="save")
     return _questionnaire_update_payload(questionnaire=questionnaire, answers=body.answers)
 
 
@@ -167,6 +169,7 @@ async def complete_questionnaire(
         code = status.HTTP_409_CONFLICT if "conflicting" in str(exc) else status.HTTP_422_UNPROCESSABLE_ENTITY
         raise HTTPException(status_code=code, detail=str(exc)) from exc
     await db.commit()
+    career_telemetry.record(stage="questionnaire", outcome="completed", operation="complete")
     return _questionnaire_update_payload(questionnaire=questionnaire, answers=completed)
 
 
@@ -379,9 +382,7 @@ async def _load_owned_report(
 
 
 def _draft_from_rows(rows: list[models.CareerAnswer]) -> CareerQuestionnaireDraft:
-    return CareerQuestionnaireDraft.model_validate(
-        {row.question_key: row.answer.get("value") for row in rows}
-    )
+    return CareerQuestionnaireDraft.model_validate({row.question_key: row.answer.get("value") for row in rows})
 
 
 def _questionnaire_payload(
@@ -427,9 +428,7 @@ def _accepted_response(generation: models.CareerGeneration) -> JSONResponse:
         links={
             "generation": f"/api/v1/career/generations/{generation.generation_id}",
             **(
-                {"report": f"/api/v1/career/reports/{generation.report_id}"}
-                if generation.report_id is not None
-                else {}
+                {"report": f"/api/v1/career/reports/{generation.report_id}"} if generation.report_id is not None else {}
             ),
         },
     )
@@ -455,4 +454,10 @@ async def _enqueue_generation(
         generation.status = "failed"
         generation.diagnostics = {"error": "career_queue_unavailable"}
         await db.commit()
+        career_telemetry.record(
+            stage="deterministic",
+            outcome="failed",
+            operation=generation.operation,
+            error_code="career_queue_unavailable",
+        )
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Career queue unavailable") from exc

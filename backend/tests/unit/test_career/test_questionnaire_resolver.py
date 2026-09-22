@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -300,9 +301,21 @@ async def test_questionnaire_persistence_flushes_parent_before_answer_rows() -> 
     repository.add_many = AsyncMock()
     repository.flush = AsyncMock()
     calls: list[str] = []
-    repository.add.side_effect = lambda row: calls.append(f"add:{row.__table__.name}") or row
-    repository.add_many.side_effect = lambda rows: calls.append("add_many:career_answers") or rows
-    repository.flush.side_effect = lambda: calls.append("flush")
+
+    async def add(row: Any) -> Any:
+        calls.append(f"add:{row.__table__.name}")
+        return row
+
+    async def add_many(rows: list[Any]) -> list[Any]:
+        calls.append("add_many:career_answers")
+        return rows
+
+    async def flush() -> None:
+        calls.append("flush")
+
+    repository.add.side_effect = add
+    repository.add_many.side_effect = add_many
+    repository.flush.side_effect = flush
 
     await persist_questionnaire_completion(
         repository,

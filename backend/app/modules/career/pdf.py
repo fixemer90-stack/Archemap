@@ -65,7 +65,7 @@ def render_career_report_html(*, report_payload: dict[str, Any], profile_name: s
         score = item.get("score")
         dimension_cards.append(
             f'<article class="metric"><h3>{html.escape(label)}</h3><strong>{html.escape(str(score))}</strong>'
-            '<p>Выраженность рабочей тенденции; число не является оценкой «хорошо» или «плохо».</p></article>'
+            "<p>Выраженность рабочей тенденции; число не является оценкой «хорошо» или «плохо».</p></article>"
         )
 
     narrative_sections = []
@@ -74,7 +74,7 @@ def render_career_report_html(*, report_payload: dict[str, Any], profile_name: s
             continue
         narrative_sections.append(
             f'<section class="section"><div class="eyebrow">{index:02d}</div>'
-            f'<h2>{html.escape(_text(section.get("title"), "Раздел"))}</h2>'
+            f"<h2>{html.escape(_text(section.get('title'), 'Раздел'))}</h2>"
             f'<div class="body">{_paragraphs(section.get("body"))}</div></section>'
         )
 
@@ -91,7 +91,7 @@ def render_career_report_html(*, report_payload: dict[str, Any], profile_name: s
         if not isinstance(item, dict):
             continue
         contradiction_cards.append(
-            '<li><strong>Полезная развилка.</strong> Способность и мотивация могут проявляться по-разному; '
+            "<li><strong>Полезная развилка.</strong> Способность и мотивация могут проявляться по-разному; "
             "проверяйте вывод по реальной роли и уровню ответственности.</li>"
         )
 
@@ -108,7 +108,7 @@ def render_career_report_html(*, report_payload: dict[str, Any], profile_name: s
             f'<article class="role"><h3>{html.escape(family.capitalize())}</h3>'
             f'<p class="badge">{html.escape(category)}</p>'
             + (
-                f'<p><strong>Возможный пример, а не назначение:</strong> {html.escape(example_text)}</p>'
+                f"<p><strong>Возможный пример, а не назначение:</strong> {html.escape(example_text)}</p>"
                 if example_text
                 else ""
             )

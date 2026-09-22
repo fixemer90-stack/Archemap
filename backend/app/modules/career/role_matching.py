@@ -42,72 +42,108 @@ class RoleMatchResult:
 ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
     "architecture": RoleFamilyDefinition(
         "architecture",
-        {CareerDimensionKey.SYSTEMS_THINKING: 0.35, CareerDimensionKey.ANALYTICAL_THINKING: 0.25,
-         CareerDimensionKey.AUTONOMY: 0.20, CareerDimensionKey.LONG_TERM_FOCUS: 0.20},
+        {
+            CareerDimensionKey.SYSTEMS_THINKING: 0.35,
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.25,
+            CareerDimensionKey.AUTONOMY: 0.20,
+            CareerDimensionKey.LONG_TERM_FOCUS: 0.20,
+        },
         {"operational_strategic": 0.6, "execution_ownership": 0.4},
         ("Solution Architect", "Systems Architect", "Lead Engineer"),
         {"expert": 12, "expert_leadership": 8},
     ),
     "product": RoleFamilyDefinition(
         "product",
-        {CareerDimensionKey.SYSTEMS_THINKING: 0.25, CareerDimensionKey.COMMUNICATION: 0.25,
-         CareerDimensionKey.EXECUTION: 0.25, CareerDimensionKey.INNOVATION: 0.25},
+        {
+            CareerDimensionKey.SYSTEMS_THINKING: 0.25,
+            CareerDimensionKey.COMMUNICATION: 0.25,
+            CareerDimensionKey.EXECUTION: 0.25,
+            CareerDimensionKey.INNOVATION: 0.25,
+        },
         {"operational_strategic": 0.5, "execution_ownership": 0.5},
         ("Product Manager", "Product Operations Lead"),
         {"manager": 8, "entrepreneur": 6},
     ),
     "strategy": RoleFamilyDefinition(
         "strategy",
-        {CareerDimensionKey.SYSTEMS_THINKING: 0.35, CareerDimensionKey.LONG_TERM_FOCUS: 0.30,
-         CareerDimensionKey.ANALYTICAL_THINKING: 0.20, CareerDimensionKey.LEADERSHIP: 0.15},
+        {
+            CareerDimensionKey.SYSTEMS_THINKING: 0.35,
+            CareerDimensionKey.LONG_TERM_FOCUS: 0.30,
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.20,
+            CareerDimensionKey.LEADERSHIP: 0.15,
+        },
         {"operational_strategic": 1.0},
         ("Strategy Lead", "Corporate Strategist"),
         {"expert_leadership": 8, "manager": 5},
     ),
     "analytics": RoleFamilyDefinition(
         "analytics",
-        {CareerDimensionKey.ANALYTICAL_THINKING: 0.45, CareerDimensionKey.SYSTEMS_THINKING: 0.25,
-         CareerDimensionKey.STRUCTURE: 0.20, CareerDimensionKey.EXECUTION: 0.10},
+        {
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.45,
+            CareerDimensionKey.SYSTEMS_THINKING: 0.25,
+            CareerDimensionKey.STRUCTURE: 0.20,
+            CareerDimensionKey.EXECUTION: 0.10,
+        },
         {"operational_strategic": 1.0},
         ("Data Analyst", "Business Intelligence Analyst"),
         {"expert": 9},
     ),
     "consulting": RoleFamilyDefinition(
         "consulting",
-        {CareerDimensionKey.ANALYTICAL_THINKING: 0.25, CareerDimensionKey.COMMUNICATION: 0.30,
-         CareerDimensionKey.SYSTEMS_THINKING: 0.25, CareerDimensionKey.AUTONOMY: 0.20},
+        {
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.25,
+            CareerDimensionKey.COMMUNICATION: 0.30,
+            CareerDimensionKey.SYSTEMS_THINKING: 0.25,
+            CareerDimensionKey.AUTONOMY: 0.20,
+        },
         {"execution_ownership": 1.0},
         ("Management Consultant", "Independent Advisor"),
         {"expert": 7, "expert_leadership": 5},
     ),
     "operations": RoleFamilyDefinition(
         "operations",
-        {CareerDimensionKey.EXECUTION: 0.35, CareerDimensionKey.STRUCTURE: 0.30,
-         CareerDimensionKey.LEADERSHIP: 0.20, CareerDimensionKey.SYSTEMS_THINKING: 0.15},
+        {
+            CareerDimensionKey.EXECUTION: 0.35,
+            CareerDimensionKey.STRUCTURE: 0.30,
+            CareerDimensionKey.LEADERSHIP: 0.20,
+            CareerDimensionKey.SYSTEMS_THINKING: 0.15,
+        },
         {"execution_ownership": 1.0},
         ("Operations Lead", "Program Manager"),
         {"manager": 8},
     ),
     "research": RoleFamilyDefinition(
         "research",
-        {CareerDimensionKey.ANALYTICAL_THINKING: 0.35, CareerDimensionKey.SYSTEMS_THINKING: 0.25,
-         CareerDimensionKey.LONG_TERM_FOCUS: 0.25, CareerDimensionKey.INNOVATION: 0.15},
+        {
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.35,
+            CareerDimensionKey.SYSTEMS_THINKING: 0.25,
+            CareerDimensionKey.LONG_TERM_FOCUS: 0.25,
+            CareerDimensionKey.INNOVATION: 0.15,
+        },
         {"operational_strategic": 1.0},
         ("Research Scientist", "UX Researcher"),
         {"expert": 10},
     ),
     "management": RoleFamilyDefinition(
         "management",
-        {CareerDimensionKey.LEADERSHIP: 0.35, CareerDimensionKey.PEOPLE_ORIENTATION: 0.30,
-         CareerDimensionKey.COMMUNICATION: 0.20, CareerDimensionKey.EXECUTION: 0.15},
+        {
+            CareerDimensionKey.LEADERSHIP: 0.35,
+            CareerDimensionKey.PEOPLE_ORIENTATION: 0.30,
+            CareerDimensionKey.COMMUNICATION: 0.20,
+            CareerDimensionKey.EXECUTION: 0.15,
+        },
         {"expert_managerial": 0.7, "execution_ownership": 0.3},
         ("Engineering Manager", "Department Head"),
         {"manager": 32},
     ),
     "entrepreneurship": RoleFamilyDefinition(
         "entrepreneurship",
-        {CareerDimensionKey.AUTONOMY: 0.25, CareerDimensionKey.RISK_TOLERANCE: 0.25,
-         CareerDimensionKey.INNOVATION: 0.25, CareerDimensionKey.EXECUTION: 0.25},
+        {
+            CareerDimensionKey.AUTONOMY: 0.25,
+            CareerDimensionKey.RISK_TOLERANCE: 0.25,
+            CareerDimensionKey.INNOVATION: 0.25,
+            CareerDimensionKey.EXECUTION: 0.25,
+        },
         {"predictable_experimental": 0.5, "execution_ownership": 0.5},
         ("Founder", "Independent Venture Builder"),
         {"entrepreneur": 20},
@@ -116,7 +152,9 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
 
 
 def match_roles(
-    *, dimensions: list[CareerDimensionResult], environment: WorkEnvironmentResult,
+    *,
+    dimensions: list[CareerDimensionResult],
+    environment: WorkEnvironmentResult,
     resolution: CareerProfileResolution,
 ) -> tuple[RoleMatchResult, ...]:
     """Rank role families from dimensions, environment, and explicit preferences."""
@@ -189,9 +227,7 @@ def _match_one(
 
     confidence_denominator = present_weight + environment_weight * 0.15
     confidence = (
-        (confidence_weighted + environment_confidence * 0.15) / confidence_denominator
-        if confidence_denominator
-        else 0
+        (confidence_weighted + environment_confidence * 0.15) / confidence_denominator if confidence_denominator else 0
     )
     confidence = max(0.0, min(1.0, confidence))
     score = max(0.0, min(100.0, score))
@@ -208,17 +244,33 @@ def _match_one(
     if not requirements:
         requirements.append("context:validate_against_real_role_scope")
     return RoleMatchResult(
-        role_family_key=definition.key, score=round(score, 2), confidence=round(confidence, 4),
-        category=category, reasons=tuple(sorted(set(reasons))), tensions=tuple(sorted(set(tensions))),
-        requirements=tuple(sorted(set(requirements))), profession_examples=definition.profession_examples,
+        role_family_key=definition.key,
+        score=round(score, 2),
+        confidence=round(confidence, 4),
+        category=category,
+        reasons=tuple(sorted(set(reasons))),
+        tensions=tuple(sorted(set(tensions))),
+        requirements=tuple(sorted(set(requirements))),
+        profession_examples=definition.profession_examples,
     )
 
 
-def build_role_match_rows(*, career_profile_id: UUID, chart_id: UUID,
-                          matches: tuple[RoleMatchResult, ...] | list[RoleMatchResult]) -> list[CareerRoleMatch]:
-    return [CareerRoleMatch(
-        id=uuid.uuid4(), career_profile_id=career_profile_id, chart_id=chart_id,
-        role_family_key=item.role_family_key, match_category=item.category.value,
-        score=item.score, confidence=item.confidence, reference_version=item.catalog_version,
-        reasons=list(item.reasons), tensions=list(item.tensions), requirements=list(item.requirements),
-    ) for item in matches]
+def build_role_match_rows(
+    *, career_profile_id: UUID, chart_id: UUID, matches: tuple[RoleMatchResult, ...] | list[RoleMatchResult]
+) -> list[CareerRoleMatch]:
+    return [
+        CareerRoleMatch(
+            id=uuid.uuid4(),
+            career_profile_id=career_profile_id,
+            chart_id=chart_id,
+            role_family_key=item.role_family_key,
+            match_category=item.category.value,
+            score=item.score,
+            confidence=item.confidence,
+            reference_version=item.catalog_version,
+            reasons=list(item.reasons),
+            tensions=list(item.tensions),
+            requirements=list(item.requirements),
+        )
+        for item in matches
+    ]

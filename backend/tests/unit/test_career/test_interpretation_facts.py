@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 import pytest
 
@@ -44,7 +45,7 @@ def _dimension(key: CareerDimensionKey, score: float, confidence: float) -> Care
     )
 
 
-def _payload():
+def _payload() -> tuple[Any, ...]:
     dimensions = [
         _dimension(CareerDimensionKey.SYSTEMS_THINKING, 90, 0.92),
         _dimension(CareerDimensionKey.ANALYTICAL_THINKING, 84, 0.86),
@@ -72,9 +73,7 @@ def _payload():
         preferred_conditions=("condition:deep_expertise",),
         risk_conditions=("condition:micromanagement_requires_boundaries",),
     )
-    archetypes = (
-        ArchetypeMatch("architect", 88, 0.9, "career-archetypes-1", ("systems_thinking",), ()),
-    )
+    archetypes = (ArchetypeMatch("architect", 88, 0.9, "career-archetypes-1", ("systems_thinking",), ()),)
     matches = (
         RoleMatchResult(
             role_family_key="architecture",
@@ -122,9 +121,16 @@ def test_facts_are_typed_curated_and_section_owned() -> None:
     assert facts.low_dimensions[0].conditional_language_required
     assert facts.contradictions[0].code == "leadership_without_people_management"
     assert set(facts.section_contracts) == {
-        "professional_summary", "work_style", "strengths", "decision_making",
-        "leadership_and_influence", "optimal_environment", "risk_environment",
-        "career_archetypes", "role_families", "career_paths",
+        "professional_summary",
+        "work_style",
+        "strengths",
+        "decision_making",
+        "leadership_and_influence",
+        "optimal_environment",
+        "risk_environment",
+        "career_archetypes",
+        "role_families",
+        "career_paths",
     }
     assert all(contract.owned_fact_keys for contract in facts.section_contracts.values())
     assert all(contract.forbidden_fact_keys for contract in facts.section_contracts.values())
@@ -137,14 +143,20 @@ def test_facts_are_typed_curated_and_section_owned() -> None:
 def test_unsupported_role_or_path_is_rejected_before_provider_call() -> None:
     parts = _payload()
     facts = build_interpretation_facts(
-        profile_id=uuid.uuid4(), chart_id=uuid.uuid4(), dimensions=parts[0], archetypes=parts[1],
-        environment=parts[2], resolution=parts[3], role_matches=parts[4], career_paths=parts[5],
+        profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        dimensions=parts[0],
+        archetypes=parts[1],
+        environment=parts[2],
+        resolution=parts[3],
+        role_matches=parts[4],
+        career_paths=parts[5],
     )
     tampered = facts.model_copy(deep=True)
     tampered.career_paths[0].role_family_key = "invented_profession"
     called = False
 
-    def provider(_payload):
+    def provider(_payload: object) -> dict[str, str]:
         nonlocal called
         called = True
         return {"body": "should not run"}
@@ -157,16 +169,28 @@ def test_unsupported_role_or_path_is_rejected_before_provider_call() -> None:
 def test_contradiction_loss_and_missing_lineage_are_rejected() -> None:
     parts = _payload()
     facts = build_interpretation_facts(
-        profile_id=uuid.uuid4(), chart_id=uuid.uuid4(), dimensions=parts[0], archetypes=parts[1],
-        environment=parts[2], resolution=parts[3], role_matches=parts[4], career_paths=parts[5],
+        profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        dimensions=parts[0],
+        archetypes=parts[1],
+        environment=parts[2],
+        resolution=parts[3],
+        role_matches=parts[4],
+        career_paths=parts[5],
     )
     facts.contradictions.clear()
     with pytest.raises(CareerFactsValidationError, match="contradiction lineage"):
         validate_interpretation_facts(facts, expected_contradiction_codes={"leadership_without_people_management"})
 
     facts = build_interpretation_facts(
-        profile_id=uuid.uuid4(), chart_id=uuid.uuid4(), dimensions=parts[0], archetypes=parts[1],
-        environment=parts[2], resolution=parts[3], role_matches=parts[4], career_paths=parts[5],
+        profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        dimensions=parts[0],
+        archetypes=parts[1],
+        environment=parts[2],
+        resolution=parts[3],
+        role_matches=parts[4],
+        career_paths=parts[5],
     )
     facts.top_dimensions[0].evidence_refs.clear()
     with pytest.raises(CareerFactsValidationError, match="missing evidence"):
@@ -178,8 +202,14 @@ def test_facts_build_versioned_persistable_rows() -> None:
     profile_id = uuid.uuid4()
     chart_id = uuid.uuid4()
     facts = build_interpretation_facts(
-        profile_id=profile_id, chart_id=chart_id, dimensions=parts[0], archetypes=parts[1],
-        environment=parts[2], resolution=parts[3], role_matches=parts[4], career_paths=parts[5],
+        profile_id=profile_id,
+        chart_id=chart_id,
+        dimensions=parts[0],
+        archetypes=parts[1],
+        environment=parts[2],
+        resolution=parts[3],
+        role_matches=parts[4],
+        career_paths=parts[5],
     )
     rows = build_interpretation_fact_rows(facts)
 

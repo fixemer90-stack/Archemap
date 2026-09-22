@@ -91,8 +91,7 @@ def _ordered_segments(segments: list[CareerSegmentGeneration]) -> list[CareerSeg
 
 def _section_states(segments: list[CareerSegmentGeneration]) -> list[dict[str, Any]]:
     return [
-        {"section_key": segment.section_key, "status": segment.status, "error": segment.error}
-        for segment in segments
+        {"section_key": segment.section_key, "status": segment.status, "error": segment.error} for segment in segments
     ]
 
 

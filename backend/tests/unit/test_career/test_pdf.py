@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
 
-def _payload() -> dict:
+
+def _payload() -> dict[str, Any]:
     return {
         "contract_version": "career_report_read_v1",
         "report_id": "report-1",

@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01 частично, S02–S07 завершены, S08–S12 не начаты
+🟡 В работе — S02–S09 завершены; S01, S10–S12 частично до browser/staging/production evidence
 
 ## Цель
 
@@ -146,11 +146,11 @@ Career — специализированный отчёт. Целевой до�
 | S05 | [Рассчитать archetypes и рабочую среду](./S05-archetypes-work-environment.md)                 | ✅ Завершено |
 | S06 | [Реализовать role matching и карьерные траектории](./S06-role-matching-career-paths.md)       | ✅ Завершено |
 | S07 | [Собрать Interpretation Facts и quality gates](./S07-interpretation-facts-quality-gates.md)   | ✅ Завершено |
-| S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                  | ⬜ Не начато |
-| S09 | [Добавить async Career API и access enforcement](./S09-api-async-access.md)                   | ⬜ Не начато |
-| S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                         | ⬜ Не начато |
-| S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                     | ⬜ Не начато |
-| S12 | [Закрыть QA, observability, migration и rollout](./S12-qa-observability-rollout.md)           | ⬜ Не начато |
+| S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                  | ✅ Завершено |
+| S09 | [Добавить async Career API и access enforcement](./S09-api-async-access.md)                   | ✅ Завершено |
+| S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                         | 🟡 Частично  |
+| S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                     | 🟡 Частично  |
+| S12 | [Закрыть QA, observability, migration и rollout](./S12-qa-observability-rollout.md)           | 🟡 Частично  |
 
 ## Порядок реализации
 
@@ -184,4 +184,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature находится в реализации: S02–S07 завершены; S01 остаётся частичной до client/API enforcement. S08–S12 остаются открытыми до кода, тестов и указанного smoke evidence.
+Feature находится в реализации: S02–S09 завершены. S01 остаётся частичной до полного client contract closeout; S10–S11 ждут реальный browser smoke, S12 — staging real-provider/canary/production evidence.

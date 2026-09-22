@@ -21,6 +21,7 @@ from app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
+from app.infrastructure.observability import configure_metrics
 
 logger = structlog.get_logger()
 
@@ -51,6 +52,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
+    configure_metrics(
+        endpoint=settings.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
+        service_name=settings.OTEL_SERVICE_NAME,
+    )
     application = FastAPI(
         title="Archemap API",
         version="0.1.0",

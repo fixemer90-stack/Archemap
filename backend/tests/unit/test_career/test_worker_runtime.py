@@ -3,6 +3,11 @@ from __future__ import annotations
 import uuid
 
 from app.modules.career.models import CareerReport
+from workers.tasks.career import (
+    build_career_monitor_alerts,
+    build_regeneration_report_row,
+    failure_status_for_generation,
+)
 
 
 def _source_report() -> CareerReport:
@@ -24,8 +29,6 @@ def _source_report() -> CareerReport:
 
 
 def test_regeneration_report_preserves_deterministic_artifacts() -> None:
-    from workers.tasks.career import build_regeneration_report_row
-
     source = _source_report()
     generation_id = uuid.uuid4()
 
@@ -38,6 +41,26 @@ def test_regeneration_report_preserves_deterministic_artifacts() -> None:
     assert regenerated.generation_id == generation_id
     assert regenerated.version == source.version + 1
     assert regenerated.status == "deterministic_ready"
+    assert source.status == "ready"
     assert regenerated.deterministic_payload == source.deterministic_payload
     assert regenerated.deterministic_payload is not source.deterministic_payload
     assert regenerated.narrative_payload["sections"] == []
+
+
+def test_failure_after_deterministic_commit_is_narrative_failure() -> None:
+    assert failure_status_for_generation(report_id=uuid.uuid4()) == "narrative_failed"
+    assert failure_status_for_generation(report_id=None) == "failed"
+
+
+def test_monitor_alerts_cover_stuck_pipeline_and_validator_failure_spike() -> None:
+    alerts = build_career_monitor_alerts(
+        stuck_by_stage={"deterministic": 2, "narrative": 1},
+        validator_failures=5,
+        validator_failure_threshold=5,
+    )
+
+    assert alerts == (
+        "career_stuck_generation:deterministic:2",
+        "career_stuck_generation:narrative:1",
+        "career_validator_failure_spike:5",
+    )

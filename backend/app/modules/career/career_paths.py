@@ -42,7 +42,9 @@ _GRAPH: dict[str, tuple[str, ...]] = {
 
 
 def build_career_paths(
-    *, matches: tuple[RoleMatchResult, ...] | list[RoleMatchResult], resolution: CareerProfileResolution,
+    *,
+    matches: tuple[RoleMatchResult, ...] | list[RoleMatchResult],
+    resolution: CareerProfileResolution,
 ) -> tuple[CareerPathResult, ...]:
     """Build two or three paths strictly from versioned graph nodes."""
     context = set(resolution.context_constraints)
@@ -72,24 +74,27 @@ def build_career_paths(
                 node_key=node,
                 transition_key=None if index == 0 else f"{nodes[index - 1]}_to_{node}",
                 prerequisites=(
-                    ()
-                    if index == 0
-                    else (f"evidence:{match.role_family_key}", "context:validate_experience")
+                    () if index == 0 else (f"evidence:{match.role_family_key}", "context:validate_experience")
                 ),
             )
             for index, node in enumerate(nodes)
         )
-        results.append(CareerPathResult(
-            role_family_key=match.role_family_key,
-            steps=steps,
-            limitations=tuple(sorted(limitations)),
-            archetypal=bool(limitations),
-        ))
+        results.append(
+            CareerPathResult(
+                role_family_key=match.role_family_key,
+                steps=steps,
+                limitations=tuple(sorted(limitations)),
+                archetypal=bool(limitations),
+            )
+        )
     return tuple(results)
 
 
 def build_career_path_rows(
-    *, career_profile_id: UUID, chart_id: UUID, role_rows: list[CareerRoleMatch],
+    *,
+    career_profile_id: UUID,
+    chart_id: UUID,
+    role_rows: list[CareerRoleMatch],
     paths: tuple[CareerPathResult, ...] | list[CareerPathResult],
 ) -> list[CareerPathStep]:
     role_ids = {row.role_family_key: row.id for row in role_rows}
@@ -99,18 +104,20 @@ def build_career_path_rows(
         if role_id is None:
             continue
         for order, step in enumerate(path.steps):
-            rows.append(CareerPathStep(
-                career_profile_id=career_profile_id,
-                role_match_id=role_id,
-                chart_id=chart_id,
-                step_order=order,
-                node_key=step.node_key,
-                transition_key=step.transition_key,
-                reference_version=path.graph_version,
-                payload={
-                    "prerequisites": list(step.prerequisites),
-                    "limitations": list(path.limitations),
-                    "archetypal": path.archetypal,
-                },
-            ))
+            rows.append(
+                CareerPathStep(
+                    career_profile_id=career_profile_id,
+                    role_match_id=role_id,
+                    chart_id=chart_id,
+                    step_order=order,
+                    node_key=step.node_key,
+                    transition_key=step.transition_key,
+                    reference_version=path.graph_version,
+                    payload={
+                        "prerequisites": list(step.prerequisites),
+                        "limitations": list(path.limitations),
+                        "archetypal": path.archetypal,
+                    },
+                )
+            )
     return rows

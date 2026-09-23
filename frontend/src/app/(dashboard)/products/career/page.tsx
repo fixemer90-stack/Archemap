@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Briefcase, Check, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,8 @@ function errorMessage(error: unknown) {
 }
 
 export default function CareerProductPage() {
+  const searchParams = useSearchParams();
+  const deepLinkedProfileId = searchParams.get("profileId");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -90,6 +93,31 @@ export default function CareerProductPage() {
   const completionKey = useRef<string | null>(null);
   const generationKey = useRef<string | null>(null);
   const pollAttempts = useRef(0);
+  const deepLinkOpened = useRef(false);
+
+  const openQuestionnaire = useCallback(async (profile: Profile) => {
+    setSelectedProfile(profile);
+    setQuestionnaire(null);
+    setGeneration(null);
+    setLocked(false);
+    setError(null);
+    setStep(0);
+    setConsented(false);
+    try {
+      const draft = await getCurrentCareerQuestionnaire(profile.id);
+      setQuestionnaire(draft);
+      setAnswers(draft.answers ?? {});
+      setSaved(true);
+    } catch (loadError) {
+      if (loadError instanceof ApiError && loadError.status === 402)
+        setLocked(true);
+      setError(
+        loadError instanceof ApiError && loadError.status === 404
+          ? "Для профиля ещё нет готовой натальной карты. Сначала постройте основной отчёт."
+          : errorMessage(loadError),
+      );
+    }
+  }, []);
 
   useEffect(() => {
     async function loadProfiles() {
@@ -99,7 +127,15 @@ export default function CareerProductPage() {
         });
         if (!response.ok) throw new Error("Не удалось загрузить профили");
         const data = (await response.json()) as { items?: Profile[] };
-        setProfiles(data.items ?? []);
+        const loadedProfiles = data.items ?? [];
+        setProfiles(loadedProfiles);
+        const preselectedProfile = loadedProfiles.find(
+          (profile) => profile.id === deepLinkedProfileId,
+        );
+        if (preselectedProfile && !deepLinkOpened.current) {
+          deepLinkOpened.current = true;
+          await openQuestionnaire(preselectedProfile);
+        }
       } catch (loadError) {
         setError(errorMessage(loadError));
       } finally {
@@ -107,7 +143,7 @@ export default function CareerProductPage() {
       }
     }
     void loadProfiles();
-  }, []);
+  }, [deepLinkedProfileId, openQuestionnaire]);
 
   useEffect(() => {
     if (
@@ -153,29 +189,6 @@ export default function CareerProductPage() {
     [answers, questions],
   );
 
-  async function openQuestionnaire(profile: Profile) {
-    setSelectedProfile(profile);
-    setQuestionnaire(null);
-    setGeneration(null);
-    setLocked(false);
-    setError(null);
-    setStep(0);
-    setConsented(false);
-    try {
-      const draft = await getCurrentCareerQuestionnaire(profile.id);
-      setQuestionnaire(draft);
-      setAnswers(draft.answers ?? {});
-      setSaved(true);
-    } catch (loadError) {
-      if (loadError instanceof ApiError && loadError.status === 402)
-        setLocked(true);
-      setError(
-        loadError instanceof ApiError && loadError.status === 404
-          ? "Для профиля ещё нет готовой натальной карты. Сначала постройте основной отчёт."
-          : errorMessage(loadError),
-      );
-    }
-  }
 
   async function persistDraft(nextAnswers = answers) {
     if (!questionnaire || questionnaire.status === "completed")

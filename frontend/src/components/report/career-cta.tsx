@@ -33,7 +33,7 @@ export function CareerCTA({ cta, profileId }: CareerCTAProps) {
           </ul>
         )}
         <Button asChild>
-          <Link href={`/dashboard/products/career?profileId=${profileId}`}>
+          <Link href={`/products/career?profileId=${profileId}`}>
             {cta.button_label}
           </Link>
         </Button>

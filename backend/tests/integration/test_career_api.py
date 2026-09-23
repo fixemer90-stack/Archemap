@@ -14,6 +14,7 @@ from app.main import app
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.career import models
 from app.modules.profiles.models import PersonProfile
+from app.modules.reports.models import Report
 from app.modules.users.models import User
 
 
@@ -115,6 +116,19 @@ async def test_career_api_persists_lifecycle_idempotency_and_locked_payload(
 
     monkeypatch.setattr("app.modules.career.router._require_career_access", allow_access)
     monkeypatch.setattr("app.modules.career.router.settings.CAREER_REPORT_ENABLED", True)
+
+    legacy_report = Report(
+        user_id=user_id,
+        profile_id=profile_id,
+        product="career",
+        status="ready",
+        report_data={"legacy_marker": "must-not-cross-target-boundary"},
+    )
+    db_session.add(legacy_report)
+    await db_session.commit()
+    legacy_target_read = await client.get(f"/api/v1/career/reports/{legacy_report.id}")
+    assert legacy_target_read.status_code == 404
+    assert "legacy_marker" not in legacy_target_read.text
 
     queued = await client.get(f"/api/v1/career/generations/{generation_id}")
     assert queued.status_code == 200

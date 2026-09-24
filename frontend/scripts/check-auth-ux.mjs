@@ -49,6 +49,8 @@ for (const marker of [
   'searchParams.get("birth_date")',
   'searchParams.get("email")',
   'credentials: "include"',
+  "if (result.requires_verification)",
+  "router.push(`/login?${loginParams.toString()}`)",
   "router.push(`/report/v2/${result.profile_id}`)",
 ]) {
   if (!registerPage.includes(marker)) {

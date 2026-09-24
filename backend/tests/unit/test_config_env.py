@@ -68,3 +68,8 @@ def test_later_root_env_overrides_backend_env_for_llm_settings(tmp_path: Path, m
     assert bool(settings.LLM_API_KEY)
     assert settings.LLM_TIMEOUT_SECONDS == 180
     assert settings.LLM_MAX_RETRIES == 2
+
+
+def test_production_rejects_email_auto_verification() -> None:
+    with pytest.raises(ValueError, match="AUTO_VERIFY_EMAIL"):
+        Settings(APP_ENV="production", AUTO_VERIFY_EMAIL=True, _env_file=None)

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.chart_engine.chart import build_chart
 from app.chart_engine.features import extract_features
 from app.chart_engine.socionics import evaluate_socionics
+from app.config import settings
 from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.core.security import (
     create_access_token,
@@ -73,6 +74,7 @@ class AuthService:
             name=name.strip(),
             hashed_password=hash_password(password),
             birth_date=birth_date,
+            is_verified=settings.AUTO_VERIFY_EMAIL,
         )
         self.db.add(user)
         await self.db.flush()
@@ -118,18 +120,22 @@ class AuthService:
         await self.db.flush()
         await self.db.refresh(user)
 
-        # Create verification token and send email
-        verification_service = VerificationService(self.db)
-        token = await verification_service.create_verification(user.id)
-        await verification_service.send_verification_email(email, token)
+        if not settings.AUTO_VERIFY_EMAIL:
+            verification_service = VerificationService(self.db)
+            token = await verification_service.create_verification(user.id)
+            await verification_service.send_verification_email(normalized_email, token)
 
         return {
             "user_id": str(user.id),
             "email": normalized_email,
             "birth_date": birth_date.isoformat(),
             "profile_id": str(profile.id),
-            "requires_verification": True,
-            "message": "Проверьте email и подтвердите аккаунт, чтобы войти и открыть отчёт.",
+            "requires_verification": not settings.AUTO_VERIFY_EMAIL,
+            "message": (
+                "Аккаунт подтверждён автоматически. Теперь можно войти."
+                if settings.AUTO_VERIFY_EMAIL
+                else "Проверьте email и подтвердите аккаунт, чтобы войти и открыть отчёт."
+            ),
         }
 
     async def _compute_chart(

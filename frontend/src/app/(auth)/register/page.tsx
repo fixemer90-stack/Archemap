@@ -233,10 +233,18 @@ function RegisterForm() {
         const next = result.profile_id
           ? `/report/v2/${result.profile_id}`
           : "/dashboard";
-        const verifyParams = new URLSearchParams();
-        verifyParams.set("email", email);
-        verifyParams.set("next", next);
-        router.push(`/verify?${verifyParams.toString()}`);
+        if (result.requires_verification) {
+          const verifyParams = new URLSearchParams();
+          verifyParams.set("email", email);
+          verifyParams.set("next", next);
+          router.push(`/verify?${verifyParams.toString()}`);
+          return;
+        }
+
+        const loginParams = new URLSearchParams();
+        loginParams.set("email", email);
+        loginParams.set("next", next);
+        router.push(`/login?${loginParams.toString()}`);
         return;
       }
 

@@ -177,7 +177,9 @@ docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail
 
 ## 9. Staging user
 
-При `EMAIL_PROVIDER=console` verification link пишется в backend logs. После регистрации получить ссылку только из staging backend logs, подтвердить email, войти и создать отдельный staging profile. Не использовать production email/password, если это не специально созданный тестовый аккаунт.
+Staging запускает backend с `AUTO_VERIFY_EMAIL=true`: новые password-аккаунты сразу получают `is_verified=true`, verification token и письмо не создаются. После регистрации frontend переводит пользователя прямо на вход с заполненным email. Production запрещает этот флаг на уровне настроек приложения.
+
+При проверке обычного email flow временно установите `AUTO_VERIFY_EMAIL=false`; с `EMAIL_PROVIDER=console` verification link будет записан в backend logs. Не использовать production email/password, если это не специально созданный тестовый аккаунт.
 
 ## 10. YooKassa test-shop smoke
 

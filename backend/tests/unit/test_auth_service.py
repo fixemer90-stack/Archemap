@@ -23,7 +23,9 @@ TEST_TIME_ACCURACY = "exact"
 
 @pytest.fixture
 def mock_db() -> AsyncMock:
-    return AsyncMock()
+    db = AsyncMock()
+    db.add = MagicMock()
+    return db
 
 
 @pytest.fixture
@@ -71,6 +73,39 @@ class TestRegister:
         assert "refresh_token" not in result
         assert "chart" not in result
         assert "socionics" not in result
+
+    async def test_register_auto_verifies_without_sending_email(
+        self,
+        service: AuthService,
+        mock_db: AsyncMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from app.config import settings
+
+        mock_db.execute.return_value = _query_result()
+        monkeypatch.setattr(settings, "AUTO_VERIFY_EMAIL", True, raising=False)
+
+        with (
+            patch("app.modules.auth.service.hash_password", return_value="hashed"),
+            patch("app.modules.auth.service.VerificationService") as mock_verification_cls,
+        ):
+            result = await service.register(
+                email="staging@example.com",
+                password=TEST_PASSWORD,
+                name="Staging User",
+                birth_date=TEST_BIRTH_DATE,
+                birth_place=TEST_BIRTH_PLACE,
+                latitude=TEST_LATITUDE,
+                longitude=TEST_LONGITUDE,
+                timezone=TEST_TIMEZONE,
+                birth_time=TEST_BIRTH_TIME,
+                birth_time_accuracy=TEST_TIME_ACCURACY,
+            )
+
+        created_user = mock_db.add.call_args_list[0].args[0]
+        assert created_user.is_verified is True
+        assert result["requires_verification"] is False
+        mock_verification_cls.assert_not_called()
 
     async def test_register_duplicate_email(self, service: AuthService, mock_db: AsyncMock) -> None:
         existing_user = MagicMock()

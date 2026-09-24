@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +64,7 @@ class Settings(BaseSettings):
 
     # ── Email / SMTP ───────────────────────────────────────────────────
     EMAIL_PROVIDER: str = "console"  # "console" or "smtp"
+    AUTO_VERIFY_EMAIL: bool = False
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -107,6 +109,12 @@ class Settings(BaseSettings):
     # ── Logging ───────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
+
+    @model_validator(mode="after")
+    def reject_production_email_auto_verification(self) -> Settings:
+        if self.APP_ENV == "production" and self.AUTO_VERIFY_EMAIL:
+            raise ValueError("AUTO_VERIFY_EMAIL must be false in production")
+        return self
 
 
 settings = Settings()

@@ -189,7 +189,6 @@ export default function CareerProductPage() {
     [answers, questions],
   );
 
-
   async function persistDraft(nextAnswers = answers) {
     if (!questionnaire || questionnaire.status === "completed")
       return questionnaire;

@@ -1,6 +1,6 @@
 # SRS-E19: Astrotype Career Report
 
-Статус: реализация начата; S02–S05 завершены, S01 частично готов, runtime flow не завершён
+Статус: S01–S09 завершены; S10–S11 реализованы до реального browser evidence; S12 ожидает staging real-provider, observability window, canary и production evidence
 
 Feature: `docs/features/E19-career-report/FEATURE.md`
 

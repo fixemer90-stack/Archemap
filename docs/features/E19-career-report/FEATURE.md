@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S02–S09 завершены; S01, S10–S12 частично до browser/staging/production evidence
+🟡 В работе — S01–S09 завершены; S10–S12 частично до browser/staging/production evidence
 
 ## Цель
 
@@ -120,7 +120,7 @@ Career — специализированный отчёт. Целевой до�
 
 ## Критерии приёмки Feature
 
-- [ ] Career использует существующую v2 натальную карту и не пересчитывает её без изменения birth data/engine version.
+- [x] Career использует существующую v2 натальную карту и не пересчитывает её без изменения birth data/engine version.
 - [x] Все 12 MVP dimensions рассчитываются детерминированно по нескольким независимым сигналам.
 - [x] Каждый score имеет evidence, confidence, scoring version и объяснимый breakdown.
 - [x] Контрольные вопросы versioned; ответы пользователя отделены от астрологических сигналов.
@@ -128,18 +128,18 @@ Career — специализированный отчёт. Целевой до�
 - [x] Top-3 archetypes, environment, anti-environment, role families и paths строятся детерминированно.
 - [x] Роли сначала определяются как классы; профессии приводятся только как примеры с уровнем соответствия.
 - [x] LLM получает только curated interpretation facts и section contract, не raw chart и не полный unrestricted payload.
-- [ ] Отчёт доступен с `deterministic_ready`; narrative загружается по секциям асинхронно.
+- [x] Отчёт доступен с `deterministic_ready`; narrative загружается по секциям асинхронно.
 - [ ] Web reader и PDF используют один persisted report payload и одинаковый порядок секций.
-- [ ] Backend ownership и Plus-access policy покрывают create/read/status/regenerate/PDF.
-- [ ] Исторические версии, вопросы/ответы, scores, evidence и prompt/scoring versions сохраняются.
-- [ ] Anti-generic, contradiction, evidence, overclaim и profession-prescription validators проходят.
+- [x] Backend ownership и Plus-access policy покрывают create/read/status/regenerate/PDF.
+- [x] Исторические версии, вопросы/ответы, scores, evidence и prompt/scoring versions сохраняются.
+- [x] Anti-generic, contradiction, evidence, overclaim и profession-prescription validators проходят локальные suites.
 - [ ] Staging smoke доказывает полный questionnaire → deterministic → narrative → reader/PDF flow.
 
 ## Stories
 
 | ID  | Story                                                                                         | Статус       |
 | --- | --------------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Зафиксировать product/access/migration contract](./S01-product-access-migration-contract.md) | 🟡 Частично  |
+| S01 | [Зафиксировать product/access/migration contract](./S01-product-access-migration-contract.md) | ✅ Завершено |
 | S02 | [Добавить Career storage и versioned schemas](./S02-storage-domain-schemas.md)                | ✅ Завершено |
 | S03 | [Построить factor и Career Dimension engine](./S03-factor-dimension-engine.md)                | ✅ Завершено |
 | S04 | [Реализовать контрольные вопросы и Profile Resolver](./S04-questions-profile-resolver.md)     | ✅ Завершено |
@@ -151,6 +151,7 @@ Career — специализированный отчёт. Целевой до�
 | S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                         | 🟡 Частично  |
 | S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                     | 🟡 Частично  |
 | S12 | [Закрыть QA, observability, migration и rollout](./S12-qa-observability-rollout.md)           | 🟡 Частично  |
+| S13 | [Выполнить Career rollout / rollback runbook](./S13-rollout-runbook.md)                       | 🟡 Evidence  |
 
 ## Порядок реализации
 
@@ -169,6 +170,7 @@ flowchart LR
   S09 --> S10
   S10 --> S12[S12 QA/rollout]
   S11 --> S12
+  S12 --> S13[S13 rollout runbook]
 ```
 
 ## Зависимости
@@ -184,4 +186,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature находится в реализации: S02–S09 завершены. S01 остаётся частичной до полного client contract closeout; S10–S11 ждут реальный browser smoke, S12 — staging real-provider/canary/production evidence.
+Feature находится в реализации: S01–S09 завершены. S10–S11 ждут реальный browser smoke; S12/S13 — staging real-provider, metrics observation window, canary и production evidence. Локальные source-level проверки не закрывают эти внешние критерии.

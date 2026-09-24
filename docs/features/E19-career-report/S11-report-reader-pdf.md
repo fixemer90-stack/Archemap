@@ -58,4 +58,4 @@
 - `npm test` — reader contract script passed.
 - `npx tsc --noEmit --pretty false` и exact-path ESLint — passed.
 
-Открытые пункты требуют реального desktop/mobile/print browser smoke и визуального сравнения с canonical HTML sample.
+Открытые пункты требуют реального desktop/mobile/print browser smoke и визуального сравнения с canonical HTML sample. Source-level contract checks не заменяют визуальное evidence; попытка запуска Windows Chrome 24 сентября 2026 года не выполнилась из-за системного consent timeout.

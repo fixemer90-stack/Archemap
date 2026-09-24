@@ -50,7 +50,7 @@ Career объединяет deterministic scoring, пользовательск�
 - Никакого drop/truncate/mutable backfill существующих Career payloads.
 - Rollback выключает новые writes, но сохраняет все новые artifacts.
 
-Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S12-rollout-runbook.md`](S13-rollout-runbook.md).
+Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S13-rollout-runbook.md`](S13-rollout-runbook.md).
 
 ## Реализация
 
@@ -80,6 +80,7 @@ Career объединяет deterministic scoring, пользовательск�
 - [x] Grandfathered legacy владелец сохраняет policy access; production matrix остаётся в runbook.
 - [x] Старые Career reports/PDF не мигрируются и остаются читаемыми по explicit migration boundary.
 - [ ] Метрики/alerts доказывают отсутствие stuck pipeline.
-- [ ] Cost/latency budgets зафиксированы в runbook; staging measurement ещё не записан.
+- [x] Cost/latency budgets зафиксированы в runbook.
+- [ ] Staging latency/token/cost measurement и dashboard links записаны как rollout evidence.
 - [x] Rollback feature flag покрыт contract test и не выполняет destructive migration/backfill.
 - [ ] Production smoke и точный CI SHA записаны в Story перед `✅`.

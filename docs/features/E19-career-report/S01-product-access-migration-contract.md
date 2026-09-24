@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — backend policy, retirement boundary, flag и access matrix реализованы; client/API enforcement остаётся в S09–S10
+✅ Завершено
 
 ## Контекст
 
@@ -48,11 +48,11 @@ new Career access = active Plus OR explicit grandfathered legacy entitlement
 
 ## Критерии приёмки
 
-- [ ] Один канонический Career report type используется backend и всеми клиентами. Backend зафиксирован; client migration остаётся в S10–S11.
+- [x] Один канонический Career report type используется backend и всеми target-клиентами; legacy reader остаётся только для исторических artifacts.
 - [x] Plus/grandfather policy не зависит только от frontend.
 - [x] Судьба `career_full` и существующих покупок описана без потери доступа.
 - [x] Legacy report rows/PDF не удаляются.
-- [ ] Новый endpoint не возвращает legacy payload как успешный Career v2.
+- [x] Новый endpoint не возвращает legacy payload как успешный Career v2.
 - [x] Feature flag и rollback не требуют destructive migration.
 - [x] Access matrix покрыта contract tests.
 
@@ -62,4 +62,7 @@ new Career access = active Plus OR explicit grandfathered legacy entitlement
 - `backend/app/modules/catalog/service.py`, `backend/app/config.py`
 - `backend/tests/unit/test_career/test_product_access_contract.py`
 - `uv run pytest tests/unit/test_career/test_product_access_contract.py -q` → `4 passed`
+- `backend/tests/integration/test_career_api.py` создаёт legacy `reports.product='career'` и проверяет `404` без legacy marker на target `/api/v1/career/reports/{id}`.
+- `frontend/src/components/report/career-cta.tsx` ведёт на канонический `/products/career?profileId=...`; product page читает deep link и автоматически открывает questionnaire выбранного профиля.
+- `node scripts/check-career-product-ux.mjs` → passed; exact-path ESLint и `npx tsc --noEmit --pretty false` → passed.
 - Local PostgreSQL upgrade/downgrade preserved legacy row counts exactly: `reports=3`, `chart_snapshots=45`, `payments=0`, `entitlements=0`, `users=41`.

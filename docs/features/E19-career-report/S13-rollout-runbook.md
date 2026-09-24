@@ -1,5 +1,9 @@
 # S13: Career rollout / rollback runbook
 
+## Статус
+
+🟡 Runbook готов; его staging/canary/production шаги и evidence остаются открытыми в S12
+
 ## Scope and safety invariant
 
 Target Career uses only additive `career_*` tables plus `career_generations`. Legacy `reports.product='career'`, legacy PDFs, payments and entitlements are never backfilled, rewritten, truncated or deleted by this rollout.

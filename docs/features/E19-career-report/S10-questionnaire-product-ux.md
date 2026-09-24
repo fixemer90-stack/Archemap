@@ -45,8 +45,9 @@
 - Вопросы, варианты, required-state и access-state приходят с backend; URL оплаты не используется как источник доступа.
 - Idempotency keys переиспользуются при retry в рамках flow, а повторный submit блокируется.
 - Deterministic-ready состояние даёт ссылку на progressive reader до завершения narrative.
+- Self-report CTA использует `/products/career?profileId=...`; Career page читает deep link и открывает questionnaire нужного профиля без повторного ручного выбора.
 - `npm test` — все UX contract scripts прошли, включая `check-career-product-ux.mjs`.
 - `npx tsc --noEmit --pretty false` — passed.
 - `npx eslint src/app/'(dashboard)'/products/career/page.tsx src/lib/api/career.ts` — passed после устранения hook warning.
 
-Открытый пункт требует реального mobile/desktop browser smoke с backend и активной Plus/legacy entitlement.
+Открытый пункт требует реального mobile/desktop browser smoke с backend и активной Plus/legacy entitlement. Попытка локального smoke 24 сентября 2026 года не считается evidence: запуск Windows Chrome был остановлен системным consent timeout до выполнения команды.

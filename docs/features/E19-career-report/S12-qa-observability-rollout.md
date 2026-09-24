@@ -71,6 +71,7 @@ Career объединяет deterministic scoring, пользовательск�
 - `node scripts/check-career-product-ux.mjs` → passed.
 - `node scripts/check-career-report-reader.mjs` → passed.
 - Repo-wide ruff/mypy, frontend test/type/lint/build и docs Prettier выполняются повторно после последнего edit; точный SHA записывается после commit/CI.
+- GitHub Actions `CI` для implementation/docs SHA `a61a3707b0063140aacf978ea56760de48501f7d` → success; run `22277123504`, все шесть jobs завершены успешно.
 
 ## Критерии приёмки
 
@@ -83,4 +84,5 @@ Career объединяет deterministic scoring, пользовательск�
 - [x] Cost/latency budgets зафиксированы в runbook.
 - [ ] Staging latency/token/cost measurement и dashboard links записаны как rollout evidence.
 - [x] Rollback feature flag покрыт contract test и не выполняет destructive migration/backfill.
-- [ ] Production smoke и точный CI SHA записаны в Story перед `✅`.
+- [x] Точный зелёный implementation SHA и CI run записаны в Story.
+- [ ] Production smoke report/PDF IDs записаны в Story перед `✅`.

@@ -1,18 +1,23 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
 
-const root = process.cwd();
+const frontendRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
+const root = path.resolve(frontendRoot, "..");
 const fixture = JSON.parse(
   fs.readFileSync(
-    path.join(root, "../contracts/fixtures/career-report-read-v1-parity.json"),
+    path.join(root, "contracts/fixtures/career-report-read-v1-parity.json"),
     "utf8",
   ),
 );
 const source = fs.readFileSync(
-  path.join(root, "src/lib/career/report-view-model.ts"),
+  path.join(frontendRoot, "src/lib/career/report-view-model.ts"),
   "utf8",
 );
 const transpiled = ts.transpileModule(source, {

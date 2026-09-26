@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const frontendRoot = process.cwd();
+const frontendRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 const root = path.resolve(frontendRoot, "..");
 const protocolPath = path.join(
   root,

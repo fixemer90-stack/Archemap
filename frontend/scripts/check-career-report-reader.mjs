@@ -37,7 +37,7 @@ expect(
   "Reader view model must include career paths",
 );
 expect(
-  vm.includes("не оценка"),
+  vm.includes("не является оценкой"),
   "Scores must be explained without good/bad ranking",
 );
 expect(

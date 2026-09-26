@@ -1,0 +1,250 @@
+{
+  "payload": {
+    "contract_version": "career_report_read_v1",
+    "report_id": "11111111-1111-4111-8111-111111111111",
+    "generation_id": "22222222-2222-4222-8222-222222222222",
+    "status": "narrative_failed",
+    "version": 3,
+    "versions": {
+      "scoring": "career-scoring-v1",
+      "prompt": "career-prompt-v2"
+    },
+    "deterministic_payload": {
+      "top_dimensions": [
+        {
+          "fact_key": "dimension:systems_thinking",
+          "dimension": "systems_thinking",
+          "score": 88,
+          "confidence": 0.84
+        },
+        {
+          "fact_key": "dimension:autonomy",
+          "dimension": "autonomy",
+          "score": 71,
+          "confidence": 0.61
+        }
+      ],
+      "contradictions": [
+        {
+          "fact_key": "contradiction:leadership_without_people_management",
+          "code": "leadership_without_people_management",
+          "capability_score": 82,
+          "motivation_score": 39
+        }
+      ],
+      "context_constraints": [
+        "experience:senior",
+        "constraints:provided",
+        "industry:regulated"
+      ],
+      "role_matches": [
+        {
+          "fact_key": "role:architecture",
+          "role_family_key": "architecture",
+          "category": "strong_match",
+          "profession_examples": ["Solution Architect", "Системный аналитик"],
+          "reasons": [
+            "dimension:systems_thinking",
+            "context:industry_regulated"
+          ]
+        }
+      ]
+    },
+    "sections": [
+      {
+        "section_key": "professional_summary",
+        "title": "Ваш профессиональный профиль",
+        "body": "Вы связываете ограничения и решения в целостную систему."
+      },
+      {
+        "section_key": "decision_making",
+        "title": "Стиль принятия решений",
+        "body": "Вы предпочитаете проверять последствия до окончательного выбора."
+      }
+    ],
+    "section_states": [
+      {
+        "section_key": "professional_summary",
+        "status": "ready",
+        "error": null
+      },
+      {
+        "section_key": "work_style",
+        "status": "failed",
+        "error": "career_provider_failure"
+      },
+      {
+        "section_key": "strengths",
+        "status": "pending",
+        "error": null
+      },
+      {
+        "section_key": "decision_making",
+        "status": "ready",
+        "error": null
+      }
+    ],
+    "assembled_payload": {}
+  },
+  "expected_manifest": {
+    "contract_version": "career_report_presentation_v1",
+    "report_status": "narrative_failed",
+    "notice": {
+      "kind": "narrative_failed",
+      "title": "Часть пояснений временно недоступна.",
+      "body": "Базовый профиль, показатели и уже готовые разделы остаются доступными."
+    },
+    "blocks": [
+      {
+        "kind": "narrative",
+        "key": "professional_summary",
+        "title": "Ваш профессиональный профиль",
+        "status": "ready",
+        "body": "Вы связываете ограничения и решения в целостную систему."
+      },
+      {
+        "kind": "narrative",
+        "key": "work_style",
+        "title": "Как вы работаете",
+        "status": "failed",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "strengths",
+        "title": "Сильные стороны",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "decision_making",
+        "title": "Стиль принятия решений",
+        "status": "ready",
+        "body": "Вы предпочитаете проверять последствия до окончательного выбора."
+      },
+      {
+        "kind": "narrative",
+        "key": "leadership_and_influence",
+        "title": "Лидерство и влияние",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "optimal_environment",
+        "title": "Оптимальная рабочая среда",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "risk_environment",
+        "title": "Что может снижать эффективность",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "career_archetypes",
+        "title": "Профессиональные архетипы",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "role_families",
+        "title": "Подходящие типы ролей",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "narrative",
+        "key": "career_paths",
+        "title": "Возможные карьерные траектории",
+        "status": "pending",
+        "body": null
+      },
+      {
+        "kind": "dimensions",
+        "key": "dimensions",
+        "title": "Выраженные рабочие тенденции",
+        "items": [
+          {
+            "key": "systems_thinking",
+            "label": "Системное мышление",
+            "score": 88,
+            "confidence": 0.84,
+            "confidence_label": "Основания согласованы",
+            "explanation": "Выраженность рабочей тенденции; число не является оценкой «хорошо» или «плохо»."
+          },
+          {
+            "key": "autonomy",
+            "label": "Самостоятельность",
+            "score": 71,
+            "confidence": 0.61,
+            "confidence_label": "Лучше проверить на опыте",
+            "explanation": "Выраженность рабочей тенденции; число не является оценкой «хорошо» или «плохо»."
+          }
+        ]
+      },
+      {
+        "kind": "contradictions",
+        "key": "contradictions",
+        "title": "Полезные развилки",
+        "items": [
+          {
+            "key": "leadership_without_people_management",
+            "label": "Способность вести за собой может не совпадать с желанием управлять людьми.",
+            "fact_key": "contradiction:leadership_without_people_management",
+            "capability_score": 82,
+            "motivation_score": 39
+          }
+        ]
+      },
+      {
+        "kind": "context",
+        "key": "context",
+        "title": "Учтённый контекст",
+        "items": [
+          {
+            "key": "experience:senior",
+            "label": "Опыт: уверенный профессиональный уровень"
+          },
+          {
+            "key": "constraints:provided",
+            "label": "Практические ограничения учтены"
+          },
+          {
+            "key": "industry:regulated",
+            "label": "Industry: regulated"
+          }
+        ]
+      },
+      {
+        "kind": "roles",
+        "key": "roles",
+        "title": "Семейства ролей",
+        "items": [
+          {
+            "key": "architecture",
+            "title": "Architecture",
+            "category": "Выраженное соответствие",
+            "reasons": [
+              "Dimension: systems thinking",
+              "Context: industry regulated"
+            ],
+            "examples": ["Solution Architect", "Системный аналитик"],
+            "example_label": "Возможный пример, а не назначение"
+          }
+        ]
+      },
+      {
+        "kind": "technical_basis",
+        "key": "technical_basis",
+        "title": "Основа интерпретации",
+        "body": "Отчёт собран из сохранённых расчётов, ответов и версий правил. Технический слой нужен для проверяемости и не заменяет профессиональную консультацию или реальный опыт."
+      }
+    ]
+  }
+}

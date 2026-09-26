@@ -1,0 +1,52 @@
+{
+  "protocol_version": "career_report_sample_parity_v1",
+  "updated_on": "2026-09-27",
+  "canonical": {
+    "html": "docs/design/astrotype-career-report-sample.html",
+    "desktop_preview": "docs/design/astrotype-career-report-sample.png",
+    "mobile_preview": "docs/design/astrotype-career-report-sample-mobile.png"
+  },
+  "reader": "frontend/src/app/(dashboard)/products/career/report/[reportId]/page.tsx",
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 1200 },
+    { "name": "mobile", "width": 390, "height": 844 }
+  ],
+  "component_pairs": [
+    {
+      "name": "hero",
+      "canonical_selector": ".hero",
+      "reader_selector": "article.career-reader > header"
+    },
+    {
+      "name": "section-index",
+      "canonical_selector": ".section-index",
+      "reader_selector": "nav[aria-label='Разделы отчёта']"
+    },
+    {
+      "name": "first-narrative",
+      "canonical_selector": "#profile",
+      "reader_selector": "[data-presentation-key='professional_summary']"
+    },
+    {
+      "name": "roles",
+      "canonical_selector": "#roles",
+      "reader_selector": "[data-presentation-key='roles']"
+    },
+    {
+      "name": "technical-basis",
+      "canonical_selector": ".calculation",
+      "reader_selector": "[data-presentation-key='technical_basis']"
+    }
+  ],
+  "checklist": [
+    "Narrative blocks precede deterministic and technical evidence.",
+    "Desktop and mobile have no horizontal overflow.",
+    "Hero, index, narrative, role, and technical-basis crops are visible at both viewports.",
+    "The reader retains the canonical dark paper/gold visual direction while the backend PDF remains A4 light paper.",
+    "Comparison is component-and-checklist based; full-page pixel equality is explicitly not an acceptance signal."
+  ],
+  "commands": [
+    "cd frontend && node scripts/check-career-sample-parity.mjs",
+    "cd frontend && npx playwright test tests/e2e/career-reader.spec.ts --grep 'canonical sample component evidence'"
+  ]
+}

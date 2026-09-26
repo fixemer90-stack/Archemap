@@ -202,13 +202,13 @@ export default function CareerReportPage() {
         ))}
       </nav>
 
-      {payload.status === "narrative_failed" && (
+      {report.notice && (
         <aside
           className="rounded-2xl border border-amber-300/25 bg-amber-300/5 p-5 text-sm leading-6 text-amber-50"
           aria-live="polite"
+          data-report-notice={report.notice.kind}
         >
-          <strong>Часть пояснений временно недоступна.</strong> Базовый профиль,
-          показатели и уже готовые разделы остаются доступными.
+          <strong>{report.notice.title}</strong> {report.notice.body}
         </aside>
       )}
 
@@ -217,6 +217,8 @@ export default function CareerReportPage() {
           <section
             key={section.key}
             id={section.key}
+            data-presentation-key={section.key}
+            data-section-status={section.status}
             className="scroll-mt-8 rounded-[24px] border border-white/10 bg-[#111927]/85 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] sm:p-9"
           >
             <p className="text-xs font-semibold tracking-[0.22em] text-[#D7B466]">
@@ -238,7 +240,10 @@ export default function CareerReportPage() {
         ))}
       </section>
 
-      <section className="rounded-[24px] border border-[#D7B466]/20 bg-[#0e1623] p-6 sm:p-9">
+      <section
+        data-presentation-key="dimensions"
+        className="rounded-[24px] border border-[#D7B466]/20 bg-[#0e1623] p-6 sm:p-9"
+      >
         <div className="max-w-2xl">
           <p className="text-xs uppercase tracking-[0.22em] text-[#D7B466]">
             Практические акценты
@@ -269,9 +274,7 @@ export default function CareerReportPage() {
               {dimension.confidence !== null && (
                 <p className="mt-3 text-xs text-[#8795AA]">
                   <CareerTerm term="Уверенность" />:{" "}
-                  {dimension.confidence >= 0.75
-                    ? "основания согласованы"
-                    : "лучше проверить на опыте"}
+                  {dimension.confidence_label.toLocaleLowerCase("ru-RU")}
                 </p>
               )}
             </article>
@@ -281,23 +284,43 @@ export default function CareerReportPage() {
 
       {(report.contradictions.length > 0 || report.context.length > 0) && (
         <section className="grid gap-5 md:grid-cols-2">
-          <div className="rounded-[22px] border border-white/10 bg-[#111927] p-6">
+          <div
+            data-presentation-key="contradictions"
+            className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+          >
             <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
               Полезные развилки
             </h2>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
               {report.contradictions.map((item) => (
-                <li key={item}>— {item}</li>
+                <li key={item.key}>
+                  — {item.label}
+                  {(item.capability_score !== null ||
+                    item.motivation_score !== null) && (
+                    <span className="block text-xs text-[#8795AA]">
+                      {item.capability_score !== null &&
+                        `Способность: ${item.capability_score}`}
+                      {item.capability_score !== null &&
+                        item.motivation_score !== null &&
+                        " · "}
+                      {item.motivation_score !== null &&
+                        `Мотивация: ${item.motivation_score}`}
+                    </span>
+                  )}
+                </li>
               ))}
             </ul>
           </div>
-          <div className="rounded-[22px] border border-white/10 bg-[#111927] p-6">
+          <div
+            data-presentation-key="context"
+            className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+          >
             <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
               Учтённый контекст
             </h2>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
               {report.context.map((item) => (
-                <li key={item}>— {item}</li>
+                <li key={item.key}>— {item.label}</li>
               ))}
             </ul>
           </div>
@@ -305,7 +328,7 @@ export default function CareerReportPage() {
       )}
 
       {report.roles.length > 0 && (
-        <section className="space-y-5">
+        <section className="space-y-5" data-presentation-key="roles">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-[#D7B466]">
               Направления
@@ -326,7 +349,7 @@ export default function CareerReportPage() {
                 <h3 className="mt-4 text-xl capitalize">{role.title}</h3>
                 {role.examples.length > 0 && (
                   <p className="mt-4 text-sm leading-6 text-[#C8D0DE]">
-                    <strong>{role.exampleLabel}:</strong>{" "}
+                    <strong>{role.example_label}:</strong>{" "}
                     {role.examples.join(", ")}.
                   </p>
                 )}
@@ -336,15 +359,14 @@ export default function CareerReportPage() {
         </section>
       )}
 
-      <details className="rounded-2xl border border-white/10 bg-[#0d1420] p-5 text-sm text-[#B9C3D3]">
+      <details
+        data-presentation-key="technical_basis"
+        className="rounded-2xl border border-white/10 bg-[#0d1420] p-5 text-sm text-[#B9C3D3]"
+      >
         <summary className="cursor-pointer font-medium text-[#F6F1E8]">
-          Основа интерпретации
+          {report.technicalBasis.title}
         </summary>
-        <p className="mt-4 leading-6">
-          Отчёт собран из сохранённых расчётов, ответов и версий правил. Этот
-          слой нужен для проверяемости и не заменяет профессиональную
-          консультацию или ваш реальный опыт.
-        </p>
+        <p className="mt-4 leading-6">{report.technicalBasis.body}</p>
       </details>
       <style jsx global>{`
         @media print {

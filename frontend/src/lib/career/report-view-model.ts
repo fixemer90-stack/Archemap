@@ -48,39 +48,114 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CONTEXT_LABELS: Record<string, string> = {
-  "experience:senior": "Уверенный профессиональный опыт",
-  "experience:mid": "Развивающийся профессиональный опыт",
-  "experience:entry": "Начало профессионального пути",
+  "experience:senior": "Опыт: уверенный профессиональный уровень",
+  "experience:mid": "Опыт: развивающийся профессиональный уровень",
+  "experience:entry": "Опыт: начало профессионального пути",
   "current_activity:provided": "Текущая деятельность учтена",
   "change_goal:provided": "Цель изменений учтена",
   "constraints:provided": "Практические ограничения учтены",
 };
 
-export interface CareerReportViewModel {
-  status: string;
-  sections: Array<{
-    key: string;
+const CONTRADICTION_LABELS: Record<string, string> = {
+  leadership_without_people_management:
+    "Способность вести за собой может не совпадать с желанием управлять людьми.",
+};
+
+const DIMENSION_EXPLANATION =
+  "Выраженность рабочей тенденции; число не является оценкой «хорошо» или «плохо».";
+const TECHNICAL_BASIS =
+  "Отчёт собран из сохранённых расчётов, ответов и версий правил. Технический слой нужен для проверяемости и не заменяет профессиональную консультацию или реальный опыт.";
+
+export interface CareerNarrativeBlock {
+  kind: "narrative";
+  key: string;
+  title: string;
+  status: "ready" | "failed" | "pending";
+  body: string | null;
+}
+
+export interface CareerDimensionItem {
+  key: string;
+  label: string;
+  score: number;
+  confidence: number | null;
+  confidence_label: string;
+  explanation: string;
+}
+
+export interface CareerContradictionItem {
+  key: string;
+  label: string;
+  fact_key: string;
+  capability_score: number | null;
+  motivation_score: number | null;
+}
+
+export interface CareerContextItem {
+  key: string;
+  label: string;
+}
+
+export interface CareerRoleItem {
+  key: string;
+  title: string;
+  category: string;
+  reasons: string[];
+  examples: string[];
+  example_label: string;
+}
+
+export type CareerPresentationBlock =
+  | CareerNarrativeBlock
+  | {
+      kind: "dimensions";
+      key: "dimensions";
+      title: string;
+      items: CareerDimensionItem[];
+    }
+  | {
+      kind: "contradictions";
+      key: "contradictions";
+      title: string;
+      items: CareerContradictionItem[];
+    }
+  | {
+      kind: "context";
+      key: "context";
+      title: string;
+      items: CareerContextItem[];
+    }
+  | {
+      kind: "roles";
+      key: "roles";
+      title: string;
+      items: CareerRoleItem[];
+    }
+  | {
+      kind: "technical_basis";
+      key: "technical_basis";
+      title: string;
+      body: string;
+    };
+
+export interface CareerReportPresentation {
+  contract_version: "career_report_presentation_v1";
+  report_status: string;
+  notice: {
+    kind: "narrative_failed" | "deterministic_ready";
     title: string;
-    body: string | null;
-    status: string;
-  }>;
-  dimensions: Array<{
-    key: string;
-    label: string;
-    score: number;
-    confidence: number | null;
-    explanation: string;
-  }>;
-  contradictions: string[];
-  context: string[];
-  roles: Array<{
-    key: string;
-    title: string;
-    category: string;
-    reasons: string[];
-    examples: string[];
-    exampleLabel: string;
-  }>;
+    body: string;
+  } | null;
+  blocks: CareerPresentationBlock[];
+}
+
+export interface CareerReportViewModel extends CareerReportPresentation {
+  sections: CareerNarrativeBlock[];
+  dimensions: CareerDimensionItem[];
+  contradictions: CareerContradictionItem[];
+  context: CareerContextItem[];
+  roles: CareerRoleItem[];
+  technicalBasis: Extract<CareerPresentationBlock, { kind: "technical_basis" }>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -101,71 +176,179 @@ function text(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-export function buildCareerReportViewModel(
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function humanize(value: string): string {
+  const normalized = value.replaceAll("_", " ").replaceAll(":", ": ");
+  return normalized
+    ? normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase()
+    : "";
+}
+
+function reportNotice(status: string): CareerReportPresentation["notice"] {
+  if (status === "narrative_failed") {
+    return {
+      kind: "narrative_failed",
+      title: "Часть пояснений временно недоступна.",
+      body: "Базовый профиль, показатели и уже готовые разделы остаются доступными.",
+    };
+  }
+  if (
+    [
+      "deterministic_ready",
+      "generating_sections",
+      "narrative_pending",
+      "generating",
+      "pending",
+    ].includes(status)
+  ) {
+    return {
+      kind: "deterministic_ready",
+      title: "Пояснения ещё готовятся.",
+      body: "Базовый профиль и показатели уже доступны; десять разделов будут заполняться по мере готовности.",
+    };
+  }
+  return null;
+}
+
+export function buildCareerReportPresentation(
   payload: CareerReportPayload,
-): CareerReportViewModel {
-  const deterministic = payload.deterministic_payload;
+): CareerReportPresentation {
+  const deterministic = isRecord(payload.deterministic_payload)
+    ? payload.deterministic_payload
+    : {};
   const sectionByKey = new Map(
-    payload.sections
-      .filter(isRecord)
-      .map((section) => [text(section.section_key), section] as const),
+    records(payload.sections).map((section) => [
+      text(section.section_key),
+      section,
+    ]),
   );
   const stateByKey = new Map(
     payload.section_states.map((state) => [state.section_key, state]),
   );
 
-  const sections = CAREER_SECTION_ORDER.map((key) => {
+  const blocks: CareerPresentationBlock[] = CAREER_SECTION_ORDER.map((key) => {
     const section = sectionByKey.get(key);
     const state = stateByKey.get(key);
+    const body = text(section?.body);
+    const sourceStatus = text(state?.status);
+    const status: CareerNarrativeBlock["status"] = body
+      ? "ready"
+      : sourceStatus === "failed"
+        ? "failed"
+        : "pending";
     return {
+      kind: "narrative",
       key,
       title: text(section?.title, SECTION_TITLES[key]),
-      body: section ? text(section.body) || null : null,
-      status: state?.status ?? (section ? "ready" : "pending"),
+      status,
+      body: body || null,
     };
   });
 
-  const dimensions = records(deterministic.top_dimensions).map((item) => {
-    const key = text(item.dimension);
-    return {
-      key,
-      label: DIMENSION_LABELS[key] ?? key.replaceAll("_", " "),
-      score: typeof item.score === "number" ? item.score : 0,
-      confidence: typeof item.confidence === "number" ? item.confidence : null,
-      explanation:
-        "Выраженность рабочей тенденции — не оценка личности как «хорошей» или «плохой».",
-    };
+  blocks.push({
+    kind: "dimensions",
+    key: "dimensions",
+    title: "Выраженные рабочие тенденции",
+    items: records(deterministic.top_dimensions).map((item) => {
+      const key = text(item.dimension);
+      const confidence = numberOrNull(item.confidence);
+      return {
+        key,
+        label: DIMENSION_LABELS[key] ?? humanize(key),
+        score: numberOrNull(item.score) ?? 0,
+        confidence,
+        confidence_label:
+          confidence !== null && confidence >= 0.75
+            ? "Основания согласованы"
+            : "Лучше проверить на опыте",
+        explanation: DIMENSION_EXPLANATION,
+      };
+    }),
   });
 
-  const contradictions = records(deterministic.contradictions).map(
-    () =>
-      "Здесь способность и личная мотивация могут расходиться. Это не ошибка, а полезная развилка для выбора формата роли.",
-  );
+  blocks.push({
+    kind: "contradictions",
+    key: "contradictions",
+    title: "Полезные развилки",
+    items: records(deterministic.contradictions).map((item) => {
+      const key = text(item.code, "contextual_tension");
+      return {
+        key,
+        label:
+          CONTRADICTION_LABELS[key] ??
+          "Способность и мотивация могут проявляться по-разному; проверьте вывод в контексте реальной роли.",
+        fact_key: text(item.fact_key),
+        capability_score: numberOrNull(item.capability_score),
+        motivation_score: numberOrNull(item.motivation_score),
+      };
+    }),
+  });
 
-  const context = strings(deterministic.context_constraints)
-    .map((key) => CONTEXT_LABELS[key])
-    .filter((item): item is string => Boolean(item));
-
-  const roles = records(deterministic.role_matches).map((item) => {
-    const key = text(item.role_family_key);
-    return {
+  blocks.push({
+    kind: "context",
+    key: "context",
+    title: "Учтённый контекст",
+    items: strings(deterministic.context_constraints).map((key) => ({
       key,
-      title: key.replaceAll("_", " "),
-      category: CATEGORY_LABELS[text(item.category)] ?? "Зависит от контекста",
-      reasons: strings(item.reasons).map((reason) =>
-        reason.replaceAll("_", " ").replaceAll(":", ": "),
-      ),
-      examples: strings(item.profession_examples),
-      exampleLabel: "Возможный пример, а не назначение",
-    };
+      label: CONTEXT_LABELS[key] ?? humanize(key),
+    })),
+  });
+
+  blocks.push({
+    kind: "roles",
+    key: "roles",
+    title: "Семейства ролей",
+    items: records(deterministic.role_matches).map((item) => {
+      const key = text(item.role_family_key, "context_dependent");
+      return {
+        key,
+        title: humanize(key),
+        category:
+          CATEGORY_LABELS[text(item.category)] ?? "Зависит от контекста",
+        reasons: strings(item.reasons).map(humanize),
+        examples: strings(item.profession_examples),
+        example_label: "Возможный пример, а не назначение",
+      };
+    }),
+  });
+
+  blocks.push({
+    kind: "technical_basis",
+    key: "technical_basis",
+    title: "Основа интерпретации",
+    body: TECHNICAL_BASIS,
   });
 
   return {
-    status: payload.status,
-    sections,
-    dimensions,
-    contradictions,
-    context,
-    roles,
+    contract_version: "career_report_presentation_v1",
+    report_status: text(payload.status, "pending"),
+    notice: reportNotice(text(payload.status, "pending")),
+    blocks,
+  };
+}
+
+export function buildCareerReportViewModel(
+  payload: CareerReportPayload,
+): CareerReportViewModel {
+  const presentation = buildCareerReportPresentation(payload);
+  const section = <Kind extends CareerPresentationBlock["kind"]>(kind: Kind) =>
+    presentation.blocks.find(
+      (block): block is Extract<CareerPresentationBlock, { kind: Kind }> =>
+        block.kind === kind,
+    );
+
+  return {
+    ...presentation,
+    sections: presentation.blocks.filter(
+      (block): block is CareerNarrativeBlock => block.kind === "narrative",
+    ),
+    dimensions: section("dimensions")?.items ?? [],
+    contradictions: section("contradictions")?.items ?? [],
+    context: section("context")?.items ?? [],
+    roles: section("roles")?.items ?? [],
+    technicalBasis: section("technical_basis")!,
   };
 }

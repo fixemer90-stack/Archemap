@@ -17,7 +17,12 @@ export type CareerMockState = {
   reportKeys: string[];
 };
 
-export async function mockCareerApi(page: Page): Promise<CareerMockState> {
+export async function mockCareerApi(
+  page: Page,
+  options: {
+    reportStatus?: "ready" | "deterministic_ready" | "narrative_failed";
+  } = {},
+): Promise<CareerMockState> {
   await page.addInitScript(() => {
     if (!globalThis.crypto.randomUUID) {
       Object.defineProperty(globalThis.crypto, "randomUUID", {
@@ -139,7 +144,36 @@ export async function mockCareerApi(page: Page): Promise<CareerMockState> {
       });
     }
     if (path === "/api/v1/career/reports/report-1") {
-      return json(route, reportPayload);
+      const report: {
+        status: string;
+        sections: Array<Record<string, unknown>>;
+        section_states: Array<{
+          section_key: string;
+          status: string;
+          error: string | null;
+        }>;
+      } = structuredClone(reportPayload);
+      if (options.reportStatus === "deterministic_ready") {
+        report.status = "deterministic_ready";
+        report.sections = [];
+        report.section_states = [];
+      } else if (options.reportStatus === "narrative_failed") {
+        report.status = "narrative_failed";
+        report.sections = report.sections.slice(0, 1);
+        report.section_states = [
+          {
+            section_key: "professional_summary",
+            status: "ready",
+            error: null,
+          },
+          {
+            section_key: "work_style",
+            status: "failed",
+            error: "career_provider_failure",
+          },
+        ];
+      }
+      return json(route, report);
     }
     if (path === "/api/v1/career/reports/report-1/pdf") {
       return route.fulfill({

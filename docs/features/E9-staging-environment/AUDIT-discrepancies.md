@@ -42,6 +42,31 @@ Current live staging state:
 | Browser auth hardening  | 🟡 Partial  | Auth cookies are marked Secure only for `APP_ENV=production`, not for the public HTTPS staging environment.                 |
 | YooKassa smoke          | 🟡 Partial  | Checkout/provider/payment/entitlement/tier evidence exists, but no webhook was received or stored.                          |
 
+## Severity assessment — 2026-09-26
+
+No finding currently proves an active public bypass, production compromise, production outage or use of live YooKassa credentials on staging. Therefore E9 does not require an emergency staging shutdown.
+
+### High priority
+
+1. **Edge-network isolation.** Staging backend and frontend share `astrotype_edge` with production Caddy and can be addressed inside that network without passing through the Basic Auth gateway. No public route bypass was found, but the implemented trust boundary contradicts the documented gateway-only design.
+2. **Deploy identity and reproducibility.** The stale `.deploy-sha` and mixed source revisions make it impossible to identify one exact reviewed/green commit as the running staging release or to reproduce and roll it back reliably.
+3. **Automatic YooKassa webhook delivery.** Checkout, provider confirmation and fallback access activation work, but zero webhook rows means staging does not validate the normal provider notification path.
+
+### Medium priority
+
+- staging and production currently share one credential pair for the same YooKassa test shop; no live-shop credential exposure was found;
+- the current repository topology includes a scheduler that is absent from the live staging project;
+- staging authentication cookies do not receive the `Secure` attribute even though the public host is HTTPS.
+
+### Remediation order
+
+1. restore a gateway-only `astrotype_edge` boundary;
+2. establish an exact staging deploy marker and deploy one coherent green revision;
+3. repair and prove automatic YooKassa webhook delivery;
+4. issue staging-only test-shop credentials;
+5. enable `Secure` cookies for staging and add regression coverage;
+6. deploy and verify the singleton scheduler.
+
 ## Implementation and contract gaps
 
 | Gap                                        | Evidence                                                                                                                                                                                                                   | Impact                                                                                                                                                                                                                              | Closure proof                                                                                                                                                                          |

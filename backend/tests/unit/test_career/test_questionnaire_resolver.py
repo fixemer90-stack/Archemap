@@ -204,6 +204,7 @@ def test_questionnaire_and_resolution_build_versioned_persistable_rows() -> None
 
     chart_id = uuid.uuid4()
     career_profile_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
     session_id = uuid.uuid4()
     answers = CareerQuestionnaireCompleted.model_validate(_completed_answers())
     answer_rows = build_answer_rows(
@@ -222,8 +223,10 @@ def test_questionnaire_and_resolution_build_versioned_persistable_rows() -> None
     row = build_resolution_row(
         career_profile_id=career_profile_id,
         chart_id=chart_id,
+        generation_id=generation_id,
         resolution=resolution,
     )
+    assert row.generation_id == generation_id
     assert row.resolver_version == resolution.resolver_version
     assert row.contradictions[0]["code"] == "leadership_without_people_management"
     assert "Move into a role" not in repr(row.context_constraints)
@@ -294,6 +297,7 @@ async def test_questionnaire_persistence_flushes_parent_before_answer_rows() -> 
     resolution = CareerResolution(
         career_profile_id=questionnaire.career_profile_id,
         chart_id=questionnaire.chart_id,
+        generation_id=uuid.uuid4(),
         resolver_version="career-resolver-1",
     )
     repository = MagicMock()

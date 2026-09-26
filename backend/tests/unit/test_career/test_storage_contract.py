@@ -95,6 +95,22 @@ def test_orm_declares_all_queryable_career_entities_and_chart_lineage() -> None:
     assert "questionnaire_version" in models.CareerQuestionnaireSession.__table__.columns
     assert "resolver_version" in models.CareerResolution.__table__.columns
     assert "prompt_version" in models.CareerSegmentGeneration.__table__.columns
+    generation_scoped_models = (
+        models.CareerDimensionScore,
+        models.CareerResolution,
+        models.CareerArchetypeScore,
+        models.CareerEnvironmentAxis,
+        models.CareerRoleMatch,
+        models.CareerInterpretationFact,
+    )
+    for model in generation_scoped_models:
+        table = cast(Table, model.__table__)
+        assert "generation_id" in table.columns
+        assert any(
+            "generation_id" in {column.name for column in constraint.columns}
+            for constraint in table.constraints
+            if isinstance(constraint, UniqueConstraint)
+        )
     generation = cast(Table, models.CareerGeneration.__table__)
     generation_columns = set(generation.columns.keys())
     assert {"user_id", "career_profile_id", "report_id", "source_report_id"} <= generation_columns
@@ -135,6 +151,29 @@ def test_career_generation_migration_is_additive_and_reversible() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.down_revision == "f5a6b7c8d9e0"
+
+
+def test_career_lineage_migration_backfills_and_versions_deterministic_artifacts() -> None:
+    path = ROOT / "alembic" / "versions" / "b7c8d9e0f1a2_add_career_artifact_generation_lineage.py"
+    source = path.read_text(encoding="utf-8")
+    for table in (
+        "career_dimension_scores",
+        "career_resolutions",
+        "career_archetype_scores",
+        "career_environment_axes",
+        "career_role_matches",
+        "career_interpretation_facts",
+    ):
+        assert f'"{table}"' in source
+    assert "career_profiles.generation_id" in source
+    assert "nullable=False" in source
+    assert "drop_table" not in source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
+
+    spec = importlib.util.spec_from_file_location("career_lineage_migration", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.down_revision == "a6b7c8d9e0f1"
 
 
 @pytest.mark.asyncio

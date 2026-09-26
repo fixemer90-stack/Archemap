@@ -151,9 +151,18 @@ async def _generate_career_report_async(
 ) -> dict[str, Any]:
     async with async_session_factory() as db:
         repository = CareerRepository(db)
-        generation = await _load_generation(db, generation_id)
+        generation = await repository.claim_generation(generation_id)
         if generation is None:
-            raise ValueError("Career generation not found")
+            existing = await _load_generation(db, generation_id)
+            if existing is None:
+                raise ValueError("Career generation not found")
+            return {
+                "generation_id": str(existing.generation_id),
+                "report_id": str(existing.report_id) if existing.report_id is not None else None,
+                "status": existing.status,
+                "duplicate_delivery": True,
+            }
+        await db.commit()
         stage = "deterministic"
         stage_started = perf_counter()
         event_logger = bind_career_context(
@@ -163,10 +172,6 @@ async def _generate_career_report_async(
         )
         try:
             event_logger.info("career_generation_started", operation=generation.operation)
-            generation.status = "calculating_dimensions"
-            generation.diagnostics = {"stage": "deterministic"}
-            await db.commit()
-
             if generation.operation == "regenerate":
                 if generation.source_report_id is None:
                     raise ValueError("Regeneration source report is missing")
@@ -177,6 +182,7 @@ async def _generate_career_report_async(
                     source=source,
                     generation_id=generation.generation_id,
                     idempotency_key=generation.idempotency_key,
+                    version=await repository.allocate_report_version(generation.career_profile_id),
                 )
                 facts = CareerInterpretationFacts.model_validate(report.deterministic_payload)
             else:
@@ -219,31 +225,34 @@ async def _generate_career_report_async(
                     role_matches=role_matches,
                     career_paths=career_paths,
                 )
-                latest = await repository.get_latest_report(profile.id)
                 report = build_deterministic_career_report_row(
                     facts=facts,
                     generation_id=generation.generation_id,
                     idempotency_key=generation.idempotency_key,
-                    version=(latest.version + 1 if latest is not None else 1),
+                    version=await repository.allocate_report_version(profile.id),
                 )
                 dimension_rows, evidence_rows = build_dimension_rows(
                     career_profile_id=profile.id,
                     chart_id=profile.chart_id,
+                    generation_id=generation.generation_id,
                     results=dimensions,
                 )
                 archetype_rows = build_archetype_rows(
                     career_profile_id=profile.id,
                     chart_id=profile.chart_id,
+                    generation_id=generation.generation_id,
                     results=archetypes,
                 )
                 environment_rows = build_environment_rows(
                     career_profile_id=profile.id,
                     chart_id=profile.chart_id,
+                    generation_id=generation.generation_id,
                     result=environment,
                 )
                 role_rows = build_role_match_rows(
                     career_profile_id=profile.id,
                     chart_id=profile.chart_id,
+                    generation_id=generation.generation_id,
                     matches=role_matches,
                 )
                 path_rows = build_career_path_rows(
@@ -260,12 +269,13 @@ async def _generate_career_report_async(
                         build_resolution_row(
                             career_profile_id=profile.id,
                             chart_id=profile.chart_id,
+                            generation_id=generation.generation_id,
                             resolution=resolution,
                         ),
                         *archetype_rows,
                         *environment_rows,
                         *path_rows,
-                        *build_interpretation_fact_rows(facts),
+                        *build_interpretation_fact_rows(facts, generation_id=generation.generation_id),
                     ],
                 )
 
@@ -413,6 +423,7 @@ def build_regeneration_report_row(
     source: models.CareerReport,
     generation_id: uuid.UUID,
     idempotency_key: str,
+    version: int,
 ) -> models.CareerReport:
     """Create a new narrative attempt without mutating deterministic artifacts."""
 
@@ -421,7 +432,7 @@ def build_regeneration_report_row(
         chart_id=source.chart_id,
         generation_id=generation_id,
         idempotency_key=idempotency_key,
-        version=source.version + 1,
+        version=version,
         status="deterministic_ready",
         scoring_version=source.scoring_version,
         reference_version=source.reference_version,

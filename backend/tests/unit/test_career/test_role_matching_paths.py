@@ -194,12 +194,18 @@ def test_missing_context_produces_archetypal_paths_with_explicit_limitations() -
 def test_role_and_path_results_build_persistable_rows() -> None:
     profile_id = uuid.uuid4()
     chart_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
     matches = match_roles(
         dimensions=_dimensions(),
         environment=_environment(),
         resolution=_resolution("expert", context=("experience:senior", "goal:independent_practice")),
     )[:2]
-    role_rows = build_role_match_rows(career_profile_id=profile_id, chart_id=chart_id, matches=matches)
+    role_rows = build_role_match_rows(
+        career_profile_id=profile_id,
+        chart_id=chart_id,
+        generation_id=generation_id,
+        matches=matches,
+    )
     paths = build_career_paths(
         matches=matches,
         resolution=_resolution("expert", context=("experience:senior", "goal:independent_practice")),
@@ -213,6 +219,7 @@ def test_role_and_path_results_build_persistable_rows() -> None:
 
     assert all(row.id is not None for row in role_rows)
     assert all(row.reference_version == ROLE_CATALOG_VERSION for row in role_rows)
+    assert all(row.generation_id == generation_id for row in role_rows)
     assert path_rows
     assert all(row.role_match_id in {role.id for role in role_rows} for row in path_rows)
     assert all(row.reference_version == CAREER_PATH_GRAPH_VERSION for row in path_rows)

@@ -119,12 +119,14 @@ def build_resolution_row(
     *,
     career_profile_id: UUID,
     chart_id: UUID,
+    generation_id: UUID,
     resolution: CareerProfileResolution,
 ) -> CareerResolution:
     """Build a persisted resolver row without forwarding raw free text."""
     return CareerResolution(
         career_profile_id=career_profile_id,
         chart_id=chart_id,
+        generation_id=generation_id,
         resolver_version=resolution.resolver_version,
         confirmed_traits=list(resolution.confirmed_traits),
         contradictions=[

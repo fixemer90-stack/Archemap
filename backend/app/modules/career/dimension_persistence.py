@@ -13,6 +13,7 @@ def build_dimension_rows(
     *,
     career_profile_id: uuid.UUID,
     chart_id: uuid.UUID,
+    generation_id: uuid.UUID,
     results: Sequence[CareerDimensionResult],
 ) -> tuple[list[CareerDimensionScore], list[CareerDimensionEvidence]]:
     """Build independently queryable score/evidence rows with preassigned IDs."""
@@ -26,6 +27,7 @@ def build_dimension_rows(
                 id=score_id,
                 career_profile_id=career_profile_id,
                 chart_id=chart_id,
+                generation_id=generation_id,
                 dimension=result.dimension.value,
                 score=result.score,
                 confidence=result.confidence,

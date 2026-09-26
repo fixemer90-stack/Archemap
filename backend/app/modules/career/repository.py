@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Sequence
-from typing import TypeVar
+from dataclasses import dataclass
+from typing import Any, TypeVar
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models import BaseModel
@@ -14,6 +17,16 @@ from app.modules.astrotype_v2.models import NatalChart
 from app.modules.career import models
 
 _CareerModel = TypeVar("_CareerModel", bound=BaseModel)
+
+
+class CareerGenerationTargetMismatchError(ValueError):
+    """An idempotency key was reused for a different report target."""
+
+
+@dataclass(frozen=True)
+class CareerGenerationCreateResult:
+    generation: models.CareerGeneration
+    created: bool
 
 
 class CareerRepository:
@@ -166,6 +179,83 @@ class CareerRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    async def create_generation_idempotently(
+        self,
+        *,
+        generation_id: UUID,
+        user_id: UUID,
+        career_profile_id: UUID,
+        chart_id: UUID,
+        operation: str,
+        idempotency_key: str,
+        source_report_id: UUID | None,
+        diagnostics: dict[str, Any],
+    ) -> CareerGenerationCreateResult:
+        """Atomically create or read a generation and reject cross-target key reuse."""
+
+        statement = (
+            pg_insert(models.CareerGeneration)
+            .values(
+                id=uuid.uuid4(),
+                generation_id=generation_id,
+                user_id=user_id,
+                career_profile_id=career_profile_id,
+                chart_id=chart_id,
+                source_report_id=source_report_id,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                status="queued",
+                diagnostics=diagnostics,
+            )
+            .on_conflict_do_nothing(constraint="uq_career_generations_user_operation_idempotency")
+            .returning(models.CareerGeneration)
+        )
+        inserted = (await self.session.execute(statement)).scalar_one_or_none()
+        if inserted is not None:
+            return CareerGenerationCreateResult(generation=inserted, created=True)
+
+        existing = await self.get_generation_by_idempotency(
+            user_id=user_id,
+            operation=operation,
+            idempotency_key=idempotency_key,
+        )
+        if existing is None:
+            raise RuntimeError("Career generation conflict could not be read back")
+        requested_target = (career_profile_id, chart_id, source_report_id)
+        existing_target = (existing.career_profile_id, existing.chart_id, existing.source_report_id)
+        if existing_target != requested_target:
+            raise CareerGenerationTargetMismatchError("Idempotency key already used for another target")
+        return CareerGenerationCreateResult(generation=existing, created=False)
+
+    async def claim_generation(self, generation_id: UUID) -> models.CareerGeneration | None:
+        """Claim a queued generation so duplicate worker deliveries become no-ops."""
+
+        result = await self.session.execute(
+            update(models.CareerGeneration)
+            .where(
+                models.CareerGeneration.generation_id == generation_id,
+                models.CareerGeneration.status == "queued",
+            )
+            .values(status="calculating_dimensions", diagnostics={"stage": "deterministic"})
+            .returning(models.CareerGeneration)
+        )
+        return result.scalar_one_or_none()
+
+    async def allocate_report_version(self, career_profile_id: UUID) -> int:
+        """Serialize version allocation on the profile row until the report is inserted."""
+
+        locked_profile = await self.session.execute(
+            select(models.CareerProfile.id).where(models.CareerProfile.id == career_profile_id).with_for_update()
+        )
+        if locked_profile.scalar_one_or_none() is None:
+            raise ValueError("Career profile not found")
+        latest = await self.session.execute(
+            select(func.coalesce(func.max(models.CareerReport.version), 0)).where(
+                models.CareerReport.career_profile_id == career_profile_id
+            )
+        )
+        return int(latest.scalar_one()) + 1
 
     async def list_segments_for_generation(
         self,

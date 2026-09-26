@@ -256,13 +256,18 @@ def _match_one(
 
 
 def build_role_match_rows(
-    *, career_profile_id: UUID, chart_id: UUID, matches: tuple[RoleMatchResult, ...] | list[RoleMatchResult]
+    *,
+    career_profile_id: UUID,
+    chart_id: UUID,
+    generation_id: UUID,
+    matches: tuple[RoleMatchResult, ...] | list[RoleMatchResult],
 ) -> list[CareerRoleMatch]:
     return [
         CareerRoleMatch(
             id=uuid.uuid4(),
             career_profile_id=career_profile_id,
             chart_id=chart_id,
+            generation_id=generation_id,
             role_family_key=item.role_family_key,
             match_category=item.category.value,
             score=item.score,

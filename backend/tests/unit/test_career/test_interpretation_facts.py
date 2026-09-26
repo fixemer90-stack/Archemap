@@ -201,6 +201,7 @@ def test_facts_build_versioned_persistable_rows() -> None:
     parts = _payload()
     profile_id = uuid.uuid4()
     chart_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
     facts = build_interpretation_facts(
         profile_id=profile_id,
         chart_id=chart_id,
@@ -211,11 +212,12 @@ def test_facts_build_versioned_persistable_rows() -> None:
         role_matches=parts[4],
         career_paths=parts[5],
     )
-    rows = build_interpretation_fact_rows(facts)
+    rows = build_interpretation_fact_rows(facts, generation_id=generation_id)
 
     assert rows
     assert all(row.career_profile_id == profile_id for row in rows)
     assert all(row.chart_id == chart_id for row in rows)
+    assert all(row.generation_id == generation_id for row in rows)
     assert all(row.source_version == CAREER_FACTS_CONTRACT_VERSION for row in rows)
     assert all(row.evidence_refs for row in rows)
     assert facts.role_matches[0].catalog_version == ROLE_CATALOG_VERSION

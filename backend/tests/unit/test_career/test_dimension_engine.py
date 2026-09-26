@@ -124,9 +124,11 @@ def test_dimension_results_build_persistable_scores_and_evidence() -> None:
 
     chart_id = uuid.uuid4()
     career_profile_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
     scores, evidence = build_dimension_rows(
         career_profile_id=career_profile_id,
         chart_id=chart_id,
+        generation_id=generation_id,
         results=score_career_dimensions(_golden_facts()),
     )
 
@@ -134,6 +136,7 @@ def test_dimension_results_build_persistable_scores_and_evidence() -> None:
     assert evidence
     assert all(row.id is not None for row in scores)
     assert all(row.chart_id == chart_id for row in scores)
+    assert all(row.generation_id == generation_id for row in scores)
     assert all(row.scoring_version == "career-mvp-1" for row in scores)
     score_ids = {row.id for row in scores}
     assert all(row.dimension_score_id in score_ids for row in evidence)

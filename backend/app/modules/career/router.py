@@ -45,7 +45,7 @@ from app.modules.career.questionnaire import (
     build_answer_rows,
     complete_questionnaire_session,
 )
-from app.modules.career.repository import CareerRepository
+from app.modules.career.repository import CareerGenerationTargetMismatchError, CareerRepository
 from app.modules.payments.service import PaymentsService
 from app.modules.profiles.models import PersonProfile
 
@@ -188,13 +188,6 @@ async def create_career_report(
     _require_feature_enabled()
     await _require_career_access(db=db, user_id=current_user)
     repository = CareerRepository(db)
-    existing = await repository.get_generation_by_idempotency(
-        user_id=current_user,
-        operation="create",
-        idempotency_key=idempotency_key,
-    )
-    if existing is not None:
-        return _accepted_response(existing)
     profile = await repository.get_profile_for_person(profile_id=body.profile_id, user_id=current_user)
     if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Career profile not found")
@@ -204,21 +197,23 @@ async def create_career_report(
     )
     if questionnaire is None or questionnaire.status != "completed":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Questionnaire is not completed")
-    generation = models.CareerGeneration(
-        generation_id=uuid4(),
-        user_id=current_user,
-        career_profile_id=profile.id,
-        chart_id=profile.chart_id,
-        operation="create",
-        idempotency_key=idempotency_key,
-        status="queued",
-        diagnostics={},
-    )
-    await repository.add(generation)
-    await repository.flush()
+    try:
+        result = await repository.create_generation_idempotently(
+            generation_id=uuid4(),
+            user_id=current_user,
+            career_profile_id=profile.id,
+            chart_id=profile.chart_id,
+            operation="create",
+            idempotency_key=idempotency_key,
+            source_report_id=None,
+            diagnostics={},
+        )
+    except CareerGenerationTargetMismatchError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     await db.commit()
-    await _enqueue_generation(db=db, generation=generation, section_keys=[])
-    return _accepted_response(generation)
+    if result.created:
+        await _enqueue_generation(db=db, generation=result.generation, section_keys=[])
+    return _accepted_response(result.generation)
 
 
 @router.get(
@@ -284,31 +279,23 @@ async def regenerate_career_report(
     repository = CareerRepository(db)
     report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
     await _require_career_access(db=db, user_id=current_user)
-    existing = await repository.get_generation_by_idempotency(
-        user_id=current_user,
-        operation="regenerate",
-        idempotency_key=idempotency_key,
-    )
-    if existing is not None:
-        if existing.source_report_id != report.id:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Idempotency key already used")
-        return _accepted_response(existing)
-    generation = models.CareerGeneration(
-        generation_id=uuid4(),
-        user_id=current_user,
-        career_profile_id=report.career_profile_id,
-        chart_id=report.chart_id,
-        source_report_id=report.id,
-        operation="regenerate",
-        idempotency_key=idempotency_key,
-        status="queued",
-        diagnostics={"section_keys": body.section_keys},
-    )
-    await repository.add(generation)
-    await repository.flush()
+    try:
+        result = await repository.create_generation_idempotently(
+            generation_id=uuid4(),
+            user_id=current_user,
+            career_profile_id=report.career_profile_id,
+            chart_id=report.chart_id,
+            source_report_id=report.id,
+            operation="regenerate",
+            idempotency_key=idempotency_key,
+            diagnostics={"section_keys": body.section_keys},
+        )
+    except CareerGenerationTargetMismatchError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     await db.commit()
-    await _enqueue_generation(db=db, generation=generation, section_keys=body.section_keys)
-    return _accepted_response(generation)
+    if result.created:
+        await _enqueue_generation(db=db, generation=result.generation, section_keys=body.section_keys)
+    return _accepted_response(result.generation)
 
 
 @router.get("/reports/{report_id}/pdf", responses=_ERRORS)

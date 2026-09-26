@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, date, datetime, time
 from unittest.mock import AsyncMock
@@ -7,15 +8,18 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user
 from app.main import app
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.career import models
+from app.modules.career.repository import CareerGenerationTargetMismatchError, CareerRepository
 from app.modules.profiles.models import PersonProfile
 from app.modules.reports.models import Report
 from app.modules.users.models import User
+from tests.conftest import test_session_factory as session_factory
 
 
 @pytest.mark.asyncio
@@ -232,3 +236,166 @@ async def test_career_api_persists_lifecycle_idempotency_and_locked_payload(
     locked_text = locked.text
     for protected in ("top_dimensions", "sections", "score", "artifact"):
         assert protected not in locked_text
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_setup_database")
+async def test_concurrent_generation_create_is_atomic_validates_target_and_keeps_history(
+    db_session: AsyncSession,
+) -> None:
+    user_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    chart_id = uuid.uuid4()
+    career_profile_id = uuid.uuid4()
+    db_session.add(
+        User(
+            id=user_id,
+            email=f"career-race-{user_id}@example.com",
+            name="Race",
+            hashed_password="not-used",  # noqa: S106 - inert fixture value
+            is_active=True,
+            is_verified=True,
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        PersonProfile(
+            id=profile_id,
+            user_id=user_id,
+            name="Race",
+            birth_date=date(1990, 1, 1),
+            birth_time=time(12, 0),
+            birth_time_accuracy="exact",
+            birth_place="Москва",
+            latitude=55.75,
+            longitude=37.61,
+            timezone="Europe/Moscow",
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        NatalChart(
+            id=chart_id,
+            user_id=user_id,
+            profile_id=profile_id,
+            engine_version="0.1.5",
+            input_hash="c" * 64,
+            birth_datetime_utc=datetime(1990, 1, 1, 9, 0, tzinfo=UTC),
+            timezone="Europe/Moscow",
+            latitude=55.75,
+            longitude=37.61,
+            house_system="P",
+            calculation_payload={},
+        )
+    )
+    await db_session.flush()
+    db_session.add(
+        models.CareerProfile(
+            id=career_profile_id,
+            user_id=user_id,
+            profile_id=profile_id,
+            chart_id=chart_id,
+            generation_id=uuid.uuid4(),
+            idempotency_key="race-bootstrap",
+            status="questionnaire_completed",
+            version=1,
+            scoring_version="career-mvp-1",
+            reference_version="career-ref-1",
+            questionnaire_version="career-q-1",
+        )
+    )
+    await db_session.commit()
+
+    async def create(candidate_generation_id: uuid.UUID) -> tuple[uuid.UUID, bool]:
+        async with session_factory() as session:
+            result = await CareerRepository(session).create_generation_idempotently(
+                generation_id=candidate_generation_id,
+                user_id=user_id,
+                career_profile_id=career_profile_id,
+                chart_id=chart_id,
+                operation="create",
+                idempotency_key="same-key",
+                source_report_id=None,
+                diagnostics={},
+            )
+            await session.commit()
+            return result.generation.generation_id, result.created
+
+    first, second = await asyncio.gather(create(uuid.uuid4()), create(uuid.uuid4()))
+    assert first[0] == second[0]
+    assert sorted((first[1], second[1])) == [False, True]
+
+    async def claim() -> bool:
+        async with session_factory() as session:
+            claimed = await CareerRepository(session).claim_generation(first[0])
+            await session.commit()
+            return claimed is not None
+
+    assert sorted(await asyncio.gather(claim(), claim())) == [False, True]
+
+    async with session_factory() as session:
+        with pytest.raises(CareerGenerationTargetMismatchError):
+            await CareerRepository(session).create_generation_idempotently(
+                generation_id=uuid.uuid4(),
+                user_id=user_id,
+                career_profile_id=uuid.uuid4(),
+                chart_id=chart_id,
+                operation="create",
+                idempotency_key="same-key",
+                source_report_id=None,
+                diagnostics={},
+            )
+
+    async def allocate_and_insert_report(key: str) -> int:
+        async with session_factory() as session:
+            version = await CareerRepository(session).allocate_report_version(career_profile_id)
+            session.add(
+                models.CareerReport(
+                    career_profile_id=career_profile_id,
+                    chart_id=chart_id,
+                    generation_id=uuid.uuid4(),
+                    idempotency_key=key,
+                    version=version,
+                    status="deterministic_ready",
+                    scoring_version="career-mvp-1",
+                    reference_version="career-ref-1",
+                    questionnaire_version="career-q-1",
+                    prompt_version="career-prompt-1",
+                    deterministic_payload={},
+                    narrative_payload={},
+                    assembled_payload={},
+                )
+            )
+            await session.commit()
+            return version
+
+    versions = await asyncio.gather(
+        allocate_and_insert_report("report-race-1"),
+        allocate_and_insert_report("report-race-2"),
+    )
+    assert sorted(versions) == [1, 2]
+
+    generations = (uuid.uuid4(), uuid.uuid4())
+    db_session.add_all(
+        [
+            models.CareerDimensionScore(
+                career_profile_id=career_profile_id,
+                chart_id=chart_id,
+                generation_id=generation_id,
+                dimension="systems_thinking",
+                score=score,
+                confidence=0.9,
+                scoring_version="career-mvp-1",
+                breakdown={},
+            )
+            for generation_id, score in zip(generations, (80.0, 90.0), strict=True)
+        ]
+    )
+    await db_session.commit()
+
+    rows = (
+        (await db_session.execute(select(models.CareerDimensionScore).order_by(models.CareerDimensionScore.score)))
+        .scalars()
+        .all()
+    )
+    assert [(row.generation_id, row.score) for row in rows] == [(generations[0], 80.0), (generations[1], 90.0)]

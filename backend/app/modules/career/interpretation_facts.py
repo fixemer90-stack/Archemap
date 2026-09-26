@@ -379,7 +379,9 @@ def call_provider_with_validated_facts(
     return provider(facts.model_dump(mode="json"))
 
 
-def build_interpretation_fact_rows(facts: CareerInterpretationFacts) -> list[CareerInterpretationFact]:
+def build_interpretation_fact_rows(
+    facts: CareerInterpretationFacts, *, generation_id: UUID
+) -> list[CareerInterpretationFact]:
     rows: list[CareerInterpretationFact] = []
     section_by_fact = {
         fact_key: section.section_key
@@ -403,6 +405,7 @@ def build_interpretation_fact_rows(facts: CareerInterpretationFacts) -> list[Car
                 CareerInterpretationFact(
                     career_profile_id=facts.profile_id,
                     chart_id=facts.chart_id,
+                    generation_id=generation_id,
                     fact_key=item.fact_key,
                     section_key=section_by_fact.get(item.fact_key, "professional_summary"),
                     source_version=facts.contract_version,

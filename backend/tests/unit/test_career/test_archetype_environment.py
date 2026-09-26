@@ -120,22 +120,27 @@ def test_archetype_and_environment_rows_are_persistable_and_versioned() -> None:
     resolution = _resolution(preferences=("expert",))
     profile_id = uuid.uuid4()
     chart_id = uuid.uuid4()
+    generation_id = uuid.uuid4()
 
     archetype_rows = build_archetype_rows(
         career_profile_id=profile_id,
         chart_id=chart_id,
+        generation_id=generation_id,
         results=match_archetypes(dimensions=dimensions, resolution=resolution),
     )
     environment_rows = build_environment_rows(
         career_profile_id=profile_id,
         chart_id=chart_id,
+        generation_id=generation_id,
         result=score_work_environment(dimensions=dimensions, resolution=resolution),
     )
 
     assert len(archetype_rows) == 3
     assert all(row.reference_version == "career-archetypes-1" for row in archetype_rows)
+    assert all(row.generation_id == generation_id for row in archetype_rows)
     assert len(environment_rows) == 10
     assert all(row.reference_version == "career-environment-1" for row in environment_rows)
+    assert all(row.generation_id == generation_id for row in environment_rows)
 
 
 def test_career_matching_source_has_no_planet_or_llm_dependency() -> None:

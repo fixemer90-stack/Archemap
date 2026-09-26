@@ -184,12 +184,14 @@ def build_archetype_rows(
     *,
     career_profile_id: UUID,
     chart_id: UUID,
+    generation_id: UUID,
     results: tuple[ArchetypeMatch, ...],
 ) -> list[CareerArchetypeScore]:
     return [
         CareerArchetypeScore(
             career_profile_id=career_profile_id,
             chart_id=chart_id,
+            generation_id=generation_id,
             archetype_key=result.key,
             score=result.score,
             confidence=result.confidence,

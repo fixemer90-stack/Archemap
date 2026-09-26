@@ -108,12 +108,14 @@ def build_environment_rows(
     *,
     career_profile_id: UUID,
     chart_id: UUID,
+    generation_id: UUID,
     result: WorkEnvironmentResult,
 ) -> list[CareerEnvironmentAxis]:
     return [
         CareerEnvironmentAxis(
             career_profile_id=career_profile_id,
             chart_id=chart_id,
+            generation_id=generation_id,
             axis_key=axis.key,
             score=axis.score,
             confidence=axis.confidence,

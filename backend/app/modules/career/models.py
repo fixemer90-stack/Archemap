@@ -47,7 +47,7 @@ class CareerProfile(BaseModel):
 class CareerDimensionScore(BaseModel):
     __tablename__ = "career_dimension_scores"
     __table_args__ = (
-        UniqueConstraint("career_profile_id", "dimension", name="uq_career_dimension_scores_profile_dimension"),
+        UniqueConstraint("generation_id", "dimension", name="uq_career_dimension_scores_generation_dimension"),
         CheckConstraint("score >= 0 AND score <= 100", name="ck_career_dimension_scores_score"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_career_dimension_scores_confidence"),
     )
@@ -58,6 +58,7 @@ class CareerDimensionScore(BaseModel):
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
     )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     dimension: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
@@ -131,7 +132,7 @@ class CareerAnswer(BaseModel):
 class CareerResolution(BaseModel):
     __tablename__ = "career_resolutions"
     __table_args__ = (
-        UniqueConstraint("career_profile_id", "resolver_version", name="uq_career_resolutions_profile_version"),
+        UniqueConstraint("generation_id", "resolver_version", name="uq_career_resolutions_generation_version"),
     )
 
     career_profile_id: Mapped[uuid.UUID] = mapped_column(
@@ -140,6 +141,7 @@ class CareerResolution(BaseModel):
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
     )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     resolver_version: Mapped[str] = mapped_column(String(80), nullable=False)
     confirmed_traits: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     contradictions: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
@@ -151,7 +153,7 @@ class CareerResolution(BaseModel):
 class CareerArchetypeScore(BaseModel):
     __tablename__ = "career_archetype_scores"
     __table_args__ = (
-        UniqueConstraint("career_profile_id", "archetype_key", name="uq_career_archetype_profile_key"),
+        UniqueConstraint("generation_id", "archetype_key", name="uq_career_archetype_generation_key"),
         CheckConstraint("score >= 0 AND score <= 100", name="ck_career_archetype_score"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_career_archetype_confidence"),
     )
@@ -162,6 +164,7 @@ class CareerArchetypeScore(BaseModel):
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
     )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     archetype_key: Mapped[str] = mapped_column(String(80), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
@@ -172,7 +175,7 @@ class CareerArchetypeScore(BaseModel):
 class CareerEnvironmentAxis(BaseModel):
     __tablename__ = "career_environment_axes"
     __table_args__ = (
-        UniqueConstraint("career_profile_id", "axis_key", name="uq_career_environment_profile_axis"),
+        UniqueConstraint("generation_id", "axis_key", name="uq_career_environment_generation_axis"),
         CheckConstraint("score >= 0 AND score <= 100", name="ck_career_environment_score"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_career_environment_confidence"),
     )
@@ -183,6 +186,7 @@ class CareerEnvironmentAxis(BaseModel):
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
     )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     axis_key: Mapped[str] = mapped_column(String(80), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
@@ -193,7 +197,7 @@ class CareerEnvironmentAxis(BaseModel):
 class CareerRoleMatch(BaseModel):
     __tablename__ = "career_role_matches"
     __table_args__ = (
-        UniqueConstraint("career_profile_id", "role_family_key", name="uq_career_role_profile_family"),
+        UniqueConstraint("generation_id", "role_family_key", name="uq_career_role_generation_family"),
         CheckConstraint("score >= 0 AND score <= 100", name="ck_career_role_score"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_career_role_confidence"),
     )
@@ -204,6 +208,7 @@ class CareerRoleMatch(BaseModel):
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
     )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     role_family_key: Mapped[str] = mapped_column(String(100), nullable=False)
     match_category: Mapped[str] = mapped_column(String(30), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -237,7 +242,7 @@ class CareerPathStep(BaseModel):
 class CareerInterpretationFact(BaseModel):
     __tablename__ = "career_interpretation_facts"
     __table_args__ = (
-        UniqueConstraint("career_profile_id", "fact_key", "source_version", name="uq_career_fact_profile_key_version"),
+        UniqueConstraint("generation_id", "fact_key", "source_version", name="uq_career_fact_generation_key_version"),
     )
 
     career_profile_id: Mapped[uuid.UUID] = mapped_column(
@@ -246,6 +251,7 @@ class CareerInterpretationFact(BaseModel):
     chart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHART_FK, ondelete="RESTRICT"), index=True
     )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     fact_key: Mapped[str] = mapped_column(String(140), nullable=False, index=True)
     section_key: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     source_version: Mapped[str] = mapped_column(String(80), nullable=False)

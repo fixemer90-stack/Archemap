@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, call
 
 import pytest
 
-from app.modules.career.models import CareerReport
+from app.modules.career.models import CareerGeneration, CareerReport
+from app.modules.career.repository import CareerRepository
 from workers.tasks.career import (
     _persist_parent_rows_before_children,
     build_career_monitor_alerts,
@@ -40,10 +41,11 @@ def test_regeneration_report_preserves_deterministic_artifacts() -> None:
         source=source,
         generation_id=generation_id,
         idempotency_key="retry-1",
+        version=7,
     )
 
     assert regenerated.generation_id == generation_id
-    assert regenerated.version == source.version + 1
+    assert regenerated.version == 7
     assert regenerated.status == "deterministic_ready"
     assert source.status == "ready"
     assert regenerated.deterministic_payload == source.deterministic_payload
@@ -87,3 +89,27 @@ def test_monitor_alerts_cover_stuck_pipeline_and_validator_failure_spike() -> No
         "career_stuck_generation:narrative:1",
         "career_validator_failure_spike:5",
     )
+
+
+@pytest.mark.asyncio
+async def test_generation_claim_allows_only_queued_worker() -> None:
+    claimed = CareerGeneration(
+        generation_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        career_profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        operation="create",
+        idempotency_key="claim-1",
+        status="calculating_dimensions",
+        diagnostics={"stage": "deterministic"},
+    )
+    first_result = AsyncMock()
+    first_result.scalar_one_or_none = lambda: claimed
+    second_result = AsyncMock()
+    second_result.scalar_one_or_none = lambda: None
+    session = AsyncMock()
+    session.execute.side_effect = [first_result, second_result]
+    repository = CareerRepository(session)
+
+    assert await repository.claim_generation(uuid.uuid4()) is claimed
+    assert await repository.claim_generation(uuid.uuid4()) is None

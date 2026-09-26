@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import time
 import uuid
+from typing import Any
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -60,9 +62,23 @@ def _get_rate_limit_key(request: Request) -> tuple[str, int, int]:
     # Global rate limit
     # Try to extract user from token (without full validation)
     auth_header = request.headers.get("Authorization", "")
+    token = ""
     if auth_header.startswith("Bearer "):
-        # Authenticated user — use token hash as key
-        token_hash = auth_header[7:23]  # first 16 chars
+        token = auth_header[7:]
+    else:
+        for cookie_name in (
+            "access_token",
+            "astrotype_token",
+            "refresh_token",
+            "astrotype_refresh_token",
+        ):
+            if cookie_token := request.cookies.get(cookie_name):
+                token = cookie_token
+                break
+
+    if token:
+        # Use the full token digest: JWTs share the same encoded header prefix.
+        token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
         return (
             f"rate_limit:global:user:{token_hash}",
             settings.RATE_LIMIT_GLOBAL_PER_MINUTE,
@@ -75,6 +91,14 @@ def _get_rate_limit_key(request: Request) -> tuple[str, int, int]:
         settings.RATE_LIMIT_ANONYMOUS_PER_MINUTE,
         60,
     )
+
+
+async def _increment_rate_limit(redis: Any, key: str, window: int) -> int:
+    """Increment a fixed-window counter without extending active windows."""
+    current_count = int(await redis.incr(key))
+    if current_count == 1:
+        await redis.expire(key, window)
+    return current_count
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -129,16 +153,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         key, max_requests, window = _get_rate_limit_key(request)
 
-        # Check current count
-        current = await redis.get(key)
-        current_count = int(current) if current else 0
-
-        # Set rate limit headers
-        remaining = max(0, max_requests - current_count - 1)
+        current_count = await _increment_rate_limit(redis, key, window)
+        remaining = max(0, max_requests - current_count)
         ttl = await redis.ttl(key)
         reset = ttl if ttl > 0 else window
 
-        if current_count >= max_requests:
+        if current_count > max_requests:
             logger.warning(
                 "rate_limit_exceeded",
                 path=path,
@@ -159,12 +179,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "X-RateLimit-Reset": str(reset),
                 },
             )
-
-        # Increment counter
-        pipe = redis.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, window)
-        await pipe.execute()
 
         # Process request
         response = await call_next(request)

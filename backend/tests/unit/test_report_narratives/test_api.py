@@ -50,6 +50,13 @@ class _DummyRedis:
     async def ttl(self, key: str) -> int:
         return 60 if key in self._store else -1
 
+    async def incr(self, key: str) -> int:
+        self._store[key] = self._store.get(key, 0) + 1
+        return self._store[key]
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        return key in self._store and seconds > 0
+
     def pipeline(self) -> _DummyPipeline:
         return _DummyPipeline(self._store)
 

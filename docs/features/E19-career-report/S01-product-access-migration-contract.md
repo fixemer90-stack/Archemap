@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — продуктовый и migration contract реализованы; route-level access matrix требует полного contract test
+✅ Завершено — product/access/migration contract и полная route-level access matrix закреплены тестами
 
 ## Контекст
 
@@ -54,7 +54,7 @@ new Career access = active Plus OR explicit grandfathered legacy entitlement
 - [x] Legacy report rows/PDF не удаляются.
 - [x] Новый endpoint не возвращает legacy payload как успешный Career v2.
 - [x] Feature flag и rollback не требуют destructive migration.
-- [ ] Access matrix покрыта route-level contract tests для всех заявленных операций.
+- [x] Access matrix покрыта route-level contract tests для всех заявленных операций.
 
 ## Evidence
 
@@ -66,7 +66,9 @@ new Career access = active Plus OR explicit grandfathered legacy entitlement
 - `frontend/src/components/report/career-cta.tsx` ведёт на канонический `/products/career?profileId=...`; product page читает deep link и автоматически открывает questionnaire выбранного профиля.
 - `node scripts/check-career-product-ux.mjs` → passed; exact-path ESLint и `npx tsc --noEmit --pretty false` → passed.
 - Local PostgreSQL upgrade/downgrade preserved legacy row counts exactly: `reports=3`, `chart_snapshots=45`, `payments=0`, `entitlements=0`, `users=41`.
+- `CAREER_ROUTE_ACCESS_OPERATIONS` сопоставляет все десять зарегистрированных Career routes с операциями access matrix, включая history/versions.
+- `backend/tests/unit/test_career/test_product_access_contract.py` и PostgreSQL integration matrix проверяют active Plus, grandfathered Career, free, inactive, expired и foreign-owner cases без подмены policy denial.
 
 ## Аудит 2026-09-26
 
-Текущий тест фиксирует декларативную `CAREER_ACCESS_MATRIX`, но не сопоставляет её со всеми реально зарегистрированными routes. Операция `versions` присутствует в матрице, отдельный endpoint версий отсутствует. До route-level параметризованного теста последний критерий остаётся открытым.
+Расхождение закрыто: добавлен ownership-protected `GET /api/v1/career/reports/{report_id}/versions`, executable route map и параметризованная проверка полноты зарегистрированной API surface.

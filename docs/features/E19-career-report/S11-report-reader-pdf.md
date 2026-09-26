@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — reader/PDF и browser smoke готовы; cross-render parity и sample comparison требуют доказательства
+🟡 Частично — общий web/PDF presentation contract закрыт; новый sample-parity browser run ждёт CI/Chromium evidence
 
 ## Контекст
 
@@ -38,10 +38,10 @@
 ## Критерии приёмки
 
 - [x] Reader не использует legacy `generated_report` payload.
-- [ ] Web/PDF читают один persisted source и имеют доказанный одинаковый порядок/представление секций.
+- [x] Web/PDF читают один persisted source и имеют доказанный одинаковый порядок/представление секций.
 - [x] Scores объяснены без good/bad ranking.
 - [x] Profession examples сформулированы условно, без назначения.
-- [ ] Contradictions и context constraints не теряются между API, web view-model и PDF view-model.
+- [x] Contradictions и context constraints не теряются между API, web view-model и PDF view-model.
 - [x] Deterministic-ready reader полезен до завершения LLM.
 - [x] Narrative failure не скрывает deterministic content.
 - [x] Mobile, print/PDF, typography и whole-word tooltips проверены.
@@ -59,11 +59,12 @@
 - `npx tsc --noEmit --pretty false` и exact-path ESLint — passed.
 - Playwright Chromium проверяет desktop/mobile overflow, canonical section order, standalone reader shell, Axe, whole-word tooltip text и `aria-describedby`, print colors и browser PDF (`%PDF`, больше 10 KB).
 - Desktop/mobile/print visual regression baselines сохранены в `frontend/tests/e2e/career-reader.spec.ts-snapshots/`; локальный общий Career browser suite: `5 passed, 1 skipped`.
+- `contracts/fixtures/career-report-read-v1-parity.json` задаёт один semantic manifest; `backend/app/modules/career/presentation.py`, frontend view-model и PDF renderer обязаны воспроизводить его без собственного порядка/labels.
+- `frontend/scripts/check-career-report-parity.mjs` и `check-career-sample-parity.mjs` прошли из repo root и frontend cwd; protocol фиксирует component/crop comparison вместо бессмысленного full-page pixel equality.
+- Добавлены browser cases `deterministic_ready` и `narrative_failed`; локальная коллекция видит 10 desktop/mobile tests. Фактический новый Chromium run остаётся открытым до CI, поскольку локальная загрузка browser binary была недоступна.
 
 Human visual review desktop/mobile/print снимков подтвердил отсутствие clipping/overflow, читаемый print и соответствие canonical sample как design direction. Reader получил standalone shell, hero summary cards с ведущим профилем/рабочим вектором и компактную навигационную сетку десяти разделов; pixel-perfect совпадение не является контрактом.
 
 ## Аудит 2026-09-26
 
-- Web и backend PDF строят отдельные view-model/rendering paths. Snapshot tests сравнивают reader с его собственными baselines, а не с canonical sample.
-- Web показывает placeholders всех десяти narrative sections, PDF выводит только готовые; порядок narrative/deterministic/context blocks и humanized labels различается.
-- Нужен cross-render fixture test из одного persisted payload и воспроизводимое sample comparison с зафиксированным допуском либо явно ограниченным human-review protocol.
+- Cross-render implementation gaps закрыты общим presentation contract и fixture parity tests. Открыт только evidence gap фактического Chromium sample-parity прогона точного committed SHA.

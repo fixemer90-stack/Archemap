@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — runtime реализован; duplicate-section RED/GREEN regression отсутствует
+✅ Завершено — narrative runtime и полный validator RED/GREEN набор подключены к active worker flow
 
 ## Контекст
 
@@ -47,7 +47,7 @@ LLM отвечает только за язык и объяснение уже �
 - [x] Regenerate section не меняет deterministic artifacts.
 - [x] Partial/complete/failure statuses persisted и доступны API.
 - [x] Assembler не добавляет новые карьерные факты.
-- [ ] Duplicate/generic/overclaim/profession-prescription validators имеют отдельные RED/GREEN tests.
+- [x] Duplicate/generic/overclaim/profession-prescription validators имеют отдельные RED/GREEN tests.
 - [x] Mock и реальный provider проходят один output contract.
 - [x] Provider failure сохраняет deterministic-ready отчёт.
 
@@ -59,6 +59,8 @@ LLM отвечает только за язык и объяснение уже �
 
 Persisted segment/report statuses опубликованы через ownership-protected generation, report и sections endpoints S09.
 
+Assembler regressions блокируют exact/case/whitespace duplicates и повтор существенных абзацев между секциями, сохраняя допустимые короткие переходные фразы. Narrative quality/assembly helpers вызываются production Career worker-ом, а не существуют только как unit contracts.
+
 ## Аудит 2026-09-26
 
-Generic, overclaim и profession-prescription rejection покрыты. Duplicate validator реализован, но отдельного теста, который сначала воспроизводит и затем блокирует дублирующие секции, не найдено.
+Расхождение закрыто отдельными duplicate/near-duplicate regressions и active worker wiring; audit note сохранён как историческое основание изменений.

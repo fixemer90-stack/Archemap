@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — базовое хранилище готово; versioned history и конкурентная idempotency требуют исправления
+✅ Завершено — deterministic artifacts имеют generation lineage; конкурентная idempotency и immutable history доказаны
 
 ## Контекст
 
@@ -42,8 +42,8 @@ DTO должны отделять persisted deterministic contracts от LLM res
 - [x] Career artifact можно восстановить из PostgreSQL без Redis/LLM cache.
 - [x] Каждый dimension имеет evidence и scoring version.
 - [x] Answers, resolver output и report versions имеют явный lineage.
-- [ ] Повторная генерация и конкурентный retry не создают дубликаты при одном idempotency key/generation ID.
-- [ ] Repository tests доказывают ownership и immutable history всех deterministic artifacts.
+- [x] Повторная генерация и конкурентный retry не создают дубликаты при одном idempotency key/generation ID.
+- [x] Repository tests доказывают ownership и immutable history всех deterministic artifacts.
 
 ## Evidence
 
@@ -54,10 +54,11 @@ DTO должны отделять persisted deterministic contracts от LLM res
 - Local PostgreSQL: upgrade до `e4f5a6b7c8d9`, `13` Career tables; committed Career artifact восстановлен через repository только из PostgreSQL, затем smoke rows удалены.
 - Reversibility smoke: downgrade до `d3e4f5a6b7c8` удалил только `career_*` tables, legacy row counts не изменились; повторный upgrade вернул DB на `e4f5a6b7c8d9 (head)`.
 - Backup перед migration: `backend/backups/pre-e19-career-20260916T063852Z.dump`.
+- Migration `b7c8d9e0f1a2` добавляет non-null `generation_id` и generation-scoped uniqueness для dimensions, resolution, archetypes, environment, roles и interpretation facts; upgrade/downgrade/re-upgrade проверены на disposable PostgreSQL.
+- Atomic PostgreSQL `ON CONFLICT ... RETURNING`, profile-row version lock и queued-generation claim закрывают API/worker race; integration tests доказывают один generation, один enqueue/claim и две независимые immutable версии.
 
 S03 adapter и golden contract доказали построение всех 12 persisted score rows с `scoring_version` и связанными evidence rows.
 
 ## Аудит 2026-09-26
 
-- Последовательный idempotent retry покрыт, конкурентный race не проверен и может завершиться `IntegrityError` между check и insert.
-- `career_reports` версионируются, но dimension/archetype/environment/resolution/role rows имеют unique keys без `generation_id`/report version. Повторный полный пересчёт того же Career profile может столкнуться с существующими rows вместо создания полной immutable версии.
+- Оба расхождения закрыты migration/repository/worker contracts и PostgreSQL concurrency regressions; audit note сохранён как историческое основание изменений.

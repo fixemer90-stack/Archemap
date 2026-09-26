@@ -68,7 +68,7 @@ Store the backup path, row counts and checksums in the deployment evidence. If a
 4. Verify Career migrations are additive and no automatic legacy backfill ran.
 5. Set OTLP endpoint and current provider rate settings.
 6. Enable the feature only on staging.
-7. Run the mock-provider flow, then the real-provider flow.
+7. Run the complete mock-provider flow. Real-provider quality/cost validation is a separate pre-production/canary gate and is not required to close stage publication.
 
 Staging matrix:
 
@@ -78,7 +78,7 @@ Staging matrix:
 - provider failure: deterministic content remains readable, failed section has a safe code, isolated retry succeeds;
 - feature flag off: target routes stop new work while existing target and legacy artifacts remain in storage.
 
-Human review the real-provider report against `../../design/astrotype_career_report.md` and `../../design/astrotype-career-report-sample.html`: specificity, contradiction retention, conditional low-confidence wording, no diagnosis, no guaranteed outcomes, no prescribed profession and no duplicate sections.
+Human review the stage mock report against `../../design/astrotype_career_report.md` and `../../design/astrotype-career-report-sample.html`: complete structure, contradiction/context retention, conditional low-confidence markers, no diagnosis, no guaranteed outcomes, no prescribed profession and no duplicate sections. Do not use mock prose latency/cost as real-provider evidence.
 
 ## Canary
 
@@ -104,7 +104,7 @@ Never run `alembic downgrade`, `DROP`, `TRUNCATE`, mutable legacy backfill or cl
 Stage-публикация и сбор первых семи блоков evidence выполняются по [`S14-stage-publication-live-evidence.md`](S14-stage-publication-live-evidence.md). Production smoke остаётся отдельным финальным gate S12.
 
 - green exact CI SHA;
-- staging mock and real-provider report IDs;
+- staging mock-provider report ID;
 - human quality review result;
 - active Plus / grandfathered / locked matrix results;
 - pre/post legacy row counts and checksums plus tested backup restore;
@@ -124,4 +124,4 @@ Stage-публикация и сбор первых семи блоков eviden
 
 ## Runtime gap, обнаруженный 2026-09-26
 
-`backend/workers/celery_app.py` объявляет schedule, но local/staging/production Compose запускают только Celery worker без Beat. До stage observability evidence необходимо добавить и проверить scheduler service; один факт наличия `beat_schedule` не доказывает выполнение monitor task.
+Расхождение закрыто в коде: local/staging/production Compose содержат отдельный singleton Beat service, а topology tests проверяют schedule/task registration и запрещают совмещение worker/Beat. Фактический stage scheduler/readiness/alert-path readback остаётся evidence gate S14.

@@ -1,6 +1,6 @@
 # SRS-E19: Astrotype Career Report
 
-Статус: S03–S06 завершены; S01/S02/S07–S11 требуют закрытия audit gaps; S13 runbook готов; S14 закрепил exact green SHA, но stage publication/live evidence не выполнены; S12 ожидает stage, canary и production evidence
+Статус: S01–S09 завершены; S11 закрыл implementation parity и ждёт Chromium/CI evidence; S13 runbook готов; S14 ждёт stage publication/live evidence; S12 ожидает stage, canary и production evidence
 
 Feature: `docs/features/E19-career-report/FEATURE.md`
 
@@ -223,6 +223,7 @@ questionnaire_draft
 | GET    | `/api/v1/career/generations/{id}`             | Получить progress/result IDs |
 | GET    | `/api/v1/career/reports/{id}`                 | Прочитать progressive report |
 | GET    | `/api/v1/career/reports/{id}/sections`        | Состояние секций             |
+| GET    | `/api/v1/career/reports/{id}/versions`        | История immutable версий     |
 | POST   | `/api/v1/career/reports/{id}/regenerate`      | Retry narrative scope        |
 | GET    | `/api/v1/career/reports/{id}/pdf`             | Скачать PDF                  |
 

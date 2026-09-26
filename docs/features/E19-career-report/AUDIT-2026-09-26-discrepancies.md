@@ -14,21 +14,28 @@
 
 ## Сводный статус
 
-Полностью закрыты по текущему evidence:
+Полностью закрыты по текущему локальному evidence:
 
 - S03 — factor/dimension engine;
 - S04 — questionnaire/resolver domain;
 - S05 — archetypes/environment;
 - S06 — role matching/career paths;
+- S01 — executable route/access matrix и versions API;
+- S02 — generation-aware immutable history и concurrency guards;
+- S07 — precise provenance, low-confidence и contradiction gates;
+- S08 — duplicate/near-duplicate regressions и active worker wiring;
+- S09 — canonical OpenAPI, entitlement matrix и lifecycle/concurrency API tests;
 - S13 — готовность документа rollout/rollback runbook, но не его live-исполнение.
 
 Остаются частично закрытыми:
 
-- S01, S02, S07, S08, S09 — implementation/test contract gaps;
-- S10, S11 — client/live/parity evidence gaps;
+- S10 — live-backend entitlement/product-flow evidence;
+- S11 — фактический Chromium sample-parity run точного SHA;
 - S12, S14 — stage, observability, canary и production evidence.
 
-## 1. Implementation и test-contract gaps
+Все implementation/test-contract расхождения раздела 1 закрыты commits текущей серии. Таблица ниже сохранена как исторический перечень причин изменений; актуальные открытые gaps перечислены в разделах 2 и 4.
+
+## 1. Закрытые implementation и test-contract gaps
 
 | Story   | Расхождение                                                                                                                                                                            | Влияние                                                                                           | Что должно закрыть пункт                                                                                                             |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -63,16 +70,15 @@
 
 До полного закрытия требуются:
 
-- cross-render web/PDF parity из одного persisted report;
-- browser cases `deterministic_ready` и `narrative_failed`;
-- воспроизводимое сравнение reader с canonical sample;
-- отдельная проверка сохранения contradictions и context constraints в обоих renderer paths.
+- общий web/PDF presentation contract, deterministic/narrative-failed cases и semantic fixture parity реализованы;
+- contradictions/context constraints сопоставляются одним manifest;
+- остаётся фактический Chromium run нового sample-parity набора точного SHA.
 
 ### S12 — QA/observability/rollout
 
 Открыты:
 
-- real-provider Career report и human quality review;
+- mock-provider stage report и structural/human product review; real-provider quality перенесена в canary/pre-production;
 - работающий scheduler, metrics/alerts и zero-stuck observation window;
 - staging latency/token/cost measurements и dashboard references;
 - canary cohort, результаты и полный observation window;
@@ -108,14 +114,9 @@
 
 ## 4. Порядок закрытия
 
-1. Закрыть storage/versioning и concurrent idempotency gaps S02.
-2. Синхронизировать canonical OpenAPI и route-level access matrix S01/S09.
-3. Усилить provenance, conditional wording, contradiction и duplication quality gates S07/S08.
-4. Добавить cross-render web/PDF parity и canonical sample evidence S11.
-5. Добавить Celery Beat/approved scheduler в deploy topology и проверить alert path.
-6. Получить новый exact green SHA после исправлений.
-7. Выполнить S14: backup/checksums → exact stage deploy → routes/settings/readiness → entitlement matrix → full real-provider flow → quality/metrics → rollback rehearsal.
-8. Выполнить S12 canary и production report/PDF smoke.
+1. Получить новый exact green SHA и фактический Chromium sample-parity evidence.
+2. Выполнить S14: backup/checksums → exact stage deploy → routes/settings/readiness → entitlement matrix → full mock-provider flow → quality/metrics → rollback rehearsal.
+3. Выполнить S12 real-provider canary и production report/PDF smoke.
 
 ## 5. Правило закрытия
 

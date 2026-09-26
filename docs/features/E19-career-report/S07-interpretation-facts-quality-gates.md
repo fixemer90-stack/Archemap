@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — curated boundary работает; provenance и semantic quality gates требуют усиления
+✅ Завершено — precise provenance и semantic narrative quality gates исполняются в worker pipeline
 
 ## Контекст
 
@@ -47,11 +47,11 @@
 ## Критерии приёмки
 
 - [x] Schema валидируется до любого LLM вызова.
-- [ ] Все выводы имеют реальные source IDs/version lineage без fallback-ссылок на общий chart.
+- [x] Все выводы имеют реальные source IDs/version lineage без fallback-ссылок на общий chart.
 - [x] Section ownership предотвращает повтор и смешение тем.
-- [ ] Low confidence принудительно снижает категоричность итоговой прозы и проверяется output validator-ом.
+- [x] Low confidence принудительно снижает категоричность итоговой прозы и проверяется output validator-ом.
 - [x] Unsupported profession/path блокируется до LLM.
-- [ ] Contradictions сохраняются в итоговой прозе семантически, а не только формальной citation-ссылкой.
+- [x] Contradictions сохраняются в итоговой прозе семантически, а не только формальной citation-ссылкой.
 - [x] Snapshot tests доказывают отсутствие raw chart и unrestricted free text.
 - [x] Validation failure не запускает платный provider call.
 
@@ -61,7 +61,9 @@
 - Валидаторы блокируют missing evidence, потерю contradictions, неподдержанные роли/profession examples/paths, raw chart/answers/free text и low-confidence facts без conditional-language marker.
 - `backend/tests/unit/test_career/test_interpretation_facts.py` — curated payload, section ownership, provider short-circuit, lineage/contradiction и persistence contracts.
 - `uv run pytest tests/unit/test_career/test_interpretation_facts.py -q` → `4 passed`.
+- Claim-level output contract связывает текст с cited facts, требует conditional wording для low-confidence claims и отдельный retained-contradiction object с обеими сторонами tension.
+- Worker строит precise evidence registry из persisted source rows и запускает эти gates до assembly/provider acceptance; общий fallback `chart:{id}` запрещён regression tests.
 
 ## Аудит 2026-09-26
 
-Roles, paths и contradictions не всегда несут конкретные evidence source IDs; часть facts использует fallback `chart:{id}`. Prompt contract содержит conditional-language marker, но output validator не доказывает условную формулировку результата. Citation contradiction key также не доказывает сохранение смысла contradiction в body.
+Расхождения закрыты precise source refs, claim-level conditional-language validation и semantic contradiction-retention contract; audit note сохранён как историческое основание изменений.

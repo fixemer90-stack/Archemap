@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — implementation-аудит открыл gaps в S01/S02/S07–S09/S11; stage/canary/production evidence остаётся в S12/S14
+🟡 В работе — локальные implementation gaps S01/S02/S07–S09 закрыты; S11 ждёт browser evidence, stage/canary/production evidence остаётся в S10/S12/S14
 
 ## Цель
 
@@ -130,25 +130,25 @@ Career — специализированный отчёт. Целевой до�
 - [x] Роли сначала определяются как классы; профессии приводятся только как примеры с уровнем соответствия.
 - [x] LLM получает только curated interpretation facts и section contract, не raw chart и не полный unrestricted payload.
 - [x] Отчёт доступен с `deterministic_ready`; narrative загружается по секциям асинхронно.
-- [ ] Web reader и PDF используют один persisted report payload и доказанно одинаковый порядок/представление секций.
-- [ ] Backend ownership и Plus-access policy покрыты route-level tests для create/read/status/regenerate/PDF и остальных Career endpoints.
-- [ ] Исторические версии, вопросы/ответы, scores, evidence и prompt/scoring versions сохраняются без overwrite/unique-conflict при повторной генерации.
-- [ ] Anti-generic, contradiction, evidence, low-confidence, duplication, overclaim и profession-prescription validators имеют полные RED/GREEN suites.
+- [x] Web reader и PDF используют один persisted report payload и доказанно одинаковый порядок/представление секций.
+- [x] Backend ownership и Plus-access policy покрыты route-level tests для create/read/status/regenerate/PDF и остальных Career endpoints.
+- [x] Исторические версии, вопросы/ответы, scores, evidence и prompt/scoring versions сохраняются без overwrite/unique-conflict при повторной генерации.
+- [x] Anti-generic, contradiction, evidence, low-confidence, duplication, overclaim и profession-prescription validators имеют полные RED/GREEN suites.
 - [ ] Staging smoke доказывает полный questionnaire → deterministic → narrative → reader/PDF flow.
 
 ## Stories
 
 | ID  | Story                                                                                            | Статус       |
 | --- | ------------------------------------------------------------------------------------------------ | ------------ |
-| S01 | [Зафиксировать product/access/migration contract](./S01-product-access-migration-contract.md)    | 🟡 Частично  |
-| S02 | [Добавить Career storage и versioned schemas](./S02-storage-domain-schemas.md)                   | 🟡 Частично  |
+| S01 | [Зафиксировать product/access/migration contract](./S01-product-access-migration-contract.md)    | ✅ Завершено |
+| S02 | [Добавить Career storage и versioned schemas](./S02-storage-domain-schemas.md)                   | ✅ Завершено |
 | S03 | [Построить factor и Career Dimension engine](./S03-factor-dimension-engine.md)                   | ✅ Завершено |
 | S04 | [Реализовать контрольные вопросы и Profile Resolver](./S04-questions-profile-resolver.md)        | ✅ Завершено |
 | S05 | [Рассчитать archetypes и рабочую среду](./S05-archetypes-work-environment.md)                    | ✅ Завершено |
 | S06 | [Реализовать role matching и карьерные траектории](./S06-role-matching-career-paths.md)          | ✅ Завершено |
-| S07 | [Собрать Interpretation Facts и quality gates](./S07-interpretation-facts-quality-gates.md)      | 🟡 Частично  |
-| S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                     | 🟡 Частично  |
-| S09 | [Добавить async Career API и access enforcement](./S09-api-async-access.md)                      | 🟡 Частично  |
+| S07 | [Собрать Interpretation Facts и quality gates](./S07-interpretation-facts-quality-gates.md)      | ✅ Завершено |
+| S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                     | ✅ Завершено |
+| S09 | [Добавить async Career API и access enforcement](./S09-api-async-access.md)                      | ✅ Завершено |
 | S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                            | 🟡 Частично  |
 | S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                        | 🟡 Частично  |
 | S12 | [Закрыть QA, observability, migration и rollout](./S12-qa-observability-rollout.md)              | 🟡 Частично  |
@@ -189,4 +189,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature находится в реализации. S03–S06 и документационный runbook S13 закрыты. Аудит 26 сентября 2026 года вернул S01/S02/S07–S09/S11 в `🟡`: требуются route-level access/OpenAPI tests, полноценная versioned history, усиленные provenance/quality gates и cross-render web/PDF parity. S10 имеет committed desktop/mobile Chromium+Axe evidence, но ждёт live-backend entitlement smoke. В S14 exact green SHA закреплён, однако текущий stage остаётся на старом marker без Career routes, real provider и OTLP. После S14 в S12 останутся canary и production report/PDF evidence.
+Feature находится в реализации. Локально закрыты S01–S09 и документационный runbook S13: добавлены route-level access/OpenAPI tests, generation-aware immutable history, конкурентная idempotency, provenance/quality gates и общий web/PDF presentation contract. S11 ждёт фактического Chromium-прогона нового sample-parity набора. S10 ждёт live-backend entitlement smoke. По решению владельца продукта от 26 сентября 2026 года для stage достаточно mock LLM; real-provider quality gate переносится в canary/production. Текущий stage остаётся на старом marker без target Career routes и OTLP. После S14 в S12 останутся canary и production report/PDF evidence.

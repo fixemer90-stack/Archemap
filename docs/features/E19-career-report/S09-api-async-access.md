@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — target API работает; canonical OpenAPI и полная route/access/idempotency matrix не закрыты
+✅ Завершено — target API, canonical OpenAPI, route/access lifecycle и concurrency contracts закрыты
 
 ## Контекст
 
@@ -21,6 +21,7 @@
 | GET    | `/api/v1/career/generations/{generation_id}`          | Durable progress/status               |
 | GET    | `/api/v1/career/reports/{report_id}`                  | Progressive assembled report          |
 | GET    | `/api/v1/career/reports/{report_id}/sections`         | Section states/payloads               |
+| GET    | `/api/v1/career/reports/{report_id}/versions`         | Immutable report history metadata     |
 | POST   | `/api/v1/career/reports/{report_id}/regenerate`       | Safe section/full narrative retry     |
 | GET    | `/api/v1/career/reports/{report_id}/pdf`              | Download artifact                     |
 
@@ -36,14 +37,14 @@
 
 ## Критерии приёмки
 
-- [ ] Канонический `contracts/openapi.yaml` фиксирует Career request/response/error schemas и statuses.
+- [x] Канонический `contracts/openapi.yaml` фиксирует Career request/response/error schemas и statuses.
 - [x] Create не блокируется до полного LLM completion.
 - [x] Generation status отражает deterministic и narrative progress отдельно.
-- [ ] Все endpoints покрыты параметризованным route-level ownership/access test.
-- [ ] Free/expired direct requests проверены через реальный entitlement lifecycle без подмены policy denial.
-- [ ] Последовательные и конкурентные idempotent retries не создают второй отчёт/provider calls.
+- [x] Все endpoints покрыты параметризованным route-level ownership/access test.
+- [x] Free/expired direct requests проверены через реальный entitlement lifecycle без подмены policy denial.
+- [x] Последовательные и конкурентные idempotent retries не создают второй отчёт/provider calls.
 - [x] Legacy `/reports/generate product=career` не используется новым client flow.
-- [ ] API integration tests покрывают queued, deterministic_ready, ready, partial failure, terminal failed и locked states.
+- [x] API integration tests покрывают queued, deterministic_ready, ready, partial failure, terminal failed и locked states.
 
 ## Реализация и проверка
 
@@ -56,8 +57,10 @@
 - `uv run ruff check app/api/v1/__init__.py app/modules/career workers/tasks/career.py tests/unit/test_career` — passed.
 - `uv run mypy app/modules/career/api_runtime.py app/modules/career/api_schemas.py app/modules/career/repository.py app/modules/career/router.py workers/tasks/career.py` — passed.
 
-DB-backed suite использует реальную PostgreSQL transaction/schema и подменяет только enqueue transport, чтобы детерминированно доказать idempotency без внешнего broker.
+- DB-backed suite использует реальную PostgreSQL transaction/schema и подменяет только enqueue transport, чтобы детерминированно доказать idempotency без внешнего broker.
+- `backend/tests/unit/test_career/test_openapi_contract.py` сверяет runtime FastAPI и canonical `/v1/career/*` paths/methods/statuses; Redocly validation остаётся CI gate.
+- PostgreSQL matrix сохраняет реальные Payment/Entitlement rows и проверяет Plus, grandfathered, free, expired, inactive и foreign-owner доступ для всей route surface.
 
 ## Аудит 2026-09-26
 
-FastAPI-generated OpenAPI содержит Career routes, но CI-канонический `contracts/openapi.yaml` не содержит `/career/*`. Source audit подтверждает access dependency на routes, однако полной параметризованной route matrix нет. Integration suite проверяет последовательный retry и основные progressive states, но не конкурентный race и отдельный terminal `failed` case.
+Все перечисленные расхождения закрыты canonical OpenAPI parity, persisted entitlement route matrix, atomic concurrency regressions и terminal-state API tests; audit note сохранён как историческое основание изменений.

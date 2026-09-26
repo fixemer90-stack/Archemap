@@ -35,7 +35,7 @@ Career объединяет deterministic scoring, пользовательск�
 
 1. Migration + feature flag off.
 2. Backfill не выполняется автоматически для legacy Career.
-3. Staging с mock provider, затем real provider.
+3. Staging с mock provider; real-provider quality/cost gate выполняется отдельно перед production rollout.
 4. Проверить active Plus, grandfathered legacy и locked account.
 5. Проверить deterministic-first reader, PDF, section retry и provider failure.
 6. Canary cohort; сравнить outcomes/latency/cost.
@@ -59,7 +59,7 @@ Career объединяет deterministic scoring, пользовательск�
 - `app.modules.career.observability` создаёт low-cardinality OpenTelemetry metrics без ответов, prompt/report payload и UUID в labels.
 - API экспортирует метрики через OTLP только при заданном `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`; без endpoint поведение явно выключено.
 - Worker измеряет deterministic/narrative duration, safe failures/retries, scoring/catalog adoption и section outcomes.
-- Celery schedule объявляет `career.monitor_pipeline` каждые 5 минут, но deploy Compose пока не запускает отдельный Beat scheduler; до исправления runtime alert path не считается активным.
+- Local/staging/production Compose запускают отдельный singleton Celery Beat scheduler; topology regression запрещает отсутствие scheduler и `worker --beat`. Live alert path всё ещё требует stage readback/observation evidence.
 - Provider token/cost telemetry использует явно помеченную оценку по размеру текста и настраиваемым ставкам; authoritative billing остаётся внешней сверкой провайдера.
 - `CAREER_REPORT_ENABLED=False` остаётся default rollback gate; rollback не удаляет target/legacy artifacts.
 
@@ -79,7 +79,7 @@ Career объединяет deterministic scoring, пользовательск�
 ## Критерии приёмки
 
 - [x] Все deterministic, resolver, role/path, LLM, API и UI suites зелёные локально.
-- [ ] Staging real-provider report проходит human quality review по design-документу.
+- [ ] Staging mock-provider report проходит structural/human product review по design-документу; real-provider prose quality проверяется до production rollout.
 - [x] Locked/expired аккаунт не получает protected Career data в policy/API regression suites.
 - [x] Grandfathered legacy владелец сохраняет policy access; production matrix остаётся в runbook.
 - [x] Старые Career reports/PDF не мигрируются и не используются target API по explicit migration boundary.
@@ -95,5 +95,5 @@ Career объединяет deterministic scoring, пользовательск�
 ## Аудит 2026-09-26
 
 - Exact green revision: `a821404d0b010fc9f1f1cd04d01170a825dc29b8`; CI run `36210137484`, семь jobs `success`.
-- Compose запускает Career worker, но не запускает Celery Beat. Пока scheduler не добавлен в deploy topology, критерии stuck/alert evidence нельзя закрыть даже после настройки dashboard.
-- Stage остаётся на marker `3462865ed1a7158023c99bc491044dcea048ad23`, target Career routes в running backend отсутствуют, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст. Stage evidence вынесено в S14 и остаётся открытым.
+- Scheduler implementation gap закрыт dedicated Beat services и regression tests; stage zero-stuck/alert-path evidence остаётся открытым до deploy.
+- Stage остаётся на marker `3462865ed1a7158023c99bc491044dcea048ad23`, target Career routes в running backend отсутствуют, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст. По решению владельца продукта от 26 сентября 2026 года mock LLM достаточен для S14; требуется включить и проверить именно mock runtime, routes, worker/scheduler и OTLP.

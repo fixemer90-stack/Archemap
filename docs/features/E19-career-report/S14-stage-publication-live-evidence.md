@@ -6,7 +6,7 @@
 
 ## Контекст
 
-Локальная реализация Career, API, reader/PDF и mocked Playwright browser suite подготовлены, но этого недостаточно для закрытия E19. Текущий stage не доказывает целевой пользовательский поток с реальным backend, entitlement policy, worker, LLM provider и наблюдаемостью.
+Локальная реализация Career, API, reader/PDF и mocked Playwright browser suite подготовлены, но этого недостаточно для закрытия E19. Текущий stage не доказывает целевой пользовательский поток с реальным backend, entitlement policy, worker, mock LLM runtime и наблюдаемостью.
 
 Runtime-аудит 25 сентября 2026 года показал:
 
@@ -20,7 +20,7 @@ Runtime-аудит 25 сентября 2026 года показал:
 
 ## Цель
 
-Опубликовать точный зелёный Career revision на изолированный stage, выполнить полный live flow и сохранить проверяемое evidence для entitlement, real-provider narrative, reader/PDF, observability и rollback. Production Career rollout в эту Story не входит, но production health после изменения общего ingress обязан остаться зелёным.
+Опубликовать точный зелёный Career revision на изолированный stage, выполнить полный live flow и сохранить проверяемое evidence для entitlement, mock-provider narrative, reader/PDF, observability и rollback. По решению владельца продукта от 26 сентября 2026 года real provider для stage не требуется. Production Career rollout в эту Story не входит, но production health после изменения общего ingress обязан остаться зелёным.
 
 ## Что сделать
 
@@ -50,8 +50,8 @@ Runtime-аудит 25 сентября 2026 года показал:
 6. Проверить, что target `/api/v1/career/*` routes присутствуют в реально запущенном backend.
 7. Включить на stage:
    - `CAREER_REPORT_ENABLED=true`;
-   - real LLM provider и stage API key;
-   - актуальные provider cost rates;
+   - `LLM_PROVIDER=mock` и включённый mock LLM runtime;
+   - mock-safe cost settings; реальные provider rates не считаются stage evidence;
    - OTLP metrics endpoint и stage service name.
 8. Не переносить эти настройки и credentials в production автоматически.
 
@@ -73,7 +73,7 @@ Runtime-аудит 25 сентября 2026 года показал:
 4. Создать generation и записать `generation_id`.
 5. Доказать переходы `queued/calculating → deterministic_ready → generating_sections → ready`.
 6. Открыть progressive reader на `deterministic_ready` до готовности всех narrative sections.
-7. Дождаться real-provider narrative и записать `report_id`.
+7. Дождаться mock-provider narrative и записать `report_id`.
 8. Скачать backend PDF, проверить HTTP 200, `%PDF`, ненулевой размер и одинаковый порядок секций с web reader.
 9. Выполнить isolated retry одной failed section либо управляемый provider-failure smoke и доказать сохранность deterministic content.
 
@@ -81,7 +81,7 @@ Runtime-аудит 25 сентября 2026 года показал:
 
 Сравнить live report с design-документом и canonical sample:
 
-- выводы специфичны и привязаны к evidence;
+- структура и claims привязаны к evidence contract;
 - contradictions сохранены;
 - low-confidence выводы сформулированы условно;
 - нет диагноза, гарантированных исходов и назначения профессии;
@@ -125,7 +125,7 @@ Runtime-аудит 25 сентября 2026 года показал:
 - [ ] Stage backup/checksum и pre/post legacy row evidence сохранены.
 - [ ] Backend, worker и frontend stage запущены с target Career revision; health/readiness зелёные.
 - [ ] Target Career routes и актуальный migration head подтверждены в running containers.
-- [ ] Real provider и OTLP включены только на stage; production configuration не изменена.
+- [ ] Mock LLM runtime и OTLP включены на stage; production configuration не изменена.
 - [ ] Active Plus, grandfathered legacy и locked/expired matrix пройдена через live backend.
 - [ ] Полный questionnaire → deterministic → narrative → reader/PDF flow пройден; generation/report/PDF IDs записаны с редактированием персональных данных.
 - [ ] Human quality review пройден относительно design и canonical sample.
@@ -169,6 +169,10 @@ Production regression health:
 - Без Basic Auth stage health возвращает `401` и `X-Robots-Tag: noindex, nofollow, noarchive`; authenticated `200` в этом аудите не подтверждён.
 - Production `/api/v1/health` после read-only stage audit возвращает `200`; это не заменяет regression smoke после будущей target stage publication.
 - Deploy topology пока не запускает Celery Beat, поэтому zero-stuck/alert-path evidence заблокировано implementation/config gap.
+
+## Решение по provider gate 2026-09-26
+
+Владелец продукта подтвердил, что для stage достаточно mock LLM. Исторические требования real-provider stage report/API key сняты. Real-provider prose quality, authoritative latency/token/cost и provider billing evidence переносятся в canary/pre-production gate S12. Scheduler implementation gap закрыт после исторического snapshot; S14 должен доказать уже запущенный stage Beat service и alert path.
 
 ## Вне области Story
 

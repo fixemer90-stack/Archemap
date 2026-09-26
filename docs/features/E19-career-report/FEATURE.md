@@ -13,6 +13,7 @@
 - Design/architecture: [`../../design/astrotype_career_report.md`](../../design/astrotype_career_report.md)
 - Canonical UI sample: [`../../design/astrotype-career-report-sample.html`](../../design/astrotype-career-report-sample.html)
 - SRS: [`../../SRS/SRS-E19-career-report.md`](../../SRS/SRS-E19-career-report.md)
+- Аудит расхождений: [`AUDIT-2026-09-26-discrepancies.md`](./AUDIT-2026-09-26-discrepancies.md)
 
 При расхождении короткого Story с продуктовым смыслом источником истины является SRS вместе с design-документом. Формулы, DTO и миграции должны быть зафиксированы тестами до production rollout.
 

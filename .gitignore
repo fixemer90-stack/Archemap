@@ -69,3 +69,7 @@ backend/.venv
 # ── Local agent/runtime artifacts ───────────────────────────────────────────
 .hermes/
 backups/
+frontend/AGENTS.md
+frontend/CLAUDE.md
+frontend/test-results/
+frontend/playwright-report/

@@ -11,9 +11,12 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isStandaloneV2Report = pathname.startsWith("/report/v2/");
+  const isStandaloneReport =
+    pathname.startsWith("/report/v2/") ||
+    pathname === "/products/career" ||
+    pathname.startsWith("/products/career/report/");
 
-  if (isStandaloneV2Report) {
+  if (isStandaloneReport) {
     return (
       <DashboardAuthGuard>
         <div className="min-h-screen">{children}</div>

@@ -277,7 +277,7 @@ export default function CareerProductPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-16">
+    <div className="mx-auto max-w-5xl space-y-8 px-4 pb-16 sm:px-6">
       <header className="space-y-3">
         <p className="text-xs uppercase tracking-[0.24em] text-[#CFA75A]">
           Astrotype Career
@@ -412,7 +412,15 @@ export default function CareerProductPage() {
               </p>
             </div>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            role="progressbar"
+            aria-label="Прогресс опроса"
+            aria-valuemin={1}
+            aria-valuemax={questions.length}
+            aria-valuenow={step + 1}
+            aria-valuetext={`${step + 1} из ${questions.length}`}
+            className="h-1.5 overflow-hidden rounded-full bg-white/10"
+          >
             <div
               className="h-full bg-[#CFA75A] transition-all"
               style={{ width: `${((step + 1) / questions.length) * 100}%` }}

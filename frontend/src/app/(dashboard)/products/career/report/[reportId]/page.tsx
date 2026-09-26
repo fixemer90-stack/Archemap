@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { ArrowLeft, Download, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ export default function CareerReportPage() {
     );
 
   return (
-    <article className="career-reader mx-auto max-w-5xl space-y-10 pb-20 text-[#F6F1E8]">
+    <article className="career-reader mx-auto max-w-5xl space-y-10 bg-transparent px-4 pb-20 text-[#F6F1E8] sm:px-6 print:max-w-none print:bg-white print:px-0 print:pb-0 print:text-[#111827]">
       <nav
         className="flex flex-wrap items-center justify-between gap-3 print:hidden"
         aria-label="Действия с отчётом"
@@ -138,31 +138,69 @@ export default function CareerReportPage() {
         </div>
       </nav>
 
-      <header className="relative overflow-hidden rounded-[28px] border border-[#D7B466]/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.18),transparent_40%),linear-gradient(145deg,#151c2a,#0d131f)] p-7 shadow-2xl sm:p-12">
-        <p className="text-xs uppercase tracking-[0.28em] text-[#D7B466]">
-          Astrotype Career · версия {payload.version}
-        </p>
-        <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-cormorant)] text-4xl font-semibold leading-tight sm:text-6xl">
-          Профессиональная механика без готовых ярлыков
-        </h1>
-        <p className="mt-5 max-w-2xl text-sm leading-7 text-[#C8D0DE]">
-          Этот отчёт помогает увидеть рабочий ритм, способы принимать решения,
-          условия эффективности и несколько возможных направлений. Он не
-          назначает профессию.
-        </p>
-        <div className="mt-7 flex flex-wrap gap-2 text-xs text-[#D8DCE8]">
-          <span className="rounded-full border border-white/10 px-3 py-1.5">
-            Расчёт сохранён
-          </span>
-          <span className="rounded-full border border-white/10 px-3 py-1.5">
-            {
-              report.sections.filter((section) => section.status === "ready")
-                .length
-            }{" "}
-            из {report.sections.length} пояснений готовы
-          </span>
+      <header className="relative grid overflow-hidden rounded-[28px] border border-[#D7B466]/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.18),transparent_40%),linear-gradient(145deg,#151c2a,#0d131f)] p-7 shadow-2xl sm:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
+        <div>
+          <p className="text-xs uppercase tracking-[0.28em] text-[#D7B466]">
+            Astrotype Career · версия {payload.version}
+          </p>
+          <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-cormorant)] text-4xl font-semibold leading-tight sm:text-6xl">
+            Профессиональная механика без готовых ярлыков
+          </h1>
+          <p className="mt-5 max-w-2xl text-sm leading-7 text-[#C8D0DE]">
+            Этот отчёт помогает увидеть рабочий ритм, способы принимать решения,
+            условия эффективности и несколько возможных направлений. Он не
+            назначает профессию.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-2 text-xs text-[#D8DCE8]">
+            <span className="rounded-full border border-white/10 px-3 py-1.5">
+              Расчёт сохранён
+            </span>
+            <span className="rounded-full border border-white/10 px-3 py-1.5">
+              {
+                report.sections.filter((section) => section.status === "ready")
+                  .length
+              }{" "}
+              из {report.sections.length} пояснений готовы
+            </span>
+          </div>
         </div>
+        <aside className="grid content-end gap-3" aria-label="Краткий профиль">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#98A4B8]">
+              Ведущий профиль
+            </p>
+            <p className="mt-2 text-lg font-semibold text-[#F6F1E8]">
+              {report.dimensions[0]?.label ?? "Профессиональная механика"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#98A4B8]">
+              Рабочий вектор
+            </p>
+            <p className="mt-2 text-lg font-semibold capitalize text-[#F6F1E8]">
+              {report.roles[0]?.title ?? "Контекстный выбор"}
+            </p>
+          </div>
+        </aside>
       </header>
+
+      <nav
+        aria-label="Разделы отчёта"
+        className="grid overflow-hidden rounded-2xl border border-white/10 bg-[#0d1420] sm:grid-cols-2 lg:grid-cols-5 print:hidden"
+      >
+        {report.sections.map((section, index) => (
+          <a
+            key={section.key}
+            href={`#${section.key}`}
+            className="border-white/10 p-4 text-sm text-[#C8D0DE] transition hover:bg-white/[0.04] hover:text-[#F6F1E8] sm:border-r sm:border-b"
+          >
+            <span className="block text-xs font-semibold text-[#D7B466]">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="mt-1 block">{section.title}</span>
+          </a>
+        ))}
+      </nav>
 
       {payload.status === "narrative_failed" && (
         <aside
@@ -308,6 +346,50 @@ export default function CareerReportPage() {
           консультацию или ваш реальный опыт.
         </p>
       </details>
+      <style jsx global>{`
+        @media print {
+          html,
+          body {
+            background: #ffffff !important;
+            color: #111827 !important;
+          }
+
+          .career-reader {
+            background: #ffffff !important;
+            color: #111827 !important;
+          }
+
+          .career-reader header,
+          .career-reader section,
+          .career-reader article,
+          .career-reader details {
+            break-inside: avoid;
+            border-color: #d1d5db !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            color: #111827 !important;
+          }
+
+          .career-reader div {
+            background-color: transparent !important;
+          }
+
+          .career-reader p,
+          .career-reader h1,
+          .career-reader h2,
+          .career-reader h3,
+          .career-reader li,
+          .career-reader strong,
+          .career-reader summary,
+          .career-reader span {
+            color: #111827 !important;
+          }
+
+          .career-reader [role="tooltip"] {
+            display: none !important;
+          }
+        }
+      `}</style>
     </article>
   );
 }
@@ -323,16 +405,19 @@ function SectionPlaceholder({ status }: { status: string }) {
 }
 
 function CareerTerm({ term }: { term: keyof typeof TERM_HELP }) {
+  const tooltipId = `career-term-${useId().replaceAll(":", "")}`;
   return (
     <span
       className="group relative inline-flex whitespace-nowrap border-b border-dotted border-[#D7B466] text-[#E5C97F]"
       tabIndex={0}
       data-career-term={term}
+      aria-describedby={tooltipId}
     >
       {term}
       <span
+        id={tooltipId}
         role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-72 -translate-x-1/2 whitespace-normal rounded-xl border border-[#D7B466]/25 bg-[#09101a] p-3 text-left text-xs font-normal leading-5 text-[#D8DCE8] shadow-xl group-hover:block group-focus:block"
+        className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-[min(18rem,calc(100vw-2rem))] whitespace-normal rounded-xl border border-[#D7B466]/25 bg-[#09101a] p-3 text-left text-xs font-normal leading-5 text-[#D8DCE8] shadow-xl group-hover:block group-focus:block"
       >
         {TERM_HELP[term]}
       </span>

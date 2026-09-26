@@ -2,7 +2,7 @@
 
 ## Статус
 
-✅ Завершено
+🟡 Частично — продуктовый и migration contract реализованы; route-level access matrix требует полного contract test
 
 ## Контекст
 
@@ -54,7 +54,7 @@ new Career access = active Plus OR explicit grandfathered legacy entitlement
 - [x] Legacy report rows/PDF не удаляются.
 - [x] Новый endpoint не возвращает legacy payload как успешный Career v2.
 - [x] Feature flag и rollback не требуют destructive migration.
-- [x] Access matrix покрыта contract tests.
+- [ ] Access matrix покрыта route-level contract tests для всех заявленных операций.
 
 ## Evidence
 
@@ -66,3 +66,7 @@ new Career access = active Plus OR explicit grandfathered legacy entitlement
 - `frontend/src/components/report/career-cta.tsx` ведёт на канонический `/products/career?profileId=...`; product page читает deep link и автоматически открывает questionnaire выбранного профиля.
 - `node scripts/check-career-product-ux.mjs` → passed; exact-path ESLint и `npx tsc --noEmit --pretty false` → passed.
 - Local PostgreSQL upgrade/downgrade preserved legacy row counts exactly: `reports=3`, `chart_snapshots=45`, `payments=0`, `entitlements=0`, `users=41`.
+
+## Аудит 2026-09-26
+
+Текущий тест фиксирует декларативную `CAREER_ACCESS_MATRIX`, но не сопоставляет её со всеми реально зарегистрированными routes. Операция `versions` присутствует в матрице, отдельный endpoint версий отсутствует. До route-level параметризованного теста последний критерий остаётся открытым.

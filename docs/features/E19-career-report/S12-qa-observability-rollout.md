@@ -59,7 +59,7 @@ Career объединяет deterministic scoring, пользовательск�
 - `app.modules.career.observability` создаёт low-cardinality OpenTelemetry metrics без ответов, prompt/report payload и UUID в labels.
 - API экспортирует метрики через OTLP только при заданном `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`; без endpoint поведение явно выключено.
 - Worker измеряет deterministic/narrative duration, safe failures/retries, scoring/catalog adoption и section outcomes.
-- Celery beat каждые 5 минут ищет stuck generations и spike `career_validation_failure`, пишет bounded `career_pipeline_alert`.
+- Celery schedule объявляет `career.monitor_pipeline` каждые 5 минут, но deploy Compose пока не запускает отдельный Beat scheduler; до исправления runtime alert path не считается активным.
 - Provider token/cost telemetry использует явно помеченную оценку по размеру текста и настраиваемым ставкам; authoritative billing остаётся внешней сверкой провайдера.
 - `CAREER_REPORT_ENABLED=False` остаётся default rollback gate; rollback не удаляет target/legacy artifacts.
 
@@ -74,7 +74,7 @@ Career объединяет deterministic scoring, пользовательск�
 - Browser smoke включён в GitHub Actions `test-frontend`; failure artifacts сохраняют `playwright-report` и `test-results`.
 - Career rollout/OTEL settings добавлены в local/staging/production env examples; local Compose передаёт одинаковые settings API и worker.
 - Repo-wide ruff/mypy, frontend test/type/lint/build и docs Prettier выполняются повторно после последнего edit; точный текущий SHA записывается после commit/CI.
-- GitHub Actions `CI` для implementation/docs SHA `a61a3707b0063140aacf978ea56760de48501f7d` → success; run `22277123504`, все шесть jobs завершены успешно.
+- GitHub Actions `CI` для exact browser-smoke/docs HEAD `a821404d0b010fc9f1f1cd04d01170a825dc29b8` → success; run `36210137484`, все семь jobs завершены успешно, включая frontend Playwright smoke.
 
 ## Критерии приёмки
 
@@ -82,10 +82,18 @@ Career объединяет deterministic scoring, пользовательск�
 - [ ] Staging real-provider report проходит human quality review по design-документу.
 - [x] Locked/expired аккаунт не получает protected Career data в policy/API regression suites.
 - [x] Grandfathered legacy владелец сохраняет policy access; production matrix остаётся в runbook.
-- [x] Старые Career reports/PDF не мигрируются и остаются читаемыми по explicit migration boundary.
+- [x] Старые Career reports/PDF не мигрируются и не используются target API по explicit migration boundary.
+- [ ] Legacy Career reader/PDF readability после target migrations подтверждена отдельным regression/live matrix evidence.
 - [ ] Метрики/alerts доказывают отсутствие stuck pipeline.
 - [x] Cost/latency budgets зафиксированы в runbook.
 - [ ] Staging latency/token/cost measurement и dashboard links записаны как rollout evidence.
 - [x] Rollback feature flag покрыт contract test и не выполняет destructive migration/backfill.
-- [ ] Точный зелёный SHA текущего browser-smoke изменения и CI run записаны в Story.
+- [x] Точный зелёный SHA текущего browser-smoke изменения и CI run записаны в Story.
+- [ ] Canary cohort/result и полный observation window записаны как rollout evidence.
 - [ ] Production smoke report/PDF IDs записаны в Story перед `✅`.
+
+## Аудит 2026-09-26
+
+- Exact green revision: `a821404d0b010fc9f1f1cd04d01170a825dc29b8`; CI run `36210137484`, семь jobs `success`.
+- Compose запускает Career worker, но не запускает Celery Beat. Пока scheduler не добавлен в deploy topology, критерии stuck/alert evidence нельзя закрыть даже после настройки dashboard.
+- Stage остаётся на marker `3462865ed1a7158023c99bc491044dcea048ad23`, target Career routes в running backend отсутствуют, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст. Stage evidence вынесено в S14 и остаётся открытым.

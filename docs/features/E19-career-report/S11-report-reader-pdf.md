@@ -2,7 +2,7 @@
 
 ## Статус
 
-✅ Завершено — reader/PDF, responsive/accessibility, visual и print browser smoke закрыты
+🟡 Частично — reader/PDF и browser smoke готовы; cross-render parity и sample comparison требуют доказательства
 
 ## Контекст
 
@@ -38,15 +38,15 @@
 ## Критерии приёмки
 
 - [x] Reader не использует legacy `generated_report` payload.
-- [x] Web/PDF читают один persisted source и имеют один порядок секций.
+- [ ] Web/PDF читают один persisted source и имеют доказанный одинаковый порядок/представление секций.
 - [x] Scores объяснены без good/bad ranking.
 - [x] Profession examples сформулированы условно, без назначения.
-- [x] Contradictions и context constraints не теряются.
+- [ ] Contradictions и context constraints не теряются между API, web view-model и PDF view-model.
 - [x] Deterministic-ready reader полезен до завершения LLM.
 - [x] Narrative failure не скрывает deterministic content.
 - [x] Mobile, print/PDF, typography и whole-word tooltips проверены.
 - [x] Canonical HTML sample и desktop/mobile previews созданы.
-- [x] Реальный reader проходит visual parity smoke относительно sample.
+- [ ] Реальный reader проходит воспроизводимый visual parity smoke относительно canonical sample.
 
 ## Реализация и проверка
 
@@ -61,3 +61,9 @@
 - Desktop/mobile/print visual regression baselines сохранены в `frontend/tests/e2e/career-reader.spec.ts-snapshots/`; локальный общий Career browser suite: `5 passed, 1 skipped`.
 
 Human visual review desktop/mobile/print снимков подтвердил отсутствие clipping/overflow, читаемый print и соответствие canonical sample как design direction. Reader получил standalone shell, hero summary cards с ведущим профилем/рабочим вектором и компактную навигационную сетку десяти разделов; pixel-perfect совпадение не является контрактом.
+
+## Аудит 2026-09-26
+
+- Web и backend PDF строят отдельные view-model/rendering paths. Snapshot tests сравнивают reader с его собственными baselines, а не с canonical sample.
+- Web показывает placeholders всех десяти narrative sections, PDF выводит только готовые; порядок narrative/deterministic/context blocks и humanized labels различается.
+- Нужен cross-render fixture test из одного persisted payload и воспроизводимое sample comparison с зафиксированным допуском либо явно ограниченным human-review protocol.

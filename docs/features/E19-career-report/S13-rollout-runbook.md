@@ -32,7 +32,7 @@ Configure `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` and `OTEL_SERVICE_NAME`. The API
 - `career_provider_tokens_total` — aggregate input/output token estimate, no payload or identity labels;
 - `career_provider_cost_usd` — aggregate configured-rate cost estimate.
 
-Celery beat runs `career.monitor_pipeline` every 5 minutes. It warns with `career_pipeline_alert` for:
+Celery schedule содержит `career.monitor_pipeline` every 5 minutes. Перед stage evidence deploy обязан запускать отдельный Beat scheduler или эквивалентный approved scheduler. Он пишет `career_pipeline_alert` для:
 
 - any `queued|calculating_dimensions|deterministic_ready|generating_sections` generation older than `CAREER_STUCK_AFTER_MINUTES`;
 - at least `CAREER_VALIDATOR_ALERT_THRESHOLD` `career_validation_failure` segments in `CAREER_MONITOR_WINDOW_MINUTES`.
@@ -111,3 +111,17 @@ Stage-публикация и сбор первых семи блоков eviden
 - latency/token/cost dashboard links and a zero-stuck observation window;
 - rollback flag rehearsal result;
 - production smoke report/PDF IDs with secrets and personal payload redacted.
+
+## Критерии приёмки runbook
+
+- [x] Зафиксированы latency, stuck, validator и provider-cost budgets с stop conditions.
+- [x] Описаны bounded metrics/alerts без персонального payload в labels.
+- [x] Описан backup/restore и pre/post legacy row-count/checksum preflight.
+- [x] Описана staging access/provider/failure/feature-flag matrix.
+- [x] Описаны canary expansion gates и обязательный observation window.
+- [x] Rollback запрещает destructive downgrade/delete и сохраняет target/legacy artifacts.
+- [x] Required evidence перечислено и делегировано S14/S12; фактическое исполнение не считается частью готовности документа runbook.
+
+## Runtime gap, обнаруженный 2026-09-26
+
+`backend/workers/celery_app.py` объявляет schedule, но local/staging/production Compose запускают только Celery worker без Beat. До stage observability evidence необходимо добавить и проверить scheduler service; один факт наличия `beat_schedule` не доказывает выполнение monitor task.

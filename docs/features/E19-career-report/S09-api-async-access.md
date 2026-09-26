@@ -2,7 +2,7 @@
 
 ## Статус
 
-✅ Завершено
+🟡 Частично — target API работает; canonical OpenAPI и полная route/access/idempotency matrix не закрыты
 
 ## Контекст
 
@@ -36,14 +36,14 @@
 
 ## Критерии приёмки
 
-- [x] OpenAPI фиксирует request/response/error schemas и statuses.
+- [ ] Канонический `contracts/openapi.yaml` фиксирует Career request/response/error schemas и statuses.
 - [x] Create не блокируется до полного LLM completion.
 - [x] Generation status отражает deterministic и narrative progress отдельно.
-- [x] Все endpoints имеют одинаковый ownership/access policy.
-- [x] Free/expired direct requests не получают protected payload.
-- [x] Idempotent retries не создают второй отчёт/provider calls.
+- [ ] Все endpoints покрыты параметризованным route-level ownership/access test.
+- [ ] Free/expired direct requests проверены через реальный entitlement lifecycle без подмены policy denial.
+- [ ] Последовательные и конкурентные idempotent retries не создают второй отчёт/provider calls.
 - [x] Legacy `/reports/generate product=career` не используется новым client flow.
-- [x] API integration tests покрывают queued, deterministic_ready, ready, partial/failure и locked states.
+- [ ] API integration tests покрывают queued, deterministic_ready, ready, partial failure, terminal failed и locked states.
 
 ## Реализация и проверка
 
@@ -57,3 +57,7 @@
 - `uv run mypy app/modules/career/api_runtime.py app/modules/career/api_schemas.py app/modules/career/repository.py app/modules/career/router.py workers/tasks/career.py` — passed.
 
 DB-backed suite использует реальную PostgreSQL transaction/schema и подменяет только enqueue transport, чтобы детерминированно доказать idempotency без внешнего broker.
+
+## Аудит 2026-09-26
+
+FastAPI-generated OpenAPI содержит Career routes, но CI-канонический `contracts/openapi.yaml` не содержит `/career/*`. Source audit подтверждает access dependency на routes, однако полной параметризованной route matrix нет. Integration suite проверяет последовательный retry и основные progressive states, но не конкурентный race и отдельный terminal `failed` case.

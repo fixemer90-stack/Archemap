@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато — требуется публикация полного Career runtime на `staging.astrotype.ru`
+🟡 В работе — exact green revision закреплён; stage publication и live evidence не выполнены
 
 ## Контекст
 
@@ -120,7 +120,7 @@ Runtime-аудит 25 сентября 2026 года показал:
 
 ## Критерии приёмки
 
-- [ ] Текущий Career browser-smoke набор закоммичен и имеет точный зелёный CI SHA.
+- [x] Текущий Career browser-smoke набор закоммичен и имеет точный зелёный CI SHA.
 - [ ] На stage опубликован именно этот SHA; marker прочитан обратно из runtime.
 - [ ] Stage backup/checksum и pre/post legacy row evidence сохранены.
 - [ ] Backend, worker и frontend stage запущены с target Career revision; health/readiness зелёные.
@@ -156,6 +156,19 @@ Observation window:
 Rollback rehearsal:
 Production regression health:
 ```
+
+## Evidence 2026-09-26
+
+- Git SHA: `a821404d0b010fc9f1f1cd04d01170a825dc29b8`.
+- CI: `https://github.com/fixemer90-stack/Archemap/actions/runs/36210137484`; семь jobs завершены `success`, включая `Test & Build Frontend` с Career Playwright smoke.
+- Текущий stage marker: `3462865ed1a7158023c99bc491044dcea048ad23` — не совпадает с target SHA.
+- Stage containers запущены, backend healthy, migration current/head `a6b7c8d9e0f1`, но `/api/v1/career/*` routes в running backend отсутствуют.
+- Stage safe settings: `CAREER_REPORT_ENABLED=true`, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст.
+- Stage DB readback: `career_generations=2`, `career_reports=0`, `career_questionnaire_sessions=1`; сохранённого полного report/PDF evidence нет.
+- Career preflight dump в `/opt/astrotype` не найден; pre/post checksums и restore evidence отсутствуют.
+- Без Basic Auth stage health возвращает `401` и `X-Robots-Tag: noindex, nofollow, noarchive`; authenticated `200` в этом аудите не подтверждён.
+- Production `/api/v1/health` после read-only stage audit возвращает `200`; это не заменяет regression smoke после будущей target stage publication.
+- Deploy topology пока не запускает Celery Beat, поэтому zero-stuck/alert-path evidence заблокировано implementation/config gap.
 
 ## Вне области Story
 

@@ -1,6 +1,6 @@
 # SRS-E19: Astrotype Career Report
 
-Статус: S01–S09 завершены; S10–S11 реализованы до реального browser evidence; S12 ожидает staging real-provider, observability window, canary и production evidence
+Статус: S03–S06 завершены; S01/S02/S07–S11 требуют закрытия audit gaps; S13 runbook готов; S14 закрепил exact green SHA, но stage publication/live evidence не выполнены; S12 ожидает stage, canary и production evidence
 
 Feature: `docs/features/E19-career-report/FEATURE.md`
 

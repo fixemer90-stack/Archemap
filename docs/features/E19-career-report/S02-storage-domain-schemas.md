@@ -2,7 +2,7 @@
 
 ## Статус
 
-✅ Завершено
+🟡 Частично — базовое хранилище готово; versioned history и конкурентная idempotency требуют исправления
 
 ## Контекст
 
@@ -42,8 +42,8 @@ DTO должны отделять persisted deterministic contracts от LLM res
 - [x] Career artifact можно восстановить из PostgreSQL без Redis/LLM cache.
 - [x] Каждый dimension имеет evidence и scoring version.
 - [x] Answers, resolver output и report versions имеют явный lineage.
-- [x] Повторная генерация не создаёт дубликаты при одном idempotency key/generation ID.
-- [x] Repository tests доказывают ownership и immutable history.
+- [ ] Повторная генерация и конкурентный retry не создают дубликаты при одном idempotency key/generation ID.
+- [ ] Repository tests доказывают ownership и immutable history всех deterministic artifacts.
 
 ## Evidence
 
@@ -56,3 +56,8 @@ DTO должны отделять persisted deterministic contracts от LLM res
 - Backup перед migration: `backend/backups/pre-e19-career-20260916T063852Z.dump`.
 
 S03 adapter и golden contract доказали построение всех 12 persisted score rows с `scoring_version` и связанными evidence rows.
+
+## Аудит 2026-09-26
+
+- Последовательный idempotent retry покрыт, конкурентный race не проверен и может завершиться `IntegrityError` между check и insert.
+- `career_reports` версионируются, но dimension/archetype/environment/resolution/role rows имеют unique keys без `generation_id`/report version. Повторный полный пересчёт того же Career profile может столкнуться с существующими rows вместо создания полной immutable версии.

@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Runtime развёрнут и доступен по HTTPS; YooKassa checkout smoke ещё не выполнен.
+🟡 Runtime healthy; isolation, deploy identity and automatic webhook gaps remain open.
 
 ## Цель
 
@@ -21,6 +21,10 @@
 - связь Caddy со staging gateway идёт через внешнюю сеть `astrotype_edge`;
 - production backend/frontend/database не подключаются к staging Compose network.
 
+## Аудит
+
+Консолидированные расхождения и текущий live readback: `./AUDIT-discrepancies.md`.
+
 ## Не входит
 
 - копирование production базы или пользовательских данных;
@@ -37,13 +41,18 @@
 - [x] Публичный HTTPS требует Basic Auth и отдаёт `X-Robots-Tag`.
 - [x] Внутренний staging health возвращает HTTP 200 после Basic Auth.
 - [x] Production health остаётся HTTP 200 после подключения edge network.
-- [ ] YooKassa test-shop checkout/webhook/readback smoke пройден.
+- [ ] Только staging gateway подключён к общей `astrotype_edge`; backend/frontend остаются в private staging network.
+- [ ] YooKassa test-shop credentials отличаются от credentials production runtime.
+- [ ] Live staging соответствует одному точному green commit и staging deploy marker.
+- [ ] Текущая Compose topology, включая scheduler, развёрнута полностью.
+- [ ] Staging auth cookies используют `Secure` на публичном HTTPS host.
+- [ ] YooKassa test-shop automatic webhook/readback smoke пройден.
 
 ## Stories
 
-| ID  | Story                                                            | Статус        |
-| --- | ---------------------------------------------------------------- | ------------- |
-| S01 | [Staging runtime, isolation and smoke](./S01-staging-runtime.md) | 🟡 В процессе |
+| ID  | Story                                                            | Статус               |
+| --- | ---------------------------------------------------------------- | -------------------- |
+| S01 | [Staging runtime, isolation and smoke](./S01-staging-runtime.md) | 🟡 Audit gaps remain |
 
 ## Runbook
 

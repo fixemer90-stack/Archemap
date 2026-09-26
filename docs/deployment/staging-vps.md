@@ -1,6 +1,6 @@
 # Staging VPS: staging.astrotype.ru
 
-Статус: инфраструктурный контракт подготовлен; live-статус фиксируется в `docs/features/E9-staging-environment/S01-staging-runtime.md`.
+Статус: инфраструктурный контракт подготовлен; live-статус фиксируется в `docs/features/E9-staging-environment/S01-staging-runtime.md`, а расхождения — в `docs/features/E9-staging-environment/AUDIT-discrepancies.md`.
 
 ## Назначение
 
@@ -20,7 +20,7 @@ flowchart LR
   SW --> SR
 ```
 
-Production Caddy видит только `staging-gateway` через внешнюю Docker network `astrotype_edge`. Staging PostgreSQL и Redis остаются только во внутренней сети staging project.
+Target topology: production Caddy видит только `staging-gateway` через внешнюю Docker network `astrotype_edge`. Staging backend, frontend, PostgreSQL и Redis должны оставаться во внутренних сетях staging project. Текущий live runtime нарушает gateway-only часть контракта; исправление отслеживается в E9 audit register.
 
 ## 1. DNS prerequisite
 

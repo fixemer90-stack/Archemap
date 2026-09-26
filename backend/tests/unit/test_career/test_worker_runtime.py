@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import uuid
+from unittest.mock import AsyncMock, call
+
+import pytest
 
 from app.modules.career.models import CareerReport
 from workers.tasks.career import (
+    _persist_parent_rows_before_children,
     build_career_monitor_alerts,
     build_regeneration_report_row,
     failure_status_for_generation,
@@ -50,6 +54,25 @@ def test_regeneration_report_preserves_deterministic_artifacts() -> None:
 def test_failure_after_deterministic_commit_is_narrative_failure() -> None:
     assert failure_status_for_generation(report_id=uuid.uuid4()) == "narrative_failed"
     assert failure_status_for_generation(report_id=None) == "failed"
+
+
+@pytest.mark.asyncio
+async def test_parent_artifacts_are_flushed_before_fk_children() -> None:
+    repository = AsyncMock()
+    parent_rows = [_source_report(), _source_report()]
+    child_rows = [_source_report(), _source_report()]
+
+    await _persist_parent_rows_before_children(
+        repository=repository,
+        parent_rows=parent_rows,
+        child_rows=child_rows,
+    )
+
+    assert repository.mock_calls == [
+        call.add_many(parent_rows),
+        call.flush(),
+        call.add_many(child_rows),
+    ]
 
 
 def test_monitor_alerts_cover_stuck_pipeline_and_validator_failure_spike() -> None:

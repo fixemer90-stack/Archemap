@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from typing import Any, cast
@@ -13,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.models import BaseModel
 from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.astrotype_v2.models import NatalFact
@@ -44,6 +46,19 @@ from app.modules.llm.provider import get_llm_provider
 from workers.celery_app import app
 
 logger = structlog.get_logger()
+
+
+async def _persist_parent_rows_before_children(
+    *,
+    repository: CareerRepository,
+    parent_rows: Sequence[BaseModel],
+    child_rows: Sequence[BaseModel],
+) -> None:
+    """Make FK parents visible to PostgreSQL before inserting child rows."""
+
+    await repository.add_many(parent_rows)
+    await repository.flush()
+    await repository.add_many(child_rows)
 
 
 @app.task(  # type: ignore[untyped-decorator]
@@ -237,9 +252,10 @@ async def _generate_career_report_async(
                     role_rows=role_rows,
                     paths=career_paths,
                 )
-                await repository.add_many(
-                    [
-                        *dimension_rows,
+                await _persist_parent_rows_before_children(
+                    repository=repository,
+                    parent_rows=[*dimension_rows, *role_rows],
+                    child_rows=[
                         *evidence_rows,
                         build_resolution_row(
                             career_profile_id=profile.id,
@@ -248,10 +264,9 @@ async def _generate_career_report_async(
                         ),
                         *archetype_rows,
                         *environment_rows,
-                        *role_rows,
                         *path_rows,
                         *build_interpretation_fact_rows(facts),
-                    ]
+                    ],
                 )
 
             await repository.add(report)

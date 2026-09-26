@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
+from app.config import settings
 from app.modules.career.models import CareerGeneration, CareerReport
 from app.modules.career.repository import CareerRepository
 from workers.tasks.career import (
@@ -113,3 +114,59 @@ async def test_generation_claim_allows_only_queued_worker() -> None:
 
     assert await repository.claim_generation(uuid.uuid4()) is claimed
     assert await repository.claim_generation(uuid.uuid4()) is None
+
+
+@pytest.mark.asyncio
+async def test_monitor_pipeline_emits_safe_alerts_without_live_infrastructure(monkeypatch: pytest.MonkeyPatch) -> None:
+    from workers.tasks import career as career_tasks
+
+    stuck_result = MagicMock()
+    stuck_result.all.return_value = [("queued", 2), ("deterministic_ready", 1)]
+    validator_result = MagicMock()
+    validator_result.scalar_one.return_value = 5
+
+    db = AsyncMock()
+    db.execute.side_effect = [stuck_result, validator_result]
+    session_context = MagicMock()
+    session_context.__aenter__ = AsyncMock(return_value=db)
+    session_context.__aexit__ = AsyncMock(return_value=False)
+
+    telemetry = MagicMock()
+    alert_logger = MagicMock()
+    monkeypatch.setattr(career_tasks, "async_session_factory", MagicMock(return_value=session_context))
+    monkeypatch.setattr(settings, "CAREER_VALIDATOR_ALERT_THRESHOLD", 5)
+    monkeypatch.setattr(career_tasks, "career_telemetry", telemetry)
+    monkeypatch.setattr(career_tasks, "logger", alert_logger)
+
+    result = await career_tasks._monitor_career_pipeline_async()
+
+    assert result == {
+        "stuck_by_stage": {"deterministic": 2, "narrative": 1},
+        "validator_failures": 5,
+        "alerts": [
+            "career_stuck_generation:deterministic:2",
+            "career_stuck_generation:narrative:1",
+            "career_validator_failure_spike:5",
+        ],
+    }
+    assert telemetry.record.call_args_list == [
+        call(
+            stage="deterministic",
+            outcome="stuck",
+            operation="scan",
+            error_code="career_stuck_generation",
+            amount=2,
+        ),
+        call(
+            stage="narrative",
+            outcome="stuck",
+            operation="scan",
+            error_code="career_stuck_generation",
+            amount=1,
+        ),
+    ]
+    assert alert_logger.warning.call_args_list == [
+        call("career_pipeline_alert", alert="career_stuck_generation:deterministic:2"),
+        call("career_pipeline_alert", alert="career_stuck_generation:narrative:1"),
+        call("career_pipeline_alert", alert="career_validator_failure_spike:5"),
+    ]

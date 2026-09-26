@@ -85,6 +85,30 @@ services:
       redis:
         condition: service_healthy
 
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-astrotype}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-astrotype}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      FRONTEND_URL: https://astrotype.ru
+      ALLOWED_ORIGINS: '["https://astrotype.ru","https://www.astrotype.ru"]'
+      YANDEX_REDIRECT_URI: https://astrotype.ru/api/v1/auth/oauth/yandex/callback
+    command: celery -A workers.celery_app.app beat --loglevel=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

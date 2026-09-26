@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from fastapi.routing import APIRoute
 
 from app.config import Settings
 from app.core.exceptions import ValidationError
@@ -71,6 +72,33 @@ def test_career_access_matrix_and_migration_boundary_are_explicit() -> None:
     assert all(rule.requires_ownership for rule in CAREER_ACCESS_MATRIX.values())
     assert all(rule.requires_target_access for rule in CAREER_ACCESS_MATRIX.values())
     assert LEGACY_PAYLOAD_FALLBACK_ALLOWED is False
+
+
+def test_every_runtime_career_route_has_an_explicit_access_operation_contract() -> None:
+    from app.modules.career.contracts import CAREER_ROUTE_ACCESS_CONTRACT
+    from app.modules.career.router import router
+
+    runtime_routes = {
+        (method, f"/v1{route.path}"): getattr(route.endpoint, "__career_access_operation__", None)
+        for route in router.routes
+        if isinstance(route, APIRoute)
+        for method in route.methods or set()
+        if method != "HEAD"
+    }
+
+    assert runtime_routes == {
+        ("GET", "/v1/career/questionnaires/current"): "questionnaire",
+        ("PUT", "/v1/career/questionnaires/{session_id}/answers"): "questionnaire",
+        ("POST", "/v1/career/questionnaires/{session_id}/complete"): "questionnaire",
+        ("POST", "/v1/career/reports"): "create",
+        ("GET", "/v1/career/generations/{generation_id}"): "generate",
+        ("GET", "/v1/career/reports/{report_id}"): "read",
+        ("GET", "/v1/career/reports/{report_id}/sections"): "read",
+        ("POST", "/v1/career/reports/{report_id}/regenerate"): "regenerate",
+        ("GET", "/v1/career/reports/{report_id}/versions"): "versions",
+        ("GET", "/v1/career/reports/{report_id}/pdf"): "pdf",
+    }
+    assert runtime_routes == {(route.method, route.path): route.operation for route in CAREER_ROUTE_ACCESS_CONTRACT}
 
 
 def test_career_rollout_flag_is_off_by_default() -> None:

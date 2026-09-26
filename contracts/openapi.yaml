@@ -34,6 +34,8 @@ tags:
     description: Invoices & billing
   - name: Payments
     description: Payment processing
+  - name: Career
+    description: Async Career questionnaire, generation, progressive report, history, and PDF lifecycle
   - name: Reports
     description: Deterministic reports and narrative generation lifecycle
 
@@ -319,6 +321,398 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /v1/career/questionnaires/current:
+    get:
+      tags:
+      - Career
+      summary: Get Current Questionnaire
+      operationId: getCurrentCareerQuestionnaire
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: profile_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Profile Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireCurrentResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/questionnaires/{session_id}/answers:
+    put:
+      tags:
+      - Career
+      summary: Put Questionnaire Answers
+      operationId: saveCareerQuestionnaireAnswers
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionnaireAnswersRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/questionnaires/{session_id}/complete:
+    post:
+      tags:
+      - Career
+      summary: Complete Questionnaire
+      operationId: completeCareerQuestionnaire
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 120
+          title: Idempotency-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports:
+    post:
+      tags:
+      - Career
+      summary: Create Career Report
+      operationId: createCareerReport
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 120
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCareerReportRequest'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerGenerationAcceptedResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/generations/{generation_id}:
+    get:
+      tags:
+      - Career
+      summary: Get Career Generation
+      operationId: getCareerGeneration
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: generation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Generation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerGenerationStatusResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports/{report_id}:
+    get:
+      tags:
+      - Career
+      summary: Get Career Report
+      operationId: getCareerReport
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Report Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerReportResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports/{report_id}/sections:
+    get:
+      tags:
+      - Career
+      summary: Get Career Report Sections
+      operationId: getCareerReportSections
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Report Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerSectionsResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports/{report_id}/versions:
+    get:
+      tags:
+      - Career
+      summary: Get Career Report Versions
+      operationId: listCareerReportVersions
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Report Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerReportHistoryResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports/{report_id}/regenerate:
+    post:
+      tags:
+      - Career
+      summary: Regenerate Career Report
+      operationId: regenerateCareerReport
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Report Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 120
+          title: Idempotency-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegenerateCareerReportRequest'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerGenerationAcceptedResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports/{report_id}/pdf:
+    get:
+      tags:
+      - Career
+      summary: Get Career Report Pdf
+      operationId: downloadCareerReportPdf
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Report Id
+      responses:
+        '200':
+          description: Career report PDF rendered from the persisted owned report
+          headers:
+            Content-Disposition:
+              description: Attachment filename
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /v1/reports/generate:
     post:
       operationId: generateReport
@@ -464,6 +858,41 @@ components:
         default: 20
 
   responses:
+    CareerLocked:
+      description: Active Plus or grandfathered Career entitlement is required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CareerLockedErrorResponse"
+
+    CareerNotFound:
+      description: Owned Career resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CareerErrorResponse"
+
+    CareerConflict:
+      description: Career lifecycle or idempotency conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CareerErrorResponse"
+
+    CareerValidationError:
+      description: Career request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CareerErrorResponse"
+
+    CareerUnavailable:
+      description: Career generation queue or provider is unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CareerErrorResponse"
+
     BadRequest:
       description: Bad request
       content:
@@ -493,6 +922,478 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
+    CareerErrorResponse:
+      properties:
+        detail:
+          anyOf:
+          - type: string
+          - additionalProperties: true
+            type: object
+          title: Detail
+      type: object
+      required:
+      - detail
+      title: CareerErrorResponse
+    CareerGenerationAcceptedResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_generation_job_v1
+          title: Contract Version
+          default: career_generation_job_v1
+        status:
+          type: string
+          title: Status
+        generation_id:
+          type: string
+          format: uuid
+          title: Generation Id
+        report_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Report Id
+        links:
+          additionalProperties:
+            type: string
+          type: object
+          title: Links
+      type: object
+      required:
+      - status
+      - generation_id
+      - links
+      title: CareerGenerationAcceptedResponse
+    CareerGenerationStatusResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_generation_status_v1
+          title: Contract Version
+        generation_id:
+          type: string
+          format: uuid
+          title: Generation Id
+        report_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Report Id
+        status:
+          type: string
+          title: Status
+        deterministic_status:
+          type: string
+          title: Deterministic Status
+        narrative_status:
+          type: string
+          title: Narrative Status
+        progress:
+          additionalProperties:
+            type: integer
+          type: object
+          title: Progress
+        sections:
+          items:
+            $ref: '#/components/schemas/CareerSectionStateResponse'
+          type: array
+          title: Sections
+        diagnostics:
+          additionalProperties: true
+          type: object
+          title: Diagnostics
+      additionalProperties: true
+      type: object
+      required:
+      - contract_version
+      - generation_id
+      - report_id
+      - status
+      - deterministic_status
+      - narrative_status
+      - progress
+      - sections
+      - diagnostics
+      title: CareerGenerationStatusResponse
+    CareerLockedErrorResponse:
+      properties:
+        detail:
+          $ref: '#/components/schemas/CareerLockedResponse'
+      type: object
+      required:
+      - detail
+      title: CareerLockedErrorResponse
+    CareerLockedResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_locked_v1
+          title: Contract Version
+          default: career_locked_v1
+        access_state:
+          type: string
+          const: locked
+          title: Access State
+          default: locked
+        required_product:
+          type: string
+          const: plus
+          title: Required Product
+          default: plus
+        reason:
+          type: string
+          title: Reason
+      type: object
+      required:
+      - reason
+      title: CareerLockedResponse
+    CareerQuestionnaireDraft:
+      properties:
+        leadership_responsibility:
+          anyOf:
+          - type: integer
+            maximum: 5.0
+            minimum: 1.0
+          - type: 'null'
+          title: Leadership Responsibility
+        people_management_motivation:
+          anyOf:
+          - type: integer
+            maximum: 5.0
+            minimum: 1.0
+          - type: 'null'
+          title: People Management Motivation
+        autonomy_importance:
+          anyOf:
+          - type: integer
+            maximum: 5.0
+            minimum: 1.0
+          - type: 'null'
+          title: Autonomy Importance
+        risk_preference:
+          anyOf:
+          - $ref: '#/components/schemas/RiskPreference'
+          - type: 'null'
+        preferred_track:
+          anyOf:
+          - $ref: '#/components/schemas/PreferredTrack'
+          - type: 'null'
+        current_activity:
+          anyOf:
+          - type: string
+            maxLength: 300
+            minLength: 1
+          - type: 'null'
+          title: Current Activity
+        experience_years:
+          anyOf:
+          - type: integer
+            maximum: 60.0
+            minimum: 0.0
+          - type: 'null'
+          title: Experience Years
+        change_goal:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 1
+          - type: 'null'
+          title: Change Goal
+        collaboration_preference:
+          anyOf:
+          - type: integer
+            maximum: 5.0
+            minimum: 1.0
+          - type: 'null'
+          title: Collaboration Preference
+        current_constraints:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 1
+          - type: 'null'
+          title: Current Constraints
+      type: object
+      title: CareerQuestionnaireDraft
+    CareerReportHistoryResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_report_history_v1
+          title: Contract Version
+        career_profile_id:
+          type: string
+          format: uuid
+          title: Career Profile Id
+        requested_report_id:
+          type: string
+          format: uuid
+          title: Requested Report Id
+        versions:
+          items:
+            $ref: '#/components/schemas/CareerReportVersionResponse'
+          type: array
+          title: Versions
+      type: object
+      required:
+      - contract_version
+      - career_profile_id
+      - requested_report_id
+      - versions
+      title: CareerReportHistoryResponse
+    CareerReportResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_report_read_v1
+          title: Contract Version
+        report_id:
+          type: string
+          format: uuid
+          title: Report Id
+        generation_id:
+          type: string
+          format: uuid
+          title: Generation Id
+        status:
+          type: string
+          title: Status
+        version:
+          type: integer
+          title: Version
+        versions:
+          additionalProperties:
+            type: string
+          type: object
+          title: Versions
+        deterministic_payload:
+          additionalProperties: true
+          type: object
+          title: Deterministic Payload
+        sections:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Sections
+        section_states:
+          items:
+            $ref: '#/components/schemas/CareerSectionStateResponse'
+          type: array
+          title: Section States
+        assembled_payload:
+          additionalProperties: true
+          type: object
+          title: Assembled Payload
+      additionalProperties: true
+      type: object
+      required:
+      - contract_version
+      - report_id
+      - generation_id
+      - status
+      - version
+      - versions
+      - deterministic_payload
+      - sections
+      - section_states
+      - assembled_payload
+      title: CareerReportResponse
+    CareerReportVersionResponse:
+      properties:
+        report_id:
+          type: string
+          format: uuid
+          title: Report Id
+        generation_id:
+          type: string
+          format: uuid
+          title: Generation Id
+        version:
+          type: integer
+          title: Version
+        status:
+          type: string
+          title: Status
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - report_id
+      - generation_id
+      - version
+      - status
+      - created_at
+      title: CareerReportVersionResponse
+    CareerSectionStateResponse:
+      properties:
+        section_key:
+          type: string
+          title: Section Key
+        status:
+          type: string
+          title: Status
+        error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+      type: object
+      required:
+      - section_key
+      - status
+      title: CareerSectionStateResponse
+    CareerSectionsResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_sections_v1
+          title: Contract Version
+        sections:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Sections
+      additionalProperties: true
+      type: object
+      required:
+      - contract_version
+      - sections
+      title: CareerSectionsResponse
+    CreateCareerReportRequest:
+      properties:
+        profile_id:
+          type: string
+          format: uuid
+          title: Profile Id
+      type: object
+      required:
+      - profile_id
+      title: CreateCareerReportRequest
+    PreferredTrack:
+      type: string
+      enum:
+      - expert
+      - manager
+      - entrepreneur
+      - unknown
+      title: PreferredTrack
+    QuestionnaireAnswersRequest:
+      properties:
+        answers:
+          $ref: '#/components/schemas/CareerQuestionnaireDraft'
+      type: object
+      required:
+      - answers
+      title: QuestionnaireAnswersRequest
+    QuestionnaireCurrentResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_questionnaire_v1
+          title: Contract Version
+          default: career_questionnaire_v1
+        session_id:
+          type: string
+          format: uuid
+          title: Session Id
+        career_profile_id:
+          type: string
+          format: uuid
+          title: Career Profile Id
+        profile_id:
+          type: string
+          format: uuid
+          title: Profile Id
+        chart_id:
+          type: string
+          format: uuid
+          title: Chart Id
+        status:
+          type: string
+          title: Status
+        questionnaire_version:
+          type: string
+          title: Questionnaire Version
+        questions:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Questions
+        answers:
+          additionalProperties: true
+          type: object
+          title: Answers
+        missing_required:
+          items:
+            type: string
+          type: array
+          title: Missing Required
+      type: object
+      required:
+      - session_id
+      - career_profile_id
+      - profile_id
+      - chart_id
+      - status
+      - questionnaire_version
+      - questions
+      - answers
+      - missing_required
+      title: QuestionnaireCurrentResponse
+    QuestionnaireResponse:
+      properties:
+        contract_version:
+          type: string
+          const: career_questionnaire_v1
+          title: Contract Version
+          default: career_questionnaire_v1
+        session_id:
+          type: string
+          format: uuid
+          title: Session Id
+        status:
+          type: string
+          title: Status
+        answers:
+          additionalProperties: true
+          type: object
+          title: Answers
+        missing_required:
+          items:
+            type: string
+          type: array
+          title: Missing Required
+      type: object
+      required:
+      - session_id
+      - status
+      - answers
+      - missing_required
+      title: QuestionnaireResponse
+    RegenerateCareerReportRequest:
+      properties:
+        section_keys:
+          items:
+            type: string
+          type: array
+          title: Section Keys
+      type: object
+      title: RegenerateCareerReportRequest
+    RiskPreference:
+      type: string
+      enum:
+      - stable
+      - balanced
+      - high
+      title: RiskPreference
+
     HealthResponse:
       type: object
       required: [status]

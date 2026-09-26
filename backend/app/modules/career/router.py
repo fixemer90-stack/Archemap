@@ -20,13 +20,15 @@ from app.modules.career.api_runtime import (
     build_generation_status_payload,
     build_locked_career_payload,
     build_progressive_report_payload,
+    build_report_history_payload,
     build_sections_payload,
 )
 from app.modules.career.api_schemas import (
     CareerErrorResponse,
     CareerGenerationAcceptedResponse,
     CareerGenerationStatusResponse,
-    CareerLockedResponse,
+    CareerLockedErrorResponse,
+    CareerReportHistoryResponse,
     CareerReportResponse,
     CareerSectionsResponse,
     CreateCareerReportRequest,
@@ -35,6 +37,7 @@ from app.modules.career.api_schemas import (
     QuestionnaireResponse,
     RegenerateCareerReportRequest,
 )
+from app.modules.career.contracts import career_access_operation
 from app.modules.career.observability import career_telemetry
 from app.modules.career.questionnaire import (
     CONTEXT_VERSION,
@@ -51,11 +54,24 @@ from app.modules.profiles.models import PersonProfile
 
 router = APIRouter(prefix="/career", tags=["career"])
 _ERRORS: dict[int | str, dict[str, Any]] = {
-    402: {"model": CareerLockedResponse},
+    402: {"model": CareerLockedErrorResponse},
     404: {"model": CareerErrorResponse},
     409: {"model": CareerErrorResponse},
     422: {"model": CareerErrorResponse},
     503: {"model": CareerErrorResponse},
+}
+_PDF_RESPONSES: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": "Career report PDF rendered from the persisted owned report",
+        "content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}},
+        "headers": {
+            "Content-Disposition": {
+                "description": "Attachment filename",
+                "schema": {"type": "string"},
+            }
+        },
+    },
+    **_ERRORS,
 }
 _IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=120)]
 
@@ -65,6 +81,7 @@ _IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=1, m
     response_model=QuestionnaireCurrentResponse,
     responses=_ERRORS,
 )
+@career_access_operation("questionnaire")
 async def get_current_questionnaire(
     profile_id: Annotated[UUID, Query()],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -117,6 +134,7 @@ async def get_current_questionnaire(
     response_model=QuestionnaireResponse,
     responses=_ERRORS,
 )
+@career_access_operation("questionnaire")
 async def put_questionnaire_answers(
     session_id: UUID,
     body: QuestionnaireAnswersRequest,
@@ -145,6 +163,7 @@ async def put_questionnaire_answers(
     response_model=QuestionnaireResponse,
     responses=_ERRORS,
 )
+@career_access_operation("questionnaire")
 async def complete_questionnaire(
     session_id: UUID,
     idempotency_key: _IdempotencyKey,
@@ -179,6 +198,7 @@ async def complete_questionnaire(
     status_code=status.HTTP_202_ACCEPTED,
     responses=_ERRORS,
 )
+@career_access_operation("create")
 async def create_career_report(
     body: CreateCareerReportRequest,
     idempotency_key: _IdempotencyKey,
@@ -221,6 +241,7 @@ async def create_career_report(
     response_model=CareerGenerationStatusResponse,
     responses=_ERRORS,
 )
+@career_access_operation("generate")
 async def get_career_generation(
     generation_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -237,6 +258,7 @@ async def get_career_generation(
 
 
 @router.get("/reports/{report_id}", response_model=CareerReportResponse, responses=_ERRORS)
+@career_access_operation("read")
 async def get_career_report(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -250,6 +272,7 @@ async def get_career_report(
 
 
 @router.get("/reports/{report_id}/sections", response_model=CareerSectionsResponse, responses=_ERRORS)
+@career_access_operation("read")
 async def get_career_report_sections(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -262,12 +285,31 @@ async def get_career_report_sections(
     return build_sections_payload(segments=segments)
 
 
+@router.get(
+    "/reports/{report_id}/versions",
+    response_model=CareerReportHistoryResponse,
+    responses=_ERRORS,
+)
+@career_access_operation("versions")
+async def get_career_report_versions(
+    report_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> dict[str, Any]:
+    repository = CareerRepository(db)
+    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
+    await _require_career_access(db=db, user_id=current_user)
+    reports = await repository.list_report_history_for_user(report.career_profile_id, current_user)
+    return build_report_history_payload(requested_report=report, reports=reports)
+
+
 @router.post(
     "/reports/{report_id}/regenerate",
     response_model=CareerGenerationAcceptedResponse,
     status_code=status.HTTP_202_ACCEPTED,
     responses=_ERRORS,
 )
+@career_access_operation("regenerate")
 async def regenerate_career_report(
     report_id: UUID,
     body: RegenerateCareerReportRequest,
@@ -298,7 +340,8 @@ async def regenerate_career_report(
     return _accepted_response(result.generation)
 
 
-@router.get("/reports/{report_id}/pdf", responses=_ERRORS)
+@router.get("/reports/{report_id}/pdf", response_class=Response, responses=_PDF_RESPONSES)
+@career_access_operation("pdf")
 async def get_career_report_pdf(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],

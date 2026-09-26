@@ -84,6 +84,30 @@ def build_sections_payload(*, segments: list[CareerSegmentGeneration]) -> dict[s
     }
 
 
+def build_report_history_payload(
+    *,
+    requested_report: CareerReport,
+    reports: list[CareerReport],
+) -> dict[str, Any]:
+    """Serialize report version metadata without protected report payloads."""
+
+    return {
+        "contract_version": "career_report_history_v1",
+        "career_profile_id": str(requested_report.career_profile_id),
+        "requested_report_id": str(requested_report.id),
+        "versions": [
+            {
+                "report_id": str(report.id),
+                "generation_id": str(report.generation_id),
+                "version": report.version,
+                "status": report.status,
+                "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
+            }
+            for report in reports
+        ],
+    }
+
+
 def _ordered_segments(segments: list[CareerSegmentGeneration]) -> list[CareerSegmentGeneration]:
     order = {section_key: index for index, section_key in enumerate(CAREER_SECTION_ORDER)}
     return sorted(segments, key=lambda segment: (order.get(segment.section_key, len(order)), segment.section_key))

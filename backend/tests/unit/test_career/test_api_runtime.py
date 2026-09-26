@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from app.modules.career.models import CareerGeneration, CareerReport, CareerSegmentGeneration
 
@@ -118,3 +119,40 @@ def test_locked_payload_never_contains_protected_career_data() -> None:
     serialized = repr(payload)
     for protected in ("score", "fact", "section", "answer", "artifact", "report_id"):
         assert protected not in serialized
+
+
+def test_report_history_lists_owned_versions_without_protected_payloads() -> None:
+    from app.modules.career.api_runtime import build_report_history_payload
+
+    first = _report(status="narrative_failed")
+    first.version = 1
+    first.created_at = datetime(2026, 9, 25, 10, 0, tzinfo=UTC)
+    second = _report(status="ready")
+    second.career_profile_id = first.career_profile_id
+    second.version = 2
+    second.created_at = datetime(2026, 9, 26, 10, 0, tzinfo=UTC)
+
+    payload = build_report_history_payload(requested_report=second, reports=[second, first])
+
+    assert payload == {
+        "contract_version": "career_report_history_v1",
+        "career_profile_id": str(first.career_profile_id),
+        "requested_report_id": str(second.id),
+        "versions": [
+            {
+                "report_id": str(second.id),
+                "generation_id": str(second.generation_id),
+                "version": 2,
+                "status": "ready",
+                "created_at": "2026-09-26T10:00:00Z",
+            },
+            {
+                "report_id": str(first.id),
+                "generation_id": str(first.generation_id),
+                "version": 1,
+                "status": "narrative_failed",
+                "created_at": "2026-09-25T10:00:00Z",
+            },
+        ],
+    }
+    assert "deterministic_payload" not in repr(payload)

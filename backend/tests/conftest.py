@@ -10,6 +10,7 @@ import pytest
 import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 from app.dependencies import get_db, get_redis
@@ -23,7 +24,7 @@ TEST_DATABASE_URL = os.getenv(
 )
 TEST_REDIS_URL = settings.REDIS_URL.replace("/0", "/15")
 
-test_engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+test_engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True, poolclass=NullPool)
 test_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -66,14 +67,39 @@ async def test_redis() -> AsyncGenerator[aioredis.Redis, None]:
 
 
 @pytest.fixture
-async def client(db_session: AsyncSession, test_redis: aioredis.Redis) -> AsyncGenerator[AsyncClient, None]:
+async def client(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[AsyncClient, None]:
     """Async test client with overridden dependencies."""
+
+    class _TestRedis:
+        def __init__(self) -> None:
+            self.values: dict[str, int] = {}
+
+        async def ping(self) -> bool:
+            return True
+
+        async def incr(self, key: str) -> int:
+            self.values[key] = self.values.get(key, 0) + 1
+            return self.values[key]
+
+        async def expire(self, key: str, window: int) -> bool:
+            del key, window
+            return True
+
+        async def ttl(self, key: str) -> int:
+            del key
+            return 60
+
+    test_rate_limit_redis = _TestRedis()
+    monkeypatch.setattr("app.api.middleware.get_redis_client", lambda: test_rate_limit_redis)
 
     async def _override_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
     async def _override_redis() -> AsyncGenerator[aioredis.Redis, None]:
-        yield test_redis
+        yield test_rate_limit_redis  # type: ignore[misc]
 
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_redis] = _override_redis

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -19,6 +20,10 @@ class CareerLockedResponse(BaseModel):
     access_state: Literal["locked"] = "locked"
     required_product: Literal["plus"] = "plus"
     reason: str
+
+
+class CareerLockedErrorResponse(BaseModel):
+    detail: CareerLockedResponse
 
 
 class QuestionnaireAnswersRequest(BaseModel):
@@ -102,3 +107,18 @@ class CareerSectionsResponse(BaseModel):
 
     contract_version: Literal["career_sections_v1"]
     sections: list[dict[str, Any]]
+
+
+class CareerReportVersionResponse(BaseModel):
+    report_id: UUID
+    generation_id: UUID
+    version: int
+    status: str
+    created_at: datetime
+
+
+class CareerReportHistoryResponse(BaseModel):
+    contract_version: Literal["career_report_history_v1"]
+    career_profile_id: UUID
+    requested_report_id: UUID
+    versions: list[CareerReportVersionResponse]

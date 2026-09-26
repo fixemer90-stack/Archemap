@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Reader/PDF реализованы; visual parity browser smoke остаётся открытым
+✅ Завершено — reader/PDF, responsive/accessibility, visual и print browser smoke закрыты
 
 ## Контекст
 
@@ -44,9 +44,9 @@
 - [x] Contradictions и context constraints не теряются.
 - [x] Deterministic-ready reader полезен до завершения LLM.
 - [x] Narrative failure не скрывает deterministic content.
-- [ ] Mobile, print/PDF, typography и whole-word tooltips проверены.
+- [x] Mobile, print/PDF, typography и whole-word tooltips проверены.
 - [x] Canonical HTML sample и desktop/mobile previews созданы.
-- [ ] Реальный reader проходит visual parity smoke относительно sample.
+- [x] Реальный reader проходит visual parity smoke относительно sample.
 
 ## Реализация и проверка
 
@@ -54,8 +54,10 @@
 - Web и PDF получают один `career_report_read_v1`; backend нормализует десять секций в каноническом порядке.
 - Deterministic dimensions, contradictions, context constraints и role matches остаются видимыми при `deterministic_ready` и `narrative_failed`.
 - PDF endpoint генерирует artifact из того же payload; profession examples помечены как возможные, scores — как выраженность, не оценка.
-- `uv run pytest tests/unit/test_career -q` — 52 passed; PDF начинается с `%PDF` и превышает 1000 bytes.
+- `uv run pytest tests/unit/test_career -q` — 64 passed; PDF начинается с `%PDF` и превышает 1000 bytes.
 - `npm test` — reader contract script passed.
 - `npx tsc --noEmit --pretty false` и exact-path ESLint — passed.
+- Playwright Chromium проверяет desktop/mobile overflow, canonical section order, standalone reader shell, Axe, whole-word tooltip text и `aria-describedby`, print colors и browser PDF (`%PDF`, больше 10 KB).
+- Desktop/mobile/print visual regression baselines сохранены в `frontend/tests/e2e/career-reader.spec.ts-snapshots/`; локальный общий Career browser suite: `5 passed, 1 skipped`.
 
-Открытые пункты требуют реального desktop/mobile/print browser smoke и визуального сравнения с canonical HTML sample. Source-level contract checks не заменяют визуальное evidence; попытка запуска Windows Chrome 24 сентября 2026 года не выполнилась из-за системного consent timeout.
+Human visual review desktop/mobile/print снимков подтвердил отсутствие clipping/overflow, читаемый print и соответствие canonical sample как design direction. Reader получил standalone shell, hero summary cards с ведущим профилем/рабочим вектором и компактную навигационную сетку десяти разделов; pixel-perfect совпадение не является контрактом.

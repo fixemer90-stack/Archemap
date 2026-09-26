@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано локально — quality/observability/rollout contract закрыт; staging real-provider, canary и production evidence остаются открытыми
+🟡 Реализовано локально — публикация и live evidence на stage вынесены в S14; canary и production evidence остаются открытыми
 
 ## Контекст
 
@@ -50,7 +50,7 @@ Career объединяет deterministic scoring, пользовательск�
 - Никакого drop/truncate/mutable backfill существующих Career payloads.
 - Rollback выключает новые writes, но сохраняет все новые artifacts.
 
-Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S13-rollout-runbook.md`](S13-rollout-runbook.md).
+Операторский порядок, бюджеты, метрики, backup/checksum preflight, staging matrix и rollback: [`S13-rollout-runbook.md`](S13-rollout-runbook.md). Исполнение stage-публикации и сбор live evidence: [`S14-stage-publication-live-evidence.md`](S14-stage-publication-live-evidence.md).
 
 ## Реализация
 
@@ -70,7 +70,10 @@ Career объединяет deterministic scoring, пользовательск�
 - isolated PostgreSQL `uv run pytest tests/integration -q` → `2 passed`.
 - `node scripts/check-career-product-ux.mjs` → passed.
 - `node scripts/check-career-report-reader.mjs` → passed.
-- Repo-wide ruff/mypy, frontend test/type/lint/build и docs Prettier выполняются повторно после последнего edit; точный SHA записывается после commit/CI.
+- Playwright Career browser suite → `5 passed, 1 skipped`: desktop/mobile questionnaire, reader, Axe, screenshots, print и browser PDF.
+- Browser smoke включён в GitHub Actions `test-frontend`; failure artifacts сохраняют `playwright-report` и `test-results`.
+- Career rollout/OTEL settings добавлены в local/staging/production env examples; local Compose передаёт одинаковые settings API и worker.
+- Repo-wide ruff/mypy, frontend test/type/lint/build и docs Prettier выполняются повторно после последнего edit; точный текущий SHA записывается после commit/CI.
 - GitHub Actions `CI` для implementation/docs SHA `a61a3707b0063140aacf978ea56760de48501f7d` → success; run `22277123504`, все шесть jobs завершены успешно.
 
 ## Критерии приёмки
@@ -84,5 +87,5 @@ Career объединяет deterministic scoring, пользовательск�
 - [x] Cost/latency budgets зафиксированы в runbook.
 - [ ] Staging latency/token/cost measurement и dashboard links записаны как rollout evidence.
 - [x] Rollback feature flag покрыт contract test и не выполняет destructive migration/backfill.
-- [x] Точный зелёный implementation SHA и CI run записаны в Story.
+- [ ] Точный зелёный SHA текущего browser-smoke изменения и CI run записаны в Story.
 - [ ] Production smoke report/PDF IDs записаны в Story перед `✅`.

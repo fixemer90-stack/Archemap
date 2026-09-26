@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Runbook готов; его staging/canary/production шаги и evidence остаются открытыми в S12
+✅ Завершено — операторский runbook готов; stage-исполнение вынесено в S14, canary/production evidence остаются в S12
 
 ## Scope and safety invariant
 
@@ -100,6 +100,8 @@ Human review the real-provider report against `../../design/astrotype_career_rep
 Never run `alembic downgrade`, `DROP`, `TRUNCATE`, mutable legacy backfill or cleanup of generated reports as an emergency rollback.
 
 ## Evidence required before S12 can become complete
+
+Stage-публикация и сбор первых семи блоков evidence выполняются по [`S14-stage-publication-live-evidence.md`](S14-stage-publication-live-evidence.md). Production smoke остаётся отдельным финальным gate S12.
 
 - green exact CI SHA;
 - staging mock and real-provider report IDs;

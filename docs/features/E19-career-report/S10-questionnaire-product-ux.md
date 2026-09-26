@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано; реальный browser smoke остаётся открытым
+🟡 Реализовано; автоматизированный browser smoke закрыт, live-backend entitlement smoke остаётся открытым
 
 ## Контекст
 
@@ -37,7 +37,8 @@
 - [x] Один completion создаёт максимум одну generation.
 - [x] UI показывает deterministic-ready результат до полного narrative.
 - [x] Locked пользователь не видит protected preview payload.
-- [ ] Responsive/accessibility tests и реальный browser smoke проходят.
+- [x] Desktop/mobile responsive, keyboard и accessibility browser tests проходят.
+- [ ] Live browser smoke проходит с реальным backend и active Plus/legacy entitlement.
 
 ## Реализация и проверка
 
@@ -49,5 +50,7 @@
 - `npm test` — все UX contract scripts прошли, включая `check-career-product-ux.mjs`.
 - `npx tsc --noEmit --pretty false` — passed.
 - `npx eslint src/app/'(dashboard)'/products/career/page.tsx src/lib/api/career.ts` — passed после устранения hook warning.
+- Playwright Chromium проходит полный keyboard questionnaire flow на desktop/mobile, проверяет required-state, autosave, idempotency, deterministic-ready transition, horizontal overflow и Axe serious/critical violations.
+- Visual regression baselines сохранены в `frontend/tests/e2e/career-questionnaire.spec.ts-snapshots/`; локальный прогон общего Career browser suite: `5 passed, 1 skipped`.
 
-Открытый пункт требует реального mobile/desktop browser smoke с backend и активной Plus/legacy entitlement. Попытка локального smoke 24 сентября 2026 года не считается evidence: запуск Windows Chrome был остановлен системным consent timeout до выполнения команды.
+Открытый пункт требует live browser smoke с backend и активной Plus/legacy entitlement. Mocked API browser suite доказывает реальное Chromium-поведение клиента, но не заменяет проверку deployed access policy и данных окружения.

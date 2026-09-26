@@ -79,7 +79,18 @@ Recorded on 2026-09-02 after deploy/backfill:
 - `fixemer90@gmail.com`: `account_tier=plus`, provider payment `322a6fd6-000f-5000-b000-14a40d255910`, payment `succeeded`, active `self` entitlement;
 - unauthenticated public `GET https://astrotype.ru/api/v1/billing/access`: `401 Not authenticated`, proving the deployed endpoint is present and auth-gated rather than missing/404.
 
-Fresh automatic YooKassa delivery smoke is still pending because it requires a new checkout/payment cycle.
+Fresh automatic YooKassa delivery smoke is still pending. The 2026-09-26 audit found that the processed webhook for the 2026-09-03 test payment was manually replayed, while later succeeded payments on 2026-09-07 and 2026-09-16 gained entitlement/tier state without corresponding webhook rows. Those later rows prove fallback provider reconciliation, not automatic notification delivery.
+
+## Current production readback — 2026-09-26
+
+- `.deploy-sha`: `0a498a090d5c258480be363231f2611f869077ff`;
+- Alembic current/head: `a6b7c8d9e0f1`;
+- users: 15 total, 10 `free`, 5 `plus`, 0 null and 0 values outside `free`/`plus`;
+- backend healthy and worker running;
+- no current user/product has more than one entitlement row;
+- historical dump path `/opt/astrotype/backups/pre-e7-tier-20260902T193726Z.sql` is currently missing.
+
+The 2026-09-02 section above is a historical rollout snapshot, not current-state proof. See `./AUDIT-discrepancies.md` for the exact closure evidence.
 
 ## Verification
 

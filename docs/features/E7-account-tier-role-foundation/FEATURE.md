@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 Production deploy/backfill verified; new-payment webhook smoke pending
+🟡 Audit reopened: S01/S02/S04 gaps and automatic webhook smoke remain open
 
 ## Goal
 
@@ -16,6 +16,7 @@ Successor policy: `../E8-account-level-report-access/FEATURE.md` defines the tar
 
 - Architecture: `../../architecture/account-tier-role-foundation.md`
 - SRS: `../../SRS/SRS-E7-account-tier-role-foundation.md`
+- Consolidated audit: `./AUDIT-discrepancies.md`
 - Payment confirmation flow: `../../architecture/current-payment-confirmation-flow.md`
 - Related billing feature: `../E6-billing-subscriptions/FEATURE.md`
 
@@ -38,9 +39,12 @@ Production deployed/backfilled on 2026-09-02:
 - public `GET /api/v1/billing/access` returns auth error for unauthenticated requests instead of 404;
 - existing paid users `fixemer90@gmail.com` and `balthier90@mail.ru` were backfilled to `plus` from succeeded payment + active `self` entitlement.
 
-Still open:
+Still open after the 2026-09-26 re-audit:
 
-- one fresh YooKassa payment smoke through normal automatic webhook delivery.
+- enforce the documented `free`/`plus` allowed-value invariant;
+- add the missing replay/direct-service regression tests;
+- make entitlement access safe when one user has several rows for the same product;
+- prove one fresh YooKassa payment through normal automatic webhook delivery.
 
 ## Scope
 
@@ -90,26 +94,29 @@ mark payment successful from return_url/query params
 
 - [x] `users.account_tier` exists in code with default `free`.
 - [x] Existing users are preserved and defaulted/backfilled safely by migration.
+- [ ] Database/application boundaries reject account-tier values outside `free` and `plus`.
 - [x] `AccountTierService` is the named service boundary for tier updates.
 - [x] Backend-confirmed YooKassa `succeeded + paid=true` upgrades tier to `plus`.
 - [x] Failed/cancelled/mismatched/unpaid payment events do not upgrade tier.
 - [x] Replayed webhook remains idempotent.
+- [ ] Regression tests execute repeated successful webhook/tier-upgrade calls and prove idempotence.
 - [x] Current-user or billing-access API exposes `account_tier`.
 - [x] Frontend can display status/access state without treating tier alone as a paywall.
 - [x] Paid report/product authorization uses active entitlements, not tier alone.
+- [ ] Entitlement authorization remains stable when a user has multiple rows for the same product.
 - [x] Production deploy applies the account-tier migration.
 - [x] Existing production paid users are audited/backfilled only by confirmed succeeded payment + active entitlement.
 - [ ] Production smoke proves a new paid checkout upgrades the expected account tier through normal automatic webhook delivery.
 
 ## Stories
 
-| ID  | Story                                                                                                | Status                       |
-| --- | ---------------------------------------------------------------------------------------------------- | ---------------------------- |
-| S01 | [User tier data model and migration](./S01-user-tier-data-model-migration.md)                        | ✅ Реализовано               |
-| S02 | [Payment-to-tier service integration](./S02-payment-to-tier-service-integration.md)                  | ✅ Реализовано               |
-| S03 | [Tier visibility in APIs and frontend status](./S03-tier-visibility-api-frontend.md)                 | ✅ Реализовано               |
-| S04 | [Tier vs entitlement authorization boundary](./S04-tier-entitlement-authorization-boundary.md)       | ✅ Реализовано               |
-| S05 | [Production deploy, migration and paid-user backfill](./S05-production-deploy-migration-backfill.md) | 🟡 New-payment smoke pending |
+| ID  | Story                                                                                                | Status                                |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| S01 | [User tier data model and migration](./S01-user-tier-data-model-migration.md)                        | 🟡 Allowed-value enforcement missing  |
+| S02 | [Payment-to-tier service integration](./S02-payment-to-tier-service-integration.md)                  | 🟡 Replay regression evidence missing |
+| S03 | [Tier visibility in APIs and frontend status](./S03-tier-visibility-api-frontend.md)                 | ✅ Verified and deployed              |
+| S04 | [Tier vs entitlement authorization boundary](./S04-tier-entitlement-authorization-boundary.md)       | 🟡 Multi-entitlement safety missing   |
+| S05 | [Production deploy, migration and paid-user backfill](./S05-production-deploy-migration-backfill.md) | 🟡 Automatic webhook smoke pending    |
 
 ## Implementation order
 

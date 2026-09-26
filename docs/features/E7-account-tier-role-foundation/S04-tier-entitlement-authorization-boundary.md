@@ -2,7 +2,7 @@
 
 ## Status
 
-✅ Реализовано
+🟡 Implemented; multi-entitlement safety missing
 
 ## Context
 
@@ -38,6 +38,11 @@
 - [x] Inactive/expired/mismatched entitlement locks paid payload.
 - [x] Locked response includes safe upgrade metadata.
 - [x] Direct API calls cannot bypass frontend gating.
+- [ ] Multiple entitlement rows for the same user/product produce a stable allow/deny decision instead of `MultipleResultsFound`.
+
+## Audit note — 2026-09-26
+
+The schema permits one entitlement per payment/product, so a repeat purchase can create several rows for one user/product. `has_active_product_access()` currently calls `scalar_one_or_none()` without a user/product uniqueness guarantee. Production currently has at most one row per user/product, but the implementation is not safe for the allowed future state. See `./AUDIT-discrepancies.md`.
 
 ## Verification
 

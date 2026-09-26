@@ -2,7 +2,7 @@
 
 ## Status
 
-✅ Реализовано в main; production deploy pending
+✅ Verified in main and deployed to production
 
 ## Context
 

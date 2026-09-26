@@ -1,10 +1,11 @@
 # Account tier role foundation
 
-Status: implemented in main and deployed to production; new-payment webhook smoke pending
-Last updated: 2026-09-02
+Status: partially verified; audit gaps and automatic webhook smoke remain open
+Last updated: 2026-09-26
 Scope: account-level Free/Plus status after payment confirmation.
 Feature contract: `../features/E7-account-tier-role-foundation/FEATURE.md`
 SRS: `../SRS/SRS-E7-account-tier-role-foundation.md`
+Audit register: `../features/E7-account-tier-role-foundation/AUDIT-discrepancies.md`
 
 This document defines the first account-tier role layer for Astrotype.
 
@@ -316,4 +317,5 @@ Deployment note:
 
 - production deployed/backfilled on 2026-09-02: Alembic reached `d3e4f5a6b7c8`, `users.account_tier` exists with default `free`, `GET /api/v1/billing/access` is present and auth-gated;
 - production payment entitlements for `fixemer90@gmail.com` and `balthier90@mail.ru` were confirmed through YooKassa reconciliation and active `self` entitlement rows, then both accounts were backfilled to `plus`;
+- the 2026-09-26 re-audit reopened allowed-value enforcement, replay regression evidence and multi-entitlement query safety; details are recorded in `../features/E7-account-tier-role-foundation/AUDIT-discrepancies.md`;
 - fresh automatic YooKassa delivery smoke remains open and tracked in `../features/E7-account-tier-role-foundation/S05-production-deploy-migration-backfill.md`.

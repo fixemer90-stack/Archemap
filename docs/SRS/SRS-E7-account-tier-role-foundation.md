@@ -19,13 +19,14 @@ This SRS covers:
 
 ### References
 
-| Document                          | Path                                                           |
-| --------------------------------- | -------------------------------------------------------------- |
-| Architecture                      | `docs/architecture/account-tier-role-foundation.md`            |
-| Feature                           | `docs/features/E7-account-tier-role-foundation/FEATURE.md`     |
-| Billing feature                   | `docs/features/E6-billing-subscriptions/FEATURE.md`            |
-| Payment confirmation architecture | `docs/architecture/current-payment-confirmation-flow.md`       |
-| Production payment smoke          | `docs/implementation/payment-confirmation-production-smoke.md` |
+| Document                          | Path                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------- |
+| Architecture                      | `docs/architecture/account-tier-role-foundation.md`                    |
+| Feature                           | `docs/features/E7-account-tier-role-foundation/FEATURE.md`             |
+| Consolidated audit                | `docs/features/E7-account-tier-role-foundation/AUDIT-discrepancies.md` |
+| Billing feature                   | `docs/features/E6-billing-subscriptions/FEATURE.md`                    |
+| Payment confirmation architecture | `docs/architecture/current-payment-confirmation-flow.md`               |
+| Production payment smoke          | `docs/implementation/payment-confirmation-production-smoke.md`         |
 
 ## 2. Overall description
 
@@ -58,7 +59,7 @@ Acceptance criteria:
 
 - [x] New users default to `free`.
 - [x] Existing users are preserved by migration.
-- [x] First allowed values are `free` and `plus`.
+- [ ] Database/application boundaries reject values outside `free` and `plus`.
 - [x] Tier is not derived from `is_superuser`.
 - [x] Production database has the deployed column after migration.
 
@@ -115,6 +116,7 @@ Acceptance criteria:
 - [x] Missing/inactive/expired/mismatched entitlement returns locked response.
 - [x] Locked response contains no full paid report payload.
 - [x] Tier alone is not sufficient proof of paid product access.
+- [ ] Multiple entitlement rows for the same user/product are handled without an exception.
 
 ### FR-E7.7 Production migration and backfill
 
@@ -249,7 +251,7 @@ git diff --check -- docs/features/E7-account-tier-role-foundation docs/SRS/SRS-E
 2. Apply migration. ✅ Alembic reached `d3e4f5a6b7c8`.
 3. Verify endpoint availability. ✅ `/api/v1/billing/access` returns auth error instead of 404 for unauthenticated requests.
 4. Run paid-user audit/backfill. ✅ `fixemer90@gmail.com` and `balthier90@mail.ru` are `plus` from succeeded payment + active `self` entitlement.
-5. Run new payment smoke. ⬜ Pending; requires a fresh YooKassa checkout and automatic webhook delivery proof.
+5. Run new payment smoke. ⬜ Pending; later succeeded payments prove fallback reconciliation, but automatic webhook delivery is still unproven.
 
 ### Risks
 

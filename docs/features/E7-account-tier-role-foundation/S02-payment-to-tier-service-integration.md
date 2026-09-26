@@ -2,7 +2,7 @@
 
 ## Status
 
-✅ Реализовано
+🟡 Implemented; replay regression evidence missing
 
 ## Context
 
@@ -35,6 +35,12 @@ Tier changes must happen only after backend-confirmed payment success. Browser r
 - [x] Metadata mismatch does not upgrade tier.
 - [x] Provider reconciliation failure does not upgrade tier.
 - [x] Duplicate/replayed success is safe.
+- [ ] A regression test executes the same successful webhook twice and proves one effective entitlement/tier outcome.
+- [ ] A direct service test proves repeated `AccountTierService.upgrade_to_plus()` calls remain safe.
+
+## Audit note — 2026-09-26
+
+The service and entitlement upsert paths are idempotent by code inspection. Existing tests cover success, metadata mismatch, unpaid success and provider failure, but they do not execute the exact replay or repeated direct-service scenarios required by the architecture test contract. See `./AUDIT-discrepancies.md`.
 
 ## Verification
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-✅ Реализовано в main; production migration pending
+🟡 Deployed; allowed-value enforcement missing
 
 ## Context
 
@@ -29,9 +29,13 @@ For implemented code, keep this document as the acceptance contract and regressi
 - [x] `users.account_tier` exists in code.
 - [x] Default value is `free` for new users.
 - [x] Migration preserves users, auth data, profiles, payments, webhooks, entitlements and v2 artifacts.
-- [x] Allowed first values are `free` and `plus`.
+- [ ] Database/application boundaries reject values outside `free` and `plus`.
 - [x] The column is not modeled as admin/RBAC permission.
 - [x] Production database has the column after deploy/migration.
+
+## Audit note — 2026-09-26
+
+Production contains only `free` and `plus`, but the invariant is not enforced: the ORM and migration use a plain `varchar(20)`, production has no `account_tier` check constraint, and the API schema uses a plain string. See `./AUDIT-discrepancies.md`.
 
 ## Verification
 

@@ -5,7 +5,10 @@ from typing import Any
 
 import pytest
 
-from app.modules.career.interpretation_facts import CareerInterpretationFacts
+from app.modules.career.interpretation_facts import (
+    CareerInterpretationFacts,
+    CuratedContradictionFact,
+)
 from app.modules.career.narrative import (
     CAREER_PROMPT_VERSION,
     CareerNarrativeValidationError,
@@ -18,7 +21,7 @@ from app.modules.career.narrative import (
     run_career_segment_generation,
     validate_segment_output,
 )
-from app.modules.career.narrative_schemas import CareerSegmentOutput
+from app.modules.career.narrative_schemas import CareerNarrativeClaim, CareerSegmentOutput
 
 
 def _facts() -> CareerInterpretationFacts:
@@ -44,6 +47,7 @@ def _facts() -> CareerInterpretationFacts:
         "requirements": ["context:validate_against_real_role_scope"],
         "profession_examples": ["Solution Architect"],
         "catalog_version": "career-role-catalog-1",
+        "evidence_refs": [f"natal_fact:{uuid.uuid4()}", f"career_answer:{uuid.uuid4()}"],
     }
     sections = {}
     section_keys = (
@@ -138,11 +142,19 @@ async def test_structured_provider_adapter_uses_career_output_contract() -> None
             assert prompt
             assert narrative_input is section_input
             assert schema is CareerSegmentOutput
+            body = "Рабочая механика проявляется в системном анализе задач и требует проверки на контексте роли."
             return schema(
                 section_key=section_input.section_key,
                 title=section_input.section_title,
-                body="Рабочая механика проявляется в системном анализе задач и требует проверки на контексте роли.",
+                body=body,
                 cited_fact_keys=list(section_input.owned_fact_keys),
+                claims=[
+                    CareerNarrativeClaim(
+                        text=body,
+                        fact_keys=list(section_input.owned_fact_keys),
+                        conditional=False,
+                    )
+                ],
             )
 
     adapter = StructuredCareerSegmentProviderAdapter(
@@ -178,6 +190,13 @@ def test_quality_gates_reject_generic_overclaim_and_profession_prescription() ->
             title="Раздел",
             body=body,
             cited_fact_keys=list(section_input.owned_fact_keys),
+            claims=[
+                CareerNarrativeClaim(
+                    text=body,
+                    fact_keys=list(section_input.owned_fact_keys),
+                    conditional=False,
+                )
+            ],
         )
         with pytest.raises(CareerNarrativeValidationError):
             validate_segment_output(output=output, section_input=section_input)
@@ -199,6 +218,13 @@ async def test_validator_failure_uses_safe_distinct_error_code() -> None:
                 "title": "Раздел",
                 "body": "Вам нужно стать архитектором.",
                 "cited_fact_keys": list(section_input.owned_fact_keys),
+                "claims": [
+                    {
+                        "text": "Вам нужно стать архитектором.",
+                        "fact_keys": list(section_input.owned_fact_keys),
+                        "conditional": False,
+                    }
+                ],
             }
 
     row = await run_career_segment_generation(
@@ -211,6 +237,130 @@ async def test_validator_failure_uses_safe_distinct_error_code() -> None:
 
     assert row.status == "failed"
     assert row.error == "career_validation_failure"
+
+
+@pytest.mark.asyncio
+async def test_missing_claim_contract_is_a_validation_failure() -> None:
+    facts = _facts()
+    section_input = build_career_section_inputs(facts)[0]
+
+    class MissingClaimsProvider:
+        provider_name = "test-provider"
+        model_name = "test-model"
+
+        async def generate_segment(self, *, prompt: str, section_input: Any) -> dict[str, Any]:
+            del prompt
+            return {
+                "section_key": section_input.section_key,
+                "title": "Раздел",
+                "body": "Вывод опирается на рассчитанный факт.",
+                "cited_fact_keys": list(section_input.owned_fact_keys),
+            }
+
+    row = await run_career_segment_generation(
+        provider=MissingClaimsProvider(),
+        section_input=section_input,
+        career_profile_id=facts.profile_id,
+        chart_id=facts.chart_id,
+        generation_id=uuid.uuid4(),
+    )
+
+    assert row.status == "failed"
+    assert row.error == "career_validation_failure"
+
+
+def test_low_confidence_claim_requires_structured_and_semantic_conditional_language() -> None:
+    facts = _facts()
+    facts.top_dimensions[0] = facts.top_dimensions[0].model_copy(
+        update={"confidence": 0.3, "conditional_language_required": True}
+    )
+    section_input = build_career_section_inputs(facts)[0]
+    categorical = "Системное мышление определяет ваш устойчивый способ работы."
+
+    for conditional in (False, True):
+        output = CareerSegmentOutput(
+            section_key=section_input.section_key,
+            title="Раздел",
+            body=categorical,
+            cited_fact_keys=list(section_input.owned_fact_keys),
+            claims=[
+                CareerNarrativeClaim(
+                    text=categorical,
+                    fact_keys=list(section_input.owned_fact_keys),
+                    conditional=conditional,
+                )
+            ],
+        )
+        with pytest.raises(CareerNarrativeValidationError, match="low-confidence claim"):
+            validate_segment_output(output=output, section_input=section_input)
+
+    conditional_text = "Системное мышление может проявляться в работе, но это стоит проверить на реальных задачах."
+    output = CareerSegmentOutput(
+        section_key=section_input.section_key,
+        title="Раздел",
+        body=conditional_text,
+        cited_fact_keys=list(section_input.owned_fact_keys),
+        claims=[
+            CareerNarrativeClaim(
+                text=conditional_text,
+                fact_keys=list(section_input.owned_fact_keys),
+                conditional=True,
+            )
+        ],
+    )
+    assert validate_segment_output(output=output, section_input=section_input) is output
+
+
+def test_contradiction_citation_must_retain_both_sides_semantically() -> None:
+    facts = _facts()
+    contradiction = CuratedContradictionFact(
+        fact_key="contradiction:leadership_without_people_management",
+        code="leadership_without_people_management",
+        dimension="leadership",
+        capability_score=82,
+        preference_key="people_management_motivation",
+        preference_value="1",
+        scenario_keys=["expert_leadership"],
+        source_version="career-resolver-1",
+        evidence_refs=[f"natal_fact:{uuid.uuid4()}", f"career_answer:{uuid.uuid4()}"],
+    )
+    facts.contradictions = [contradiction]
+    facts.section_contracts["professional_summary"].owned_fact_keys.append(contradiction.fact_key)
+    section_input = build_career_section_inputs(facts)[0]
+    lost_meaning = "Лидерский потенциал выражен и помогает направлять работу команды."
+    output = CareerSegmentOutput(
+        section_key=section_input.section_key,
+        title="Раздел",
+        body=lost_meaning,
+        cited_fact_keys=list(section_input.owned_fact_keys),
+        claims=[
+            CareerNarrativeClaim(
+                text=lost_meaning,
+                fact_keys=list(section_input.owned_fact_keys),
+                conditional=False,
+            )
+        ],
+    )
+    with pytest.raises(CareerNarrativeValidationError, match="contradiction meaning"):
+        validate_segment_output(output=output, section_input=section_input)
+
+    retained = (
+        "Лидерский потенциал может быть выражен, но низкая мотивация к управлению людьми делает "
+        "экспертное лидерство более подходящим сценарием."
+    )
+    output = output.model_copy(
+        update={
+            "body": retained,
+            "claims": [
+                CareerNarrativeClaim(
+                    text=retained,
+                    fact_keys=list(section_input.owned_fact_keys),
+                    conditional=False,
+                )
+            ],
+        }
+    )
+    assert validate_segment_output(output=output, section_input=section_input) is output
 
 
 @pytest.mark.asyncio
@@ -286,3 +436,57 @@ async def test_mock_provider_generates_distinct_sections_that_assemble_to_ready(
     assert assembled.status == "ready"
     assert len(assembled.narrative_payload["sections"]) == 10
     assert len({section["body"] for section in assembled.narrative_payload["sections"]}) == 10
+
+
+def test_assembler_rejects_duplicate_and_near_duplicate_sections() -> None:
+    from app.modules.career.models import CareerSegmentGeneration
+
+    facts = _facts()
+    generation_id = uuid.uuid4()
+    report = build_deterministic_career_report_row(
+        facts=facts,
+        generation_id=generation_id,
+        idempotency_key="career-report-duplicates",
+        version=1,
+    )
+    inputs = build_career_section_inputs(facts)[:2]
+    base = (
+        "Системный анализ помогает связывать факты, проверять зависимости и выбирать рабочий ход. "
+        "Этот вывод стоит проверять на реальных задачах и в конкретном контексте роли."
+    )
+
+    def row(section_index: int, body: str) -> CareerSegmentGeneration:
+        section_input = inputs[section_index]
+        output = CareerSegmentOutput(
+            section_key=section_input.section_key,
+            title=section_input.section_title,
+            body=body,
+            cited_fact_keys=list(section_input.owned_fact_keys),
+            claims=[
+                CareerNarrativeClaim(
+                    text=body,
+                    fact_keys=list(section_input.owned_fact_keys),
+                    conditional=False,
+                )
+            ],
+        )
+        return CareerSegmentGeneration(
+            career_profile_id=facts.profile_id,
+            chart_id=facts.chart_id,
+            generation_id=generation_id,
+            section_key=section_input.section_key,
+            status="ready",
+            prompt_version=CAREER_PROMPT_VERSION,
+            provider="test",
+            model_version="test",
+            input_payload={},
+            output_payload=output.model_dump(mode="json"),
+            error=None,
+        )
+
+    with pytest.raises(CareerNarrativeValidationError, match="duplicate narrative section"):
+        assemble_career_report_row(report=report, segment_rows=[row(0, base), row(1, base)])
+
+    near_duplicate = base.replace("помогает", "позволяет").replace("рабочий ход", "подходящий рабочий ход")
+    with pytest.raises(CareerNarrativeValidationError, match="near-duplicate narrative section"):
+        assemble_career_report_row(report=report, segment_rows=[row(0, base), row(1, near_duplicate)])

@@ -30,6 +30,7 @@ from app.modules.career.interpretation_facts import (
     build_interpretation_facts,
 )
 from app.modules.career.narrative import (
+    CareerSegmentProvider,
     MockCareerSegmentProvider,
     StructuredCareerSegmentProviderAdapter,
     assemble_career_report_row,
@@ -37,6 +38,7 @@ from app.modules.career.narrative import (
     build_deterministic_career_report_row,
     run_career_segment_generation,
 )
+from app.modules.career.narrative_schemas import CareerSectionRenderInput
 from app.modules.career.observability import bind_career_context, career_telemetry, safe_error_code
 from app.modules.career.profile_resolver import build_resolution_row, resolve_career_profile
 from app.modules.career.questionnaire import CareerQuestionnaireCompleted
@@ -59,6 +61,32 @@ async def _persist_parent_rows_before_children(
     await repository.add_many(parent_rows)
     await repository.flush()
     await repository.add_many(child_rows)
+
+
+async def _run_narrative_quality_pipeline(
+    *,
+    provider: CareerSegmentProvider,
+    report: models.CareerReport,
+    section_inputs: list[CareerSectionRenderInput],
+) -> tuple[list[models.CareerSegmentGeneration], models.CareerReport]:
+    """Run the claim-level section gates and final duplication assembly gate."""
+
+    segment_rows = list(
+        await asyncio.gather(
+            *(
+                run_career_segment_generation(
+                    provider=provider,
+                    section_input=section_input,
+                    career_profile_id=report.career_profile_id,
+                    chart_id=report.chart_id,
+                    generation_id=report.generation_id,
+                )
+                for section_input in section_inputs
+            )
+        )
+    )
+    assembled = assemble_career_report_row(report=report, segment_rows=segment_rows)
+    return segment_rows, assembled
 
 
 @app.task(  # type: ignore[untyped-decorator]
@@ -224,6 +252,7 @@ async def _generate_career_report_async(
                     resolution=resolution,
                     role_matches=role_matches,
                     career_paths=career_paths,
+                    questionnaire_evidence={row.question_key: row.id for row in answer_rows if row.id is not None},
                 )
                 report = build_deterministic_career_report_row(
                     facts=facts,
@@ -315,17 +344,10 @@ async def _generate_career_report_async(
             await db.commit()
 
             provider = _career_provider()
-            segment_rows = await asyncio.gather(
-                *(
-                    run_career_segment_generation(
-                        provider=provider,
-                        section_input=section_input,
-                        career_profile_id=report.career_profile_id,
-                        chart_id=report.chart_id,
-                        generation_id=report.generation_id,
-                    )
-                    for section_input in inputs
-                )
+            segment_rows, assembled = await _run_narrative_quality_pipeline(
+                provider=provider,
+                report=report,
+                section_inputs=inputs,
             )
             await repository.add_many(segment_rows)
             for segment in segment_rows:
@@ -335,7 +357,6 @@ async def _generate_career_report_async(
                     operation=generation.operation,
                     section_key=segment.section_key,
                 )
-            assembled = assemble_career_report_row(report=report, segment_rows=list(segment_rows))
             report.status = assembled.status
             report.narrative_payload = assembled.narrative_payload
             report.assembled_payload = assembled.assembled_payload

@@ -100,6 +100,20 @@ def _payload() -> tuple[Any, ...]:
     return dimensions, archetypes, environment, resolution, matches, paths
 
 
+def _questionnaire_evidence() -> dict[str, uuid.UUID]:
+    return {
+        "people_management_motivation": uuid.uuid4(),
+        "autonomy_importance": uuid.uuid4(),
+        "risk_preference": uuid.uuid4(),
+        "preferred_track": uuid.uuid4(),
+        "collaboration_preference": uuid.uuid4(),
+        "experience_years": uuid.uuid4(),
+        "current_activity": uuid.uuid4(),
+        "change_goal": uuid.uuid4(),
+        "constraints": uuid.uuid4(),
+    }
+
+
 def test_facts_are_typed_curated_and_section_owned() -> None:
     profile_id = uuid.uuid4()
     chart_id = uuid.uuid4()
@@ -112,12 +126,24 @@ def test_facts_are_typed_curated_and_section_owned() -> None:
         resolution=_payload()[3],
         role_matches=_payload()[4],
         career_paths=_payload()[5],
+        questionnaire_evidence=_questionnaire_evidence(),
     )
 
     assert facts.contract_version == CAREER_FACTS_CONTRACT_VERSION
     assert facts.profile_id == profile_id
     assert facts.chart_id == chart_id
-    assert all(item.evidence_refs for item in (*facts.top_dimensions, *facts.low_dimensions))
+    all_evidence_facts: tuple[Any, ...] = (
+        *facts.top_dimensions,
+        *facts.low_dimensions,
+        *facts.career_archetypes,
+        *facts.preferred_environment,
+        *facts.risk_environment,
+        *facts.contradictions,
+        *facts.role_matches,
+        *facts.career_paths,
+    )
+    assert all(item.evidence_refs for item in all_evidence_facts)
+    assert not any(ref.startswith("chart:") for item in all_evidence_facts for ref in item.evidence_refs)
     assert facts.low_dimensions[0].conditional_language_required
     assert facts.contradictions[0].code == "leadership_without_people_management"
     assert set(facts.section_contracts) == {
@@ -151,6 +177,7 @@ def test_unsupported_role_or_path_is_rejected_before_provider_call() -> None:
         resolution=parts[3],
         role_matches=parts[4],
         career_paths=parts[5],
+        questionnaire_evidence=_questionnaire_evidence(),
     )
     tampered = facts.model_copy(deep=True)
     tampered.career_paths[0].role_family_key = "invented_profession"
@@ -177,6 +204,7 @@ def test_contradiction_loss_and_missing_lineage_are_rejected() -> None:
         resolution=parts[3],
         role_matches=parts[4],
         career_paths=parts[5],
+        questionnaire_evidence=_questionnaire_evidence(),
     )
     facts.contradictions.clear()
     with pytest.raises(CareerFactsValidationError, match="contradiction lineage"):
@@ -191,9 +219,25 @@ def test_contradiction_loss_and_missing_lineage_are_rejected() -> None:
         resolution=parts[3],
         role_matches=parts[4],
         career_paths=parts[5],
+        questionnaire_evidence=_questionnaire_evidence(),
     )
     facts.top_dimensions[0].evidence_refs.clear()
     with pytest.raises(CareerFactsValidationError, match="missing evidence"):
+        validate_interpretation_facts(facts)
+
+    facts = build_interpretation_facts(
+        profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        dimensions=parts[0],
+        archetypes=parts[1],
+        environment=parts[2],
+        resolution=parts[3],
+        role_matches=parts[4],
+        career_paths=parts[5],
+        questionnaire_evidence=_questionnaire_evidence(),
+    )
+    facts.role_matches[0].evidence_refs = [f"chart:{facts.chart_id}"]
+    with pytest.raises(CareerFactsValidationError, match="imprecise evidence"):
         validate_interpretation_facts(facts)
 
 
@@ -211,6 +255,7 @@ def test_facts_build_versioned_persistable_rows() -> None:
         resolution=parts[3],
         role_matches=parts[4],
         career_paths=parts[5],
+        questionnaire_evidence=_questionnaire_evidence(),
     )
     rows = build_interpretation_fact_rows(facts, generation_id=generation_id)
 
@@ -220,4 +265,5 @@ def test_facts_build_versioned_persistable_rows() -> None:
     assert all(row.generation_id == generation_id for row in rows)
     assert all(row.source_version == CAREER_FACTS_CONTRACT_VERSION for row in rows)
     assert all(row.evidence_refs for row in rows)
+    assert not any(ref.startswith("chart:") for row in rows for ref in row.evidence_refs)
     assert facts.role_matches[0].catalog_version == ROLE_CATALOG_VERSION

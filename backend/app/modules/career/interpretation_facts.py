@@ -65,6 +65,7 @@ class CuratedContradictionFact(BaseModel):
     preference_value: str
     scenario_keys: list[str]
     source_version: str
+    evidence_refs: list[str]
 
 
 class CuratedRoleFact(BaseModel):
@@ -80,6 +81,7 @@ class CuratedRoleFact(BaseModel):
     requirements: list[str]
     profession_examples: list[str]
     catalog_version: str
+    evidence_refs: list[str]
 
 
 class CuratedPathStep(BaseModel):
@@ -99,6 +101,7 @@ class CuratedPathFact(BaseModel):
     limitations: list[str]
     archetypal: bool
     graph_version: str
+    evidence_refs: list[str]
 
 
 class CareerSectionContract(BaseModel):
@@ -146,9 +149,12 @@ def build_interpretation_facts(
     resolution: CareerProfileResolution,
     role_matches: tuple[RoleMatchResult, ...],
     career_paths: tuple[CareerPathResult, ...],
+    questionnaire_evidence: dict[str, UUID],
 ) -> CareerInterpretationFacts:
     ordered_dimensions = sorted(dimensions, key=lambda item: (-item.score, item.dimension.value))
     dimension_facts = [_dimension_fact(item) for item in ordered_dimensions]
+    dimension_evidence = {item.dimension: list(item.evidence_refs) for item in dimension_facts}
+    questionnaire_refs = [f"career_answer:{answer_id}" for answer_id in questionnaire_evidence.values()]
     high = [item for item in dimension_facts if item.score >= 50]
     low = [item for item in reversed(dimension_facts) if item.score < 50]
     archetype_facts = [
@@ -158,7 +164,7 @@ def build_interpretation_facts(
             score=item.score,
             confidence=item.confidence,
             source_version=item.scoring_version,
-            evidence_refs=list(item.evidence),
+            evidence_refs=_refs_for_dimension_keys(item.evidence, dimension_evidence),
             limitations=list(item.limitations),
         )
         for item in archetypes
@@ -168,7 +174,7 @@ def build_interpretation_facts(
             fact_key=f"environment:preferred:{index}",
             condition_key=condition,
             source_version=environment.scoring_version,
-            evidence_refs=[axis.key for axis in environment.axes],
+            evidence_refs=_environment_evidence_refs(environment, dimension_evidence),
         )
         for index, condition in enumerate(environment.preferred_conditions)
     ]
@@ -177,7 +183,7 @@ def build_interpretation_facts(
             fact_key=f"environment:risk:{index}",
             condition_key=condition,
             source_version=environment.scoring_version,
-            evidence_refs=[axis.key for axis in environment.axes],
+            evidence_refs=_environment_evidence_refs(environment, dimension_evidence),
         )
         for index, condition in enumerate(environment.risk_conditions)
     ]
@@ -191,6 +197,12 @@ def build_interpretation_facts(
             preference_value=str(item.preference_value),
             scenario_keys=list(item.scenario_keys),
             source_version=resolution.resolver_version,
+            evidence_refs=_unique_refs(
+                [
+                    *dimension_evidence.get(item.dimension.value, []),
+                    _answer_ref(questionnaire_evidence, item.preference_key),
+                ]
+            ),
         )
         for item in resolution.contradictions
     ]
@@ -206,9 +218,16 @@ def build_interpretation_facts(
             requirements=list(item.requirements),
             profession_examples=list(item.profession_examples),
             catalog_version=item.catalog_version,
+            evidence_refs=_role_evidence_refs(
+                role_family_key=item.role_family_key,
+                dimension_evidence=dimension_evidence,
+                environment=environment,
+                questionnaire_refs=questionnaire_refs,
+            ),
         )
         for item in role_matches
     ]
+    role_evidence = {item.role_family_key: list(item.evidence_refs) for item in roles}
     paths = [
         CuratedPathFact(
             fact_key=f"path:{index}:{item.role_family_key}",
@@ -224,6 +243,7 @@ def build_interpretation_facts(
             limitations=list(item.limitations),
             archetypal=item.archetypal,
             graph_version=item.graph_version,
+            evidence_refs=role_evidence.get(item.role_family_key, []),
         )
         for index, item in enumerate(career_paths)
     ]
@@ -272,6 +292,47 @@ def _dimension_fact(item: CareerDimensionResult) -> CuratedDimensionFact:
     )
 
 
+def _answer_ref(questionnaire_evidence: dict[str, UUID], question_key: str) -> str:
+    answer_id = questionnaire_evidence.get(question_key)
+    if answer_id is None:
+        raise CareerFactsValidationError(f"missing questionnaire evidence for {question_key}")
+    return f"career_answer:{answer_id}"
+
+
+def _unique_refs(refs: list[str]) -> list[str]:
+    return list(dict.fromkeys(refs))
+
+
+def _refs_for_dimension_keys(keys: tuple[str, ...], dimension_evidence: dict[str, list[str]]) -> list[str]:
+    return _unique_refs([ref for key in keys for ref in dimension_evidence.get(key.removeprefix("dimension:"), [])])
+
+
+def _environment_evidence_refs(
+    environment: WorkEnvironmentResult,
+    dimension_evidence: dict[str, list[str]],
+) -> list[str]:
+    return _unique_refs(
+        [ref for axis in environment.axes for key in axis.evidence for ref in dimension_evidence.get(key, [])]
+    )
+
+
+def _role_evidence_refs(
+    *,
+    role_family_key: str,
+    dimension_evidence: dict[str, list[str]],
+    environment: WorkEnvironmentResult,
+    questionnaire_refs: list[str],
+) -> list[str]:
+    definition = ROLE_CATALOG[role_family_key]
+    refs = [ref for key in definition.weights for ref in dimension_evidence.get(key.value, [])]
+    environment_by_key = {axis.key: axis for axis in environment.axes}
+    for axis_key in definition.environment_axes:
+        axis = environment_by_key.get(axis_key)
+        if axis is not None:
+            refs.extend(ref for key in axis.evidence for ref in dimension_evidence.get(key, []))
+    return _unique_refs([*refs, *questionnaire_refs])
+
+
 def _section_contracts(groups: dict[str, list[str]]) -> dict[str, CareerSectionContract]:
     ownership = {
         "professional_summary": ("dimensions", "contradictions"),
@@ -311,9 +372,23 @@ def validate_interpretation_facts(
     *,
     expected_contradiction_codes: set[str] | None = None,
 ) -> CareerInterpretationFacts:
+    evidence_collections = (
+        facts.top_dimensions,
+        facts.low_dimensions,
+        facts.career_archetypes,
+        facts.preferred_environment,
+        facts.risk_environment,
+        facts.contradictions,
+        facts.role_matches,
+        facts.career_paths,
+    )
+    for collection in evidence_collections:
+        for item in collection:
+            if not item.evidence_refs:
+                raise CareerFactsValidationError(f"missing evidence for {item.fact_key}")
+            if any(ref.startswith("chart:") for ref in item.evidence_refs):
+                raise CareerFactsValidationError(f"imprecise evidence for {item.fact_key}")
     for dimension in (*facts.top_dimensions, *facts.low_dimensions):
-        if not dimension.evidence_refs:
-            raise CareerFactsValidationError(f"missing evidence for {dimension.fact_key}")
         if dimension.confidence < LOW_CONFIDENCE_THRESHOLD and not dimension.conditional_language_required:
             raise CareerFactsValidationError(f"low confidence is not conditional for {dimension.fact_key}")
 
@@ -400,7 +475,9 @@ def build_interpretation_fact_rows(
     ):
         for item in collection:
             payload = item.model_dump(mode="json")
-            evidence_refs = payload.get("evidence_refs") or [f"chart:{facts.chart_id}"]
+            evidence_refs = payload.get("evidence_refs") or []
+            if not evidence_refs:
+                raise CareerFactsValidationError(f"missing evidence for {item.fact_key}")
             rows.append(
                 CareerInterpretationFact(
                     career_profile_id=facts.profile_id,

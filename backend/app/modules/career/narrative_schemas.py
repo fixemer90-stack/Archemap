@@ -25,13 +25,22 @@ class CareerSectionRenderInput(BaseModel):
     continuation_policy: dict[str, Any]
 
 
+class CareerNarrativeClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1)
+    fact_keys: list[str] = Field(min_length=1)
+    conditional: bool
+
+
 class CareerSegmentOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: str = "career_segment_output_v1"
+    contract_version: str = "career_segment_output_v2"
     section_key: str
     title: str
     body: str = Field(min_length=1)
     cited_fact_keys: list[str] = Field(min_length=1)
+    claims: list[CareerNarrativeClaim] = Field(min_length=1)
     continuation_complete: bool = True
     continuation_cursor: str | None = None

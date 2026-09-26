@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, call
+from typing import cast
+from unittest.mock import AsyncMock, MagicMock, Mock, call
 
 import pytest
 
 from app.config import settings
 from app.modules.career.models import CareerGeneration, CareerReport
+from app.modules.career.narrative_schemas import CareerSectionRenderInput
 from app.modules.career.repository import CareerRepository
 from workers.tasks.career import (
     _persist_parent_rows_before_children,
+    _run_narrative_quality_pipeline,
     build_career_monitor_alerts,
     build_regeneration_report_row,
     failure_status_for_generation,
@@ -76,6 +79,34 @@ async def test_parent_artifacts_are_flushed_before_fk_children() -> None:
         call.flush(),
         call.add_many(child_rows),
     ]
+
+
+@pytest.mark.asyncio
+async def test_active_worker_narrative_pipeline_runs_segment_and_assembly_gates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = _source_report()
+    section_inputs = cast(
+        list[CareerSectionRenderInput],
+        [Mock(section_key="professional_summary"), Mock(section_key="work_style")],
+    )
+    segment_rows = [Mock(section_key="professional_summary"), Mock(section_key="work_style")]
+    run_gate = AsyncMock(side_effect=segment_rows)
+    assembled = Mock(status="ready")
+    assembly_gate = Mock(return_value=assembled)
+    monkeypatch.setattr("workers.tasks.career.run_career_segment_generation", run_gate)
+    monkeypatch.setattr("workers.tasks.career.assemble_career_report_row", assembly_gate)
+
+    rows, result = await _run_narrative_quality_pipeline(
+        provider=Mock(),
+        report=report,
+        section_inputs=section_inputs,
+    )
+
+    assert rows == segment_rows
+    assert result is assembled
+    assert run_gate.await_count == 2
+    assembly_gate.assert_called_once_with(report=report, segment_rows=segment_rows)
 
 
 def test_monitor_alerts_cover_stuck_pipeline_and_validator_failure_spike() -> None:

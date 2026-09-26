@@ -6,16 +6,23 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from difflib import SequenceMatcher
 from typing import Any, Protocol
 from uuid import UUID
+
+from pydantic import ValidationError
 
 from app.config import settings
 from app.modules.career.interpretation_facts import CareerInterpretationFacts, validate_interpretation_facts
 from app.modules.career.models import CareerReport, CareerSegmentGeneration
-from app.modules.career.narrative_schemas import CareerSectionRenderInput, CareerSegmentOutput
+from app.modules.career.narrative_schemas import (
+    CareerNarrativeClaim,
+    CareerSectionRenderInput,
+    CareerSegmentOutput,
+)
 from app.modules.career.observability import career_telemetry, estimate_provider_usage
 
-CAREER_PROMPT_VERSION = "career-segment-prompt-1"
+CAREER_PROMPT_VERSION = "career-segment-prompt-2"
 
 _SECTION_METADATA: dict[str, tuple[str, str]] = {
     "professional_summary": ("Ваш профессиональный профиль", "Собрать главную профессиональную механику."),
@@ -82,16 +89,13 @@ class MockCareerSegmentProvider:
 
     async def generate_segment(self, *, prompt: str, section_input: CareerSectionRenderInput) -> dict[str, Any]:
         del prompt
+        claims = [_mock_claim(fact, section_input.section_purpose) for fact in section_input.owned_facts]
         return CareerSegmentOutput(
             section_key=section_input.section_key,
             title=section_input.section_title,
-            body=(
-                f"{section_input.section_title}: этот раздел опирается на рассчитанные факты и показывает, "
-                "как рабочая механика может проявляться в задачах. Вывод стоит проверять на реальном "
-                "контексте роли: он описывает вероятный способ действия, а не обязательный сценарий "
-                "или обещание результата."
-            ),
+            body=f"{section_input.section_title}. {' '.join(claim.text for claim in claims)}",
             cited_fact_keys=list(section_input.owned_fact_keys),
+            claims=claims,
         ).model_dump(mode="json")
 
 
@@ -144,7 +148,9 @@ def build_segment_prompt(section_input: CareerSectionRenderInput) -> str:
     return f"""Write one section of a Russian Career report.
 Use only owned_facts and bounded reference_facts from the provided JSON.
 Cite every owned_fact_key. Do not expand forbidden_fact_keys.
-Return JSON matching career_segment_output_v1; no markdown or text outside JSON.
+Return structured claims with exact fact_keys. Every claim text must appear in body.
+For low-confidence facts set conditional=true and use explicit conditional wording in the claim text.
+Return JSON matching career_segment_output_v2; no markdown or text outside JSON.
 Do not calculate scores, invent roles, paths, professions, chart facts, or user answers.
 Profession examples must remain conditional illustrations, never prescriptions.
 Do not promise income, hiring, success, diagnosis, or certainty.
@@ -169,6 +175,7 @@ def validate_segment_output(
         raise CareerNarrativeValidationError(f"missing owned facts: {sorted(missing)}")
     if cited & set(section_input.forbidden_fact_keys):
         raise CareerNarrativeValidationError("forbidden fact expansion")
+    _validate_claims(output=output, section_input=section_input, allowed=allowed)
     body = output.body.lower()
     if re.search(r"(^|\n)\s{0,3}#{1,6}\s|```", output.body):
         raise CareerNarrativeValidationError("markdown is forbidden")
@@ -184,6 +191,125 @@ def validate_segment_output(
     if not output.continuation_complete and not output.continuation_cursor:
         raise CareerNarrativeValidationError("continuation cursor required")
     return output
+
+
+def _mock_claim(fact: dict[str, Any], section_purpose: str) -> CareerNarrativeClaim:
+    fact_key = str(fact["fact_key"])
+    conditional = bool(fact.get("conditional_language_required")) or float(fact.get("confidence", 1.0)) < 0.5
+    if fact_key.startswith("contradiction:"):
+        text = _mock_contradiction_text(fact)
+    elif conditional:
+        text = f"{section_purpose} Факт {fact_key} может проявляться, но вывод стоит проверить на реальных задачах."
+    else:
+        text = (
+            f"{section_purpose} Факт {fact_key} описывает вероятный рабочий механизм, а не гарантированный результат."
+        )
+    return CareerNarrativeClaim(text=text, fact_keys=[fact_key], conditional=conditional)
+
+
+def _mock_contradiction_text(fact: dict[str, Any]) -> str:
+    dimension_phrases = {
+        "leadership": "Лидерский потенциал может быть выражен",
+        "autonomy": "Потенциал самостоятельной работы может быть выражен",
+        "risk_tolerance": "Способность работать с риском и неопределённостью может быть выражена",
+    }
+    preference_phrases = {
+        "people_management_motivation": "мотивация к управлению людьми может быть ниже",
+        "autonomy_importance": "предпочтение структурированной работы может быть сильнее автономии",
+        "risk_preference": "предпочтение стабильности может ограничивать готовность использовать риск",
+    }
+    dimension = dimension_phrases.get(str(fact.get("dimension")), "Профессиональная способность может быть выражена")
+    preference = preference_phrases.get(
+        str(fact.get("preference_key")), "пользовательское предпочтение может указывать на другой формат работы"
+    )
+    return f"{dimension}, но {preference}; поэтому сценарий стоит проверять в реальном контексте."
+
+
+def _validate_claims(
+    *,
+    output: CareerSegmentOutput,
+    section_input: CareerSectionRenderInput,
+    allowed: set[str],
+) -> None:
+    body = _normalize_text(output.body)
+    claimed = {fact_key for claim in output.claims for fact_key in claim.fact_keys}
+    unknown = claimed - allowed
+    if unknown:
+        raise CareerNarrativeValidationError(f"unsupported claim facts: {sorted(unknown)}")
+    missing = set(section_input.owned_fact_keys) - claimed
+    if missing:
+        raise CareerNarrativeValidationError(f"missing owned claim facts: {sorted(missing)}")
+    if set(output.cited_fact_keys) != claimed:
+        raise CareerNarrativeValidationError("claim citations mismatch")
+    for claim in output.claims:
+        if _normalize_text(claim.text) not in body:
+            raise CareerNarrativeValidationError("claim text is not present in body")
+
+    fact_index = {str(fact["fact_key"]): fact for fact in (*section_input.owned_facts, *section_input.reference_facts)}
+    for fact_key, fact in fact_index.items():
+        low_confidence = bool(fact.get("conditional_language_required")) or float(fact.get("confidence", 1.0)) < 0.5
+        fact_claims = [claim for claim in output.claims if fact_key in claim.fact_keys]
+        if low_confidence and (
+            not fact_claims
+            or any(not claim.conditional or not _has_conditional_language(claim.text) for claim in fact_claims)
+        ):
+            raise CareerNarrativeValidationError(f"low-confidence claim is categorical: {fact_key}")
+        if fact_key.startswith("contradiction:") and not any(
+            _retains_contradiction_meaning(claim.text, fact) for claim in fact_claims
+        ):
+            raise CareerNarrativeValidationError(f"contradiction meaning is missing: {fact_key}")
+
+
+def _has_conditional_language(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(
+        marker in normalized
+        for marker in (
+            "может",
+            "могут",
+            "возможно",
+            "вероятно",
+            "скорее",
+            "зависит",
+            "стоит проверить",
+            "требует проверки",
+            "при условии",
+        )
+    )
+
+
+def _retains_contradiction_meaning(text: str, fact: dict[str, Any]) -> bool:
+    normalized = _normalize_text(text)
+    dimension_markers = {
+        "leadership": ("лидер", "влиян"),
+        "autonomy": ("автоном", "самостоятель"),
+        "risk_tolerance": ("риск", "неопредел"),
+    }
+    preference_markers = {
+        "people_management_motivation": ("управлен", "люд", "команд"),
+        "autonomy_importance": ("структур", "автоном", "самостоятель"),
+        "risk_preference": ("стабил", "риск", "предсказ"),
+    }
+    contrast_markers = ("но", "однако", "при этом", "несмотря", "хотя")
+    dimension = str(fact.get("dimension", ""))
+    preference = str(fact.get("preference_key", ""))
+    expected_dimension_markers = dimension_markers.get(dimension)
+    expected_preference_markers = preference_markers.get(preference)
+    return bool(
+        expected_dimension_markers
+        and expected_preference_markers
+        and any(marker in normalized for marker in expected_dimension_markers)
+        and any(marker in normalized for marker in expected_preference_markers)
+        and any(marker in normalized for marker in contrast_markers)
+    )
+
+
+def _normalize_text(text: str) -> str:
+    return " ".join(re.findall(r"[\w-]+", text.lower(), flags=re.UNICODE))
+
+
+def _body_similarity(left: str, right: str) -> float:
+    return SequenceMatcher(a=_normalize_text(left), b=_normalize_text(right), autojunk=False).ratio()
 
 
 async def run_career_segment_generation(
@@ -225,7 +351,7 @@ async def run_career_segment_generation(
             output_payload=output.model_dump(mode="json"),
             error=None,
         )
-    except CareerNarrativeValidationError:
+    except (CareerNarrativeValidationError, ValidationError):
         return CareerSegmentGeneration(
             career_profile_id=career_profile_id,
             chart_id=chart_id,
@@ -286,7 +412,7 @@ def build_deterministic_career_report_row(
 
 def assemble_career_report_row(*, report: CareerReport, segment_rows: list[CareerSegmentGeneration]) -> CareerReport:
     ready_sections: list[dict[str, Any]] = []
-    seen_bodies: set[str] = set()
+    seen_bodies: list[str] = []
     known_fact_keys = _deterministic_fact_keys(report.deterministic_payload)
     for section_key in _SECTION_METADATA:
         segment = next((item for item in segment_rows if item.section_key == section_key), None)
@@ -298,7 +424,9 @@ def assemble_career_report_row(*, report: CareerReport, segment_rows: list[Caree
         canonical_body = " ".join(output.body.lower().split())
         if canonical_body in seen_bodies:
             raise CareerNarrativeValidationError("duplicate narrative section")
-        seen_bodies.add(canonical_body)
+        if any(_body_similarity(canonical_body, existing) >= 0.88 for existing in seen_bodies):
+            raise CareerNarrativeValidationError("near-duplicate narrative section")
+        seen_bodies.append(canonical_body)
         ready_sections.append(output.model_dump(mode="json"))
 
     failed = any(item.status == "failed" for item in segment_rows)

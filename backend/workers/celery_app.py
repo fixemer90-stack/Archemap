@@ -5,6 +5,19 @@ from __future__ import annotations
 from celery import Celery
 
 from app.config import settings
+from app.infrastructure.observability import configure_metrics
+
+
+def configure_worker_observability() -> bool:
+    """Export worker-side Career metrics through the configured OTLP endpoint."""
+
+    return configure_metrics(
+        endpoint=settings.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
+        service_name=f"{settings.OTEL_SERVICE_NAME}-worker",
+    )
+
+
+configure_worker_observability()
 
 app = Celery(
     "archemap_workers",

@@ -61,3 +61,50 @@ def test_career_monitor_is_registered_in_the_local_beat_schedule() -> None:
     assert schedule["task"] == "career.monitor_pipeline"
     assert schedule["schedule"] == 300.0
     assert schedule["task"] in app.tasks
+
+
+def test_staging_has_an_internal_otlp_metrics_collector() -> None:
+    compose = _load_compose("docker-compose.staging.yml")
+    services = compose["services"]
+
+    collector = services["otel-collector"]
+    assert collector["image"] == "otel/opentelemetry-collector-contrib:0.103.0"
+    assert collector["command"] == ["--config=/etc/otelcol-contrib/config.yaml"]
+    assert collector["volumes"] == ["./deploy/otel-collector.staging.yaml:/etc/otelcol-contrib/config.yaml:ro"]
+    assert collector["healthcheck"]["test"] == [
+        "CMD",
+        "/otelcol-contrib",
+        "validate",
+        "--config=/etc/otelcol-contrib/config.yaml",
+    ]
+    assert "ports" not in collector
+
+    for service_name in ("backend", "worker"):
+        assert services[service_name]["depends_on"]["otel-collector"] == {"condition": "service_healthy"}
+
+    collector_config = yaml.safe_load(
+        (REPOSITORY_ROOT / "deploy" / "otel-collector.staging.yaml").read_text(encoding="utf-8")
+    )
+    assert collector_config["receivers"]["otlp"]["protocols"]["http"]["endpoint"] == "0.0.0.0:4318"
+    assert collector_config["service"]["pipelines"]["metrics"] == {
+        "receivers": ["otlp"],
+        "exporters": ["debug"],
+    }
+
+
+def test_worker_configures_otlp_metrics_from_runtime_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import settings
+    from workers import celery_app
+
+    calls: list[tuple[str, str]] = []
+
+    def fake_configure_metrics(*, endpoint: str, service_name: str) -> bool:
+        calls.append((endpoint, service_name))
+        return True
+
+    monkeypatch.setattr(celery_app, "configure_metrics", fake_configure_metrics)
+    monkeypatch.setattr(settings, "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://collector:4318/v1/metrics")
+    monkeypatch.setattr(settings, "OTEL_SERVICE_NAME", "astrotype-staging")
+
+    assert celery_app.configure_worker_observability() is True
+    assert calls == [("http://collector:4318/v1/metrics", "astrotype-staging-worker")]

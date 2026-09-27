@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Частично — общий web/PDF presentation contract закрыт; новый sample-parity browser run ждёт CI/Chromium evidence
+✅ Завершено — web/PDF presentation contract, semantic parity и Chromium sample evidence закрыты
 
 ## Контекст
 
@@ -46,7 +46,7 @@
 - [x] Narrative failure не скрывает deterministic content.
 - [x] Mobile, print/PDF, typography и whole-word tooltips проверены.
 - [x] Canonical HTML sample и desktop/mobile previews созданы.
-- [ ] Реальный reader проходит воспроизводимый visual parity smoke относительно canonical sample.
+- [x] Реальный reader проходит воспроизводимый visual parity smoke относительно canonical sample.
 
 ## Реализация и проверка
 
@@ -61,10 +61,10 @@
 - Desktop/mobile/print visual regression baselines сохранены в `frontend/tests/e2e/career-reader.spec.ts-snapshots/`; локальный общий Career browser suite: `5 passed, 1 skipped`.
 - `contracts/fixtures/career-report-read-v1-parity.json` задаёт один semantic manifest; `backend/app/modules/career/presentation.py`, frontend view-model и PDF renderer обязаны воспроизводить его без собственного порядка/labels.
 - `frontend/scripts/check-career-report-parity.mjs` и `check-career-sample-parity.mjs` прошли из repo root и frontend cwd; protocol фиксирует component/crop comparison вместо бессмысленного full-page pixel equality.
-- Добавлены browser cases `deterministic_ready` и `narrative_failed`; локальная коллекция видит 10 desktop/mobile tests. Фактический новый Chromium run остаётся открытым до CI, поскольку локальная загрузка browser binary была недоступна.
+- Добавлены browser cases `deterministic_ready` и `narrative_failed`; точный SHA `3fbd11948a9676d440915cd5abcd50dbbf7aa3c5` прошёл GitHub Actions CI run `36285160532`, включая desktop/mobile Chromium smoke, canonical sample crops, screenshots, print и browser PDF.
 
 Human visual review desktop/mobile/print снимков подтвердил отсутствие clipping/overflow, читаемый print и соответствие canonical sample как design direction. Reader получил standalone shell, hero summary cards с ведущим профилем/рабочим вектором и компактную навигационную сетку десяти разделов; pixel-perfect совпадение не является контрактом.
 
 ## Аудит 2026-09-26
 
-- Cross-render implementation gaps закрыты общим presentation contract и fixture parity tests. Открыт только evidence gap фактического Chromium sample-parity прогона точного committed SHA.
+- Cross-render implementation gaps и evidence gap закрыты общим presentation contract, fixture parity tests и зелёным exact-SHA Chromium run.

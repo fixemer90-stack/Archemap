@@ -20,7 +20,7 @@ Runtime-аудит 25 сентября 2026 года показал:
 
 ## Цель
 
-Опубликовать точный зелёный Career revision на изолированный stage, выполнить полный live flow и сохранить проверяемое evidence для entitlement, mock-provider narrative, reader/PDF, observability и rollback. По решению владельца продукта от 26 сентября 2026 года real provider для stage не требуется. Production Career rollout в эту Story не входит, но production health после изменения общего ingress обязан остаться зелёным.
+Опубликовать точный зелёный Career revision на изолированный stage, выполнить полный live flow и сохранить проверяемое evidence для entitlement, mock-provider narrative, reader/PDF, observability и rollback. По решению владельца продукта от 27 сентября 2026 года real provider для stage не требуется. Production Career rollout в эту Story не входит, но production health после изменения общего ingress обязан остаться зелёным.
 
 ## Что сделать
 
@@ -170,9 +170,11 @@ Production regression health:
 - Production `/api/v1/health` после read-only stage audit возвращает `200`; это не заменяет regression smoke после будущей target stage publication.
 - Deploy topology пока не запускает Celery Beat, поэтому zero-stuck/alert-path evidence заблокировано implementation/config gap.
 
-## Решение по provider gate 2026-09-26
+## Решение по provider gate 2026-09-27
 
 Владелец продукта подтвердил, что для stage достаточно mock LLM. Исторические требования real-provider stage report/API key сняты. Real-provider prose quality, authoritative latency/token/cost и provider billing evidence переносятся в canary/pre-production gate S12. Scheduler implementation gap закрыт после исторического snapshot; S14 должен доказать уже запущенный stage Beat service и alert path.
+
+Exact green Career revision для публикации: `3fbd11948a9676d440915cd5abcd50dbbf7aa3c5`; GitHub Actions CI run `36285160532`, все семь jobs `success`, включая Career Chromium browser smoke.
 
 ## Вне области Story
 

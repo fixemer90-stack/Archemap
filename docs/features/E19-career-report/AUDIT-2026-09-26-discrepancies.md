@@ -25,12 +25,12 @@
 - S07 — precise provenance, low-confidence и contradiction gates;
 - S08 — duplicate/near-duplicate regressions и active worker wiring;
 - S09 — canonical OpenAPI, entitlement matrix и lifecycle/concurrency API tests;
+- S11 — shared web/PDF presentation contract и exact-SHA Chromium sample evidence;
 - S13 — готовность документа rollout/rollback runbook, но не его live-исполнение.
 
 Остаются частично закрытыми:
 
 - S10 — live-backend entitlement/product-flow evidence;
-- S11 — фактический Chromium sample-parity run точного SHA;
 - S12, S14 — stage, observability, canary и production evidence.
 
 Все implementation/test-contract расхождения раздела 1 закрыты commits текущей серии. Таблица ниже сохранена как исторический перечень причин изменений; актуальные открытые gaps перечислены в разделах 2 и 4.
@@ -72,7 +72,7 @@
 
 - общий web/PDF presentation contract, deterministic/narrative-failed cases и semantic fixture parity реализованы;
 - contradictions/context constraints сопоставляются одним manifest;
-- остаётся фактический Chromium run нового sample-parity набора точного SHA.
+- exact SHA `3fbd11948a9676d440915cd5abcd50dbbf7aa3c5` прошёл CI run `36285160532` с desktop/mobile Chromium sample evidence.
 
 ### S12 — QA/observability/rollout
 
@@ -114,9 +114,8 @@
 
 ## 4. Порядок закрытия
 
-1. Получить новый exact green SHA и фактический Chromium sample-parity evidence.
-2. Выполнить S14: backup/checksums → exact stage deploy → routes/settings/readiness → entitlement matrix → full mock-provider flow → quality/metrics → rollback rehearsal.
-3. Выполнить S12 real-provider canary и production report/PDF smoke.
+1. Выполнить S14: backup/checksums → exact stage deploy → routes/settings/readiness → entitlement matrix → full mock-provider flow → quality/metrics → rollback rehearsal.
+2. Выполнить S12 real-provider canary и production report/PDF smoke.
 
 ## 5. Правило закрытия
 

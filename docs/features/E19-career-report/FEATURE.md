@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — локальные implementation gaps S01/S02/S07–S09 закрыты; S11 ждёт browser evidence, stage/canary/production evidence остаётся в S10/S12/S14
+🟡 В работе — локальные implementation gaps и browser evidence S01–S09/S11 закрыты; stage/canary/production evidence остаётся в S10/S12/S14
 
 ## Цель
 
@@ -150,7 +150,7 @@ Career — специализированный отчёт. Целевой до�
 | S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                     | ✅ Завершено |
 | S09 | [Добавить async Career API и access enforcement](./S09-api-async-access.md)                      | ✅ Завершено |
 | S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                            | 🟡 Частично  |
-| S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                        | 🟡 Частично  |
+| S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                        | ✅ Завершено |
 | S12 | [Закрыть QA, observability, migration и rollout](./S12-qa-observability-rollout.md)              | 🟡 Частично  |
 | S13 | [Подготовить Career rollout / rollback runbook](./S13-rollout-runbook.md)                        | ✅ Завершено |
 | S14 | [Опубликовать Career на stage и собрать live evidence](./S14-stage-publication-live-evidence.md) | 🟡 Частично  |
@@ -189,4 +189,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature находится в реализации. Локально закрыты S01–S09 и документационный runbook S13: добавлены route-level access/OpenAPI tests, generation-aware immutable history, конкурентная idempotency, provenance/quality gates и общий web/PDF presentation contract. S11 ждёт фактического Chromium-прогона нового sample-parity набора. S10 ждёт live-backend entitlement smoke. По решению владельца продукта от 26 сентября 2026 года для stage достаточно mock LLM; real-provider quality gate переносится в canary/production. Текущий stage остаётся на старом marker без target Career routes и OTLP. После S14 в S12 останутся canary и production report/PDF evidence.
+Feature находится в реализации. Локально закрыты S01–S09, S11 и документационный runbook S13: добавлены route-level access/OpenAPI tests, generation-aware immutable history, конкурентная idempotency, provenance/quality gates, общий web/PDF presentation contract и зелёный Chromium sample-parity run. S10 ждёт live-backend entitlement smoke. По решению владельца продукта от 27 сентября 2026 года для stage достаточно mock LLM; real-provider quality gate переносится в canary/production. Текущий stage остаётся на старом marker без target Career routes и OTLP. После S14 в S12 останутся canary и production report/PDF evidence.

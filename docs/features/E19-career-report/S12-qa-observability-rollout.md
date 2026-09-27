@@ -94,6 +94,6 @@ Career объединяет deterministic scoring, пользовательск�
 
 ## Аудит 2026-09-26
 
-- Exact green revision: `a821404d0b010fc9f1f1cd04d01170a825dc29b8`; CI run `36210137484`, семь jobs `success`.
+- Exact green Career revision: `3fbd11948a9676d440915cd5abcd50dbbf7aa3c5`; CI run `36285160532`, семь jobs `success`, включая обновлённый desktop/mobile Chromium sample-parity smoke.
 - Scheduler implementation gap закрыт dedicated Beat services и regression tests; stage zero-stuck/alert-path evidence остаётся открытым до deploy.
-- Stage остаётся на marker `3462865ed1a7158023c99bc491044dcea048ad23`, target Career routes в running backend отсутствуют, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст. По решению владельца продукта от 26 сентября 2026 года mock LLM достаточен для S14; требуется включить и проверить именно mock runtime, routes, worker/scheduler и OTLP.
+- Stage остаётся на marker `3462865ed1a7158023c99bc491044dcea048ad23`, target Career routes в running backend отсутствуют, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст. По решению владельца продукта от 27 сентября 2026 года mock LLM достаточен для S14; требуется включить и проверить именно mock runtime, routes, worker/scheduler и OTLP.

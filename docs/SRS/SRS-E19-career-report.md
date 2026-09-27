@@ -1,6 +1,6 @@
 # SRS-E19: Astrotype Career Report
 
-Статус: S01–S09 завершены; S11 закрыл implementation parity и ждёт Chromium/CI evidence; S13 runbook готов; S14 ждёт stage publication/live evidence; S12 ожидает stage, canary и production evidence
+Статус: S01–S09 и S11 завершены; S13 runbook готов; S14 ждёт stage publication/live evidence; S12 ожидает stage, canary и production evidence
 
 Feature: `docs/features/E19-career-report/FEATURE.md`
 

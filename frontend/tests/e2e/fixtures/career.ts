@@ -74,6 +74,19 @@ export const sectionKeys = [
   "career_paths",
 ] as const;
 
+const sectionTitles: Record<(typeof sectionKeys)[number], string> = {
+  professional_summary: "Ваш профессиональный профиль",
+  work_style: "Как вы работаете",
+  strengths: "Сильные стороны",
+  decision_making: "Стиль принятия решений",
+  leadership_and_influence: "Лидерство и влияние",
+  optimal_environment: "Оптимальная рабочая среда",
+  risk_environment: "Что может снижать эффективность",
+  career_archetypes: "Профессиональные архетипы",
+  role_families: "Подходящие типы ролей",
+  career_paths: "Возможные карьерные траектории",
+};
+
 export const reportPayload = {
   contract_version: "career_report_read_v1",
   report_id: "report-1",
@@ -100,9 +113,9 @@ export const reportPayload = {
       },
     ],
   },
-  sections: sectionKeys.map((sectionKey, index) => ({
+  sections: sectionKeys.map((sectionKey) => ({
     section_key: sectionKey,
-    title: `Раздел ${index + 1}`,
+    title: sectionTitles[sectionKey],
     body: "Вы соединяете детали в целостную систему и лучше всего работаете там, где можно видеть причины, ограничения и последствия решений.\n\nПрактический вывод сохраняет контекст и не превращает склонность в предписание профессии.",
   })),
   section_states: sectionKeys.map((sectionKey) => ({

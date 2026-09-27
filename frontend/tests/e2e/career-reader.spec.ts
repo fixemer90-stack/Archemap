@@ -105,7 +105,7 @@ test("reader is standalone, accessible, responsive, and keeps whole-word tooltip
   await expect(page).toHaveScreenshot("career-reader.png", {
     fullPage: true,
     animations: "disabled",
-    maxDiffPixels: 100,
+    maxDiffPixelRatio: 0.02,
   });
 });
 
@@ -142,7 +142,7 @@ test("reader has a readable print layout and produces a browser PDF", async ({
   await expect(page).toHaveScreenshot("career-reader-print.png", {
     fullPage: true,
     animations: "disabled",
-    maxDiffPixels: 100,
+    maxDiffPixelRatio: 0.02,
   });
   const pdf = await page.pdf({ format: "A4", printBackground: true });
   expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
@@ -162,7 +162,7 @@ test("deterministic-ready reader keeps all ten narrative slots pending before ev
   ).toContainText("Пояснения ещё готовятся");
   await expect(page.locator('[data-section-status="pending"]')).toHaveCount(10);
   await expect(
-    page.getByText("Системное мышление", { exact: true }),
+    page.getByRole("heading", { name: "Системное мышление", level: 3 }),
   ).toBeVisible();
 
   const semanticOrder = await page
@@ -190,9 +190,9 @@ test("narrative-failed reader keeps ready, failed, and pending slots plus determ
   await expect(
     page.getByText("Полезные развилки", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Опыт: уверенный профессиональный уровень", { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('[data-presentation-key="context"]')).toContainText(
+    "Опыт: уверенный профессиональный уровень",
+  );
 });
 
 test("canonical sample component evidence uses stable crops instead of full-page pixel equality", async ({

@@ -105,7 +105,7 @@ test("reader is standalone, accessible, responsive, and keeps whole-word tooltip
   await expect(page).toHaveScreenshot("career-reader.png", {
     fullPage: true,
     animations: "disabled",
-    maxDiffPixelRatio: 0.02,
+    maxDiffPixels: 100,
   });
 });
 

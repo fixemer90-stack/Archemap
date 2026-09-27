@@ -85,11 +85,15 @@ Feature: `docs/features/E10-birth-data-refinement/FEATURE.md`
 
 ### FR-E10.9 UI
 
-- Settings содержит отдельную карточку данных рождения.
+- Settings содержит основной блок данных рождения и сохраняет независимые блоки профиля и безопасности.
+- Информационная иерархия страницы: данные рождения → профиль → безопасность.
 - UI объясняет влияние на карту/отчёт до подтверждения.
+- Перед финальной отправкой UI показывает сравнение материально изменённых значений «Было / Стало».
 - Cooldown отображается по backend `next_available_at`.
 - После `202` UI показывает прогресс и сохраняет ссылку на текущий отчёт.
+- Состояния `queued`, `processing`, `deterministic_ready`, `ready`, `failed` имеют отдельные пользовательские формулировки и действия.
 - Технический жаргон (`LLM`, `v2`, `input_hash`) пользователю не показывается.
+- Визуальное направление следует дизайн-системе Astrotype v2, но служебная Settings-страница не копирует marketing hero и декоративные landing-паттерны.
 
 ## 5. Нефункциональные требования
 
@@ -103,6 +107,9 @@ Feature: `docs/features/E10-birth-data-refinement/FEATURE.md`
 | NFR-E10.6 | UI доступен с клавиатуры и адаптирован для мобильного экрана.              |
 | NFR-E10.7 | Время ответа синхронного POST не включает выполнение генерации отчёта.     |
 | NFR-E10.8 | Старый отчёт остаётся читаемым при деградации worker/LLM provider.         |
+| NFR-E10.9 | На viewport от 320px нет горизонтального переполнения или обрезания CTA.   |
+| NFR-E10.10 | Основные touch-target не меньше 44 × 44px; focus-visible различим.         |
+| NFR-E10.11 | Reduced-motion не скрывает состояния и не блокирует действия.             |
 
 ## 6. Модель данных
 
@@ -157,11 +164,13 @@ stateDiagram-v2
 3. PostgreSQL concurrency test с двумя одновременными транзакциями.
 4. Pipeline tests на новый chart/report lineage и retry.
 5. Frontend tests всех UI states и accessibility.
-6. Staging smoke: 202 → status progression → new report.
-7. Второй staging POST: 429 с точным `Retry-After`/`next_available_at`.
-8. DB evidence: одна ревизия, старые rows сохранены.
-9. Payment evidence: новые payment rows отсутствуют, entitlement неизменён.
-10. Production rollout за feature flag с метриками failures/stuck jobs.
+6. Visual screenshots для desktop `1440px`, tablet `768px`, mobile `390px` и overflow smoke `320px`.
+7. Keyboard-only и reduced-motion проход основного сценария.
+8. Staging smoke: 202 → status progression → new report.
+9. Второй staging POST: 429 с точным `Retry-After`/`next_available_at`.
+10. DB evidence: одна ревизия, старые rows сохранены.
+11. Payment evidence: новые payment rows отсутствуют, entitlement неизменён.
+12. Production rollout за feature flag с метриками failures/stuck jobs.
 
 ## 10. Зависимости и риски
 
@@ -171,6 +180,7 @@ stateDiagram-v2
 - V2 chart/report generation pipeline.
 - Celery/Redis и durable generation state.
 - Settings web client.
+- [Дизайн-ревью главной страницы Astrotype v2](../design/astrotype-v2-homepage-sample-review.md) как визуальное направление с utility-ограничениями из S04.
 
 ### Риски
 

@@ -28,6 +28,7 @@ last_successful_refinement_at + 24 часа.
 ## Область работ
 
 - Карточка «Данные рождения» в `/settings`.
+- Цельная визуальная переработка `/settings` под сценарий E10 без превращения utility-страницы в marketing landing.
 - Выбор принадлежащего пользователю профиля, если профилей несколько.
 - Редактирование времени рождения и его точности.
 - Поиск и выбор места рождения из геокодера.
@@ -57,6 +58,7 @@ last_successful_refinement_at + 24 часа.
 5. После готовности новый отчёт становится активным атомарно; предыдущая версия остаётся исторической.
 6. Повторная генерация не требует новой оплаты и не меняет entitlement аккаунта.
 7. Ограничение 24 часа относится только к успешному изменению данных рождения; имя и пароль не блокируются.
+8. Визуальное направление `/settings` следует системе Astrotype v2 из review главной страницы, но приоритетами остаются форма, состояния операции, доступность и mobile layout.
 
 ## Зависимости
 
@@ -84,6 +86,8 @@ last_successful_refinement_at + 24 часа.
 - [ ] Старый отчёт доступен до готовности нового deterministic-слоя.
 - [ ] Повторный расчёт не создаёт платёж и не изменяет подписку/entitlement.
 - [ ] UI показывает серверное время следующего изменения и состояние пересчёта.
+- [ ] `/settings` имеет согласованную визуальную иерархию «данные рождения → профиль → безопасность» и не содержит горизонтального переполнения на ширинах от `320px`.
+- [ ] View/edit/cooldown/processing/ready/failed состояния доступны с клавиатуры, имеют читаемый focus и проверены в reduced-motion режиме.
 - [ ] Unit, integration, concurrency, frontend и staging smoke закрывают happy path и ограничения.
 
 ## Stories
@@ -93,7 +97,7 @@ last_successful_refinement_at + 24 часа.
 | S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)    | ⬜ Не начато |
 | S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)    | ⬜ Не начато |
 | S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md) | ⬜ Не начато |
-| S04 | [UX данных рождения в Settings](./S04-settings-birth-data-ux.md)                | ⬜ Не начато |
+| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ⬜ Не начато |
 | S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)          | ⬜ Не начато |
 
 ## Порядок реализации
@@ -111,6 +115,7 @@ flowchart LR
 
 - [SRS-E10](../../SRS/SRS-E10-birth-data-refinement.md)
 - [Пользовательский и системный workflow](./WORKFLOW.md)
+- [Дизайн-ревью главной страницы Astrotype v2](../../design/astrotype-v2-homepage-sample-review.md)
 - [Astrotype v2 API/runtime](../E16-v2-e10-api-async-runtime/FEATURE.md)
 - [Astrotype v2 database foundation](../E16-v2-e2-database-foundation/FEATURE.md)
 

@@ -20,8 +20,15 @@ def mock_redis() -> AsyncMock:
 
 
 @pytest.fixture
-def geocoder(mock_redis: AsyncMock) -> NominatimGeocoder:
-    return NominatimGeocoder(mock_redis)
+def timezone_resolver() -> AsyncMock:
+    resolver = AsyncMock()
+    resolver.resolve = AsyncMock(return_value="Europe/London")
+    return resolver
+
+
+@pytest.fixture
+def geocoder(mock_redis: AsyncMock, timezone_resolver: AsyncMock) -> NominatimGeocoder:
+    return NominatimGeocoder(mock_redis, timezone_resolver=timezone_resolver)
 
 
 class TestCacheKey:
@@ -42,6 +49,7 @@ class TestCacheHit:
                     "longitude": 37.62,
                     "city": "Moscow",
                     "country": "Russia",
+                    "timezone": "Europe/Moscow",
                 }
             ]
         )
@@ -80,12 +88,49 @@ class TestCacheHit:
         assert len(results) == 1
         assert results[0].city == "London"
         assert results[0].country == "United Kingdom"
+        assert results[0].timezone == "Europe/London"
         mock_redis.set.assert_awaited_once()
+
+    async def test_drops_result_when_timezone_cannot_be_resolved(
+        self,
+        mock_redis: AsyncMock,
+        timezone_resolver: AsyncMock,
+    ) -> None:
+        timezone_resolver.resolve.return_value = None
+        geocoder = NominatimGeocoder(mock_redis, timezone_resolver=timezone_resolver)
+        with patch.object(
+            geocoder,
+            "_fetch_from_nominatim",
+            new=AsyncMock(
+                return_value=[
+                    GeocodeResult(
+                        display_name="Ocean",
+                        latitude=0.0,
+                        longitude=-140.0,
+                        city="",
+                        country="",
+                        timezone="",
+                    )
+                ]
+            ),
+        ):
+            results = await geocoder.search("Ocean")
+
+        assert results == []
 
 
 class TestCacheSerialization:
     async def test_roundtrip(self) -> None:
-        original = [GeocodeResult(display_name="Test", latitude=1.0, longitude=2.0, city="City", country="Country")]
+        original = [
+            GeocodeResult(
+                display_name="Test",
+                latitude=1.0,
+                longitude=2.0,
+                city="City",
+                country="Country",
+                timezone="Etc/GMT-0",
+            )
+        ]
         data = json.dumps(
             [
                 {
@@ -94,6 +139,7 @@ class TestCacheSerialization:
                     "longitude": r.longitude,
                     "city": r.city,
                     "country": r.country,
+                    "timezone": r.timezone,
                 }
                 for r in original
             ]

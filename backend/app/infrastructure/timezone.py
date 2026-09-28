@@ -67,4 +67,4 @@ class TimezoneResolver:
                 ex=CACHE_TTL_SECONDS,
             )
         except Exception:
-            logger.exception("tz_cache_set_failed", lat=lat, lon=lon)
+            logger.exception("tz_cache_set_failed")

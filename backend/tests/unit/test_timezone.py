@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -84,3 +84,14 @@ class TestCacheHit:
 
         tz = await resolver.resolve(55.7558, 37.6173)
         assert tz == "Europe/Moscow"
+
+    async def test_cache_failure_log_omits_coordinates(
+        self,
+        resolver: TimezoneResolver,
+        mock_redis: AsyncMock,
+    ) -> None:
+        mock_redis.set = AsyncMock(side_effect=Exception("redis down"))
+        with patch("app.infrastructure.timezone.logger.exception") as log_exception:
+            await resolver.resolve(55.7558, 37.6173)
+
+        log_exception.assert_called_once_with("tz_cache_set_failed")

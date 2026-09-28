@@ -6,6 +6,7 @@ from datetime import date, time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.profiles.schemas import CreateProfileRequest, UpdateProfileRequest
@@ -137,15 +138,9 @@ class TestUpdate:
         assert mock_profile.name == "New Name"
         mock_db.flush.assert_awaited_once()
 
-    async def test_update_birth_date_validates(self, service: ProfileService, mock_db: AsyncMock) -> None:
-        mock_profile = MagicMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_profile
-        mock_db.execute.return_value = mock_result
-
-        data = UpdateProfileRequest(birth_date=date(1800, 1, 1))
-        with pytest.raises(ValidationError):
-            await service.update("profile-id", "user-id", data)  # type: ignore[arg-type]
+    def test_update_birth_data_is_rejected_by_schema(self) -> None:
+        with pytest.raises(PydanticValidationError):
+            UpdateProfileRequest(birth_date=date(1800, 1, 1))
 
 
 class TestDelete:

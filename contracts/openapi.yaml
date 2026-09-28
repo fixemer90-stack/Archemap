@@ -38,6 +38,8 @@ tags:
     description: Async Career questionnaire, generation, progressive report, history, and PDF lifecycle
   - name: Reports
     description: Deterministic reports and narrative generation lifecycle
+  - name: Profiles
+    description: Person profiles, geocoding, and birth-data refinement
 
 paths:
   /v1/health:
@@ -823,6 +825,108 @@ paths:
         "503":
           $ref: "#/components/responses/BadRequest"
 
+  /v1/profiles/geocode:
+    get:
+      operationId: searchProfileBirthPlaces
+      tags: [Profiles]
+      summary: Search geocoded birth places with resolved IANA timezones
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Geocoded place suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeocodeSearchResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /v1/profiles/{profile_id}/birth-data-refinement-status:
+    get:
+      operationId: getBirthDataRefinementStatus
+      tags: [Profiles]
+      summary: Get account-wide birth-data refinement cooldown status
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: Current refinement availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BirthDataRefinementStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ProfileNotOwned"
+
+  /v1/profiles/{profile_id}/birth-data-refinements:
+    post:
+      operationId: createBirthDataRefinement
+      tags: [Profiles]
+      summary: Persist and enqueue a complete birth-data refinement snapshot
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - $ref: "#/components/parameters/UuidIdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BirthDataRefinementRequest"
+      responses:
+        "202":
+          description: Refinement revision persisted and queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BirthDataRefinementAccepted"
+        "400":
+          $ref: "#/components/responses/RefinementBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ProfileNotOwned"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "422":
+          $ref: "#/components/responses/BirthPlaceNotGeocoded"
+        "429":
+          $ref: "#/components/responses/BirthDataRefinementCooldown"
+        "503":
+          $ref: "#/components/responses/RefinementEnqueueUnavailable"
+
+  /v1/profiles/{profile_id}/birth-data-refinements/{revision_id}:
+    get:
+      operationId: getBirthDataRefinementRevision
+      tags: [Profiles]
+      summary: Get persisted birth-data refinement revision status
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+        - name: revision_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Persisted revision status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BirthDataRevisionStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ProfileNotOwned"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -839,6 +943,23 @@ components:
         type: string
         format: uuid
       description: Client-generated idempotency key (UUID v4)
+
+    UuidIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: UUID key scoped to the authenticated account
+
+    ProfileId:
+      name: profile_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
     Page:
       name: page
@@ -921,7 +1042,244 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
 
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementError"
+
+    RefinementBadRequest:
+      description: No material change or inconsistent birth time accuracy
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementError"
+
+    ProfileNotOwned:
+      description: Profile is not owned by the authenticated user
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementError"
+
+    IdempotencyConflict:
+      description: Idempotency key was reused with another normalized payload
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementError"
+
+    BirthPlaceNotGeocoded:
+      description: Place, coordinates, or IANA timezone are invalid or inconsistent
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementError"
+
+    BirthDataRefinementCooldown:
+      description: The account-wide rolling 24-hour cooldown has not elapsed
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementCooldownError"
+
+    RefinementEnqueueUnavailable:
+      description: Revision persisted but worker dispatch is unavailable; retry with the same key
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RefinementError"
+
   schemas:
+    GeocodeResultItem:
+      type: object
+      additionalProperties: false
+      required: [display_name, latitude, longitude, city, country, timezone]
+      properties:
+        display_name:
+          type: string
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        city:
+          type: string
+        country:
+          type: string
+        timezone:
+          type: string
+          description: IANA timezone resolved from the returned coordinates
+    GeocodeSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeocodeResultItem"
+    BirthDataRefinementRequest:
+      type: object
+      additionalProperties: false
+      required: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone]
+      properties:
+        birth_time:
+          oneOf:
+            - type: string
+              format: time
+            - type: "null"
+        birth_time_accuracy:
+          type: string
+          enum: [exact, approximate, unknown]
+        birth_place:
+          type: string
+          minLength: 1
+          maxLength: 300
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        timezone:
+          type: string
+          description: IANA timezone that must match server resolution for latitude/longitude
+    BirthDataRefinementStatus:
+      type: object
+      additionalProperties: false
+      required: [profile_id, can_refine, last_refined_at, next_available_at, retry_after_seconds]
+      properties:
+        profile_id:
+          type: string
+          format: uuid
+        can_refine:
+          type: boolean
+        last_refined_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+        next_available_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+        retry_after_seconds:
+          type: integer
+          minimum: 0
+    BirthDataRefinementAccepted:
+      type: object
+      additionalProperties: false
+      required: [revision_id, generation_id, profile_id, changed_fields, status, next_available_at]
+      properties:
+        revision_id:
+          type: string
+          format: uuid
+        generation_id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          format: uuid
+        changed_fields:
+          type: array
+          items:
+            type: string
+            enum: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone]
+        status:
+          type: string
+          enum: [queued]
+        next_available_at:
+          type: string
+          format: date-time
+    BirthDataRevisionStatus:
+      type: object
+      additionalProperties: false
+      required: [revision_id, generation_id, profile_id, changed_fields, status, chart_id, report_id, error_code, created_at, updated_at]
+      properties:
+        revision_id:
+          type: string
+          format: uuid
+        generation_id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          format: uuid
+        changed_fields:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        chart_id:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: "null"
+        report_id:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: "null"
+        error_code:
+          oneOf:
+            - type: string
+            - type: "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RefinementError:
+      type: object
+      additionalProperties: false
+      required: [detail, code]
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - birth_data_unchanged
+            - birth_time_accuracy_mismatch
+            - birth_place_not_geocoded
+            - profile_not_owned
+            - idempotency_key_conflict
+            - birth_data_refinement_cooldown
+            - refinement_enqueue_unavailable
+    RefinementCooldownError:
+      type: object
+      additionalProperties: false
+      required: [detail, code, next_available_at, retry_after_seconds]
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+          const: birth_data_refinement_cooldown
+        next_available_at:
+          type: string
+          format: date-time
+        retry_after_seconds:
+          type: integer
+          minimum: 0
     CareerErrorResponse:
       properties:
         detail:

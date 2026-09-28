@@ -9,6 +9,8 @@ import httpx
 import redis.asyncio as aioredis
 import structlog
 
+from app.infrastructure.timezone import TimezoneResolver
+
 logger = structlog.get_logger()
 
 NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search"
@@ -25,13 +27,20 @@ class GeocodeResult:
     longitude: float
     city: str
     country: str
+    timezone: str
 
 
 class NominatimGeocoder:
     """Geocode place names via Nominatim with Open-Meteo fallback and Redis caching."""
 
-    def __init__(self, redis_client: aioredis.Redis) -> None:
+    def __init__(
+        self,
+        redis_client: aioredis.Redis,
+        *,
+        timezone_resolver: TimezoneResolver | None = None,
+    ) -> None:
         self._redis = redis_client
+        self._timezone_resolver = timezone_resolver or TimezoneResolver(redis_client)
 
     @staticmethod
     def _cache_key(query: str) -> str:
@@ -58,8 +67,27 @@ class NominatimGeocoder:
             logger.info("nominatim_empty_fallback_open_meteo", query=query)
             results = await self._fetch_from_open_meteo(query, limit)
 
+        results = await self._with_timezones(results)
         await self._set_in_cache(query, results)
         return results
+
+    async def _with_timezones(self, results: list[GeocodeResult]) -> list[GeocodeResult]:
+        resolved: list[GeocodeResult] = []
+        for result in results:
+            timezone = await self._timezone_resolver.resolve(result.latitude, result.longitude)
+            if timezone is None:
+                continue
+            resolved.append(
+                GeocodeResult(
+                    display_name=result.display_name,
+                    latitude=result.latitude,
+                    longitude=result.longitude,
+                    city=result.city,
+                    country=result.country,
+                    timezone=timezone,
+                )
+            )
+        return resolved
 
     # ── Nominatim HTTP call ───────────────────────────────────────────
     async def _fetch_from_nominatim(self, query: str, limit: int) -> list[GeocodeResult]:
@@ -99,6 +127,7 @@ class NominatimGeocoder:
                     longitude=float(item["lon"]),
                     city=city,
                     country=country,
+                    timezone="",
                 )
             )
         return results
@@ -134,6 +163,7 @@ class NominatimGeocoder:
                     longitude=float(item["longitude"]),
                     city=name,
                     country=country,
+                    timezone="",
                 )
             )
         return results
@@ -164,6 +194,7 @@ class NominatimGeocoder:
                         "longitude": r.longitude,
                         "city": r.city,
                         "country": r.country,
+                        "timezone": r.timezone,
                     }
                     for r in results
                 ],

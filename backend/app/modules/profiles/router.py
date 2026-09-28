@@ -5,19 +5,38 @@ from __future__ import annotations
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Header, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_current_user, get_db
 from app.infrastructure.geocoding import NominatimGeocoder
 from app.infrastructure.redis import get_redis_client
+from app.infrastructure.timezone import TimezoneResolver
+from app.modules.profiles.refinement import (
+    COOLDOWN_WINDOW,
+    BirthDataAccuracyMismatchError,
+    BirthDataCooldownError,
+    BirthDataIdempotencyConflictError,
+    BirthDataNoChangesError,
+    BirthDataPlaceNotGeocodedError,
+    BirthDataProfileNotOwnedError,
+    BirthDataRefinementService,
+    BirthDataRevisionRepository,
+)
 from app.modules.profiles.schemas import (
+    BirthDataRefinementAcceptedResponse,
+    BirthDataRefinementRequest,
+    BirthDataRefinementStatusResponse,
+    BirthDataRevisionStatusResponse,
     CreateProfileRequest,
     GeocodeResultItem,
     GeocodeSearchResponse,
     ProfileListResponse,
     ProfileResponse,
+    RefinementCooldownResponse,
+    RefinementErrorResponse,
     UpdateProfileRequest,
 )
 from app.modules.profiles.service import ProfileService
@@ -67,6 +86,7 @@ async def geocode_search(
                 longitude=r.longitude,
                 city=r.city,
                 country=r.country,
+                timezone=r.timezone,
             )
             for r in results
         ]
@@ -122,6 +142,153 @@ async def list_profiles(
         ],
         total=total,
     )
+
+
+@router.get(
+    "/{profile_id}/birth-data-refinement-status",
+    response_model=BirthDataRefinementStatusResponse,
+    responses={403: {"model": RefinementErrorResponse}},
+)
+async def get_birth_data_refinement_status(
+    profile_id: UUID,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> BirthDataRefinementStatusResponse | JSONResponse:
+    service = BirthDataRefinementService(db, timezone_resolver=TimezoneResolver(get_redis_client()))
+    try:
+        return await service.get_status(user_id=current_user_id, profile_id=profile_id)
+    except BirthDataProfileNotOwnedError as exc:
+        return _refinement_error(exc, status.HTTP_403_FORBIDDEN)
+
+
+@router.post(
+    "/{profile_id}/birth-data-refinements",
+    response_model=BirthDataRefinementAcceptedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        400: {"model": RefinementErrorResponse},
+        403: {"model": RefinementErrorResponse},
+        409: {"model": RefinementErrorResponse},
+        422: {"model": RefinementErrorResponse},
+        429: {"model": RefinementCooldownResponse},
+        503: {"model": RefinementErrorResponse},
+    },
+)
+async def create_birth_data_refinement(
+    profile_id: UUID,
+    body: BirthDataRefinementRequest,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
+    db: AsyncSession = Depends(get_db),
+) -> BirthDataRefinementAcceptedResponse | JSONResponse:
+    service = BirthDataRefinementService(db, timezone_resolver=TimezoneResolver(get_redis_client()))
+    try:
+        result = await service.create(
+            user_id=current_user_id,
+            profile_id=profile_id,
+            request=body,
+            idempotency_key=idempotency_key,
+        )
+        await db.commit()
+    except BirthDataAccuracyMismatchError as exc:
+        return _refinement_error(exc, status.HTTP_400_BAD_REQUEST)
+    except BirthDataNoChangesError as exc:
+        return _refinement_error(exc, status.HTTP_400_BAD_REQUEST)
+    except BirthDataPlaceNotGeocodedError as exc:
+        return _refinement_error(exc, status.HTTP_422_UNPROCESSABLE_ENTITY)
+    except BirthDataProfileNotOwnedError as exc:
+        return _refinement_error(exc, status.HTTP_403_FORBIDDEN)
+    except BirthDataIdempotencyConflictError as exc:
+        return _refinement_error(exc, status.HTTP_409_CONFLICT)
+    except BirthDataCooldownError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+            content={
+                "detail": exc.message,
+                "code": exc.code,
+                "next_available_at": exc.next_available_at.isoformat(),
+                "retry_after_seconds": exc.retry_after_seconds,
+            },
+        )
+
+    revision = result.revision
+    repository = BirthDataRevisionRepository(db)
+    generation = await repository.get_generation(revision.generation_id)
+    if generation is None:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": "Persisted generation is unavailable", "code": "refinement_enqueue_unavailable"},
+        )
+    if not generation.celery_task_id:
+        try:
+            from workers.tasks.astrotype_v2 import generate_natal_report_v2
+
+            task = generate_natal_report_v2.delay(
+                profile_id=str(profile_id),
+                user_id=str(current_user_id),
+                generation_id=str(revision.generation_id),
+                force=True,
+            )
+            generation.celery_task_id = str(getattr(task, "id", "")) or "dispatched"
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "detail": "Birth-data refinement could not be queued",
+                    "code": "refinement_enqueue_unavailable",
+                },
+            )
+
+    return BirthDataRefinementAcceptedResponse(
+        revision_id=revision.id,
+        generation_id=revision.generation_id,
+        profile_id=revision.profile_id,
+        changed_fields=list(revision.changed_fields),
+        status=revision.status,
+        next_available_at=revision.created_at + COOLDOWN_WINDOW,
+    )
+
+
+@router.get(
+    "/{profile_id}/birth-data-refinements/{revision_id}",
+    response_model=BirthDataRevisionStatusResponse,
+    responses={403: {"model": RefinementErrorResponse}},
+)
+async def get_birth_data_refinement_revision(
+    profile_id: UUID,
+    revision_id: UUID,
+    current_user_id: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> BirthDataRevisionStatusResponse | JSONResponse:
+    try:
+        revision = await BirthDataRevisionRepository(db).get_revision(
+            user_id=current_user_id,
+            profile_id=profile_id,
+            revision_id=revision_id,
+        )
+    except BirthDataProfileNotOwnedError as exc:
+        return _refinement_error(exc, status.HTTP_403_FORBIDDEN)
+    return BirthDataRevisionStatusResponse(
+        revision_id=revision.id,
+        generation_id=revision.generation_id,
+        profile_id=revision.profile_id,
+        changed_fields=list(revision.changed_fields),
+        status=revision.status,
+        chart_id=revision.chart_id,
+        report_id=revision.report_id,
+        error_code=revision.error_code,
+        created_at=revision.created_at,
+        updated_at=revision.updated_at,
+    )
+
+
+def _refinement_error(exc: Exception, status_code: int) -> JSONResponse:
+    detail = getattr(exc, "message", str(exc))
+    code = getattr(exc, "code", type(exc).__name__)
+    return JSONResponse(status_code=status_code, content={"detail": detail, "code": code})
 
 
 @router.get("/{profile_id}", response_model=ProfileResponse)

@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Реализовано
 
 ## Контекст
 
@@ -114,12 +114,12 @@ Cooldown — `429 Too Many Requests`:
 
 ## Критерии приёмки
 
-- [ ] Операция требует авторизацию и ownership профиля.
-- [ ] GET статуса не расходует cooldown.
-- [ ] POST требует `Idempotency-Key` и корректно обрабатывает replay/conflict.
-- [ ] Backend, а не frontend, является источником истины для cooldown.
-- [ ] Ответ `429` содержит header и машинно-читаемые поля времени.
-- [ ] Date of birth невозможно изменить новым endpoint.
-- [ ] Time/accuracy и place/coordinates/timezone валидируются как согласованные группы.
-- [ ] Геокодер возвращает реальный IANA timezone; московский default удалён из этого сценария.
-- [ ] OpenAPI и тесты содержат все success/error response shapes.
+- [x] Операция требует авторизацию и ownership профиля.
+- [x] GET статуса не расходует cooldown.
+- [x] POST требует `Idempotency-Key` и корректно обрабатывает replay/conflict.
+- [x] Backend, а не frontend, является источником истины для cooldown.
+- [x] Ответ `429` содержит header и машинно-читаемые поля времени.
+- [x] Date of birth невозможно изменить новым endpoint.
+- [x] Time/accuracy и place/coordinates/timezone валидируются как согласованные группы.
+- [x] Геокодер возвращает реальный IANA timezone; московский default удалён из этого сценария.
+- [x] OpenAPI и тесты содержат все success/error response shapes.

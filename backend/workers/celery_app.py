@@ -50,6 +50,10 @@ app.conf.update(
             "task": "career.monitor_pipeline",
             "schedule": 300.0,
         },
+        "dispatch-birth-data-refinements": {
+            "task": "profiles.dispatch_birth_data_refinements",
+            "schedule": 60.0,
+        },
     },
 )
 

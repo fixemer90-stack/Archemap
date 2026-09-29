@@ -92,13 +92,13 @@ last_successful_refinement_at + 24 часа.
 
 ## Stories
 
-| ID  | Story                                                                           | Статус       |
-| --- | ------------------------------------------------------------------------------- | ------------ |
-| S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)    | ⬜ Не начато |
-| S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)    | ⬜ Не начато |
-| S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md) | ⬜ Не начато |
-| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ⬜ Не начато |
-| S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)          | ⬜ Не начато |
+| ID  | Story                                                                                | Статус         |
+| --- | ------------------------------------------------------------------------------------ | -------------- |
+| S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)         | ✅ Реализовано |
+| S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)         | ✅ Реализовано |
+| S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md)      | ⬜ Не начато   |
+| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ⬜ Не начато   |
+| S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)               | ⬜ Не начато   |
 
 ## Порядок реализации
 

@@ -22,11 +22,12 @@ def test_runtime_openapi_exposes_refinement_and_timezone_contracts() -> None:
     assert idempotency["required"] is True
     assert idempotency["schema"]["format"] == "uuid"
     assert create_path["post"]["responses"]["202"]["content"]["application/json"]["schema"]
-    assert set(create_path["post"]["responses"]) >= {"202", "400", "403", "409", "422", "429", "503"}
+    assert set(create_path["post"]["responses"]) >= {"202", "400", "401", "403", "404", "409", "422", "429", "503"}
 
     geocode_schema = schema["components"]["schemas"]["GeocodeResultItem"]
-    assert "timezone" in geocode_schema["required"]
+    assert {"timezone", "selection_token"} <= set(geocode_schema["required"])
     refinement_schema = schema["components"]["schemas"]["BirthDataRefinementRequest"]
     assert "birth_date" not in refinement_schema["properties"]
+    assert "geocode_selection_token" in refinement_schema["required"]
     update_schema = schema["components"]["schemas"]["UpdateProfileRequest"]
     assert set(update_schema["properties"]) == {"name"}

@@ -3,10 +3,23 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import Any
 
-from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Index, String, Time, UniqueConstraint, event, inspect
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Time,
+    UniqueConstraint,
+    event,
+    inspect,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,13 +54,17 @@ class PersonProfile(BaseModel):
 
 
 class ProfileBirthDataRevision(BaseModel):
-    """Immutable birth-data snapshots with mutable generation status/result links."""
+    """Immutable revision facts with mutable dispatch and generation result state."""
 
     __tablename__ = "profile_birth_data_revisions"
     __table_args__ = (
         CheckConstraint(
             "status IN ('queued', 'processing', 'deterministic_ready', 'ready', 'failed')",
             name="ck_profile_birth_data_revisions_status",
+        ),
+        CheckConstraint(
+            "dispatch_status IN ('pending', 'dispatching', 'dispatched')",
+            name="ck_profile_birth_data_revisions_dispatch_status",
         ),
         UniqueConstraint("generation_id", name="uq_profile_birth_data_revisions_generation_id"),
         UniqueConstraint(
@@ -85,9 +102,15 @@ class ProfileBirthDataRevision(BaseModel):
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    dispatch_status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", index=True)
+    dispatch_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    dispatch_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dispatch_error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
 
 _IMMUTABLE_REVISION_FIELDS = (
+    "id",
     "user_id",
     "profile_id",
     "previous_snapshot",
@@ -106,6 +129,11 @@ def _prevent_revision_fact_changes(_mapper: object, _connection: object, target:
     changed = [field for field in _IMMUTABLE_REVISION_FIELDS if state.attrs[field].history.has_changes()]
     if changed:
         raise ValueError(f"Profile birth-data revision facts are immutable: {', '.join(changed)}")
+
+
+@event.listens_for(ProfileBirthDataRevision, "before_delete")
+def _prevent_revision_delete(_mapper: object, _connection: object, _target: ProfileBirthDataRevision) -> None:
+    raise ValueError("Profile birth-data revisions are immutable and cannot be deleted")
 
 
 Index(

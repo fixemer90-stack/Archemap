@@ -14,8 +14,12 @@ from app.modules.profiles.refinement import (
     BirthDataPlaceNotGeocodedError,
     BirthDataRefinementService,
     canonical_request_hash,
+    create_geocode_selection_token,
 )
 from app.modules.profiles.schemas import BirthDataRefinementRequest, UpdateProfileRequest
+
+_NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+_TOKEN_SECRET = "test-refinement-token-secret"
 
 
 def _request(**overrides: object) -> BirthDataRefinementRequest:
@@ -26,6 +30,14 @@ def _request(**overrides: object) -> BirthDataRefinementRequest:
         "latitude": 55.7558,
         "longitude": 37.6176,
         "timezone": "Europe/Moscow",
+        "geocode_selection_token": create_geocode_selection_token(
+            secret=_TOKEN_SECRET,
+            place="Moscow, Russia",
+            latitude=55.7558,
+            longitude=37.6176,
+            timezone="Europe/Moscow",
+            now=_NOW,
+        ),
     }
     payload.update(overrides)
     return BirthDataRefinementRequest(**payload)
@@ -44,6 +56,7 @@ def test_generic_profile_patch_is_name_only_and_rejects_birth_data() -> None:
 
 
 def test_canonical_request_hash_is_stable_for_equivalent_payloads() -> None:
+    profile_id = uuid.uuid4()
     first = _request()
     second = BirthDataRefinementRequest.model_validate(
         {
@@ -53,23 +66,24 @@ def test_canonical_request_hash_is_stable_for_equivalent_payloads() -> None:
             "birth_place": "Moscow, Russia",
             "birth_time_accuracy": "exact",
             "birth_time": "08:35:00",
+            "geocode_selection_token": "a-different-proof-is-not-hashed",
         }
     )
 
-    assert canonical_request_hash(first) == canonical_request_hash(second)
-    assert len(canonical_request_hash(first)) == 64
+    assert canonical_request_hash(profile_id, first) == canonical_request_hash(profile_id, second)
+    assert len(canonical_request_hash(profile_id, first)) == 64
 
 
 @pytest.mark.parametrize("accuracy", ["exact", "approximate"])
 async def test_exact_and_approximate_require_time(accuracy: str) -> None:
-    service = BirthDataRefinementService(AsyncMock(), timezone_resolver=AsyncMock())
+    service = BirthDataRefinementService(AsyncMock(), timezone_resolver=AsyncMock(), geocode_token_secret=_TOKEN_SECRET)
 
     with pytest.raises(BirthDataAccuracyMismatchError):
         await service.validate_snapshot(_request(birth_time=None, birth_time_accuracy=accuracy))
 
 
 async def test_unknown_requires_null_time() -> None:
-    service = BirthDataRefinementService(AsyncMock(), timezone_resolver=AsyncMock())
+    service = BirthDataRefinementService(AsyncMock(), timezone_resolver=AsyncMock(), geocode_token_secret=_TOKEN_SECRET)
 
     with pytest.raises(BirthDataAccuracyMismatchError):
         await service.validate_snapshot(_request(birth_time="08:35", birth_time_accuracy="unknown"))
@@ -92,7 +106,12 @@ async def test_place_group_requires_real_matching_iana_timezone(
 ) -> None:
     resolver = AsyncMock()
     resolver.resolve.return_value = resolved
-    service = BirthDataRefinementService(AsyncMock(), timezone_resolver=resolver)
+    service = BirthDataRefinementService(
+        AsyncMock(),
+        timezone_resolver=resolver,
+        geocode_token_secret=_TOKEN_SECRET,
+        clock=lambda: _NOW,
+    )
 
     with pytest.raises(BirthDataPlaceNotGeocodedError):
         await service.validate_snapshot(_request(latitude=latitude, longitude=longitude, timezone=timezone))
@@ -110,6 +129,7 @@ async def test_status_uses_server_clock_and_account_wide_latest_revision() -> No
         timezone_resolver=AsyncMock(),
         repository=repository,
         clock=lambda: now,
+        geocode_token_secret=_TOKEN_SECRET,
     )
 
     result = await service.get_status(user_id=user_id, profile_id=profile_id)

@@ -865,6 +865,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/ProfileNotOwned"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /v1/profiles/{profile_id}/birth-data-refinements:
     post:
@@ -893,6 +895,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/ProfileNotOwned"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/IdempotencyConflict"
         "422":
@@ -926,6 +930,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/ProfileNotOwned"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
   securitySchemes:
@@ -1103,7 +1109,7 @@ components:
     GeocodeResultItem:
       type: object
       additionalProperties: false
-      required: [display_name, latitude, longitude, city, country, timezone]
+      required: [display_name, latitude, longitude, city, country, timezone, selection_token]
       properties:
         display_name:
           type: string
@@ -1122,6 +1128,9 @@ components:
         timezone:
           type: string
           description: IANA timezone resolved from the returned coordinates
+        selection_token:
+          type: string
+          description: Signed, expiring proof for this exact geocoded result
     GeocodeSearchResponse:
       type: object
       additionalProperties: false
@@ -1134,7 +1143,7 @@ components:
     BirthDataRefinementRequest:
       type: object
       additionalProperties: false
-      required: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone]
+      required: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone, geocode_selection_token]
       properties:
         birth_time:
           oneOf:
@@ -1159,6 +1168,9 @@ components:
         timezone:
           type: string
           description: IANA timezone that must match server resolution for latitude/longitude
+        geocode_selection_token:
+          type: string
+          description: Signed selection proof returned by the geocode endpoint
     BirthDataRefinementStatus:
       type: object
       additionalProperties: false
@@ -1225,8 +1237,10 @@ components:
           type: array
           items:
             type: string
+            enum: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone]
         status:
           type: string
+          enum: [queued, processing, deterministic_ready, ready, failed]
         chart_id:
           oneOf:
             - type: string
@@ -1261,6 +1275,8 @@ components:
             - birth_time_accuracy_mismatch
             - birth_place_not_geocoded
             - profile_not_owned
+            - profile_not_found
+            - profile_has_birth_data_revisions
             - idempotency_key_conflict
             - birth_data_refinement_cooldown
             - refinement_enqueue_unavailable

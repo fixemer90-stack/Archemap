@@ -149,6 +149,7 @@ class TestDelete:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_profile
         mock_db.execute.return_value = mock_result
+        mock_db.scalar.return_value = 0
         mock_db.flush = AsyncMock()
         mock_db.delete = AsyncMock()
 

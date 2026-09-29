@@ -16,7 +16,7 @@ def test_canonical_openapi_contains_refinement_paths_and_error_shapes() -> None:
     assert "/v1/profiles/geocode" in paths
     assert "/v1/profiles/{profile_id}/birth-data-refinement-status" in paths
     create = paths["/v1/profiles/{profile_id}/birth-data-refinements"]["post"]
-    assert set(create["responses"]) >= {"202", "400", "401", "403", "409", "422", "429", "503"}
+    assert set(create["responses"]) >= {"202", "400", "401", "403", "404", "409", "422", "429", "503"}
     assert create["parameters"][1]["$ref"] == "#/components/parameters/UuidIdempotencyKey"
     assert "/v1/profiles/{profile_id}/birth-data-refinements/{revision_id}" in paths
 
@@ -31,8 +31,9 @@ def test_canonical_openapi_contains_refinement_paths_and_error_shapes() -> None:
         "latitude",
         "longitude",
         "timezone",
+        "geocode_selection_token",
     }
-    assert "timezone" in schemas["GeocodeResultItem"]["required"]
+    assert {"timezone", "selection_token"} <= set(schemas["GeocodeResultItem"]["required"])
     assert set(schemas["RefinementError"]["properties"]["code"]["enum"]) >= {
         "birth_data_unchanged",
         "birth_time_accuracy_mismatch",

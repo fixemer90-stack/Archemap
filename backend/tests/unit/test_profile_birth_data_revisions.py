@@ -53,6 +53,11 @@ def test_revision_model_preserves_full_snapshots_lineage_and_idempotency() -> No
         "error_code",
         "idempotency_key",
         "request_hash",
+        "dispatch_status",
+        "dispatch_attempts",
+        "dispatch_claimed_at",
+        "dispatched_at",
+        "dispatch_error_code",
         "created_at",
         "updated_at",
     }

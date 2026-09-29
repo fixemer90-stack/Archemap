@@ -11,21 +11,30 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.astrotype_v2.models import NatalReportGeneration
+from app.modules.profiles.dispatch import dispatch_birth_data_revision, dispatch_pending_birth_data_revisions
 from app.modules.profiles.models import PersonProfile, ProfileBirthDataRevision
 from app.modules.profiles.refinement import (
     BirthDataCooldownError,
     BirthDataIdempotencyConflictError,
     BirthDataNoChangesError,
+    BirthDataProfileDeletionConflictError,
     BirthDataRevisionRepository,
     BirthDataSnapshot,
 )
+from app.modules.profiles.service import ProfileService
 from app.modules.users.models import User
 from tests.conftest import test_session_factory as session_factory
 
 
-def _snapshot(*, place: str, latitude: float, longitude: float) -> BirthDataSnapshot:
+def _snapshot(
+    *,
+    place: str,
+    latitude: float,
+    longitude: float,
+    birth_time: time = time(14, 30),
+) -> BirthDataSnapshot:
     return BirthDataSnapshot(
-        birth_time=time(14, 30),
+        birth_time=birth_time,
         birth_time_accuracy="exact",
         birth_place=place,
         latitude=latitude,
@@ -167,7 +176,12 @@ async def test_noop_does_not_consume_cooldown_or_create_generation(db_session: A
         await repository.create_revision(
             user_id=user_id,
             profile_id=profile_id,
-            new_snapshot=_snapshot(place="Moscow, Russia", latitude=55.7558, longitude=37.6173),
+            new_snapshot=_snapshot(
+                place="Moscow, Russia",
+                latitude=55.7558,
+                longitude=37.6173,
+                birth_time=time(12, 0),
+            ),
             idempotency_key="noop",
             request_hash="d" * 64,
             generation_id=uuid.uuid4(),
@@ -284,3 +298,103 @@ async def test_revision_facts_are_immutable_but_status_can_advance(db_session: A
     result.revision.previous_snapshot = {"tampered": True}
     with pytest.raises(ValueError, match="immutable"):
         await db_session.flush()
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_setup_database")
+async def test_idempotency_key_is_bound_to_the_original_owned_profile(db_session: AsyncSession) -> None:
+    user_id, profile_ids = await _seed_account(db_session, profiles=2)
+    repository = BirthDataRevisionRepository(db_session)
+    now = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
+    await repository.create_revision(
+        user_id=user_id,
+        profile_id=profile_ids[0],
+        new_snapshot=_snapshot(place="Kazan, Russia", latitude=55.7961, longitude=49.1064),
+        idempotency_key="profile-bound-key",
+        request_hash="3" * 64,
+        generation_id=uuid.uuid4(),
+        now=now,
+    )
+    await db_session.commit()
+
+    with pytest.raises(BirthDataIdempotencyConflictError):
+        await repository.create_revision(
+            user_id=user_id,
+            profile_id=profile_ids[1],
+            new_snapshot=_snapshot(place="Omsk, Russia", latitude=54.9885, longitude=73.3242),
+            idempotency_key="profile-bound-key",
+            request_hash="3" * 64,
+            generation_id=uuid.uuid4(),
+            now=now + timedelta(minutes=1),
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_setup_database")
+async def test_durable_dispatch_releases_failure_and_recovers_without_duplicate_publish(
+    db_session: AsyncSession,
+) -> None:
+    user_id, (profile_id,) = await _seed_account(db_session)
+    result = await BirthDataRevisionRepository(db_session).create_revision(
+        user_id=user_id,
+        profile_id=profile_id,
+        new_snapshot=_snapshot(place="Kazan, Russia", latitude=55.7961, longitude=49.1064),
+        idempotency_key="dispatch",
+        request_hash="4" * 64,
+        generation_id=uuid.uuid4(),
+        now=datetime(2026, 9, 27, 12, 0, tzinfo=UTC),
+    )
+    await db_session.commit()
+
+    def fail_sender(**_kwargs: object) -> object:
+        raise RuntimeError("contains private birth place")
+
+    assert await dispatch_birth_data_revision(db_session, revision_id=result.revision.id, sender=fail_sender) is False
+    await db_session.refresh(result.revision)
+    assert result.revision.dispatch_status == "pending"
+    assert result.revision.dispatch_attempts == 1
+    assert result.revision.dispatch_error_code == "broker_unavailable"
+
+    sent: list[dict[str, object]] = []
+
+    def sender(**kwargs: object) -> object:
+        sent.append(kwargs)
+        return object()
+
+    dispatched, failed = await dispatch_pending_birth_data_revisions(db_session, sender=sender)
+    assert (dispatched, failed) == (1, 0)
+    assert sent == [
+        {
+            "profile_id": profile_id,
+            "user_id": user_id,
+            "generation_id": result.revision.generation_id,
+        }
+    ]
+    assert await dispatch_birth_data_revision(db_session, revision_id=result.revision.id, sender=sender) is True
+    assert len(sent) == 1
+    await db_session.refresh(result.revision)
+    assert result.revision.dispatch_status == "dispatched"
+    assert result.revision.dispatch_attempts == 2
+    assert result.revision.dispatch_error_code is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_setup_database")
+async def test_profile_with_revision_history_has_defined_delete_conflict(db_session: AsyncSession) -> None:
+    user_id, (profile_id,) = await _seed_account(db_session)
+    await BirthDataRevisionRepository(db_session).create_revision(
+        user_id=user_id,
+        profile_id=profile_id,
+        new_snapshot=_snapshot(place="Kazan, Russia", latitude=55.7961, longitude=49.1064),
+        idempotency_key="delete-conflict",
+        request_hash="5" * 64,
+        generation_id=uuid.uuid4(),
+        now=datetime(2026, 9, 27, 12, 0, tzinfo=UTC),
+    )
+    await db_session.commit()
+
+    with pytest.raises(BirthDataProfileDeletionConflictError) as exc_info:
+        await ProfileService(db_session).delete(profile_id=profile_id, user_id=user_id)
+
+    assert exc_info.value.code == "profile_has_birth_data_revisions"
+    assert await db_session.get(PersonProfile, profile_id) is not None

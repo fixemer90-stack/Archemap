@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -41,11 +42,12 @@ class BirthDataRefinementRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     birth_time: time | None
-    birth_time_accuracy: str = Field(pattern=r"^(exact|approximate|unknown)$")
-    birth_place: str = Field(min_length=1, max_length=300)
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
-    timezone: str = Field(min_length=1, max_length=60)
+    birth_time_accuracy: Literal["exact", "approximate", "unknown"]
+    birth_place: str
+    latitude: float
+    longitude: float
+    timezone: str
+    geocode_selection_token: str
 
 
 class BirthDataRefinementStatusResponse(BaseModel):
@@ -60,8 +62,10 @@ class BirthDataRefinementAcceptedResponse(BaseModel):
     revision_id: UUID
     generation_id: UUID
     profile_id: UUID
-    changed_fields: list[str]
-    status: str
+    changed_fields: list[
+        Literal["birth_time", "birth_time_accuracy", "birth_place", "latitude", "longitude", "timezone"]
+    ]
+    status: Literal["queued"] = Field(..., json_schema_extra={"enum": ["queued"]})
     next_available_at: datetime
 
 
@@ -69,8 +73,10 @@ class BirthDataRevisionStatusResponse(BaseModel):
     revision_id: UUID
     generation_id: UUID
     profile_id: UUID
-    changed_fields: list[str]
-    status: str
+    changed_fields: list[
+        Literal["birth_time", "birth_time_accuracy", "birth_place", "latitude", "longitude", "timezone"]
+    ]
+    status: Literal["queued", "processing", "deterministic_ready", "ready", "failed"]
     chart_id: UUID | None
     report_id: UUID | None
     error_code: str | None
@@ -121,6 +127,7 @@ class GeocodeResultItem(BaseModel):
     city: str
     country: str
     timezone: str
+    selection_token: str
 
 
 class GeocodeSearchResponse(BaseModel):

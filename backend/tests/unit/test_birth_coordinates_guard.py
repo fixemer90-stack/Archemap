@@ -83,14 +83,14 @@ class TestUpdateProfileRequestCoordinates:
         request = UpdateProfileRequest.model_validate({"name": "Новое имя"})
         assert request.name == "Новое имя"
 
-    def test_rejects_zero_zero(self) -> None:
-        with pytest.raises(ValidationError, match="Выберите место рождения"):
-            UpdateProfileRequest.model_validate({"latitude": 0, "longitude": 0})
-
-    def test_accepts_real_coordinates(self) -> None:
-        request = UpdateProfileRequest.model_validate({"latitude": 55.75, "longitude": 37.62})
-        assert request.latitude == 55.75
-
-    def test_rejects_latitude_without_longitude(self) -> None:
-        with pytest.raises(ValidationError, match="вместе"):
-            UpdateProfileRequest.model_validate({"latitude": 55.75})
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"latitude": 0, "longitude": 0},
+            {"latitude": 55.75, "longitude": 37.62},
+            {"latitude": 55.75},
+        ],
+    )
+    def test_rejects_birth_coordinates_on_generic_patch(self, payload: dict[str, float]) -> None:
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            UpdateProfileRequest.model_validate(payload)

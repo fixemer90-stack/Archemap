@@ -9,7 +9,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
-from app.modules.profiles.models import PersonProfile
+from app.modules.profiles.models import PersonProfile, ProfileBirthDataRevision
+from app.modules.profiles.refinement import BirthDataProfileDeletionConflictError
 from app.modules.profiles.schemas import CreateProfileRequest, UpdateProfileRequest
 
 MIN_BIRTH_YEAR = 1900
@@ -92,5 +93,12 @@ class ProfileService:
     # ── Delete ────────────────────────────────────────────────────────
     async def delete(self, profile_id: UUID, user_id: UUID) -> None:
         profile = await self.get_by_id(profile_id, user_id)
+        revision_count = await self.db.scalar(
+            select(func.count())
+            .select_from(ProfileBirthDataRevision)
+            .where(ProfileBirthDataRevision.profile_id == profile_id)
+        )
+        if revision_count:
+            raise BirthDataProfileDeletionConflictError
         await self.db.delete(profile)
         await self.db.flush()

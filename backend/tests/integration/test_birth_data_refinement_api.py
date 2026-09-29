@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 from types import SimpleNamespace
 
 import pytest
@@ -11,9 +11,11 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_current_user
 from app.main import app
 from app.modules.profiles.models import PersonProfile, ProfileBirthDataRevision
+from app.modules.profiles.refinement import create_geocode_selection_token
 from app.modules.users.models import User
 
 
@@ -30,6 +32,7 @@ async def _seed_user_profile(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
             is_verified=True,
         )
     )
+    await db.flush()
     db.add(
         PersonProfile(
             id=profile_id,
@@ -49,7 +52,7 @@ async def _seed_user_profile(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
 
 
 def _payload(*, place: str = "Saint Petersburg, Russia") -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "birth_time": "08:35:00",
         "birth_time_accuracy": "exact",
         "birth_place": place,
@@ -57,6 +60,15 @@ def _payload(*, place: str = "Saint Petersburg, Russia") -> dict[str, object]:
         "longitude": 30.3351,
         "timezone": "Europe/Moscow",
     }
+    payload["geocode_selection_token"] = create_geocode_selection_token(
+        secret=settings.SECRET_KEY,
+        place=place,
+        latitude=59.9343,
+        longitude=30.3351,
+        timezone="Europe/Moscow",
+        now=datetime.now(UTC),
+    )
+    return payload
 
 
 @pytest.mark.usefixtures("_setup_database")
@@ -67,11 +79,11 @@ async def test_refinement_api_success_replay_conflict_cooldown_and_status(
 ) -> None:
     user_id, profile_id = await _seed_user_profile(db_session)
     app.dependency_overrides[get_current_user] = lambda: user_id
-    delay = monkeypatch.setattr(
-        "workers.tasks.astrotype_v2.generate_natal_report_v2.delay",
+    dispatch = monkeypatch.setattr(
+        "workers.tasks.astrotype_v2.generate_natal_report_v2.apply_async",
         lambda **_kwargs: SimpleNamespace(id="task-1"),
     )
-    del delay
+    del dispatch
     key = str(uuid.uuid4())
 
     response = await client.post(
@@ -133,7 +145,7 @@ async def test_enqueue_failure_is_retry_safe_without_second_revision(
     def fail_delay(**_kwargs: object) -> object:
         raise RuntimeError("broker down")
 
-    monkeypatch.setattr("workers.tasks.astrotype_v2.generate_natal_report_v2.delay", fail_delay)
+    monkeypatch.setattr("workers.tasks.astrotype_v2.generate_natal_report_v2.apply_async", fail_delay)
     failed = await client.post(
         f"/api/v1/profiles/{profile_id}/birth-data-refinements",
         headers={"Idempotency-Key": key},
@@ -143,7 +155,7 @@ async def test_enqueue_failure_is_retry_safe_without_second_revision(
     assert failed.json()["code"] == "refinement_enqueue_unavailable"
 
     monkeypatch.setattr(
-        "workers.tasks.astrotype_v2.generate_natal_report_v2.delay",
+        "workers.tasks.astrotype_v2.generate_natal_report_v2.apply_async",
         lambda **_kwargs: SimpleNamespace(id="task-recovered"),
     )
     recovered = await client.post(

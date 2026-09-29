@@ -14,6 +14,7 @@
 - Canonical UI sample: [`../../design/astrotype-career-report-sample.html`](../../design/astrotype-career-report-sample.html)
 - SRS: [`../../SRS/SRS-E19-career-report.md`](../../SRS/SRS-E19-career-report.md)
 - Аудит расхождений: [`AUDIT-2026-09-26-discrepancies.md`](./AUDIT-2026-09-26-discrepancies.md)
+- Retirement legacy Career v1: [`../E20-legacy-career-retirement/FEATURE.md`](../E20-legacy-career-retirement/FEATURE.md)
 
 При расхождении короткого Story с продуктовым смыслом источником истины является SRS вместе с design-документом. Формулы, DTO и миграции должны быть зафиксированы тестами до production rollout.
 
@@ -113,7 +114,7 @@ Career Report отвечает не «кем вам стать», а:
 - не предоставляет durable generation/status lifecycle;
 - не соответствует целевому layered report contract.
 
-Legacy baseline не закрывает ни одну Story E19. Его нельзя расширять как скрытый compatibility path: необходимо либо явно мигрировать, либо выключить после rollout.
+Legacy baseline не закрывает ни одну Story E19. Target E19 не зависит от legacy renderer/ruleset. Безопасное отключение legacy write paths, сохранение grandfathered access и временный read-only archive вынесены в отдельную Feature [E20](../E20-legacy-career-retirement/FEATURE.md); до её выполнения legacy нельзя удалять целиком или использовать как скрытый target fallback.
 
 ## Доступ и монетизация
 

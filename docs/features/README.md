@@ -81,6 +81,7 @@ Platform runtime features:
 Product report features:
 
 - `E19` — [Astrotype Career Report](./E19-career-report/FEATURE.md) ([design](../design/astrotype_career_report.md), [UI sample](../design/astrotype-career-report-sample.html), [SRS](../SRS/SRS-E19-career-report.md))
+- `E20` — [Safe retirement of legacy Career v1](./E20-legacy-career-retirement/FEATURE.md) ([workflow](./E20-legacy-career-retirement/WORKFLOW.md), [SRS](../SRS/SRS-E20-legacy-career-retirement.md))
 
 Umbrella SRS: `docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`
 Narrative depth contract: `docs/architecture/astrotype-v2-narrative-depth-contract.md`
@@ -100,4 +101,5 @@ Account-level report access SRS: `docs/SRS/SRS-E8-account-level-report-access.md
 Birth data refinement SRS: `docs/SRS/SRS-E10-birth-data-refinement.md`
 Career Report design: `docs/design/astrotype_career_report.md`
 Career Report SRS: `docs/SRS/SRS-E19-career-report.md`
+Legacy Career retirement SRS: `docs/SRS/SRS-E20-legacy-career-retirement.md`
 Product surface redesign samples: `docs/design/astrotype-v2-homepage-sample.html`, `docs/design/astrotype-v2-dashboard-sample.html`, `docs/design/astrotype-v2-billing-sample.html`

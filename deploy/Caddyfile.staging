@@ -1,19 +1,28 @@
 :8080 {
-  encode zstd gzip
+	encode zstd gzip
 
-  basic_auth {
-    import /run/secrets/staging-basic-auth.caddy
-  }
+	route {
+		basic_auth {
+			import /run/secrets/staging-basic-auth.caddy
+		}
 
-  @api path /api/*
-  reverse_proxy @api staging-backend:8000
+		@api path /api/*
+		reverse_proxy @api staging-backend:8000
 
-  reverse_proxy staging-frontend:3000
+		@career_metrics_root path /career-metrics
+		redir @career_metrics_root /career-metrics/ 308
 
-  header {
-    X-Robots-Tag "noindex, nofollow, noarchive"
-    X-Content-Type-Options "nosniff"
-    Referrer-Policy "no-referrer"
-    X-Frame-Options "SAMEORIGIN"
-  }
+		handle_path /career-metrics/* {
+			reverse_proxy prometheus:9090
+		}
+
+		reverse_proxy staging-frontend:3000
+	}
+
+	header {
+		X-Robots-Tag "noindex, nofollow, noarchive"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		X-Frame-Options "SAMEORIGIN"
+	}
 }

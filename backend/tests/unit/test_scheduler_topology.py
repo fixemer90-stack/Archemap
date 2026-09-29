@@ -88,7 +88,7 @@ def test_staging_has_an_internal_otlp_metrics_collector() -> None:
     assert collector_config["receivers"]["otlp"]["protocols"]["http"]["endpoint"] == "0.0.0.0:4318"
     assert collector_config["service"]["pipelines"]["metrics"] == {
         "receivers": ["otlp"],
-        "exporters": ["debug"],
+        "exporters": ["debug", "prometheus"],
     }
 
 
@@ -108,3 +108,60 @@ def test_worker_configures_otlp_metrics_from_runtime_settings(monkeypatch: pytes
 
     assert celery_app.configure_worker_observability() is True
     assert calls == [("http://collector:4318/v1/metrics", "astrotype-staging-worker")]
+
+
+def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> None:
+    compose = _load_compose("docker-compose.staging.yml")
+    services = compose["services"]
+
+    prometheus = services["prometheus"]
+    assert prometheus["image"] == "prom/prometheus:v2.53.1"
+    assert prometheus["command"] == [
+        "--config.file=/etc/prometheus/prometheus.yml",
+        "--storage.tsdb.path=/prometheus",
+        "--web.external-url=https://staging.astrotype.ru/career-metrics/",
+        "--web.route-prefix=/",
+    ]
+    assert prometheus["volumes"] == [
+        "./deploy/prometheus.staging.yaml:/etc/prometheus/prometheus.yml:ro",
+        "prometheus_staging_data:/prometheus",
+    ]
+    assert "ports" not in prometheus
+    assert prometheus["healthcheck"] == {
+        "test": ["CMD", "wget", "--spider", "http://localhost:9090/-/ready"],
+        "interval": "15s",
+        "timeout": "5s",
+        "retries": 10,
+    }
+
+    collector_config = yaml.safe_load(
+        (REPOSITORY_ROOT / "deploy" / "otel-collector.staging.yaml").read_text(encoding="utf-8")
+    )
+    assert collector_config["exporters"]["prometheus"]["endpoint"] == "0.0.0.0:9464"
+    assert collector_config["service"]["pipelines"]["metrics"]["exporters"] == [
+        "debug",
+        "prometheus",
+    ]
+
+    prometheus_config = yaml.safe_load(
+        (REPOSITORY_ROOT / "deploy" / "prometheus.staging.yaml").read_text(encoding="utf-8")
+    )
+    assert prometheus_config["scrape_configs"] == [
+        {
+            "job_name": "otel-collector",
+            "static_configs": [{"targets": ["otel-collector:9464"]}],
+        }
+    ]
+
+    gateway = services["gateway"]
+    assert gateway["depends_on"]["prometheus"] == {"condition": "service_healthy"}
+    assert set(gateway["networks"]) == {"default", "edge"}
+    caddyfile = (REPOSITORY_ROOT / "deploy" / "Caddyfile.staging").read_text(encoding="utf-8")
+    ordered_route = caddyfile.split("\troute {", maxsplit=1)[1].split("\n\t}\n\n\theader", maxsplit=1)[0]
+    basic_auth_position = ordered_route.index("basic_auth")
+    root_redirect_position = ordered_route.index("@career_metrics_root path /career-metrics")
+    dashboard_proxy_position = ordered_route.index("handle_path /career-metrics/*")
+    frontend_fallback_position = ordered_route.index("reverse_proxy staging-frontend:3000")
+    assert basic_auth_position < root_redirect_position < dashboard_proxy_position < frontend_fallback_position
+    assert "redir @career_metrics_root /career-metrics/ 308" in ordered_route
+    assert "reverse_proxy prometheus:9090" in ordered_route

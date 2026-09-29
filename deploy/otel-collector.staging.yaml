@@ -11,10 +11,12 @@ receivers:
 exporters:
   debug:
     verbosity: detailed
+  prometheus:
+    endpoint: 0.0.0.0:9464
 
 service:
   extensions: [health_check]
   pipelines:
     metrics:
       receivers: [otlp]
-      exporters: [debug]
+      exporters: [debug, prometheus]

@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — локальные implementation gaps и browser evidence S01–S09/S11 закрыты; stage/canary/production evidence остаётся в S10/S12/S14
+🟡 В работе — stage publication полностью подтверждена; legacy readability, canary и production evidence остаются в S12
 
 ## Цель
 
@@ -134,7 +134,7 @@ Career — специализированный отчёт. Целевой до�
 - [x] Backend ownership и Plus-access policy покрыты route-level tests для create/read/status/regenerate/PDF и остальных Career endpoints.
 - [x] Исторические версии, вопросы/ответы, scores, evidence и prompt/scoring versions сохраняются без overwrite/unique-conflict при повторной генерации.
 - [x] Anti-generic, contradiction, evidence, low-confidence, duplication, overclaim и profession-prescription validators имеют полные RED/GREEN suites.
-- [ ] Staging smoke доказывает полный questionnaire → deterministic → narrative → reader/PDF flow.
+- [x] Staging smoke доказывает полный questionnaire → deterministic → narrative → reader/PDF flow.
 
 ## Stories
 
@@ -149,11 +149,11 @@ Career — специализированный отчёт. Целевой до�
 | S07 | [Собрать Interpretation Facts и quality gates](./S07-interpretation-facts-quality-gates.md)      | ✅ Завершено |
 | S08 | [Добавить modular LLM narrative и assembly](./S08-llm-narrative-assembly.md)                     | ✅ Завершено |
 | S09 | [Добавить async Career API и access enforcement](./S09-api-async-access.md)                      | ✅ Завершено |
-| S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                            | 🟡 Частично  |
+| S10 | [Создать questionnaire/product UX](./S10-questionnaire-product-ux.md)                            | ✅ Завершено |
 | S11 | [Создать Career reader и PDF](./S11-report-reader-pdf.md)                                        | ✅ Завершено |
 | S12 | [Закрыть QA, observability, migration и rollout](./S12-qa-observability-rollout.md)              | 🟡 Частично  |
 | S13 | [Подготовить Career rollout / rollback runbook](./S13-rollout-runbook.md)                        | ✅ Завершено |
-| S14 | [Опубликовать Career на stage и собрать live evidence](./S14-stage-publication-live-evidence.md) | 🟡 Частично  |
+| S14 | [Опубликовать Career на stage и собрать live evidence](./S14-stage-publication-live-evidence.md) | ✅ Завершено |
 
 ## Порядок реализации
 
@@ -189,4 +189,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature находится в реализации. Локально закрыты S01–S09, S11 и документационный runbook S13: добавлены route-level access/OpenAPI tests, generation-aware immutable history, конкурентная idempotency, provenance/quality gates, общий web/PDF presentation contract и зелёный Chromium sample-parity run. S10 ждёт live-backend entitlement smoke. По решению владельца продукта от 27 сентября 2026 года для stage достаточно mock LLM; real-provider quality gate переносится в canary/production. Текущий stage остаётся на старом marker без target Career routes и OTLP. После S14 в S12 останутся canary и production report/PDF evidence.
+Feature находится в реализации. S01–S11, S13 и S14 закрыты. На stage опубликован exact SHA `4c1423ccd10a9b4d1cf9a95fac5885dbde75e73a`: target routes, mock LLM, worker/scheduler, OTLP + Basic-Auth-protected Prometheus dashboard, full questionnaire → report/PDF flow, active `self` и grandfathered `career` Chromium smoke, locked/expired matrix, human structural review, zero-stuck window и rollback rehearsal подтверждены. В S12 открыты legacy reader/PDF readability, real-provider canary и production Career report/PDF evidence.

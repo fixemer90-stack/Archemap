@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — exact green revision закреплён; stage publication и live evidence не выполнены
+✅ Завершено — stage publication, browser/entitlement matrix, mock flow, dashboards, observability и rollback подтверждены
 
 ## Контекст
 
@@ -121,19 +121,19 @@ Runtime-аудит 25 сентября 2026 года показал:
 ## Критерии приёмки
 
 - [x] Текущий Career browser-smoke набор закоммичен и имеет точный зелёный CI SHA.
-- [ ] На stage опубликован именно этот SHA; marker прочитан обратно из runtime.
-- [ ] Stage backup/checksum и pre/post legacy row evidence сохранены.
-- [ ] Backend, worker и frontend stage запущены с target Career revision; health/readiness зелёные.
-- [ ] Target Career routes и актуальный migration head подтверждены в running containers.
-- [ ] Mock LLM runtime и OTLP включены на stage; production configuration не изменена.
-- [ ] Active Plus, grandfathered legacy и locked/expired matrix пройдена через live backend.
-- [ ] Полный questionnaire → deterministic → narrative → reader/PDF flow пройден; generation/report/PDF IDs записаны с редактированием персональных данных.
-- [ ] Human quality review пройден относительно design и canonical sample.
-- [ ] Latency/token/cost dashboards и zero-stuck observation window записаны.
-- [ ] Rollback flag rehearsal подтверждает отсутствие новых writes и сохранность target/legacy artifacts.
-- [ ] Staging без Basic Auth возвращает 401, с Basic Auth health возвращает 200 и `X-Robots-Tag: noindex, nofollow, noarchive`.
-- [ ] Production health/frontend после stage publication остаются HTTP 200.
-- [ ] S10/S12/S13 и `FEATURE.md` синхронизированы с фактическим evidence.
+- [x] На stage опубликован именно этот SHA; marker прочитан обратно из runtime.
+- [x] Stage backup/checksum и pre/post legacy row evidence сохранены.
+- [x] Backend, worker и frontend stage запущены с target Career revision; health/readiness зелёные.
+- [x] Target Career routes и актуальный migration head подтверждены в running containers.
+- [x] Mock LLM runtime и OTLP включены на stage; production configuration не изменена.
+- [x] Active Plus, grandfathered legacy и locked/expired matrix пройдена через live backend.
+- [x] Полный questionnaire → deterministic → narrative → reader/PDF flow пройден; generation/report/PDF IDs записаны с редактированием персональных данных.
+- [x] Human quality review пройден относительно design и canonical sample.
+- [x] Latency/token/cost dashboards и zero-stuck observation window записаны.
+- [x] Rollback flag rehearsal подтверждает отсутствие новых writes и сохранность target/legacy artifacts.
+- [x] Staging без Basic Auth возвращает 401, с Basic Auth health возвращает 200 и `X-Robots-Tag: noindex, nofollow, noarchive`.
+- [x] Production health/frontend после stage publication остаются HTTP 200.
+- [x] S10/S12/S13 и `FEATURE.md` синхронизированы с фактическим evidence.
 
 ## Evidence template
 
@@ -157,7 +157,7 @@ Rollback rehearsal:
 Production regression health:
 ```
 
-## Evidence 2026-09-26
+## Historical snapshot 2026-09-26
 
 - Git SHA: `a821404d0b010fc9f1f1cd04d01170a825dc29b8`.
 - CI: `https://github.com/fixemer90-stack/Archemap/actions/runs/36210137484`; семь jobs завершены `success`, включая `Test & Build Frontend` с Career Playwright smoke.
@@ -175,6 +175,48 @@ Production regression health:
 Владелец продукта подтвердил, что для stage достаточно mock LLM. Исторические требования real-provider stage report/API key сняты. Real-provider prose quality, authoritative latency/token/cost и provider billing evidence переносятся в canary/pre-production gate S12. Scheduler implementation gap закрыт после исторического snapshot; S14 должен доказать уже запущенный stage Beat service и alert path.
 
 Exact green Career revision для публикации: `3fbd11948a9676d440915cd5abcd50dbbf7aa3c5`; GitHub Actions CI run `36285160532`, все семь jobs `success`, включая Career Chromium browser smoke.
+
+## Stage publication evidence 2026-09-27
+
+- Git SHA: `20dcfbfce5ed1e2cb540261e4a1223683b89d7a7`.
+- CI: run `36308536986`, семь jobs `success`.
+- Stage deploy marker совпадает с Git SHA; migration current/head `b7c8d9e0f1a2`.
+- Runtime: `CAREER_REPORT_ENABLED=true`, `LLM_ENABLED=true`, `LLM_PROVIDER=mock`; backend, worker, singleton scheduler, frontend и OTEL collector запущены.
+- Live OpenAPI содержит все 10 Career routes.
+- Backup: `/opt/astrotype/backups/career-preflight-20260927T022749Z.dump`, `291542` bytes, SHA-256 `1c3ef7d540927a313475d55e708722f1ac77c4428477381b1ac38ca4fd710e49`; restore в отдельную временную БД успешен.
+- Pre/post protected-table counts/checksums совпали: profiles `6`, legacy reports `0`, payments `1`, entitlements `1`.
+- Active Plus flow завершён; grandfathered Career questionnaire разрешён; duplicate create с одинаковым idempotency key вернул тот же generation.
+- Locked create/generation/read/sections/regenerate/PDF вернули `402` без protected payload.
+- Expired probe не засчитан: он менял `plus/career`, а канонический Plus product — `self`; smoke-entitlements восстановлены.
+- Generation `d98e0b57-b67c-4b1b-8f8b-54c87b4eef4e`, report `c84bfae8-6ed3-4a92-b841-733cbf0c59fb`, version `6`, `10/10` sections ready.
+- PDF: `32760` bytes, SHA-256 `1e48f17ba7e7475a3e4e261fecbe7d24aaa3760ec6de3fd05f18fc1d6b8e4c0d`.
+- Human structural review: canonical section order, claims/citations and assembled payload присутствуют; exact duplicates, diagnosis, guaranteed outcomes и prescribed profession отсутствуют.
+- Generation duration `1.892 s`; estimated mock usage `23066` input / `9063` output tokens; configured cost `$0`.
+- OTLP endpoint `http://otel-collector:4318/v1/metrics`; collector принял 16 Career metric batches.
+- Observation window: четыре запуска monitor, stuck deterministic `0`, stuck narrative `0`, validator failures `0`, alerts `[]`.
+- Historical stage publication не включала dashboard; gap закрыт отдельной публикацией 29 сентября 2026 года.
+- Rollback rehearsal: feature off блокирует новый create с `404`, существующий report остаётся `200`, counts generations/reports/segments/legacy `7/4/40/0` не изменились; flag возвращён в `true`.
+- Stage health: unauthenticated `401`, authenticated `200`, noindex header присутствует.
+- Production non-regression после stage publication: API health `200`, frontend `200`.
+- Combined live browser smoke с deployed backend не записан; backend flow и mocked Chromium CI являются отдельными evidence.
+
+## Additional live evidence 2026-09-28
+
+- Correct expired matrix временно истекла все три активных target grants `self`, `plus`, `career`: create/generation/read/sections/regenerate/PDF вернули `402`, protected payload отсутствовал. Все три entitlement восстановлены в `active` с исходным бессрочным сроком.
+- Active `self` Chromium flow: page `200`, create `202`, generation `58673ea9-08ee-40e5-93d9-3d887d194e11`, reader report `241306e3-d334-4fdb-87a4-ce816d88f71f` HTTP `200`, PDF `200` / `32760` bytes / `%PDF`.
+- Grandfathered `career` Chromium flow: page `200`, create `202`, generation `08d6b11c-2fc7-44bf-b1c0-928ca21c3674`, reader report `b3de9e3e-6831-4964-b1f8-42c9b04af3c0` HTTP `200`, PDF `200` / `32617` bytes / `%PDF`.
+- Оба browser flows завершились без failed Career/API responses и page errors.
+- После этого browser/entitlement gates закрыты; оставшийся dashboard gap закрыт evidence ниже.
+
+## Metrics dashboard evidence 2026-09-29
+
+- Dashboard revision: `4c1423ccd10a9b4d1cf9a95fac5885dbde75e73a`; stage marker прочитан обратно и совпал.
+- Exact-SHA CI run `36510730869`: семь jobs завершены `success`; Build & Push Images run `36510730883` также `success`.
+- Basic Auth boundary: `/career-metrics` без credentials → `401`, с credentials → `308` на `/career-metrics/`; `/career-metrics/` без credentials → `401`; `/career-metrics/targets` с credentials → `200`.
+- Dashboard links: `https://staging.astrotype.ru/career-metrics/graph` и `https://staging.astrotype.ru/career-metrics/targets`.
+- Prometheus target `http://otel-collector:9464/metrics` имеет health `up`, `lastError` пуст.
+- Live series: `career_operations_total` — 14; `career_operation_duration_seconds_count` — 2; `career_provider_tokens_token_total` — 2 (`144297`, `52443`); `career_provider_cost_usd_USD_count` — 1 (`60`). Prometheus exporter добавляет unit к исходным token/cost instrument names.
+- После публикации production API health и frontend повторно вернули HTTP `200`.
 
 ## Вне области Story
 

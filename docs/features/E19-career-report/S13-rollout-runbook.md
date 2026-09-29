@@ -125,3 +125,11 @@ Stage-публикация и сбор первых семи блоков eviden
 ## Runtime gap, обнаруженный 2026-09-26
 
 Расхождение закрыто в коде: local/staging/production Compose содержат отдельный singleton Beat service, а topology tests проверяют schedule/task registration и запрещают совмещение worker/Beat. Фактический stage scheduler/readiness/alert-path readback остаётся evidence gate S14.
+
+## Stage execution readback 2026-09-27
+
+- Runbook выполнен на stage для exact SHA `20dcfbfce5ed1e2cb540261e4a1223683b89d7a7`.
+- Backup создан и восстановлен в отдельную БД; pre/post protected-table counts/checksums совпали.
+- Mock-provider full flow, PDF, human structural review, OTLP export, zero-stuck observation window и rollback rehearsal завершены.
+- Scheduler выполнил `career.monitor_pipeline` четыре раза; stuck и validator failure counts равны нулю, alerts `[]`.
+- Dashboard reference и корректный expired probe по product `self` закрыты в S14. Synthetic alert-trigger, legacy reader/PDF fixture, canary и production evidence остаются в S12 и не меняют статус готовности самого runbook.

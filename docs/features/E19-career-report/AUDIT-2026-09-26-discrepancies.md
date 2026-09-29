@@ -6,11 +6,11 @@
 
 ## Проверенная база
 
-- Код и документация: `a821404d0b010fc9f1f1cd04d01170a825dc29b8`.
-- Exact-HEAD CI: run `36210137484`, семь jobs завершены `success`.
-- Документационный аудит: commit `1d8d49752eaaff3681caae2cf0cb68f6f798c940`, CI run `36226763083`, семь jobs завершены `success`.
-- Live stage marker на момент аудита: `3462865ed1a7158023c99bc491044dcea048ad23`.
-- Production проверялась только на regression health; Career rollout в production не выполнялся.
+- Exact stage revision: `4c1423ccd10a9b4d1cf9a95fac5885dbde75e73a`.
+- Exact-HEAD CI: run `36510730869`, семь jobs завершены `success`.
+- Stage marker прочитан обратно из runtime и совпадает с exact revision.
+- Stage migration current/head: `b7c8d9e0f1a2`.
+- Production после stage publication проверена только на non-regression: API health и frontend вернули HTTP `200`; Career rollout в production не выполнялся.
 
 ## Сводный статус
 
@@ -25,13 +25,15 @@
 - S07 — precise provenance, low-confidence и contradiction gates;
 - S08 — duplicate/near-duplicate regressions и active worker wiring;
 - S09 — canonical OpenAPI, entitlement matrix и lifecycle/concurrency API tests;
+- S10 — questionnaire/product UX, active `self` и grandfathered `career` live Chromium flow;
 - S11 — shared web/PDF presentation contract и exact-SHA Chromium sample evidence;
 - S13 — готовность документа rollout/rollback runbook, но не его live-исполнение.
 
 Остаются частично закрытыми:
 
-- S10 — live-backend entitlement/product-flow evidence;
-- S12, S14 — stage, observability, canary и production evidence.
+- S12 — legacy readability, canary и production evidence;
+
+S14 полностью закрыта: stage publication, live browser/entitlement matrix, dashboard, zero-stuck и rollback evidence записаны.
 
 Все implementation/test-contract расхождения раздела 1 закрыты commits текущей серии. Таблица ниже сохранена как исторический перечень причин изменений; актуальные открытые gaps перечислены в разделах 2 и 4.
 
@@ -58,13 +60,13 @@
 
 ### S10 — questionnaire/product UX
 
-Автоматизированный Chromium suite committed и зелёный, но все Career API calls в browser tests mocked. Остаётся доказать через deployed backend:
+Story закрыта. Через deployed backend доказаны active Plus flow, grandfathered Career entitlement, locked/expired denial без protected payload и idempotent create против реальной PostgreSQL state.
 
-- active Plus questionnaire flow;
-- grandfathered legacy entitlement;
-- expired/free/locked denial без protected payload;
-- persisted draft reload/resume;
-- idempotent completion против реальной PostgreSQL state.
+Live Chromium evidence 2026-09-28:
+
+- active `self`: page `200`, create `202`, generation `58673ea9-08ee-40e5-93d9-3d887d194e11`, reader report `241306e3-d334-4fdb-87a4-ce816d88f71f` HTTP `200`, PDF `200` / `32760` bytes / `%PDF`;
+- grandfathered `career`: page `200`, create `202`, generation `08d6b11c-2fc7-44bf-b1c0-928ca21c3674`, reader report `b3de9e3e-6831-4964-b1f8-42c9b04af3c0` HTTP `200`, PDF `200` / `32617` bytes / `%PDF`;
+- failed Career/API responses и page errors отсутствовали.
 
 ### S11 — reader/PDF
 
@@ -76,29 +78,34 @@
 
 ### S12 — QA/observability/rollout
 
+На stage закрыты mock-provider report, structural human review, работающий scheduler, OTLP export и zero-stuck observation window. За окно наблюдения выполнены четыре запуска `career.monitor_pipeline`: stuck deterministic `0`, stuck narrative `0`, validator failures `0`, alerts `[]`; collector принял 16 Career metric batches.
+
 Открыты:
 
-- mock-provider stage report и structural/human product review; real-provider quality перенесена в canary/pre-production;
-- работающий scheduler, metrics/alerts и zero-stuck observation window;
-- staging latency/token/cost measurements и dashboard references;
-- canary cohort, результаты и полный observation window;
-- targeted regression/live proof читаемости legacy Career reader/PDF после target migrations;
+- canary cohort, real-provider quality/cost evidence и полный observation window;
+- targeted regression/live proof читаемости legacy Career reader/PDF после target migrations: на stage нет legacy report rows;
 - production Career report/PDF IDs.
 
 ### S14 — stage publication
 
-На момент аудита stage не соответствует target revision:
+На stage опубликован exact SHA `20dcfbfce5ed1e2cb540261e4a1223683b89d7a7`; marker прочитан обратно. Backend, worker, singleton scheduler, frontend и OTEL collector запущены. Runtime использует `CAREER_REPORT_ENABLED=true`, `LLM_ENABLED=true`, `LLM_PROVIDER=mock`; в live OpenAPI присутствуют все 10 Career routes.
 
-- stage marker `3462865ed1a7158023c99bc491044dcea048ad23` не совпадает с target SHA;
-- stage backend healthy, migration current/head `a6b7c8d9e0f1`, но `/api/v1/career/*` routes отсутствуют;
-- `CAREER_REPORT_ENABLED=true`, при этом `LLM_ENABLED=false`, `LLM_PROVIDER=mock`;
-- OTLP endpoint пуст;
-- DB readback: `career_generations=2`, `career_reports=0`, `career_questionnaire_sessions=1`;
-- Career preflight dump, restore proof и pre/post checksums не найдены;
-- без Basic Auth stage health возвращает `401` и `X-Robots-Tag: noindex, nofollow, noarchive`;
-- authenticated Basic Auth `200` не подтверждён;
-- full questionnaire → deterministic → narrative → reader/PDF flow не выполнен;
-- entitlement matrix, human review, dashboards, rollback rehearsal и production regression после target stage publication отсутствуют.
+Собрано evidence:
+
+- backup `/opt/astrotype/backups/career-preflight-20260927T022749Z.dump`, `291542` bytes, SHA-256 `1c3ef7d540927a313475d55e708722f1ac77c4428477381b1ac38ca4fd710e49`, restore в отдельную БД успешен;
+- pre/post protected-table counts/checksums совпали: profiles `6`, legacy reports `0`, payments `1`, entitlements `1`;
+- generation `d98e0b57-b67c-4b1b-8f8b-54c87b4eef4e`, report `c84bfae8-6ed3-4a92-b841-733cbf0c59fb`, version `6`, `10/10` sections ready;
+- PDF `32760` bytes, SHA-256 `1e48f17ba7e7475a3e4e261fecbe7d24aaa3760ec6de3fd05f18fc1d6b8e4c0d`;
+- generation duration `1.892 s`, estimated mock usage `23066` input / `9063` output tokens, configured cost `$0`;
+- active Plus и grandfathered Career access разрешены; повторный create с тем же idempotency key вернул тот же generation;
+- locked matrix для create/generation/read/sections/regenerate/PDF вернула `402` без protected payload;
+- rollback rehearsal: при `CAREER_REPORT_ENABLED=false` новый create вернул `404`, существующий report остался доступен с `200`, counts `7/4/40/0` не изменились; flag возвращён в `true`;
+- без Basic Auth stage health вернул `401`, с Basic Auth — `200`, `X-Robots-Tag: noindex, nofollow, noarchive` присутствует;
+- production API health и frontend после stage publication вернули `200`.
+
+Expired matrix повторена корректно: все активные grants `self`, `plus`, `career` временно истекли; create/generation/read/sections/regenerate/PDF вернули `402` без protected payload, после чего исходные entitlement восстановлены. Active `self` и grandfathered `career` также прошли полный публичный Chromium flow.
+
+Dashboard gap закрыт 29 сентября 2026 года revision `4c1423ccd10a9b4d1cf9a95fac5885dbde75e73a` (CI `36510730869`, 7/7 success). Basic Auth boundary вернул `401/308/401` для unauthenticated root/authenticated root/unauthenticated dashboard; authenticated targets вернул `200`. Prometheus target `otel-collector:9464` — `up`; доступны operation, duration, token и cost series. Production API health/frontend после изменения остались `200`.
 
 ## 3. Исправленный documentation drift
 
@@ -114,7 +121,7 @@
 
 ## 4. Порядок закрытия
 
-1. Выполнить S14: backup/checksums → exact stage deploy → routes/settings/readiness → entitlement matrix → full mock-provider flow → quality/metrics → rollback rehearsal.
+1. Получить legacy Career fixture либо отдельное regression evidence читаемости старого reader/PDF после target migrations.
 2. Выполнить S12 real-provider canary и production report/PDF smoke.
 
 ## 5. Правило закрытия
@@ -127,3 +134,9 @@
 - persisted payload не заменяет web/PDF cross-render parity;
 - stage feature flag не заменяет exact revision, routes, provider, telemetry и completed report artifact;
 - green local test не считается exact-SHA CI evidence до commit/push и завершения всех обязательных jobs.
+
+## 6. Что остаётся открытым после stage publication 2026-09-27
+
+- Staging содержит `0` legacy report rows, поэтому live readability старого Career reader/PDF проверить не на чем.
+- Отдельный synthetic alert-trigger test не выполнен; штатный scheduler/monitor, OTLP export и zero-stuck path подтверждены.
+- Canary и production Career report/PDF rollout не выполнялись; production проверялась только на non-regression health/frontend.

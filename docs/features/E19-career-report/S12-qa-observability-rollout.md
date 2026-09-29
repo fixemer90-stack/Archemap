@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано локально — публикация и live evidence на stage вынесены в S14; canary и production evidence остаются открытыми
+🟡 Stage mock rollout, observability и dashboard evidence собраны; legacy readability, canary и production остаются открытыми
 
 ## Контекст
 
@@ -79,14 +79,14 @@ Career объединяет deterministic scoring, пользовательск�
 ## Критерии приёмки
 
 - [x] Все deterministic, resolver, role/path, LLM, API и UI suites зелёные локально.
-- [ ] Staging mock-provider report проходит structural/human product review по design-документу; real-provider prose quality проверяется до production rollout.
+- [x] Staging mock-provider report проходит structural/human product review по design-документу; real-provider prose quality проверяется до production rollout.
 - [x] Locked/expired аккаунт не получает protected Career data в policy/API regression suites.
 - [x] Grandfathered legacy владелец сохраняет policy access; production matrix остаётся в runbook.
 - [x] Старые Career reports/PDF не мигрируются и не используются target API по explicit migration boundary.
 - [ ] Legacy Career reader/PDF readability после target migrations подтверждена отдельным regression/live matrix evidence.
-- [ ] Метрики/alerts доказывают отсутствие stuck pipeline.
+- [x] Метрики/alerts доказывают отсутствие stuck pipeline.
 - [x] Cost/latency budgets зафиксированы в runbook.
-- [ ] Staging latency/token/cost measurement и dashboard links записаны как rollout evidence.
+- [x] Staging latency/token/cost measurement и dashboard links записаны как rollout evidence.
 - [x] Rollback feature flag покрыт contract test и не выполняет destructive migration/backfill.
 - [x] Точный зелёный SHA текущего browser-smoke изменения и CI run записаны в Story.
 - [ ] Canary cohort/result и полный observation window записаны как rollout evidence.
@@ -97,3 +97,16 @@ Career объединяет deterministic scoring, пользовательск�
 - Exact green Career revision: `3fbd11948a9676d440915cd5abcd50dbbf7aa3c5`; CI run `36285160532`, семь jobs `success`, включая обновлённый desktop/mobile Chromium sample-parity smoke.
 - Scheduler implementation gap закрыт dedicated Beat services и regression tests; stage zero-stuck/alert-path evidence остаётся открытым до deploy.
 - Stage остаётся на marker `3462865ed1a7158023c99bc491044dcea048ad23`, target Career routes в running backend отсутствуют, `LLM_ENABLED=false`, `LLM_PROVIDER=mock`, OTLP endpoint пуст. По решению владельца продукта от 27 сентября 2026 года mock LLM достаточен для S14; требуется включить и проверить именно mock runtime, routes, worker/scheduler и OTLP.
+
+## Stage evidence 2026-09-27
+
+- Опубликован exact SHA `20dcfbfce5ed1e2cb540261e4a1223683b89d7a7`; CI run `36308536986`, семь jobs `success`.
+- Mock-provider report `c84bfae8-6ed3-4a92-b841-733cbf0c59fb` содержит 10 секций в каноническом порядке, claims/citations и assembled payload; exact duplicates, diagnosis, guaranteed outcomes и profession prescription не обнаружены.
+- Generation duration `1.892 s`; estimated mock usage `23066` input / `9063` output tokens; configured cost `$0`. Эти значения не заменяют real-provider canary measurements.
+- Backend и worker экспортируют Career metrics в `http://otel-collector:4318/v1/metrics`; collector принял 16 Career metric batches.
+- За observation window scheduler четыре раза выполнил `career.monitor_pipeline`: stuck deterministic `0`, stuck narrative `0`, validator failures `0`, alerts `[]`.
+- Dashboard опубликован 29 сентября 2026 года на `https://staging.astrotype.ru/career-metrics/graph`; targets/status доступны на `/career-metrics/targets`. Без Basic Auth оба пути возвращают `401`.
+- Stage marker `4c1423ccd10a9b4d1cf9a95fac5885dbde75e73a`; CI run `36510730869`, все семь jobs `success`.
+- Prometheus target `http://otel-collector:9464/metrics` имеет health `up`. Live readback: `career_operations_total` — 14 series; `career_operation_duration_seconds_count` — 2 series; `career_provider_tokens_token_total` — 2 series со значениями `144297`/`52443`; `career_provider_cost_usd_USD_count` — 1 series со значением `60`.
+- На stage `0` legacy Career report rows; live readability старого reader/PDF не может быть доказана без fixture или отдельного regression evidence.
+- Canary и production Career report/PDF rollout не выполнялись.

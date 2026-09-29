@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано; автоматизированный browser smoke закрыт, live-backend entitlement smoke остаётся открытым
+✅ Завершено — automated browser suite и deployed-backend Chromium smoke active Plus/grandfathered entitlement зелёные
 
 ## Контекст
 
@@ -38,7 +38,7 @@
 - [x] UI показывает deterministic-ready результат до полного narrative.
 - [x] Locked пользователь не видит protected preview payload.
 - [x] Desktop/mobile responsive, keyboard и accessibility browser tests проходят.
-- [ ] Live browser smoke проходит с реальным backend и active Plus/legacy entitlement.
+- [x] Live browser smoke проходит с реальным backend и active Plus/legacy entitlement.
 
 ## Реализация и проверка
 
@@ -52,5 +52,13 @@
 - `npx eslint src/app/'(dashboard)'/products/career/page.tsx src/lib/api/career.ts` — passed после устранения hook warning.
 - Playwright Chromium проходит полный keyboard questionnaire flow на desktop/mobile, проверяет required-state, autosave, idempotency, deterministic-ready transition, horizontal overflow и Axe serious/critical violations.
 - Visual regression baselines сохранены в `frontend/tests/e2e/career-questionnaire.spec.ts-snapshots/`; локальный прогон общего Career browser suite: `5 passed, 1 skipped`.
+- На stage active Plus прошёл questionnaire/create до `ready`; grandfathered Career entitlement получил questionnaire HTTP `200`; повторный create с тем же idempotency key вернул тот же generation ID.
+- Locked matrix для create/generation/read/sections/regenerate/PDF вернула `402` без protected payload.
+- Полный deployed-backend flow завершился report `c84bfae8-6ed3-4a92-b841-733cbf0c59fb`, version `6`, `10/10` ready sections и валидным PDF.
 
-Открытый пункт требует live browser smoke с backend и активной Plus/legacy entitlement. Mocked API browser suite доказывает реальное Chromium-поведение клиента, но не заменяет проверку deployed access policy и данных окружения.
+## Live Chromium evidence 2026-09-28
+
+- Active Plus использовал канонический entitlement product `self`: Career page HTTP `200`, questionnaire API `200`, report create `202`, reader `200`, PDF `200` (`32760` bytes, `%PDF`). Generation `58673ea9-08ee-40e5-93d9-3d887d194e11`, report `241306e3-d334-4fdb-87a4-ce816d88f71f`.
+- Grandfathered entitlement product `career`: Career page HTTP `200`, questionnaire API `200`, report create `202`, reader `200`, PDF `200` (`32617` bytes, `%PDF`). Generation `08d6b11c-2fc7-44bf-b1c0-928ca21c3674`, report `b3de9e3e-6831-4964-b1f8-42c9b04af3c0`.
+- Оба Chromium-сеанса прошли через публичный staging gateway с Basic Auth и HttpOnly auth cookies; failed Career/API responses и page errors отсутствовали.
+- Sessions уже были completed; draft autosave/reload/resume остаётся доказан committed desktop/mobile Chromium suite, а live smoke доказывает entitlement → target create → progressive reader → PDF path.

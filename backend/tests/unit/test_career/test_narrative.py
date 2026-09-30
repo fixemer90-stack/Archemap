@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
@@ -408,6 +409,53 @@ async def test_provider_failure_keeps_deterministic_report_and_section_retry_is_
     assert retried.section_key == failed.section_key
     assert retried.status == "ready"
     assert report.deterministic_payload == assembled.deterministic_payload
+
+
+@pytest.mark.asyncio
+async def test_provider_failure_records_safe_diagnostics_without_model_prose() -> None:
+    from app.modules.llm.exceptions import LLMInvalidResponseError
+
+    facts = _facts()
+    generation_id = uuid.uuid4()
+
+    class DriftedProvider:
+        provider_name = "deepseek"
+        model_name = "deepseek-v4-flash"
+
+        async def generate_segment(self, *, prompt: str, section_input: Any) -> dict[str, Any]:
+            del prompt, section_input
+            preview_text = "Заметна выраженная структура."
+            raise LLMInvalidResponseError(
+                "LLM provider returned non-JSON content: finish_reason='stop'; content_len=5790; "
+                f"preview='{preview_text}'",
+                code="llm_invalid_response",
+            )
+
+    section_input = build_career_section_inputs(facts)[0]
+    failed = await run_career_segment_generation(
+        provider=DriftedProvider(),
+        section_input=section_input,
+        career_profile_id=facts.profile_id,
+        chart_id=facts.chart_id,
+        generation_id=generation_id,
+    )
+
+    assert failed.status == "failed"
+    assert failed.error == "career_provider_failure"
+    assert failed.output_payload["error_code"] == "llm_invalid_response"
+    assert failed.output_payload["error_type"] == "LLMInvalidResponseError"
+    stored = json.dumps(failed.output_payload, ensure_ascii=False)
+    assert "preview" not in stored
+    assert "Заметна выраженная структура." not in stored
+
+
+def test_segment_prompt_pins_the_canonical_output_contract() -> None:
+    prompt = build_segment_prompt(build_career_section_inputs(_facts())[0])
+
+    for token in ('"section_key"', '"title"', '"body"', '"cited_fact_keys"', '"claims"', '"text"', '"fact_keys"'):
+        assert token in prompt
+    assert 'never "claim"' in prompt
+    assert CAREER_PROMPT_VERSION == "career-segment-prompt-3"
 
 
 @pytest.mark.asyncio

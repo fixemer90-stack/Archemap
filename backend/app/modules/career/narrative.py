@@ -22,7 +22,7 @@ from app.modules.career.narrative_schemas import (
 )
 from app.modules.career.observability import career_telemetry, estimate_provider_usage
 
-CAREER_PROMPT_VERSION = "career-segment-prompt-2"
+CAREER_PROMPT_VERSION = "career-segment-prompt-3"
 
 _SECTION_METADATA: dict[str, tuple[str, str]] = {
     "professional_summary": ("Ваш профессиональный профиль", "Собрать главную профессиональную механику."),
@@ -150,7 +150,18 @@ Use only owned_facts and bounded reference_facts from the provided JSON.
 Cite every owned_fact_key. Do not expand forbidden_fact_keys.
 Return structured claims with exact fact_keys. Every claim text must appear in body.
 For low-confidence facts set conditional=true and use explicit conditional wording in the claim text.
-Return JSON matching career_segment_output_v2; no markdown or text outside JSON.
+Return JSON matching career_segment_output_v2 with exactly these fields and nothing else:
+{{"section_key": "<copy section_key from the section input>",
+ "title": "<copy section_title of this section>",
+ "body": "<the whole section as Russian prose in one string>",
+ "cited_fact_keys": ["<every owned_fact_key you cite>"],
+ "claims": [{{"text": "<claim sentence copied verbatim from body>",
+             "fact_keys": ["<the exact fact_key supporting this claim>"],
+             "conditional": false}}],
+ "continuation_complete": true,
+ "continuation_cursor": null}}
+Claim objects use "text" (never "claim" or "claim_text") and "fact_keys" as a list (never "fact_key").
+No markdown and no text outside JSON.
 Do not calculate scores, invent roles, paths, professions, chart facts, or user answers.
 Profession examples must remain conditional illustrations, never prescriptions.
 Do not promise income, hiring, success, diagnosis, or certainty.
@@ -365,7 +376,7 @@ async def run_career_segment_generation(
             output_payload={},
             error="career_validation_failure",
         )
-    except Exception:
+    except Exception as exc:
         return CareerSegmentGeneration(
             career_profile_id=career_profile_id,
             chart_id=chart_id,
@@ -376,9 +387,27 @@ async def run_career_segment_generation(
             provider=provider.provider_name,
             model_version=provider.model_name,
             input_payload=input_payload | {"input_hash": _stable_hash(input_payload)},
-            output_payload={},
+            output_payload=_safe_provider_failure_payload(exc),
             error="career_provider_failure",
         )
+
+
+def _safe_provider_failure_payload(exc: Exception) -> dict[str, Any]:
+    """Keep a contract-safe failure summary so provider drift stays diagnosable.
+
+    The provider error can carry a preview of the raw model answer; the generated prose never
+    lands in the stored row, only the failure shape, so a repeated mismatch can be diagnosed
+    without replaying the call.
+    """
+
+    details = str(exc)
+    if "preview=" in details:
+        details = details.split("preview=")[0].rstrip("; ")
+    return {
+        "error_code": str(getattr(exc, "code", "") or "career_provider_failure"),
+        "error_type": type(exc).__name__,
+        "details": details[:400],
+    }
 
 
 def build_deterministic_career_report_row(

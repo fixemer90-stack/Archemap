@@ -1,5 +1,7 @@
 import json
+from typing import ClassVar
 
+from app.modules.career.narrative_schemas import CareerSegmentOutput
 from app.modules.llm.providers.deepseek import DeepSeekProvider
 from app.modules.report_narratives.schemas import (
     EmotionalSectionOutput,
@@ -11,6 +13,75 @@ from app.modules.report_narratives.schemas import (
 
 def _provider() -> DeepSeekProvider:
     return DeepSeekProvider(api_key="test", model="deepseek-v4-flash", timeout_seconds=180, max_retries=2)
+
+
+class _CareerSectionInput:
+    """Minimal stand-in for the Career section input handed to the provider."""
+
+    section_key: ClassVar[str] = "professional_summary"
+    section_title: ClassVar[str] = "Ваш профессиональный профиль"
+    owned_fact_keys: ClassVar[list[str]] = ["dimension:structure", "dimension:autonomy"]
+
+
+def test_parse_response_normalizes_live_deepseek_career_segment_shape() -> None:
+    """The live provider answer must land on the canonical career_segment_output_v2 contract.
+
+    DeepSeek answers a Career section with `section_title`, `claims[].claim`, `claims[].fact_key`
+    and no `cited_fact_keys`, while the strict contract requires `title`, `claims[].text`,
+    `claims[].fact_keys` and `cited_fact_keys` and forbids extra fields. Without normalization the
+    whole section failed as `career_provider_failure` and no Career report was ever assembled.
+    """
+
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "type": "json_object",
+                            "contract_version": "career_segment_output_v2",
+                            "profile_id": "44f2b6f0-6f2e-4e7a-9ba2-1f0b5e1d4f6a",
+                            "chart_id": "4a1d1c2e-30d7-4d4f-9c5a-2b8e7f6a1c33",
+                            "section_key": "professional_summary",
+                            "section_title": "Ваш профессиональный профиль",
+                            "body": "Заметна выраженная структура и автономность.",
+                            "disclaimer": "Это ориентир для размышления.",
+                            "continuation": None,
+                            "claims": [
+                                {
+                                    "fact_key": "dimension:structure",
+                                    "claim": "Заметна выраженная структура.",
+                                    "confidence": 1.0,
+                                    "conditional": False,
+                                },
+                                {
+                                    "fact_key": "dimension:autonomy",
+                                    "claim": "Автономность проявляется как потребность в своём порядке.",
+                                    "confidence": 0.8,
+                                    "conditional": False,
+                                },
+                            ],
+                        },
+                        ensure_ascii=False,
+                    )
+                }
+            }
+        ]
+    }
+
+    result = _provider()._parse_response(payload, CareerSegmentOutput, _CareerSectionInput())
+
+    assert result.contract_version == "career_segment_output_v2"
+    assert result.section_key == "professional_summary"
+    assert result.title == "Ваш профессиональный профиль"
+    assert result.body
+    assert result.cited_fact_keys == ["dimension:structure", "dimension:autonomy"]
+    assert [claim.text for claim in result.claims] == [
+        "Заметна выраженная структура.",
+        "Автономность проявляется как потребность в своём порядке.",
+    ]
+    assert result.claims[0].fact_keys == ["dimension:structure"]
+    assert result.claims[0].conditional is False
 
 
 def test_parse_response_normalizes_legacy_narrative_plan_shape() -> None:

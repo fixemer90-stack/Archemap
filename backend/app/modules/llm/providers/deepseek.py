@@ -226,9 +226,81 @@ def _normalize_structured_shape(
         return _normalize_house_scenarios_section_shape(payload, narrative_input)
     if schema_name == "ReportSegmentOutputV2":
         return _normalize_report_segment_output_v2_shape(payload, narrative_input)
+    if schema_name == "CareerSegmentOutput":
+        return _normalize_career_segment_output_shape(payload, narrative_input)
     if schema_name == "AssemblyCheck" and "assembly_check" in payload and isinstance(payload["assembly_check"], dict):
         return payload["assembly_check"]
     return payload
+
+
+_CAREER_SEGMENT_OUTPUT_FIELDS = frozenset(
+    {
+        "contract_version",
+        "section_key",
+        "title",
+        "body",
+        "cited_fact_keys",
+        "claims",
+        "continuation_complete",
+        "continuation_cursor",
+    }
+)
+
+
+def _normalize_career_segment_output_shape(payload: dict[str, Any], section_input: Any | None = None) -> dict[str, Any]:
+    """Map real-provider field drift onto the canonical career_segment_output_v2 contract.
+
+    Live DeepSeek responses name the section `section_title`, keep the claim prose in
+    `claim`/`claim_text`, cite a single `fact_key` per claim and omit `cited_fact_keys`, while the
+    strict contract requires `title`, `claims[].text`, `claims[].fact_keys` and forbids extra
+    fields. The canonical names win, and every derived value stays bound to the section input, so
+    an unparsable answer still fails validation instead of silently inventing content.
+    """
+
+    normalized = dict(payload)
+    normalized.setdefault("contract_version", "career_segment_output_v2")
+    if not isinstance(normalized.get("section_key"), str) and section_input is not None:
+        normalized["section_key"] = getattr(section_input, "section_key", None)
+
+    title = normalized.get("title")
+    if not isinstance(title, str) or not title.strip():
+        for key in ("section_title", "section_name", "heading"):
+            candidate = normalized.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                normalized["title"] = candidate.strip()
+                break
+        else:
+            fallback_title = getattr(section_input, "section_title", None) if section_input is not None else None
+            if isinstance(fallback_title, str) and fallback_title.strip():
+                normalized["title"] = fallback_title
+
+    raw_claims = normalized.get("claims")
+    claims: list[dict[str, Any]] = []
+    for item in raw_claims if isinstance(raw_claims, list) else []:
+        if not isinstance(item, dict):
+            continue
+        text = _coerce_text(item.get("text") or item.get("claim") or item.get("claim_text") or item.get("statement"))
+        fact_keys = _unique_strings(item.get("fact_keys") or []) or _unique_strings(
+            [item["fact_key"]] if isinstance(item.get("fact_key"), str) else []
+        )
+        if not text or not fact_keys:
+            continue
+        claims.append({"text": text, "fact_keys": fact_keys, "conditional": bool(item.get("conditional"))})
+    if claims:
+        normalized["claims"] = claims
+
+    if not _unique_strings(normalized.get("cited_fact_keys") or []):
+        cited = _unique_strings(fact_key for claim in claims for fact_key in claim["fact_keys"])
+        if not cited and section_input is not None:
+            cited = _unique_strings(getattr(section_input, "owned_fact_keys", None) or [])
+        normalized["cited_fact_keys"] = cited
+
+    if not isinstance(normalized.get("body"), str) or not normalized["body"].strip():
+        body = _coerce_body_text(normalized)
+        if body:
+            normalized["body"] = body
+
+    return {key: value for key, value in normalized.items() if key in _CAREER_SEGMENT_OUTPUT_FIELDS}
 
 
 def _normalize_report_segment_output_v2_shape(

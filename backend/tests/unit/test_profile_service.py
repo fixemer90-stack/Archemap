@@ -140,7 +140,7 @@ class TestUpdate:
 
     def test_update_birth_data_is_rejected_by_schema(self) -> None:
         with pytest.raises(PydanticValidationError):
-            UpdateProfileRequest(birth_date=date(1800, 1, 1))
+            UpdateProfileRequest(birth_date=date(1800, 1, 1))  # type: ignore[call-arg]
 
 
 class TestDelete:

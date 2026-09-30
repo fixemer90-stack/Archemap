@@ -78,9 +78,7 @@ def test_every_beat_schedule_entry_is_a_task_the_worker_can_execute() -> None:
 
     import workers.tasks  # noqa: F401
 
-    unregistered = sorted(
-        entry["task"] for entry in app.conf.beat_schedule.values() if entry["task"] not in app.tasks
-    )
+    unregistered = sorted(entry["task"] for entry in app.conf.beat_schedule.values() if entry["task"] not in app.tasks)
 
     assert unregistered == []
 

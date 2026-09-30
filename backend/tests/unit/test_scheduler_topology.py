@@ -63,6 +63,28 @@ def test_career_monitor_is_registered_in_the_local_beat_schedule() -> None:
     assert schedule["task"] in app.tasks
 
 
+def test_birth_data_refinement_dispatch_is_registered_in_the_beat_schedule() -> None:
+    import workers.tasks  # noqa: F401
+
+    schedule = app.conf.beat_schedule["dispatch-birth-data-refinements"]
+
+    assert schedule["task"] == "profiles.dispatch_birth_data_refinements"
+    assert schedule["schedule"] == 60.0
+    assert schedule["task"] in app.tasks
+
+
+def test_every_beat_schedule_entry_is_a_task_the_worker_can_execute() -> None:
+    """Every scheduled task must be registered, or the worker rejects it with KeyError."""
+
+    import workers.tasks  # noqa: F401
+
+    unregistered = sorted(
+        entry["task"] for entry in app.conf.beat_schedule.values() if entry["task"] not in app.tasks
+    )
+
+    assert unregistered == []
+
+
 def test_staging_has_an_internal_otlp_metrics_collector() -> None:
     compose = _load_compose("docker-compose.staging.yml")
     services = compose["services"]

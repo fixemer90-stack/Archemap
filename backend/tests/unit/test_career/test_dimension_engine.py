@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
+import pytest
+
 from app.modules.astrotype_v2.models import NatalFact
 
 
@@ -59,6 +61,9 @@ def test_engine_returns_all_dimensions_with_deterministic_golden_output() -> Non
     assert all(result.evidence for result in first)
 
     snapshot = {result.dimension.value: (result.score, result.confidence, len(result.evidence)) for result in first}
+    # `people_orientation` holds three distinct sources: the Moon placement in house 7 matches both
+    # the Moon rule and the house_7 rule and is aggregated into one evidence row, so its score and
+    # confidence are unchanged while the persisted row count reflects distinct sources only.
     assert snapshot == {
         "analytical_thinking": (67.0, 1.0, 3),
         "autonomy": (72.0, 1.0, 3),
@@ -68,7 +73,7 @@ def test_engine_returns_all_dimensions_with_deterministic_golden_output() -> Non
         "innovation": (64.0, 0.6667, 2),
         "leadership": (70.5, 1.0, 4),
         "long_term_focus": (67.0, 1.0, 3),
-        "people_orientation": (68.0, 1.0, 4),
+        "people_orientation": (68.0, 1.0, 3),
         "risk_tolerance": (52.0, 0.6667, 3),
         "structure": (67.0, 1.0, 3),
         "systems_thinking": (69.0, 1.0, 3),
@@ -141,6 +146,63 @@ def test_dimension_results_build_persistable_scores_and_evidence() -> None:
     score_ids = {row.id for row in scores}
     assert all(row.dimension_score_id in score_ids for row in evidence)
     assert all(row.source_id is not None for row in evidence)
+    evidence_keys = [(row.dimension_score_id, row.source_type, row.source_id) for row in evidence]
+    assert len(evidence_keys) == len(set(evidence_keys))
+
+
+def test_one_natal_fact_matched_by_two_rules_persists_as_a_single_evidence_row() -> None:
+    """A fact matched by several rules of one dimension must survive the unique key.
+
+    `career_dimension_evidence` is unique per (dimension_score_id, source_type, source_id).
+    `placement:moon:libra:house_7` matches both the Moon rule and the house_7 rule of
+    PEOPLE_ORIENTATION, and `placement:saturn:capricorn:house_2` matches the Saturn rule and
+    the house_2 rule of STRUCTURE, so the matched rules must aggregate into one row instead of
+    aborting the generation with an IntegrityError.
+    """
+
+    from app.modules.career.dimension_engine import score_career_dimensions
+    from app.modules.career.dimension_persistence import build_dimension_rows
+    from app.modules.career.schemas import CareerDimensionKey
+
+    moon_house_seven = _fact("placement:moon:libra:house_7")
+    saturn_house_two = _fact("placement:saturn:capricorn:house_2")
+    scores, evidence = build_dimension_rows(
+        career_profile_id=uuid.uuid4(),
+        chart_id=uuid.UUID(int=1),
+        generation_id=uuid.uuid4(),
+        results=score_career_dimensions([moon_house_seven, saturn_house_two]),
+    )
+
+    evidence_keys = [(row.dimension_score_id, row.source_type, row.source_id) for row in evidence]
+    assert len(evidence_keys) == len(set(evidence_keys))
+
+    score_ids = {
+        CareerDimensionKey.STRUCTURE.value: next(
+            row.id for row in scores if row.dimension == CareerDimensionKey.STRUCTURE.value
+        ),
+        CareerDimensionKey.PEOPLE_ORIENTATION.value: next(
+            row.id for row in scores if row.dimension == CareerDimensionKey.PEOPLE_ORIENTATION.value
+        ),
+    }
+    moon_rows = [
+        row
+        for row in evidence
+        if row.source_id == moon_house_seven.id
+        and row.dimension_score_id == score_ids[CareerDimensionKey.PEOPLE_ORIENTATION.value]
+    ]
+    saturn_rows = [
+        row
+        for row in evidence
+        if row.source_id == saturn_house_two.id
+        and row.dimension_score_id == score_ids[CareerDimensionKey.STRUCTURE.value]
+    ]
+    assert len(moon_rows) == 1
+    assert len(saturn_rows) == 1
+    # Both matching rules keep contributing: 0.10 (placement:moon:) + 0.08 (house_7)
+    assert moon_rows[0].payload["weight"] == pytest.approx(0.18)
+    # 0.12 (placement:saturn:) + 0.08 (house_2)
+    assert saturn_rows[0].payload["weight"] == pytest.approx(0.20)
+    assert moon_rows[0].payload["factor_key"] == "placement:moon:libra:house_7"
 
 
 def test_correlated_family_is_capped_and_evidence_order_is_stable() -> None:

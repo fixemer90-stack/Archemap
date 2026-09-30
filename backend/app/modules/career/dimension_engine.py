@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from uuid import UUID
 
@@ -73,7 +73,7 @@ def _score_dimension(
     dimension: CareerDimensionKey,
     factors: Sequence[CareerFactor],
 ) -> CareerDimensionResult:
-    evidence = [
+    evidence = _merge_rule_matches(
         DimensionEvidence(
             factor_key=factor.factor_key,
             source_type=factor.source_type,
@@ -88,7 +88,7 @@ def _score_dimension(
         for factor in factors
         for rule in FACTOR_RULES
         if rule.dimension is dimension and rule.matches(factor.factor_key)
-    ]
+    )
     capped = _cap_correlated_evidence(evidence)
     families = {item.correlation_family for item in capped if item.contribution != 0}
     raw_score = _clamp(sum(item.contribution for item in capped), -1.0, 1.0)
@@ -102,6 +102,34 @@ def _score_dimension(
         scoring_version=CAREER_SCORING_VERSION,
         evidence=ordered,
     )
+
+
+def _merge_rule_matches(evidence: Iterable[DimensionEvidence]) -> list[DimensionEvidence]:
+    """Aggregate every catalog rule that matched the same natal fact into one evidence row.
+
+    `career_dimension_evidence` is unique per (dimension_score_id, source_type, source_id), and a
+    single fact key can match more than one rule of the same dimension — for example
+    `placement:saturn:capricorn:house_2` matches both ("placement:saturn:",) and ("house_2",)
+    inside STRUCTURE. Summing weight and contribution keeps every matched rule inside the
+    dimension score, because correlated-family capping scales whole families, while the persisted
+    rows stay unique instead of failing the generation with an IntegrityError.
+    """
+
+    merged: dict[tuple[str, UUID], DimensionEvidence] = {}
+    for item in evidence:
+        key = (item.source_type, item.source_id)
+        existing = merged.get(key)
+        if existing is None:
+            merged[key] = item
+            continue
+        contribution = existing.contribution + item.contribution
+        merged[key] = replace(
+            existing,
+            weight=existing.weight + item.weight,
+            contribution=contribution,
+            direction=_direction(contribution),
+        )
+    return list(merged.values())
 
 
 def _cap_correlated_evidence(evidence: Sequence[DimensionEvidence]) -> list[DimensionEvidence]:

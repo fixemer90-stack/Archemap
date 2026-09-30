@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Stage mock rollout, observability и dashboard evidence собраны; legacy readability, canary и production остаются открытыми
+🟡 Stage mock rollout, observability и dashboard evidence собраны; production Career включён 2026-09-30; legacy readability, real-provider canary cost/latency и production report/PDF IDs остаются открытыми
 
 ## Контекст
 
@@ -110,3 +110,14 @@ Career объединяет deterministic scoring, пользовательск�
 - Prometheus target `http://otel-collector:9464/metrics` имеет health `up`. Live readback: `career_operations_total` — 14 series; `career_operation_duration_seconds_count` — 2 series; `career_provider_tokens_token_total` — 2 series со значениями `144297`/`52443`; `career_provider_cost_usd_USD_count` — 1 series со значением `60`.
 - На stage `0` legacy Career report rows; live readability старого reader/PDF не может быть доказана без fixture или отдельного regression evidence.
 - Canary и production Career report/PDF rollout не выполнялись.
+
+## Production evidence 2026-09-30
+
+- В production выкачен релиз `7fc40de9822f15691ff44d7c2c3ac02c3a07213a` (та же revision, что и на stage).
+- Career включён: `.env.production` → `CAREER_REPORT_ENABLED=true` (backup `.env.production.bak-pre-career-enable`), backend и worker пересозданы.
+- Runtime readback: api `CAREER_REPORT_ENABLED=True`, `LLM_PROVIDER=deepseek`; worker `CAREER_REPORT_ENABLED=True`; `LLM_MODEL=deepseek-v4-flash`.
+- Singleton scheduler отправляет `career.monitor_pipeline` каждые 5 минут (4 отправки за 20 минут наблюдения); `KeyError`/`Traceback` в worker за окно — `0`.
+- Public smoke: `/api/v1/health` `200`, `/` `200`, `/products/career` `200`.
+- Аудитория включения — только активный Plus: `self` active `5`, grandfathered `career` `0`.
+- Career-таблицы production пусты до первой генерации; `career_interpretation_facts`/`career_role_matches` создаются генерацией, сидирование не требуется.
+- Границы подтверждения: real-provider canary cost/latency в production не измерены — `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` не задан, метрики не экспортируются; production report/PDF ID живого пользователя пока не записаны. Поэтому критерии `Canary cohort/result...` и `Production smoke report/PDF IDs...` остаются открытыми.

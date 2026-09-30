@@ -56,6 +56,12 @@ const CHOICES: Record<string, Array<{ value: string; label: string }>> = {
   ],
 };
 
+// 404 details emitted by app/modules/career/router.py. The API answers with the same
+// status for a disabled Career surface and for a profile without a v2 chart, so the
+// copy has to branch on the detail instead of blaming the missing chart every time.
+const CAREER_DISABLED_DETAIL = "Career report is not enabled";
+const CAREER_CHART_MISSING_DETAIL = "Profile or v2 chart not found";
+
 function newIdempotencyKey(prefix: string) {
   return `${prefix}:${crypto.randomUUID()}`;
 }
@@ -69,6 +75,17 @@ function errorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
     : "Не удалось продолжить. Попробуйте ещё раз.";
+}
+
+function questionnaireErrorCopy(error: unknown) {
+  if (error instanceof ApiError && error.status === 404) {
+    if (error.message === CAREER_DISABLED_DETAIL)
+      return "Раздел Career пока недоступен. Мы открываем его поэтапно.";
+    if (error.message === CAREER_CHART_MISSING_DETAIL)
+      return "Для профиля ещё нет готовой натальной карты. Сначала постройте основной отчёт.";
+    return "Профиль или натальная карта недоступны. Обновите страницу или выберите другой профиль.";
+  }
+  return errorMessage(error);
 }
 
 export default function CareerProductPage() {
@@ -111,11 +128,7 @@ export default function CareerProductPage() {
     } catch (loadError) {
       if (loadError instanceof ApiError && loadError.status === 402)
         setLocked(true);
-      setError(
-        loadError instanceof ApiError && loadError.status === 404
-          ? "Для профиля ещё нет готовой натальной карты. Сначала постройте основной отчёт."
-          : errorMessage(loadError),
-      );
+      setError(questionnaireErrorCopy(loadError));
     }
   }, []);
 

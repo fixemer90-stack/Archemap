@@ -85,5 +85,18 @@ expect(
   page.includes("openQuestionnaire(preselectedProfile)"),
   "Career product page must open the deep-linked profile questionnaire",
 );
+expect(
+  page.includes("Career report is not enabled") &&
+    page.includes("Profile or v2 chart not found"),
+  "Career page must tell the two Career 404 reasons apart by their API details",
+);
+expect(
+  page.includes("questionnaireErrorCopy(loadError)"),
+  "Career questionnaire load errors must go through the branching copy helper",
+);
+expect(
+  page.includes("Раздел Career пока недоступен"),
+  "A disabled Career surface must not tell the user to build the main report",
+);
 
 console.log("Career product UX contract checks passed");

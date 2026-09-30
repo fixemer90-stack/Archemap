@@ -103,3 +103,24 @@ def test_every_runtime_career_route_has_an_explicit_access_operation_contract() 
 
 def test_career_rollout_flag_is_off_by_default() -> None:
     assert Settings.model_fields["CAREER_REPORT_ENABLED"].default is False
+
+
+def test_disabled_career_surface_reports_a_stable_404_detail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi import HTTPException
+
+    from app.config import settings
+    from app.modules.career.router import _require_feature_enabled
+
+    monkeypatch.setattr(settings, "CAREER_REPORT_ENABLED", False)
+    with pytest.raises(HTTPException) as disabled:
+        _require_feature_enabled()
+
+    assert disabled.value.status_code == 404
+    # The product page branches on this exact detail so a disabled Career surface is
+    # never reported to the user as "no natal chart yet, build the main report first".
+    assert disabled.value.detail == "Career report is not enabled"
+
+    monkeypatch.setattr(settings, "CAREER_REPORT_ENABLED", True)
+    _require_feature_enabled()  # an enabled surface must not raise

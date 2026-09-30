@@ -22,7 +22,7 @@ from app.modules.career.narrative_schemas import (
 )
 from app.modules.career.observability import career_telemetry, estimate_provider_usage
 
-CAREER_PROMPT_VERSION = "career-segment-prompt-3"
+CAREER_PROMPT_VERSION = "career-segment-prompt-4"
 
 _SECTION_METADATA: dict[str, tuple[str, str]] = {
     "professional_summary": ("Ваш профессиональный профиль", "Собрать главную профессиональную механику."),
@@ -165,6 +165,8 @@ No markdown and no text outside JSON.
 Do not calculate scores, invent roles, paths, professions, chart facts, or user answers.
 Profession examples must remain conditional illustrations, never prescriptions.
 Do not promise income, hiring, success, diagnosis, or certainty.
+Never write the phrases «гарантирует», «гарантированный доход», «успешное трудоустройство», «вы уникальны»,
+«раскройте свой потенциал», «найдите баланс», «следуйте своему сердцу».
 Retain contradictions. Mark low-confidence conclusions as conditional.
 If output is cut, request continuation for this same section only.
 Section input:

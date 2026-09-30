@@ -109,6 +109,55 @@ async def test_active_worker_narrative_pipeline_runs_segment_and_assembly_gates(
     assembly_gate.assert_called_once_with(report=report, segment_rows=segment_rows)
 
 
+@pytest.mark.asyncio
+async def test_active_worker_narrative_pipeline_reruns_a_section_rejected_by_the_gates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = _source_report()
+    section_inputs = cast(
+        list[CareerSectionRenderInput],
+        [Mock(section_key="professional_summary")],
+    )
+    rejected = Mock(status="failed", error="career_validation_failure")
+    accepted = Mock(status="ready", error=None)
+    run_gate = AsyncMock(side_effect=[rejected, accepted])
+    monkeypatch.setattr("workers.tasks.career.run_career_segment_generation", run_gate)
+    monkeypatch.setattr("workers.tasks.career.assemble_career_report_row", Mock(return_value=Mock(status="ready")))
+
+    rows, _ = await _run_narrative_quality_pipeline(
+        provider=Mock(),
+        report=report,
+        section_inputs=section_inputs,
+    )
+
+    assert rows == [accepted]
+    assert run_gate.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_active_worker_narrative_pipeline_keeps_a_section_that_failed_for_another_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = _source_report()
+    section_inputs = cast(
+        list[CareerSectionRenderInput],
+        [Mock(section_key="professional_summary")],
+    )
+    unsupported = Mock(status="failed", error="career_contract_mismatch")
+    run_gate = AsyncMock(side_effect=[unsupported])
+    monkeypatch.setattr("workers.tasks.career.run_career_segment_generation", run_gate)
+    monkeypatch.setattr("workers.tasks.career.assemble_career_report_row", Mock(return_value=Mock(status="ready")))
+
+    rows, _ = await _run_narrative_quality_pipeline(
+        provider=Mock(),
+        report=report,
+        section_inputs=section_inputs,
+    )
+
+    assert rows == [unsupported]
+    assert run_gate.await_count == 1
+
+
 def test_monitor_alerts_cover_stuck_pipeline_and_validator_failure_spike() -> None:
     alerts = build_career_monitor_alerts(
         stuck_by_stage={"deterministic": 2, "narrative": 1},

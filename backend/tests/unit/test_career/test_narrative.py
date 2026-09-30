@@ -455,7 +455,8 @@ def test_segment_prompt_pins_the_canonical_output_contract() -> None:
     for token in ('"section_key"', '"title"', '"body"', '"cited_fact_keys"', '"claims"', '"text"', '"fact_keys"'):
         assert token in prompt
     assert 'never "claim"' in prompt
-    assert CAREER_PROMPT_VERSION == "career-segment-prompt-3"
+    assert "«гарантирует»" in prompt
+    assert CAREER_PROMPT_VERSION == "career-segment-prompt-4"
 
 
 @pytest.mark.asyncio

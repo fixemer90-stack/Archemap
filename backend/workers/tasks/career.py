@@ -63,6 +63,47 @@ async def _persist_parent_rows_before_children(
     await repository.add_many(child_rows)
 
 
+_SECTION_RETRY_ERRORS = frozenset({"career_provider_failure", "career_validation_failure"})
+SECTION_GENERATION_ATTEMPTS = 2
+
+
+async def _generate_section(
+    *,
+    provider: CareerSegmentProvider,
+    report: models.CareerReport,
+    section_input: CareerSectionRenderInput,
+) -> models.CareerSegmentGeneration:
+    """Re-ask a section whose answer was unusable, because that verdict is per answer, not per section.
+
+    A live model can slip a banned phrase or an uncited claim once and answer the very same section
+    correctly on the next try, while the editorial gates stay strict. Only the final row is returned,
+    so a rejected attempt never reaches the report.
+    """
+
+    row = await run_career_segment_generation(
+        provider=provider,
+        section_input=section_input,
+        career_profile_id=report.career_profile_id,
+        chart_id=report.chart_id,
+        generation_id=report.generation_id,
+    )
+    attempts = 1
+    while (
+        attempts < SECTION_GENERATION_ATTEMPTS
+        and getattr(row, "status", "ready") != "ready"
+        and getattr(row, "error", None) in _SECTION_RETRY_ERRORS
+    ):
+        attempts += 1
+        row = await run_career_segment_generation(
+            provider=provider,
+            section_input=section_input,
+            career_profile_id=report.career_profile_id,
+            chart_id=report.chart_id,
+            generation_id=report.generation_id,
+        )
+    return row
+
+
 async def _run_narrative_quality_pipeline(
     *,
     provider: CareerSegmentProvider,
@@ -74,13 +115,7 @@ async def _run_narrative_quality_pipeline(
     segment_rows = list(
         await asyncio.gather(
             *(
-                run_career_segment_generation(
-                    provider=provider,
-                    section_input=section_input,
-                    career_profile_id=report.career_profile_id,
-                    chart_id=report.chart_id,
-                    generation_id=report.generation_id,
-                )
+                _generate_section(provider=provider, report=report, section_input=section_input)
                 for section_input in section_inputs
             )
         )

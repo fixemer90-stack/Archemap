@@ -107,6 +107,14 @@ Career включён в production на revision `7fc40de9822f15691ff44d7c2c3ac
 - production report/PDF ID: end-to-end генерация живым пользователем после включения не выполнялась;
 - canary cost/latency: `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` в production не задан, поэтому Career-метрики (duration, tokens, cost) в production не экспортируются — сравнение outcomes/latency/cost возможно только по БД и логам scheduler (`career_pipeline_alert`).
 
+Первая живая генерация после включения выявила три дефекта, которые не были видны на mock-provider (stage). Все три закрыты в production отдельными коммитами:
+
+- `e0aa84c` — evidence collide внутри одной размерности (`uq_career_dimension_evidence_source`);
+- `b448b61` — ответ живого provider не проходил контракт секции, потому что промпт не перечислял поля (`career-segment-prompt-3`), а падение провайдера писалось пустым payload;
+- `4bd31a4` — секция губилась без повтора при стохастическом провале редакционного гейта (`career-segment-prompt-4`).
+
+Закрытие подтверждено живой генерацией: `ffac0556-ac76-4083-ba3b-3c5890596b3f` → отчёт `2b7e4d6f-6ff5-439c-9422-f9ef500d9e8e` со статусом `ready` и 10/10 секций `ready` на `career-segment-prompt-4`. Подробности, evidence и оставшиеся ограничения — в `S12-qa-observability-rollout.md`, раздел «Production defects and fixes 2026-09-30 → 10-01».
+
 ### S14 — stage publication
 
 На stage опубликован exact SHA `20dcfbfce5ed1e2cb540261e4a1223683b89d7a7`; marker прочитан обратно. Backend, worker, singleton scheduler, frontend и OTEL collector запущены. Runtime использует `CAREER_REPORT_ENABLED=true`, `LLM_ENABLED=true`, `LLM_PROVIDER=mock`; в live OpenAPI присутствуют все 10 Career routes.

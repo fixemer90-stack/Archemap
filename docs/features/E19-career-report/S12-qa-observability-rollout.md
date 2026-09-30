@@ -121,3 +121,35 @@ Career объединяет deterministic scoring, пользовательск�
 - Аудитория включения — только активный Plus: `self` active `5`, grandfathered `career` `0`.
 - Career-таблицы production пусты до первой генерации; `career_interpretation_facts`/`career_role_matches` создаются генерацией, сидирование не требуется.
 - Границы подтверждения: real-provider canary cost/latency в production не измерены — `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` не задан, метрики не экспортируются; production report/PDF ID живого пользователя пока не записаны. Поэтому критерии `Canary cohort/result...` и `Production smoke report/PDF IDs...` остаются открытыми.
+
+## Production defects and fixes 2026-09-30 → 10-01
+
+Три дефекта обнаружены при первой живой генерации на реальном provider после включения Career. Все три закрыты отдельными коммитами, каждый со regression-тестом, гейтами на чистом worktree и проверкой внутри развёрнутого образа.
+
+### 1. Evidence collide внутри одной размерности — `e0aa84c`
+
+- Симптом: `IntegrityError UniqueViolationError` на `uq_career_dimension_evidence_source`, обе генерации упали, `career_reports` пуст.
+- Корень: `FACTOR_RULES` матчатся подстрокой, поэтому факт `placement:saturn:capricorn:house_2` матчил сразу два правила одной размерности (`"placement:saturn:"` вес 0.12 и `"house_2"` вес 0.08) → две строки evidence с одинаковым `(dimension_score_id, source_type, source_id)`.
+- Фикс: `_merge_rule_matches` агрегирует совпавшие по факту правила в одну строку (веса суммируются, скор и confidence не меняются).
+- Evidence: RED-тест падал 38/37 и 10/8; golden-снимок изменил только счётчик evidence `people_orientation` 4→3 при неизменных score 68.0 / confidence 1.0; реплей на реальных 104 фактах прод-карты — 3 коллизии до фикса (88→85 строк, включая `source_id=6b1bb5b1…` из прод-лога) и 0 после.
+
+### 2. Ответ живого provider не проходил контракт секции — `b448b61`
+
+- Симптом: все 10 секций `career_provider_failure`, отчёт `narrative_failed`, при этом 10× `200 OK` от `api.deepseek.com` и пустой `output_payload` у секции.
+- Диагностика: реплей внутри прод-контейнера на сохранённом `input_payload`. Модель возвращала валидный JSON, но с другими именами полей: `section_title` вместо `title`, `claims[].claim` вместо `claims[].text`, одиночный `fact_key` вместо `fact_keys`, без `cited_fact_keys`. Схема объявлена `extra="forbid"`, поэтому каждый ответ отвергался; исключение провайдера проглатывалось в `career_provider_failure` с пустым payload — отсюда «тишина» в логах.
+- Корень: промпт требовал «JSON matching career_segment_output_v2», не перечисляя полей.
+- Фикс: промпт перечисляет точный контракт (`career-segment-prompt-3`); провайдер нормализует живой дрейф имён на каноническую схему; падение провайдера пишет безопасную диагностику (`error_code`, `error_type`, детали без прозы модели).
+- Evidence: RED на коде без фикса (та же ошибка схемы, что в проде); живой реплей после фикса — сырой ответ содержит `title`/`cited_fact_keys`/`claims[].text`/`claims[].fact_keys` и валидируется **без** нормализации (10 claims, 12 cited); 597 unit-тестов; CI `36776789117` и `Build & Push Images` `36776789507` — success.
+
+### 3. Секция губилась без повтора — `4bd31a4`
+
+- Симптом: после фикса №2 генерация `a552e1c4-045c-4412-9909-a6741e2c1681` (отчёт `65c46588-c7b0-4088-a45c-acbf0f99a6de`) дошла до 8/10 секций и осталась в `generating_sections`; две секции — `professional_summary` и `leadership_and_influence` — `career_validation_failure`.
+- Диагностика: 3 живых прогона каждой упавшей секции. `leadership_and_influence` — 3/3 pass; `professional_summary` — 2/3 pass, одно падение по правилу `career overclaim` (в теле встречается `гарантирует`). То есть вердикт гейта зависит от конкретного ответа, а пайплайн спрашивал секцию ровно один раз.
+- Фикс: пайплайн переспрашивает секцию, если её вердикт — `career_provider_failure` или `career_validation_failure` (до 2 попыток, персистится только финальная строка); в промпт добавлен явный список запрещённых формулировок (`career-segment-prompt-4`). Гейты не ослаблены.
+- Evidence: 601 unit-тест, включая два новых теста пайплайна (переспрос при провале гейта и отсутствие переспроса при другой причине); живая генерация `ffac0556-ac76-4083-ba3b-3c5890596b3f` → отчёт `2b7e4d6f-6ff5-439c-9422-f9ef500d9e8e` со статусом `ready` и 10/10 секций `ready` на `career-segment-prompt-4`.
+
+### Что остаётся открытым после этих фиксов
+
+- Повторный прогон **той же** генерации не идемпотентен: детерминированная стадия вставляет `career_dimension_scores` заново и падает на `uq_career_dimension_scores_generation_dimension`. Первичной генерации это не мешает (каждое действие пользователя создаёт новую), но ломает ручной повтор и возможный редиспат beat-монитором.
+- Строки `14fa7536-4400-4856-88d0-232f1922532b` и `a552e1c4-045c-4412-9909-a6741e2c1681` остаются в нетерминальных статусах (`failed`, `generating_sections`) как след ретраев; продовые данные при диагностике не удалялись.
+- Canary cost/latency и production report/PDF ID живого пользователя по-прежнему не подтверждены (OTLP endpoint в production не задан).

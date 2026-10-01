@@ -171,3 +171,41 @@ Dashboard gap закрыт 29 сентября 2026 года revision `4c1423ccd
 - Canary и production Career report/PDF rollout не выполнялись; production проверялась только на non-regression health/frontend.
 - Production Career rollout выполнен 2026-09-30: флаг включён, runtime и scheduler подтверждены. Открыто: report/PDF ID живого пользователя и canary cost/latency (на production не задан OTLP endpoint).
 - Career product page больше не трактует выключенный Career как отсутствие натальной карты: причины `404` разведены по detail, copy закреплён статической UX-проверкой.
+
+## 7. Дизайн-дефект: каталог ролей покрывает только офисно-интеллектуальную занятость
+
+Зафиксирован 2026-10-01 при разборе живой генерации `ffac0556-ac76-4083-ba3b-3c5890596b3f` (отчёт `2b7e4d6f-6ff5-439c-9422-f9ef500d9e8e`, статус `ready`). Сборку отчёта не блокирует, но сужает продуктовый смысл Career: итог читается как общий и привязанный к офисно-ИТ-спектру.
+
+### Симптом
+
+И типы ролей, и траектории, и примеры профессий выходят одинаково «офисными». Творческие и рабочие (практические) профессии в отчёте не появляются ни в одной секции.
+
+### Evidence
+
+- Живой отчёт, секция `role_families`: «перечислены девять семейств ролей: управление, операционная деятельность, стратегия, продукт, архитектура, аналитика, исследования, консалтинг и предпринимательство»; иллюстрации — `Engineering Manager`, `Department Head`, `Operations Lead`, `Program Manager`, `Strategy Lead`, `Corporate Strategist`, `Product Manager`, `Solution Architect`, `Lead Engineer`.
+- Живой отчёт, секция `career_paths`: траектории `team_lead → people_manager → department_head` и `operations_specialist → operations_manager → operations_director`.
+- `backend/app/modules/career/role_matching.py`, `ROLE_CATALOG` (версия `career-role-catalog-1`): девять семейств, все офисно-интеллектуальные; поле `profession_examples` содержит 18 примеров, все корпоративные/ИТ.
+- `backend/app/modules/career/career_paths.py`: граф переходов ключуется теми же `role_family_key`, поэтому траектории наследуют офисную рамку.
+- `backend/app/modules/career/archetype_engine.py`, `ARCHETYPE_CATALOG` (версия `career-archetypes-1`): архетипы `architect`, `strategist`, `specialist` — метафоры умственного труда.
+- `backend/app/modules/career/environment_engine.py`, `_AXIS_WEIGHTS`: оси `structured_flexible`, `stable_dynamic`, `individual_collaborative`, `expert_managerial`, `operational_strategic`, `predictable_experimental`, `supportive_competitive`, `small_team_large_organization`, `local_global`, `execution_ownership` описывают организационный контекст, а не характер занятости.
+- `backend/app/modules/career/questionnaire.py`: шкалы `leadership_responsibility`, `people_management_motivation`, `autonomy_importance`, `collaboration_preference` предполагают команду и офисный формат.
+
+### Корень
+
+Структурные секции — не свободный текст модели, а рендер детерминированного каталога. Контракт секции требует, чтобы `cited_fact_keys` покрывали все owned-факты и не выходили за известные, поэтому `role_families` и `career_paths` не могут упомянуть семейство, которого нет в каталоге: модель лишь иллюстрирует предоставленный набор примеров, отсюда повторы `Solution Architect` / `Product Manager` в разных отчётах. Правкой промпта дефект не закрывается — изменится проза, но не состав классов и траекторий.
+
+Единственное место, где реальная профессия пользователя входит в контекст, — свободные поля анкеты `current_activity`, `change_goal`, `current_constraints`; промпт не требует опираться на них при выборе иллюстраций.
+
+### Что нужно для закрытия
+
+1. Расширить `ROLE_CATALOG` семействами, покрывающими весь спектр занятости, с весами по dimensions/осям и 2–3 примерами каждое: изобразительное творчество, слово и медиа, исполнительские искусства, ремесло и ручная работа, практическая техника, забота и сервис, земля и природа, торговля и полевая работа. Требуется бамп `ROLE_CATALOG_VERSION` и обновление golden-снимков.
+2. Расширить словарь осей среды и preference keys за пределы корпоративной лестницы: практика против абстракции, работа руками, аудитория/сцена, штучное против потока, клиент против системы.
+3. Синхронизировать каталог архетипов и формулировки анкеты, чтобы офисная предпосылка не осталась в других слоях.
+4. Промпт: требовать иллюстрации по всему спектру занятости и опоры на `current_activity` пользователя.
+5. Обновить критерии и evidence S04, S05, S06 и пересчитать golden evidence.
+
+### Границы
+
+- Дефект **не закрыт**. Выданные ранее отчёты остаются на версиях каталога, на которых были собраны.
+- Критерий S06 «Профессии не появляются раньше role families» выполняется формально, но покрытие спектра занятости не подтверждено.
+- Продуктовое решение о полном спектре и приоритет — за владельцем продукта: расширение каталога меняет скоринг, то есть это отдельный релиз с новыми версиями каталогов, а не правка промпта.

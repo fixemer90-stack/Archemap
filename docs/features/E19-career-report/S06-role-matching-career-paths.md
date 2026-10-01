@@ -41,3 +41,9 @@
 - `backend/app/modules/career/career_paths.py` — versioned deterministic graph, 2–3 preference-sensitive path и explicit archetypal limitations при неполном контексте.
 - `backend/tests/unit/test_career/test_role_matching_paths.py` — catalog/category, explainability, low-evidence, preference-sensitive path и persistence contracts.
 - `uv run pytest tests/unit/test_career/test_role_matching_paths.py -q` → `6 passed`.
+
+## Известный дизайн-дефект
+
+Каталог ролей (версия `career-role-catalog-1`) покрывает только офисно-интеллектуальную занятость: девять семейств, 18 примеров профессий, ни одного творческого или рабочего (практического). Траектории наследуют ту же рамку, так как граф ключуется теми же `role_family_key`.
+
+Зафиксирован 2026-10-01 в `AUDIT-2026-09-26-discrepancies.md`, раздел 7, вместе с evidence из живого отчёта `2b7e4d6f-6ff5-439c-9422-f9ef500d9e8e` и объёмом работ по закрытию. Правкой промпта не закрывается: структурные секции рендерятся из каталога, поэтому нужен бамп `ROLE_CATALOG_VERSION` и новый релиз.

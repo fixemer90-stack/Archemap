@@ -80,7 +80,6 @@ export interface CareerDimensionItem {
   score: number;
   confidence: number | null;
   confidence_label: string;
-  explanation: string;
 }
 
 export interface CareerContradictionItem {
@@ -111,6 +110,7 @@ export type CareerPresentationBlock =
       kind: "dimensions";
       key: "dimensions";
       title: string;
+      note: string;
       items: CareerDimensionItem[];
     }
   | {
@@ -252,6 +252,7 @@ export function buildCareerReportPresentation(
     kind: "dimensions",
     key: "dimensions",
     title: "Выраженные рабочие тенденции",
+    note: DIMENSION_EXPLANATION,
     items: records(deterministic.top_dimensions).map((item) => {
       const key = text(item.dimension);
       const confidence = numberOrNull(item.confidence);
@@ -264,28 +265,33 @@ export function buildCareerReportPresentation(
           confidence !== null && confidence >= 0.75
             ? "Основания согласованы"
             : "Лучше проверить на опыте",
-        explanation: DIMENSION_EXPLANATION,
       };
     }),
   });
 
-  blocks.push({
-    kind: "contradictions",
-    key: "contradictions",
-    title: "Полезные развилки",
-    items: records(deterministic.contradictions).map((item) => {
-      const key = text(item.code, "contextual_tension");
-      return {
-        key,
-        label:
-          CONTRADICTION_LABELS[key] ??
-          "Способность и мотивация могут проявляться по-разному; проверьте вывод в контексте реальной роли.",
-        fact_key: text(item.fact_key),
-        capability_score: numberOrNull(item.capability_score),
-        motivation_score: numberOrNull(item.motivation_score),
-      };
-    }),
+  const contradictionItems: CareerContradictionItem[] = records(
+    deterministic.contradictions,
+  ).map((item) => {
+    const key = text(item.code, "contextual_tension");
+    return {
+      key,
+      label:
+        CONTRADICTION_LABELS[key] ??
+        "Способность и мотивация могут проявляться по-разному; проверьте вывод в контексте реальной роли.",
+      fact_key: text(item.fact_key),
+      capability_score: numberOrNull(item.capability_score),
+      motivation_score: numberOrNull(item.motivation_score),
+    };
   });
+
+  if (contradictionItems.length > 0) {
+    blocks.push({
+      kind: "contradictions",
+      key: "contradictions",
+      title: "Полезные развилки",
+      items: contradictionItems,
+    });
+  }
 
   blocks.push({
     kind: "context",

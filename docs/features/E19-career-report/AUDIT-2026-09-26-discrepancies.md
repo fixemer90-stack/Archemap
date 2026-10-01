@@ -189,6 +189,7 @@ Dashboard gap закрыт 29 сентября 2026 года revision `4c1423ccd
 - `backend/app/modules/career/archetype_engine.py`, `ARCHETYPE_CATALOG` (версия `career-archetypes-1`): архетипы `architect`, `strategist`, `specialist` — метафоры умственного труда.
 - `backend/app/modules/career/environment_engine.py`, `_AXIS_WEIGHTS`: оси `structured_flexible`, `stable_dynamic`, `individual_collaborative`, `expert_managerial`, `operational_strategic`, `predictable_experimental`, `supportive_competitive`, `small_team_large_organization`, `local_global`, `execution_ownership` описывают организационный контекст, а не характер занятости.
 - `backend/app/modules/career/questionnaire.py`: шкалы `leadership_responsibility`, `people_management_motivation`, `autonomy_importance`, `collaboration_preference` предполагают команду и офисный формат.
+- Язык примеров: все 18 `profession_examples` записаны по-английски (`Solution Architect`, `Product Manager`, `Engineering Manager`), и отчёт показывает их пользователю как есть — русскоязычный читатель получает англоязычные названия профессий.
 
 ### Корень
 
@@ -202,7 +203,8 @@ Dashboard gap закрыт 29 сентября 2026 года revision `4c1423ccd
 2. Расширить словарь осей среды и preference keys за пределы корпоративной лестницы: практика против абстракции, работа руками, аудитория/сцена, штучное против потока, клиент против системы.
 3. Синхронизировать каталог архетипов и формулировки анкеты, чтобы офисная предпосылка не осталась в других слоях.
 4. Промпт: требовать иллюстрации по всему спектру занятости и опоры на `current_activity` пользователя.
-5. Обновить критерии и evidence S04, S05, S06 и пересчитать golden evidence.
+5. Примеры профессий давать на русском: сейчас весь каталог англоязычный и показывается пользователю как есть, а отчёт целиком русскоязычный.
+6. Обновить критерии и evidence S04, S05, S06 и пересчитать golden evidence.
 
 ### Границы
 

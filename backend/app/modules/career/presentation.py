@@ -144,7 +144,6 @@ def build_career_report_presentation(report_payload: dict[str, Any]) -> dict[str
                     if confidence is not None and confidence >= 0.75
                     else "Лучше проверить на опыте"
                 ),
-                "explanation": _DIMENSION_EXPLANATION,
             }
         )
     blocks.append(
@@ -152,6 +151,7 @@ def build_career_report_presentation(report_payload: dict[str, Any]) -> dict[str
             "kind": "dimensions",
             "key": "dimensions",
             "title": "Выраженные рабочие тенденции",
+            "note": _DIMENSION_EXPLANATION,
             "items": dimension_items,
         }
     )
@@ -171,14 +171,15 @@ def build_career_report_presentation(report_payload: dict[str, Any]) -> dict[str
                 "motivation_score": _number(item.get("motivation_score")),
             }
         )
-    blocks.append(
-        {
-            "kind": "contradictions",
-            "key": "contradictions",
-            "title": "Полезные развилки",
-            "items": contradiction_items,
-        }
-    )
+    if contradiction_items:
+        blocks.append(
+            {
+                "kind": "contradictions",
+                "key": "contradictions",
+                "title": "Полезные развилки",
+                "items": contradiction_items,
+            }
+        )
 
     blocks.append(
         {

@@ -45,14 +45,15 @@ def _dimension_block(block: dict[str, Any]) -> str:
             '<article class="metric">'
             f"<h3>{html.escape(_text(item.get('label')))}</h3>"
             f"<strong>{html.escape(str(item.get('score', 0)))}</strong>"
-            f"<p>{html.escape(_text(item.get('explanation')))}</p>"
             + (f'<p class="muted">Уверенность: {html.escape(confidence.lower())}.</p>' if confidence else "")
             + "</article>"
         )
+    note = _text(block.get("note"))
     return (
         '<section class="evidence" data-presentation-key="dimensions">'
         f'<div class="eyebrow">Практические акценты</div><h2>{html.escape(_text(block.get("title")))}</h2>'
-        f'<div class="grid">{"".join(cards)}</div></section>'
+        + (f'<p class="muted">{html.escape(note)}</p>' if note else "")
+        + f'<div class="grid">{"".join(cards)}</div></section>'
     )
 
 

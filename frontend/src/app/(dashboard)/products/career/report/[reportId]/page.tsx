@@ -141,7 +141,7 @@ export default function CareerReportPage() {
       <header className="relative grid overflow-hidden rounded-[28px] border border-[#D7B466]/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.18),transparent_40%),linear-gradient(145deg,#151c2a,#0d131f)] p-7 shadow-2xl sm:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-[#D7B466]">
-            Astrotype Career · версия {payload.version}
+            Astrotype Career
           </p>
           <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-cormorant)] text-4xl font-semibold leading-tight sm:text-6xl">
             Профессиональная механика без готовых ярлыков
@@ -268,9 +268,6 @@ export default function CareerReportPage() {
                   {Math.round(dimension.score)}
                 </strong>
               </div>
-              <p className="mt-3 text-xs leading-5 text-[#AEB9CA]">
-                {dimension.explanation}
-              </p>
               {dimension.confidence !== null && (
                 <p className="mt-3 text-xs text-[#8795AA]">
                   <CareerTerm term="Уверенность" />:{" "}
@@ -284,46 +281,50 @@ export default function CareerReportPage() {
 
       {(report.contradictions.length > 0 || report.context.length > 0) && (
         <section className="grid gap-5 md:grid-cols-2">
-          <div
-            data-presentation-key="contradictions"
-            className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
-          >
-            <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
-              Полезные развилки
-            </h2>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
-              {report.contradictions.map((item) => (
-                <li key={item.key}>
-                  — {item.label}
-                  {(item.capability_score !== null ||
-                    item.motivation_score !== null) && (
-                    <span className="block text-xs text-[#8795AA]">
-                      {item.capability_score !== null &&
-                        `Способность: ${item.capability_score}`}
-                      {item.capability_score !== null &&
-                        item.motivation_score !== null &&
-                        " · "}
-                      {item.motivation_score !== null &&
-                        `Мотивация: ${item.motivation_score}`}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div
-            data-presentation-key="context"
-            className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
-          >
-            <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
-              Учтённый контекст
-            </h2>
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
-              {report.context.map((item) => (
-                <li key={item.key}>— {item.label}</li>
-              ))}
-            </ul>
-          </div>
+          {report.contradictions.length > 0 && (
+            <div
+              data-presentation-key="contradictions"
+              className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+            >
+              <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
+                Полезные развилки
+              </h2>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
+                {report.contradictions.map((item) => (
+                  <li key={item.key}>
+                    — {item.label}
+                    {(item.capability_score !== null ||
+                      item.motivation_score !== null) && (
+                      <span className="block text-xs text-[#8795AA]">
+                        {item.capability_score !== null &&
+                          `Способность: ${item.capability_score}`}
+                        {item.capability_score !== null &&
+                          item.motivation_score !== null &&
+                          " · "}
+                        {item.motivation_score !== null &&
+                          `Мотивация: ${item.motivation_score}`}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {report.context.length > 0 && (
+            <div
+              data-presentation-key="context"
+              className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+            >
+              <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
+                Учтённый контекст
+              </h2>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
+                {report.context.map((item) => (
+                  <li key={item.key}>— {item.label}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 

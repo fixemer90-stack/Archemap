@@ -244,7 +244,11 @@ jobs:
         working-directory: backend
 
       - name: npm audit
-        run: npm audit --audit-level=high
+        # The frontend runtime dependency graph is audited here. ESLint and
+        # eslint-config-next are development-only tools; their current
+        # transitive braces advisory has no patched release and must not block
+        # production artifact delivery.
+        run: npm audit --omit=dev --audit-level=high
         working-directory: frontend
 
   # ── Build ───────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ from app.modules.career.models import CareerEnvironmentAxis
 from app.modules.career.profile_resolver import CareerProfileResolution
 from app.modules.career.schemas import CareerDimensionKey
 
-ENVIRONMENT_SCORING_VERSION = "career-environment-1"
+ENVIRONMENT_SCORING_VERSION = "career-environment-2"
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,37 @@ _AXIS_WEIGHTS: dict[str, dict[CareerDimensionKey, float]] = {
     "small_team_large_organization": {CareerDimensionKey.PEOPLE_ORIENTATION: 0.5, CareerDimensionKey.STRUCTURE: 0.5},
     "local_global": {CareerDimensionKey.COMMUNICATION: 0.4, CareerDimensionKey.LONG_TERM_FOCUS: 0.6},
     "execution_ownership": {CareerDimensionKey.AUTONOMY: 0.6, CareerDimensionKey.LEADERSHIP: 0.4},
+    # Scores increase toward the right-hand pole named in each key.
+    "practical_abstract": {
+        CareerDimensionKey.EXECUTION: -0.35,
+        CareerDimensionKey.CREATIVITY: -0.15,
+        CareerDimensionKey.ANALYTICAL_THINKING: 0.25,
+        CareerDimensionKey.SYSTEMS_THINKING: 0.25,
+    },
+    "conceptual_hands_on": {
+        CareerDimensionKey.ANALYTICAL_THINKING: -0.3,
+        CareerDimensionKey.SYSTEMS_THINKING: -0.2,
+        CareerDimensionKey.EXECUTION: 0.35,
+        CareerDimensionKey.CREATIVITY: 0.15,
+    },
+    "behind_scenes_audience_stage": {
+        CareerDimensionKey.STRUCTURE: -0.2,
+        CareerDimensionKey.AUTONOMY: -0.15,
+        CareerDimensionKey.COMMUNICATION: 0.4,
+        CareerDimensionKey.PEOPLE_ORIENTATION: 0.35,
+    },
+    "one_off_flow": {
+        CareerDimensionKey.CREATIVITY: -0.3,
+        CareerDimensionKey.INNOVATION: -0.2,
+        CareerDimensionKey.STRUCTURE: 0.25,
+        CareerDimensionKey.EXECUTION: 0.25,
+    },
+    "client_system": {
+        CareerDimensionKey.PEOPLE_ORIENTATION: -0.35,
+        CareerDimensionKey.COMMUNICATION: -0.15,
+        CareerDimensionKey.SYSTEMS_THINKING: 0.3,
+        CareerDimensionKey.ANALYTICAL_THINKING: 0.2,
+    },
 }
 
 

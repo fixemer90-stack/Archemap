@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
 from app.modules.career.dimension_engine import CareerDimensionResult
@@ -10,13 +10,14 @@ from app.modules.career.models import CareerArchetypeScore
 from app.modules.career.profile_resolver import CareerProfileResolution
 from app.modules.career.schemas import CareerDimensionKey
 
-ARCHETYPE_SCORING_VERSION = "career-archetypes-1"
+ARCHETYPE_SCORING_VERSION = "career-archetypes-2"
 
 
 @dataclass(frozen=True)
 class ArchetypeDefinition:
     key: str
     weights: dict[CareerDimensionKey, float]
+    preference_boosts: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,46 @@ ARCHETYPE_CATALOG: tuple[ArchetypeDefinition, ...] = (
             CareerDimensionKey.INNOVATION: 0.15,
         },
     ),
+    ArchetypeDefinition(
+        "maker",
+        {
+            CareerDimensionKey.EXECUTION: 0.35,
+            CareerDimensionKey.CREATIVITY: 0.3,
+            CareerDimensionKey.STRUCTURE: 0.2,
+            CareerDimensionKey.AUTONOMY: 0.15,
+        },
+        {"hands_on:hands_on": 14, "work_mode:practical": 8, "production_mode:one_off": 5},
+    ),
+    ArchetypeDefinition(
+        "performer",
+        {
+            CareerDimensionKey.CREATIVITY: 0.35,
+            CareerDimensionKey.COMMUNICATION: 0.3,
+            CareerDimensionKey.PEOPLE_ORIENTATION: 0.2,
+            CareerDimensionKey.EXECUTION: 0.15,
+        },
+        {"audience:stage": 16, "audience:audience": 8},
+    ),
+    ArchetypeDefinition(
+        "practitioner",
+        {
+            CareerDimensionKey.EXECUTION: 0.4,
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.2,
+            CareerDimensionKey.STRUCTURE: 0.2,
+            CareerDimensionKey.AUTONOMY: 0.2,
+        },
+        {"work_mode:practical": 10, "hands_on:hands_on": 10, "service_focus:system": 4},
+    ),
+    ArchetypeDefinition(
+        "caregiver_service",
+        {
+            CareerDimensionKey.PEOPLE_ORIENTATION: 0.4,
+            CareerDimensionKey.COMMUNICATION: 0.25,
+            CareerDimensionKey.EXECUTION: 0.2,
+            CareerDimensionKey.STRUCTURE: 0.15,
+        },
+        {"service_focus:client": 14, "work_mode:practical": 5},
+    ),
 )
 
 
@@ -154,6 +195,9 @@ def _match_one(
         evidence.append(key.value)
 
     preferences = set(resolution.preferences)
+    for preference, boost in definition.preference_boosts.items():
+        if preference in preferences:
+            score += boost
     if definition.key == "leader" and "manager" in preferences:
         score += 10
     if definition.key == "specialist" and "expert" in preferences:

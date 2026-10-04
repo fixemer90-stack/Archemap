@@ -9,7 +9,7 @@ from app.modules.career.models import CareerPathStep, CareerRoleMatch
 from app.modules.career.profile_resolver import CareerProfileResolution
 from app.modules.career.role_matching import RoleMatchResult
 
-CAREER_PATH_GRAPH_VERSION = "career-path-graph-1"
+CAREER_PATH_GRAPH_VERSION = "career-path-graph-2"
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,14 @@ _GRAPH: dict[str, tuple[str, ...]] = {
     "research": ("research_contributor", "senior_researcher", "research_lead"),
     "management": ("team_lead", "people_manager", "department_head"),
     "entrepreneurship": ("venture_experiment", "venture_builder", "founder_operator"),
+    "visual_arts": ("guided_visual_practice", "independent_visual_creator", "artistic_direction"),
+    "word_and_media": ("content_contributor", "independent_author_editor", "editorial_direction"),
+    "performing_arts": ("ensemble_or_studio_practice", "professional_performer", "creative_production_lead"),
+    "craft_and_manual_work": ("apprentice_craft_practice", "independent_craftsperson", "workshop_master"),
+    "practical_technology": ("technical_apprentice", "field_technician", "technical_service_lead"),
+    "care_and_service": ("service_practitioner", "senior_care_specialist", "service_practice_lead"),
+    "land_and_nature": ("field_practitioner", "independent_land_specialist", "land_program_lead"),
+    "sales_and_field_work": ("field_representative", "territory_specialist", "field_team_lead"),
 }
 
 
@@ -68,7 +76,9 @@ def build_career_paths(
 
     results: list[CareerPathResult] = []
     for match in selected:
-        nodes = _GRAPH[match.role_family_key]
+        nodes = _GRAPH.get(match.role_family_key)
+        if nodes is None:
+            continue
         steps = tuple(
             CareerPathNode(
                 node_key=node,

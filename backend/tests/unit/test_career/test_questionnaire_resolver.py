@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -45,10 +47,16 @@ def _completed_answers() -> dict[str, object]:
 def test_question_bank_is_versioned_and_covers_all_mvp_domains() -> None:
     from app.modules.career.questionnaire import QUESTION_BANK, QUESTIONNAIRE_VERSION
 
-    assert QUESTIONNAIRE_VERSION == "career-q-1"
-    assert 8 <= len(QUESTION_BANK) <= 12
-    assert {question.key for question in QUESTION_BANK} == set(_completed_answers())
-    assert all(question.required for question in QUESTION_BANK)
+    assert QUESTIONNAIRE_VERSION == "career-q-2"
+    assert len(QUESTION_BANK) == 15
+    assert {question.key for question in QUESTION_BANK if question.required} == set(_completed_answers())
+    assert {question.key for question in QUESTION_BANK if not question.required} == {
+        "work_mode_preference",
+        "hands_on_preference",
+        "audience_preference",
+        "production_mode_preference",
+        "service_focus_preference",
+    }
     assert {question.domain for question in QUESTION_BANK} >= {
         "leadership",
         "people_management",
@@ -142,6 +150,192 @@ def test_low_confidence_dimensions_remain_explicit_ambiguities() -> None:
     )
 
     assert resolution.unresolved_ambiguities == ("low_confidence:innovation",)
+
+
+def test_optional_occupational_preferences_keep_q1_payload_compatible_and_emit_namespaced_keys() -> None:
+    from app.modules.career.profile_resolver import RESOLVER_VERSION, resolve_career_profile
+    from app.modules.career.questionnaire import CareerQuestionnaireCompleted
+
+    legacy = CareerQuestionnaireCompleted.model_validate(_completed_answers())
+    assert legacy.work_mode_preference is None
+
+    answers = CareerQuestionnaireCompleted.model_validate(
+        {
+            **_completed_answers(),
+            "work_mode_preference": "practical",
+            "hands_on_preference": "hands_on",
+            "audience_preference": "stage",
+            "production_mode_preference": "one_off",
+            "service_focus_preference": "client",
+        }
+    )
+    resolution = resolve_career_profile(dimensions=[], answers=answers)
+
+    assert RESOLVER_VERSION == "career-resolver-2"
+    assert set(resolution.preferences) >= {
+        "work_mode:practical",
+        "hands_on:hands_on",
+        "audience:stage",
+        "production_mode:one_off",
+        "service_focus:client",
+    }
+
+
+def test_completed_q1_answers_seed_an_editable_q2_session() -> None:
+    from app.modules.career.models import CareerAnswer
+    from app.modules.career.questionnaire import QUESTIONNAIRE_VERSION
+    from app.modules.career.router import _migrate_questionnaire_answer_rows
+
+    chart_id = uuid.uuid4()
+    source_session_id = uuid.uuid4()
+    target_session_id = uuid.uuid4()
+    source_rows = [
+        CareerAnswer(
+            questionnaire_session_id=source_session_id,
+            chart_id=chart_id,
+            question_key=key,
+            answer={"value": value},
+            answer_version="career-q-1",
+        )
+        for key, value in _completed_answers().items()
+    ]
+
+    migrated = _migrate_questionnaire_answer_rows(
+        source_rows=source_rows,
+        target_session_id=target_session_id,
+        chart_id=chart_id,
+    )
+
+    assert QUESTIONNAIRE_VERSION == "career-q-2"
+    assert {row.question_key for row in migrated} == set(_completed_answers())
+    assert all(row.questionnaire_session_id == target_session_id for row in migrated)
+    assert all(row.answer_version == "career-q-2" for row in migrated)
+    assert not {
+        "work_mode_preference",
+        "hands_on_preference",
+        "audience_preference",
+        "production_mode_preference",
+        "service_focus_preference",
+    } & {row.question_key for row in migrated}
+
+
+@pytest.mark.asyncio
+async def test_current_questionnaire_migrates_completed_q1_into_editable_q2(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.config import settings
+    from app.modules.career.models import CareerAnswer, CareerProfile, CareerQuestionnaireSession
+    from app.modules.career.router import get_current_questionnaire
+
+    user_id = uuid.uuid4()
+    person_profile_id = uuid.uuid4()
+    chart_id = uuid.uuid4()
+    career_profile = CareerProfile(
+        user_id=user_id,
+        profile_id=person_profile_id,
+        chart_id=chart_id,
+        generation_id=uuid.uuid4(),
+        idempotency_key=f"questionnaire:{person_profile_id}",
+        status="ready",
+        version=1,
+        scoring_version="career-mvp-1",
+        reference_version="career-ref-1",
+        questionnaire_version="career-q-1",
+    )
+    legacy_session = CareerQuestionnaireSession(
+        id=uuid.uuid4(),
+        career_profile_id=career_profile.id,
+        chart_id=chart_id,
+        status="completed",
+        questionnaire_version="career-q-1",
+        context_version="career-context-1",
+        consent_version="career-consent-1",
+    )
+    legacy_rows = [
+        CareerAnswer(
+            id=uuid.uuid4(),
+            questionnaire_session_id=legacy_session.id,
+            chart_id=chart_id,
+            question_key=key,
+            answer={"value": value},
+            answer_version="career-q-1",
+        )
+        for key, value in _completed_answers().items()
+    ]
+    repository = MagicMock()
+    repository.get_profile_for_person = AsyncMock(return_value=career_profile)
+    repository.get_questionnaire_session = AsyncMock(side_effect=[None, legacy_session])
+    repository.add = AsyncMock()
+    repository.flush = AsyncMock()
+    migrated_rows: list[CareerAnswer] = []
+
+    async def add_many(rows: list[CareerAnswer]) -> None:
+        migrated_rows.extend(rows)
+
+    repository.add_many = AsyncMock(side_effect=add_many)
+
+    async def list_answers(session_id: uuid.UUID) -> list[CareerAnswer]:
+        return legacy_rows if session_id == legacy_session.id else migrated_rows
+
+    repository.list_questionnaire_answers = AsyncMock(side_effect=list_answers)
+    db = AsyncMock()
+    monkeypatch.setattr("app.modules.career.router.CareerRepository", lambda _db: repository)
+    monkeypatch.setattr("app.modules.career.router._require_career_access", AsyncMock())
+    monkeypatch.setattr(settings, "CAREER_REPORT_ENABLED", True)
+
+    payload = await get_current_questionnaire(
+        profile_id=person_profile_id,
+        db=db,
+        current_user=user_id,
+    )
+
+    created_session = repository.add.await_args.args[0]
+    assert created_session.status == "draft"
+    assert created_session.questionnaire_version == "career-q-2"
+    assert career_profile.questionnaire_version == "career-q-2"
+    assert payload["status"] == "draft"
+    assert payload["questionnaire_version"] == "career-q-2"
+    assert payload["answers"] == _completed_answers()
+    assert len(payload["questions"]) == 15
+    assert all(row.answer_version == "career-q-2" for row in migrated_rows)
+    db.commit.assert_awaited_once()
+
+
+def test_legacy_q1_hash_remains_idempotent_when_optional_answers_are_absent() -> None:
+    from app.modules.career.questionnaire import CareerQuestionnaireCompleted, complete_questionnaire_session
+
+    now = datetime.now(UTC)
+    legacy_answers = _completed_answers()
+    legacy_payload = json.dumps(
+        legacy_answers,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    legacy_hash = hashlib.sha256(legacy_payload.encode("utf-8")).hexdigest()
+    session = CareerQuestionnaireSession(
+        id=uuid.uuid4(),
+        career_profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        status="completed",
+        questionnaire_version="career-q-1",
+        context_version="career-context-1",
+        consent_version="career-consent-1",
+        completion_idempotency_key="legacy-complete-1",
+        answers_hash=legacy_hash,
+        completed_at=now,
+    )
+    answers = CareerQuestionnaireCompleted.model_validate(legacy_answers)
+
+    retried = complete_questionnaire_session(
+        session,
+        answers=answers,
+        idempotency_key="legacy-complete-1",
+        completed_at=now,
+    )
+
+    assert retried is session
+    assert session.answers_hash == legacy_hash
 
 
 def test_completion_is_idempotent_for_same_key_and_rejects_conflicting_retry() -> None:

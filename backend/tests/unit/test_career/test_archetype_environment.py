@@ -54,7 +54,7 @@ def test_expert_leader_returns_top_three_and_avoids_people_manager_overclaim() -
     assert [result.key for result in results] == ["architect", "strategist", "specialist"]
     assert all(result.evidence for result in results)
     assert all(0 <= result.confidence <= 1 for result in results)
-    assert all(result.scoring_version == "career-archetypes-1" for result in results)
+    assert all(result.scoring_version == "career-archetypes-2" for result in results)
     assert "leader" not in {result.key for result in results}
 
 
@@ -94,7 +94,14 @@ def test_environment_axes_are_normalized_and_risk_conditions_are_conditional() -
         resolution=_resolution(preferences=("expert", "people_management:low", "risk:stable")),
     )
 
-    assert len(environment.axes) == 10
+    assert len(environment.axes) == 15
+    assert {axis.key for axis in environment.axes} >= {
+        "practical_abstract",
+        "conceptual_hands_on",
+        "behind_scenes_audience_stage",
+        "one_off_flow",
+        "client_system",
+    }
     assert all(0 <= axis.score <= 100 for axis in environment.axes)
     assert all(0 <= axis.confidence <= 1 for axis in environment.axes)
     assert environment.preferred_conditions
@@ -136,10 +143,10 @@ def test_archetype_and_environment_rows_are_persistable_and_versioned() -> None:
     )
 
     assert len(archetype_rows) == 3
-    assert all(row.reference_version == "career-archetypes-1" for row in archetype_rows)
+    assert all(row.reference_version == "career-archetypes-2" for row in archetype_rows)
     assert all(row.generation_id == generation_id for row in archetype_rows)
-    assert len(environment_rows) == 10
-    assert all(row.reference_version == "career-environment-1" for row in environment_rows)
+    assert len(environment_rows) == 15
+    assert all(row.reference_version == "career-environment-2" for row in environment_rows)
     assert all(row.generation_id == generation_id for row in environment_rows)
 
 
@@ -150,3 +157,47 @@ def test_career_matching_source_has_no_planet_or_llm_dependency() -> None:
     source = (root / "archetype_engine.py").read_text() + (root / "environment_engine.py").read_text()
     assert "planet" not in source.lower()
     assert "modules.llm" not in source
+
+
+def test_new_environment_axes_have_declared_polarity_from_capabilities() -> None:
+    from app.modules.career.environment_engine import score_work_environment
+
+    result = score_work_environment(
+        dimensions=[
+            _dimension(CareerDimensionKey.ANALYTICAL_THINKING, 90),
+            _dimension(CareerDimensionKey.SYSTEMS_THINKING, 90),
+            _dimension(CareerDimensionKey.EXECUTION, 20),
+            _dimension(CareerDimensionKey.CREATIVITY, 20),
+            _dimension(CareerDimensionKey.COMMUNICATION, 20),
+            _dimension(CareerDimensionKey.PEOPLE_ORIENTATION, 20),
+        ],
+        resolution=_resolution(preferences=()),
+    )
+    axes = {axis.key: axis.score for axis in result.axes}
+
+    assert axes["practical_abstract"] > 50
+    assert axes["conceptual_hands_on"] < 50
+    assert axes["behind_scenes_audience_stage"] < 50
+    assert axes["client_system"] > 50
+
+
+def test_new_archetypes_are_versioned_and_preference_aware() -> None:
+    from app.modules.career.archetype_engine import ARCHETYPE_CATALOG, match_archetypes
+
+    assert {item.key for item in ARCHETYPE_CATALOG} >= {
+        "maker",
+        "performer",
+        "practitioner",
+        "caregiver_service",
+    }
+    results = match_archetypes(
+        dimensions=[
+            _dimension(CareerDimensionKey.CREATIVITY, 82),
+            _dimension(CareerDimensionKey.EXECUTION, 80),
+            _dimension(CareerDimensionKey.COMMUNICATION, 75),
+            _dimension(CareerDimensionKey.PEOPLE_ORIENTATION, 72),
+        ],
+        resolution=_resolution(preferences=("hands_on:hands_on", "audience:stage")),
+    )
+    assert all(item.scoring_version == "career-archetypes-2" for item in results)
+    assert {item.key for item in results} & {"maker", "performer"}

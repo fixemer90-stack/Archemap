@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 
 from app.modules.career.career_paths import (
@@ -15,6 +16,7 @@ from app.modules.career.role_matching import (
     ROLE_CATALOG,
     ROLE_CATALOG_VERSION,
     STRONG_MATCH_THRESHOLD,
+    RoleMatchResult,
     build_role_match_rows,
     match_roles,
 )
@@ -82,9 +84,21 @@ def test_role_catalog_and_categories_are_versioned_and_fixed() -> None:
         "research",
         "management",
         "entrepreneurship",
+        "visual_arts",
+        "word_and_media",
+        "performing_arts",
+        "craft_and_manual_work",
+        "practical_technology",
+        "care_and_service",
+        "land_and_nature",
+        "sales_and_field_work",
     }
-    assert required <= set(ROLE_CATALOG)
-    assert ROLE_CATALOG_VERSION == "career-role-catalog-1"
+    assert required == set(ROLE_CATALOG)
+    assert ROLE_CATALOG_VERSION == "career-role-catalog-2"
+    assert all(2 <= len(item.profession_examples) <= 3 for item in ROLE_CATALOG.values())
+    assert all(
+        re.search(r"[\u0400-\u04ff]", example) for item in ROLE_CATALOG.values() for example in item.profession_examples
+    )
     assert STRONG_MATCH_THRESHOLD == 75
     assert POSSIBLE_MATCH_THRESHOLD == 60
 
@@ -153,6 +167,53 @@ def test_same_scores_with_different_preferences_produce_different_graph_paths() 
     assert all(path.graph_version == CAREER_PATH_GRAPH_VERSION for path in (*expert_paths, *manager_paths))
     assert all(step.transition_key for path in expert_paths for step in path.steps[1:])
     assert not any(path.role_family_key == "entrepreneurship" for path in expert_paths)
+
+
+def test_every_catalog_role_has_a_versioned_runtime_path_without_key_error() -> None:
+    matches = tuple(
+        RoleMatchResult(
+            role_family_key=key,
+            score=70,
+            confidence=0.9,
+            category=MatchCategory.POSSIBLE_MATCH,
+            reasons=("dimension:execution",),
+            tensions=("tension:context_fit_requires_validation",),
+            requirements=("context:validate_against_real_role_scope",),
+            profession_examples=definition.profession_examples,
+        )
+        for key, definition in ROLE_CATALOG.items()
+    )
+
+    for match in matches:
+        paths = build_career_paths(
+            matches=(match,),
+            resolution=_resolution("expert", context=("experience:senior", "goal:explore")),
+        )
+        assert paths[0].role_family_key == match.role_family_key
+        assert paths[0].graph_version == "career-path-graph-2"
+
+
+def test_namespaced_practical_preferences_boost_non_office_role_families() -> None:
+    baseline = match_roles(
+        dimensions=_dimensions(),
+        environment=_environment(),
+        resolution=_resolution("expert", context=("experience:senior",)),
+    )
+    practical = match_roles(
+        dimensions=_dimensions(),
+        environment=_environment(),
+        resolution=_resolution(
+            "expert",
+            "work_mode:practical",
+            "hands_on:hands_on",
+            context=("experience:senior",),
+        ),
+    )
+
+    baseline_score = next(item.score for item in baseline if item.role_family_key == "craft_and_manual_work")
+    practical_match = next(item for item in practical if item.role_family_key == "craft_and_manual_work")
+    assert practical_match.score > baseline_score
+    assert "preference:work_mode:practical" in practical_match.reasons
 
 
 def test_manager_expert_leader_and_entrepreneur_preferences_diverge_on_same_scores() -> None:

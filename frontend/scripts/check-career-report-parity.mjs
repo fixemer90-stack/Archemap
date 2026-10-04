@@ -74,4 +74,28 @@ const generating =
   compiledModule.exports.buildCareerReportPresentation(generatingSections);
 assert.equal(generating.notice.kind, "deterministic_ready");
 
+const legacy = structuredClone(fixture.payload);
+legacy.deterministic_payload.contract_version =
+  "career_interpretation_facts_v1";
+legacy.deterministic_payload.role_matches = [
+  {
+    role_family_key: "architecture",
+    category: "strong_match",
+    reasons: ["dimension:systems_thinking"],
+    profession_examples: ["Solution Architect", "Systems Architect"],
+    catalog_version: "career-role-catalog-1",
+  },
+];
+const legacyManifest =
+  compiledModule.exports.buildCareerReportPresentation(legacy);
+const legacyRoles = legacyManifest.blocks.find(
+  (block) => block.kind === "roles",
+);
+assert.equal(legacyManifest.contract_version, "career_report_presentation_v1");
+assert.equal(legacyRoles.items[0].title, "Architecture");
+assert.deepEqual(JSON.parse(JSON.stringify(legacyRoles.items[0].examples)), [
+  "Solution Architect",
+  "Systems Architect",
+]);
+
 console.log("Career report web/PDF semantic parity checks passed");

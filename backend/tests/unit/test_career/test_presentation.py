@@ -22,6 +22,36 @@ def test_backend_presentation_matches_shared_semantic_manifest() -> None:
     assert build_career_report_presentation(fixture["payload"]) == fixture["expected_manifest"]
 
 
+def test_legacy_role_catalog_keeps_v1_titles_and_examples_for_reader_and_pdf() -> None:
+    from app.modules.career.pdf import render_career_report_html
+    from app.modules.career.presentation import build_career_report_presentation
+
+    payload = _fixture()["payload"]
+    payload["deterministic_payload"] = {
+        **payload["deterministic_payload"],
+        "contract_version": "career_interpretation_facts_v1",
+        "role_matches": [
+            {
+                "role_family_key": "architecture",
+                "category": "strong_match",
+                "reasons": ["dimension:systems_thinking"],
+                "profession_examples": ["Solution Architect", "Systems Architect"],
+                "catalog_version": "career-role-catalog-1",
+            }
+        ],
+    }
+
+    manifest = build_career_report_presentation(payload)
+    roles = next(block for block in manifest["blocks"] if block["kind"] == "roles")
+    html = render_career_report_html(report_payload=payload, profile_name="Алина")
+
+    assert manifest["contract_version"] == "career_report_presentation_v1"
+    assert roles["items"][0]["title"] == "Architecture"
+    assert roles["items"][0]["examples"] == ["Solution Architect", "Systems Architect"]
+    assert "Solution Architect" in html
+    assert "Архитектура систем" not in html
+
+
 def test_presentation_keeps_all_narrative_slots_pending_for_deterministic_ready() -> None:
     from app.modules.career.presentation import build_career_report_presentation
 

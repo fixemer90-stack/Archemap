@@ -37,13 +37,36 @@
 
 ## Реализация и evidence
 
-- `backend/app/modules/career/role_matching.py` — versioned catalog из девяти role families, multi-signal scoring, фиксированные пороги, confidence, reasons, tensions, requirements и условные profession examples.
-- `backend/app/modules/career/career_paths.py` — versioned deterministic graph, 2–3 preference-sensitive path и explicit archetypal limitations при неполном контексте.
-- `backend/tests/unit/test_career/test_role_matching_paths.py` — catalog/category, explainability, low-evidence, preference-sensitive path и persistence contracts.
-- `uv run pytest tests/unit/test_career/test_role_matching_paths.py -q` → `6 passed`.
+- `backend/app/modules/career/role_matching.py` — `career-role-catalog-2` из 17 role families, multi-signal scoring, фиксированные пороги, confidence, reasons, tensions, requirements и русскоязычные условные profession examples.
+- `backend/app/modules/career/career_paths.py` — `career-path-graph-2`, 2–3 preference-sensitive path, graph coverage всех catalog keys и explicit archetypal limitations при неполном контексте.
+- `backend/tests/unit/test_career/test_role_matching_paths.py` — catalog/category, occupational coverage, русские примеры, graph closure, explainability, low-evidence, preference-sensitive path и persistence contracts.
+- `uv run pytest tests/unit/test_career/test_role_matching_paths.py -q` → `9 passed`.
 
-## Известный дизайн-дефект
+## Закрытие дизайн-дефекта occupational coverage
 
-Каталог ролей (версия `career-role-catalog-1`) покрывает только офисно-интеллектуальную занятость: девять семейств, 18 примеров профессий, ни одного творческого или рабочего (практического). Траектории наследуют ту же рамку, так как граф ключуется теми же `role_family_key`. Примеры профессий записаны по-английски, хотя отчёт и его читатель русскоязычные.
+Дефект, зафиксированный 2026-10-01, закрыт локально 2026-10-04:
 
-Зафиксирован 2026-10-01 в `AUDIT-2026-09-26-discrepancies.md`, раздел 7, вместе с evidence из живого отчёта `2b7e4d6f-6ff5-439c-9422-f9ef500d9e8e` и объёмом работ по закрытию. Правкой промпта не закрывается: структурные секции рендерятся из каталога, поэтому нужен бамп `ROLE_CATALOG_VERSION` и новый релиз.
+- `career-role-catalog-2` содержит 17 семейств: прежние девять и `visual_arts`, `word_and_media`, `performing_arts`, `craft_and_manual_work`, `practical_technology`, `care_and_service`, `land_and_nature`, `sales_and_field_work`;
+- у каждого семейства 2–3 примера профессий на русском языке;
+- `career-path-graph-2` содержит путь для каждого ключа каталога, а публичная сборка путей не обращается к графу через небезопасный индекс;
+- `career-environment-2` добавляет capability-derived оси `practical_abstract`, `conceptual_hands_on`, `behind_scenes_audience_stage`, `one_off_flow`, `client_system` с зафиксированной полярностью;
+- `career-archetypes-2` добавляет `maker`, `performer`, `practitioner`, `caregiver_service` и preference-aware boosts;
+- `career-q-2` добавляет пять необязательных enum-предпочтений; для существующего completed q1 создаётся editable q2 draft с переносом совместимых ответов, поэтому пользователь может сохранить новые preferences без изменения исторической q1-сессии; resolver `career-resolver-2` публикует только namespaced preference keys, frontend даёт всем пяти вопросам русские labels и choices;
+- `career_interpretation_facts_v2` / `career-facts-curation-2` передают очищенные `current_activity`, `change_goal`, `current_constraints` как reference facts только для `role_families` и `career_paths`; `career_section_render_input_v2` помечает их обязательными ссылками, validator отвергает секцию без context citation, а `career-segment-prompt-6` запрещает офисно-ИТ fallback и трактует пользовательский текст только как данные, а не инструкции;
+- `career_report_presentation_v2` использует одинаковую русскую карту названий семейств в backend и frontend; persisted v1 payload определяется по catalog/facts version и сохраняет `career_report_presentation_v1`, прежние title/examples и PDF-семантику.
+
+Границы релиза:
+
+- схема БД и миграции не добавлялись: существующий versioned session contract допускает отдельные q1/q2 строки; профиль переключается на q2 до новой генерации;
+- narrative regeneration старого отчёта сохраняет v1 deterministic payload и валидирует profession examples по `career-role-catalog-1`;
+- ранее созданные отчёты не пересчитываются; reader/PDF распознают v1 persisted payload и применяют v1 presentation semantics, не смешивая старые английские examples с новыми русскими labels;
+- live-provider smoke в этот slice не выполнялся и не заявляется.
+
+Локальное evidence после реализации:
+
+- RED: focused Career набор — `27 failed, 21 passed`, ожидаемые причины: отсутствующие новые семейства/оси/enum-поля/context facts/русские presentation labels;
+- GREEN: `uv run pytest tests/unit/test_career -q` — `98 passed, 1 warning`;
+- `node scripts/check-career-report-parity.mjs` — `Career report web/PDF semantic parity checks passed`;
+- `node scripts/check-career-product-ux.mjs` — `Career product UX contract checks passed`;
+- exact frontend Prettier и `npx tsc --noEmit --pretty false` — успешно;
+- финальные ruff/mypy/docs checks перечислены в разделе 7 аудита.

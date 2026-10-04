@@ -40,6 +40,15 @@ const QUESTION_LABELS: Record<string, string> = {
   change_goal: "Что вы хотите изменить в работе?",
   collaboration_preference: "Насколько вам важна постоянная работа с командой?",
   current_constraints: "Какие ограничения важно учитывать?",
+  work_mode_preference:
+    "В работе вам сейчас ближе практика или абстрактные задачи?",
+  hands_on_preference:
+    "Насколько вам важна работа руками, с материалом или оборудованием?",
+  audience_preference: "Какой формат взаимодействия с аудиторией вам ближе?",
+  production_mode_preference:
+    "Вам ближе штучные проекты или повторяемый рабочий поток?",
+  service_focus_preference:
+    "Вам ближе работа с конкретным клиентом или с системой и инфраструктурой?",
 };
 
 const CHOICES: Record<string, Array<{ value: string; label: string }>> = {
@@ -53,6 +62,40 @@ const CHOICES: Record<string, Array<{ value: string; label: string }>> = {
     { value: "manager", label: "Управленческий путь" },
     { value: "entrepreneur", label: "Предпринимательский путь" },
     { value: "unknown", label: "Пока хочу исследовать варианты" },
+  ],
+  work_mode_preference: [
+    { value: "practical", label: "Практические задачи и видимый результат" },
+    { value: "balanced", label: "Сочетание практики и абстрактных задач" },
+    { value: "abstract", label: "Концепции, анализ и абстрактные задачи" },
+  ],
+  hands_on_preference: [
+    { value: "conceptual", label: "Преимущественно интеллектуальная работа" },
+    { value: "balanced", label: "Сочетание интеллектуальной и ручной работы" },
+    {
+      value: "hands_on",
+      label: "Работа руками, с материалом или оборудованием",
+    },
+  ],
+  audience_preference: [
+    {
+      value: "behind_scenes",
+      label: "Работа за сценой, без постоянной аудитории",
+    },
+    {
+      value: "audience",
+      label: "Контакт с аудиторией без сценического формата",
+    },
+    { value: "stage", label: "Сцена, выступление или публичное исполнение" },
+  ],
+  production_mode_preference: [
+    { value: "one_off", label: "Штучные проекты и уникальные задачи" },
+    { value: "balanced", label: "Баланс проектов и повторяемого потока" },
+    { value: "flow", label: "Стабильный повторяемый рабочий поток" },
+  ],
+  service_focus_preference: [
+    { value: "client", label: "Помощь конкретному клиенту или человеку" },
+    { value: "balanced", label: "Баланс клиентской и системной работы" },
+    { value: "system", label: "Системы, объекты или инфраструктура" },
   ],
 };
 

@@ -109,6 +109,7 @@ async def get_current_questionnaire(
         )
         await repository.add(profile)
         await repository.flush()
+    previous_questionnaire_version = profile.questionnaire_version
     questionnaire = await repository.get_questionnaire_session(
         career_profile_id=profile.id,
         questionnaire_version=QUESTIONNAIRE_VERSION,
@@ -124,6 +125,21 @@ async def get_current_questionnaire(
         )
         await repository.add(questionnaire)
         await repository.flush()
+        if previous_questionnaire_version != QUESTIONNAIRE_VERSION:
+            previous_questionnaire = await repository.get_questionnaire_session(
+                career_profile_id=profile.id,
+                questionnaire_version=previous_questionnaire_version,
+            )
+            if previous_questionnaire is not None:
+                previous_answers = await repository.list_questionnaire_answers(previous_questionnaire.id)
+                migrated_answers = _migrate_questionnaire_answer_rows(
+                    source_rows=previous_answers,
+                    target_session_id=questionnaire.id,
+                    chart_id=questionnaire.chart_id,
+                )
+                if migrated_answers:
+                    await repository.add_many(migrated_answers)
+    profile.questionnaire_version = QUESTIONNAIRE_VERSION
     await db.commit()
     answers = await repository.list_questionnaire_answers(questionnaire.id)
     return _questionnaire_payload(profile=profile, questionnaire=questionnaire, answer_rows=answers)
@@ -413,6 +429,20 @@ async def _load_owned_report(
 
 def _draft_from_rows(rows: list[models.CareerAnswer]) -> CareerQuestionnaireDraft:
     return CareerQuestionnaireDraft.model_validate({row.question_key: row.answer.get("value") for row in rows})
+
+
+def _migrate_questionnaire_answer_rows(
+    *,
+    source_rows: list[models.CareerAnswer],
+    target_session_id: UUID,
+    chart_id: UUID,
+) -> list[models.CareerAnswer]:
+    """Seed a new questionnaire version from compatible saved answers."""
+    return build_answer_rows(
+        questionnaire_session_id=target_session_id,
+        chart_id=chart_id,
+        answers=_draft_from_rows(source_rows),
+    )
 
 
 def _questionnaire_payload(

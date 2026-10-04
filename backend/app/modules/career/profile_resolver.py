@@ -11,7 +11,7 @@ from app.modules.career.models import CareerResolution
 from app.modules.career.questionnaire import CareerQuestionnaireCompleted, PreferredTrack, RiskPreference
 from app.modules.career.schemas import CareerDimensionKey
 
-RESOLVER_VERSION = "career-resolver-1"
+RESOLVER_VERSION = "career-resolver-2"
 
 
 @dataclass(frozen=True)
@@ -93,6 +93,16 @@ def resolve_career_profile(
         f"people_management:{_level(answers.people_management_motivation)}",
         f"collaboration:{_level(answers.collaboration_preference)}",
     }
+    optional_preferences = (
+        ("work_mode", answers.work_mode_preference),
+        ("hands_on", answers.hands_on_preference),
+        ("audience", answers.audience_preference),
+        ("production_mode", answers.production_mode_preference),
+        ("service_focus", answers.service_focus_preference),
+    )
+    preferences.update(
+        f"{namespace}:{preference.value}" for namespace, preference in optional_preferences if preference is not None
+    )
     if answers.preferred_track is PreferredTrack.EXPERT and leadership is not None and leadership.score >= 70:
         preferences.add("expert_leadership")
 

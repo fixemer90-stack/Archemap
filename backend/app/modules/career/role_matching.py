@@ -12,7 +12,7 @@ from app.modules.career.models import CareerRoleMatch
 from app.modules.career.profile_resolver import CareerProfileResolution
 from app.modules.career.schemas import CareerDimensionKey, MatchCategory
 
-ROLE_CATALOG_VERSION = "career-role-catalog-1"
+ROLE_CATALOG_VERSION = "career-role-catalog-2"
 STRONG_MATCH_THRESHOLD = 75
 POSSIBLE_MATCH_THRESHOLD = 60
 
@@ -49,7 +49,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.LONG_TERM_FOCUS: 0.20,
         },
         {"operational_strategic": 0.6, "execution_ownership": 0.4},
-        ("Solution Architect", "Systems Architect", "Lead Engineer"),
+        ("Архитектор решений", "Системный архитектор", "Ведущий инженер"),
         {"expert": 12, "expert_leadership": 8},
     ),
     "product": RoleFamilyDefinition(
@@ -61,7 +61,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.INNOVATION: 0.25,
         },
         {"operational_strategic": 0.5, "execution_ownership": 0.5},
-        ("Product Manager", "Product Operations Lead"),
+        ("Менеджер продукта", "Руководитель продуктовых операций"),
         {"manager": 8, "entrepreneur": 6},
     ),
     "strategy": RoleFamilyDefinition(
@@ -73,7 +73,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.LEADERSHIP: 0.15,
         },
         {"operational_strategic": 1.0},
-        ("Strategy Lead", "Corporate Strategist"),
+        ("Руководитель стратегии", "Корпоративный стратег"),
         {"expert_leadership": 8, "manager": 5},
     ),
     "analytics": RoleFamilyDefinition(
@@ -85,7 +85,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.EXECUTION: 0.10,
         },
         {"operational_strategic": 1.0},
-        ("Data Analyst", "Business Intelligence Analyst"),
+        ("Аналитик данных", "Аналитик бизнес-показателей"),
         {"expert": 9},
     ),
     "consulting": RoleFamilyDefinition(
@@ -97,7 +97,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.AUTONOMY: 0.20,
         },
         {"execution_ownership": 1.0},
-        ("Management Consultant", "Independent Advisor"),
+        ("Консультант по управлению", "Независимый советник"),
         {"expert": 7, "expert_leadership": 5},
     ),
     "operations": RoleFamilyDefinition(
@@ -109,7 +109,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.SYSTEMS_THINKING: 0.15,
         },
         {"execution_ownership": 1.0},
-        ("Operations Lead", "Program Manager"),
+        ("Руководитель операций", "Менеджер программ"),
         {"manager": 8},
     ),
     "research": RoleFamilyDefinition(
@@ -121,7 +121,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.INNOVATION: 0.15,
         },
         {"operational_strategic": 1.0},
-        ("Research Scientist", "UX Researcher"),
+        ("Научный сотрудник", "Исследователь пользовательского опыта"),
         {"expert": 10},
     ),
     "management": RoleFamilyDefinition(
@@ -133,7 +133,7 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.EXECUTION: 0.15,
         },
         {"expert_managerial": 0.7, "execution_ownership": 0.3},
-        ("Engineering Manager", "Department Head"),
+        ("Руководитель инженерной команды", "Руководитель отдела"),
         {"manager": 32},
     ),
     "entrepreneurship": RoleFamilyDefinition(
@@ -145,8 +145,104 @@ ROLE_CATALOG: dict[str, RoleFamilyDefinition] = {
             CareerDimensionKey.EXECUTION: 0.25,
         },
         {"predictable_experimental": 0.5, "execution_ownership": 0.5},
-        ("Founder", "Independent Venture Builder"),
+        ("Основатель проекта", "Создатель независимого бизнеса"),
         {"entrepreneur": 20},
+    ),
+    "visual_arts": RoleFamilyDefinition(
+        "visual_arts",
+        {
+            CareerDimensionKey.CREATIVITY: 0.4,
+            CareerDimensionKey.INNOVATION: 0.2,
+            CareerDimensionKey.AUTONOMY: 0.2,
+            CareerDimensionKey.EXECUTION: 0.2,
+        },
+        {"practical_abstract": -0.35, "one_off_flow": -0.65},
+        ("Художник", "Иллюстратор", "Фотограф"),
+        {"work_mode:practical": 5, "production_mode:one_off": 10, "audience:audience": 4},
+    ),
+    "word_and_media": RoleFamilyDefinition(
+        "word_and_media",
+        {
+            CareerDimensionKey.COMMUNICATION: 0.35,
+            CareerDimensionKey.CREATIVITY: 0.3,
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.2,
+            CareerDimensionKey.AUTONOMY: 0.15,
+        },
+        {"behind_scenes_audience_stage": 0.35, "one_off_flow": -0.65},
+        ("Редактор", "Журналист", "Сценарист"),
+        {"audience:audience": 8, "production_mode:one_off": 5},
+    ),
+    "performing_arts": RoleFamilyDefinition(
+        "performing_arts",
+        {
+            CareerDimensionKey.CREATIVITY: 0.35,
+            CareerDimensionKey.COMMUNICATION: 0.3,
+            CareerDimensionKey.PEOPLE_ORIENTATION: 0.2,
+            CareerDimensionKey.EXECUTION: 0.15,
+        },
+        {"behind_scenes_audience_stage": 0.75, "one_off_flow": -0.25},
+        ("Актёр", "Музыкант-исполнитель", "Танцовщик"),
+        {"audience:stage": 14, "audience:audience": 7},
+    ),
+    "craft_and_manual_work": RoleFamilyDefinition(
+        "craft_and_manual_work",
+        {
+            CareerDimensionKey.EXECUTION: 0.35,
+            CareerDimensionKey.CREATIVITY: 0.25,
+            CareerDimensionKey.STRUCTURE: 0.25,
+            CareerDimensionKey.AUTONOMY: 0.15,
+        },
+        {"conceptual_hands_on": 0.7, "practical_abstract": -0.3},
+        ("Столяр", "Керамист", "Портной"),
+        {"work_mode:practical": 12, "hands_on:hands_on": 10, "production_mode:one_off": 5},
+    ),
+    "practical_technology": RoleFamilyDefinition(
+        "practical_technology",
+        {
+            CareerDimensionKey.EXECUTION: 0.35,
+            CareerDimensionKey.ANALYTICAL_THINKING: 0.25,
+            CareerDimensionKey.STRUCTURE: 0.2,
+            CareerDimensionKey.SYSTEMS_THINKING: 0.2,
+        },
+        {"conceptual_hands_on": 0.65, "client_system": 0.35},
+        ("Электромеханик", "Техник по оборудованию", "Автомеханик"),
+        {"work_mode:practical": 10, "hands_on:hands_on": 12, "service_focus:system": 5},
+    ),
+    "care_and_service": RoleFamilyDefinition(
+        "care_and_service",
+        {
+            CareerDimensionKey.PEOPLE_ORIENTATION: 0.4,
+            CareerDimensionKey.COMMUNICATION: 0.25,
+            CareerDimensionKey.EXECUTION: 0.2,
+            CareerDimensionKey.STRUCTURE: 0.15,
+        },
+        {"client_system": -0.7, "conceptual_hands_on": 0.3},
+        ("Медицинская сестра", "Социальный работник", "Мастер бытового сервиса"),
+        {"service_focus:client": 14, "work_mode:practical": 5},
+    ),
+    "land_and_nature": RoleFamilyDefinition(
+        "land_and_nature",
+        {
+            CareerDimensionKey.EXECUTION: 0.35,
+            CareerDimensionKey.LONG_TERM_FOCUS: 0.25,
+            CareerDimensionKey.AUTONOMY: 0.2,
+            CareerDimensionKey.SYSTEMS_THINKING: 0.2,
+        },
+        {"conceptual_hands_on": 0.55, "practical_abstract": -0.45},
+        ("Агроном", "Садовник", "Специалист по лесному хозяйству"),
+        {"work_mode:practical": 10, "hands_on:hands_on": 8, "service_focus:system": 4},
+    ),
+    "sales_and_field_work": RoleFamilyDefinition(
+        "sales_and_field_work",
+        {
+            CareerDimensionKey.COMMUNICATION: 0.35,
+            CareerDimensionKey.EXECUTION: 0.25,
+            CareerDimensionKey.AUTONOMY: 0.2,
+            CareerDimensionKey.RISK_TOLERANCE: 0.2,
+        },
+        {"client_system": -0.6, "behind_scenes_audience_stage": 0.4},
+        ("Торговый представитель", "Агент по недвижимости", "Полевой консультант"),
+        {"service_focus:client": 10, "audience:audience": 6, "production_mode:flow": 5},
     ),
 }
 
@@ -200,9 +296,10 @@ def _match_one(
         if axis is None:
             requirements.append(f"evidence:missing_environment_{axis_key}")
             continue
-        environment_weight += weight
-        environment_score += axis.score * weight
-        environment_confidence += axis.confidence * weight
+        absolute_weight = abs(weight)
+        environment_weight += absolute_weight
+        environment_score += (axis.score if weight >= 0 else 100 - axis.score) * absolute_weight
+        environment_confidence += axis.confidence * absolute_weight
         reasons.append(f"environment:{axis_key}")
     if environment_weight:
         score = score * 0.85 + (environment_score / environment_weight) * 0.15

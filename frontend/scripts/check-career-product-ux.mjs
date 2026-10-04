@@ -99,4 +99,17 @@ expect(
   "A disabled Career surface must not tell the user to build the main report",
 );
 
+for (const questionKey of [
+  "work_mode_preference",
+  "hands_on_preference",
+  "audience_preference",
+  "production_mode_preference",
+  "service_focus_preference",
+]) {
+  expect(
+    page.includes(`${questionKey}:`) && page.includes(`  ${questionKey}: [`),
+    `Career UI must provide a Russian label and non-empty choices for ${questionKey}`,
+  );
+}
+
 console.log("Career product UX contract checks passed");

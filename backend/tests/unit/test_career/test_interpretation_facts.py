@@ -83,7 +83,7 @@ def _payload() -> tuple[Any, ...]:
             reasons=("dimension:systems_thinking",),
             tensions=("preference:low_people_management",),
             requirements=("context:validate_against_real_role_scope",),
-            profession_examples=("Solution Architect",),
+            profession_examples=("Архитектор решений",),
         ),
     )
     paths = (
@@ -110,7 +110,7 @@ def _questionnaire_evidence() -> dict[str, uuid.UUID]:
         "experience_years": uuid.uuid4(),
         "current_activity": uuid.uuid4(),
         "change_goal": uuid.uuid4(),
-        "constraints": uuid.uuid4(),
+        "current_constraints": uuid.uuid4(),
     }
 
 
@@ -127,6 +127,11 @@ def test_facts_are_typed_curated_and_section_owned() -> None:
         role_matches=_payload()[4],
         career_paths=_payload()[5],
         questionnaire_evidence=_questionnaire_evidence(),
+        questionnaire_context={
+            "current_activity": "Художник по дереву",
+            "change_goal": "Перейти к авторским заказам",
+            "current_constraints": "Без переезда",
+        },
     )
 
     assert facts.contract_version == CAREER_FACTS_CONTRACT_VERSION
@@ -160,10 +165,43 @@ def test_facts_are_typed_curated_and_section_owned() -> None:
     }
     assert all(contract.owned_fact_keys for contract in facts.section_contracts.values())
     assert all(contract.forbidden_fact_keys for contract in facts.section_contracts.values())
+    assert [item.context_key for item in facts.user_context] == [
+        "current_activity",
+        "change_goal",
+        "current_constraints",
+    ]
+    context_keys = {item.fact_key for item in facts.user_context}
+    assert context_keys <= set(facts.section_contracts["role_families"].reference_fact_keys)
+    assert context_keys <= set(facts.section_contracts["career_paths"].reference_fact_keys)
     serialized = facts.model_dump(mode="json")
     assert "raw_chart" not in str(serialized)
     assert "raw_answers" not in str(serialized)
     validate_interpretation_facts(facts)
+
+
+def test_legacy_v1_role_examples_remain_valid_for_narrative_regeneration() -> None:
+    parts = _payload()
+    facts = build_interpretation_facts(
+        profile_id=uuid.uuid4(),
+        chart_id=uuid.uuid4(),
+        dimensions=parts[0],
+        archetypes=parts[1],
+        environment=parts[2],
+        resolution=parts[3],
+        role_matches=parts[4],
+        career_paths=parts[5],
+        questionnaire_evidence=_questionnaire_evidence(),
+    )
+    facts.contract_version = "career_interpretation_facts_v1"
+    facts.curation_version = "career-facts-curation-1"
+    facts.role_matches[0].catalog_version = "career-role-catalog-1"
+    facts.role_matches[0].profession_examples = ["Solution Architect", "Systems Architect"]
+
+    assert validate_interpretation_facts(facts) is facts
+
+    facts.role_matches[0].catalog_version = "career-role-catalog-2"
+    with pytest.raises(CareerFactsValidationError, match="unsupported profession examples"):
+        validate_interpretation_facts(facts)
 
 
 def test_unsupported_role_or_path_is_rejected_before_provider_call() -> None:

@@ -47,6 +47,26 @@ const CATEGORY_LABELS: Record<string, string> = {
   context_dependent: "Зависит от контекста",
 };
 
+const ROLE_FAMILY_LABELS: Record<string, string> = {
+  architecture: "Архитектура систем",
+  product: "Продуктовая работа",
+  strategy: "Стратегия",
+  analytics: "Аналитика",
+  consulting: "Консалтинг",
+  operations: "Операционная работа",
+  research: "Исследования",
+  management: "Управление",
+  entrepreneurship: "Предпринимательство",
+  visual_arts: "Изобразительное творчество",
+  word_and_media: "Слово и медиа",
+  performing_arts: "Исполнительские искусства",
+  craft_and_manual_work: "Ремесло и ручная работа",
+  practical_technology: "Практическая техника",
+  care_and_service: "Забота и сервис",
+  land_and_nature: "Земля и природа",
+  sales_and_field_work: "Продажи и полевая работа",
+};
+
 const CONTEXT_LABELS: Record<string, string> = {
   "experience:senior": "Опыт: уверенный профессиональный уровень",
   "experience:mid": "Опыт: развивающийся профессиональный уровень",
@@ -139,7 +159,8 @@ export type CareerPresentationBlock =
     };
 
 export interface CareerReportPresentation {
-  contract_version: "career_report_presentation_v1";
+  contract_version:
+    "career_report_presentation_v1" | "career_report_presentation_v2";
   report_status: string;
   notice: {
     kind: "narrative_failed" | "deterministic_ready";
@@ -187,6 +208,14 @@ function humanize(value: string): string {
     : "";
 }
 
+function usesV2Presentation(deterministic: Record<string, unknown>): boolean {
+  if (text(deterministic.contract_version) === "career_interpretation_facts_v2")
+    return true;
+  return records(deterministic.role_matches).some(
+    (item) => text(item.catalog_version) === "career-role-catalog-2",
+  );
+}
+
 function reportNotice(status: string): CareerReportPresentation["notice"] {
   if (status === "narrative_failed") {
     return {
@@ -219,6 +248,7 @@ export function buildCareerReportPresentation(
   const deterministic = isRecord(payload.deterministic_payload)
     ? payload.deterministic_payload
     : {};
+  const useV2Presentation = usesV2Presentation(deterministic);
   const sectionByKey = new Map(
     records(payload.sections).map((section) => [
       text(section.section_key),
@@ -311,7 +341,9 @@ export function buildCareerReportPresentation(
       const key = text(item.role_family_key, "context_dependent");
       return {
         key,
-        title: humanize(key),
+        title: useV2Presentation
+          ? (ROLE_FAMILY_LABELS[key] ?? humanize(key))
+          : humanize(key),
         category:
           CATEGORY_LABELS[text(item.category)] ?? "Зависит от контекста",
         reasons: strings(item.reasons).map(humanize),
@@ -329,7 +361,9 @@ export function buildCareerReportPresentation(
   });
 
   return {
-    contract_version: "career_report_presentation_v1",
+    contract_version: useV2Presentation
+      ? "career_report_presentation_v2"
+      : "career_report_presentation_v1",
     report_status: text(payload.status, "pending"),
     notice: reportNotice(text(payload.status, "pending")),
     blocks,

@@ -14,11 +14,24 @@ from app.modules.career.dimension_engine import CareerDimensionResult
 from app.modules.career.environment_engine import WorkEnvironmentResult
 from app.modules.career.models import CareerInterpretationFact
 from app.modules.career.profile_resolver import CareerProfileResolution
+from app.modules.career.questionnaire import sanitize_bounded_text
 from app.modules.career.role_matching import ROLE_CATALOG, RoleMatchResult
 
-CAREER_FACTS_CONTRACT_VERSION = "career_interpretation_facts_v1"
-CAREER_FACTS_CURATION_VERSION = "career-facts-curation-1"
+CAREER_FACTS_CONTRACT_VERSION = "career_interpretation_facts_v2"
+CAREER_FACTS_CURATION_VERSION = "career-facts-curation-2"
 LOW_CONFIDENCE_THRESHOLD = 0.5
+
+_LEGACY_ROLE_EXAMPLES: dict[str, tuple[str, ...]] = {
+    "architecture": ("Solution Architect", "Systems Architect", "Lead Engineer"),
+    "product": ("Product Manager", "Product Operations Lead"),
+    "strategy": ("Strategy Lead", "Corporate Strategist"),
+    "analytics": ("Data Analyst", "Business Intelligence Analyst"),
+    "consulting": ("Management Consultant", "Independent Advisor"),
+    "operations": ("Operations Lead", "Program Manager"),
+    "research": ("Research Scientist", "UX Researcher"),
+    "management": ("Engineering Manager", "Department Head"),
+    "entrepreneurship": ("Founder", "Independent Venture Builder"),
+}
 
 
 class CuratedDimensionFact(BaseModel):
@@ -104,6 +117,15 @@ class CuratedPathFact(BaseModel):
     evidence_refs: list[str]
 
 
+class CuratedUserContextFact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    fact_key: str
+    context_key: str
+    context_value: str = Field(min_length=1, max_length=500)
+    evidence_refs: list[str]
+
+
 class CareerSectionContract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -130,6 +152,7 @@ class CareerInterpretationFacts(BaseModel):
     contradictions: list[CuratedContradictionFact]
     user_preferences: list[str]
     context_constraints: list[str]
+    user_context: list[CuratedUserContextFact] = Field(default_factory=list)
     role_matches: list[CuratedRoleFact]
     career_paths: list[CuratedPathFact]
     section_contracts: dict[str, CareerSectionContract]
@@ -150,6 +173,7 @@ def build_interpretation_facts(
     role_matches: tuple[RoleMatchResult, ...],
     career_paths: tuple[CareerPathResult, ...],
     questionnaire_evidence: dict[str, UUID],
+    questionnaire_context: dict[str, str] | None = None,
 ) -> CareerInterpretationFacts:
     ordered_dimensions = sorted(dimensions, key=lambda item: (-item.score, item.dimension.value))
     dimension_facts = [_dimension_fact(item) for item in ordered_dimensions]
@@ -247,6 +271,16 @@ def build_interpretation_facts(
         )
         for index, item in enumerate(career_paths)
     ]
+    context_facts = [
+        CuratedUserContextFact(
+            fact_key=f"user_context:{key}",
+            context_key=key,
+            context_value=sanitize_bounded_text(value),
+            evidence_refs=[_answer_ref(questionnaire_evidence, key)],
+        )
+        for key in ("current_activity", "change_goal", "current_constraints")
+        if (value := (questionnaire_context or {}).get(key))
+    ]
     fact_groups = {
         "dimensions": [item.fact_key for item in dimension_facts],
         "archetypes": [item.fact_key for item in archetype_facts],
@@ -255,6 +289,7 @@ def build_interpretation_facts(
         "contradictions": [item.fact_key for item in contradictions],
         "roles": [item.fact_key for item in roles],
         "paths": [item.fact_key for item in paths],
+        "user_context": [item.fact_key for item in context_facts],
     }
     facts = CareerInterpretationFacts(
         profile_id=profile_id,
@@ -269,6 +304,7 @@ def build_interpretation_facts(
         contradictions=contradictions,
         user_preferences=list(resolution.preferences),
         context_constraints=list(resolution.context_constraints),
+        user_context=context_facts,
         role_matches=roles,
         career_paths=paths,
         section_contracts=_section_contracts(fact_groups),
@@ -354,6 +390,8 @@ def _section_contracts(groups: dict[str, list[str]]) -> dict[str, CareerSectionC
         if not owned:
             owned = groups["dimensions"][:1]
         reference = list(dict.fromkeys(previous[-4:]))
+        if section in {"role_families", "career_paths"}:
+            reference = list(dict.fromkeys([*groups["user_context"], *reference]))
         forbidden = sorted(all_keys - set(owned) - set(reference))
         if not forbidden:
             forbidden = ["raw_chart", "raw_answers"]
@@ -379,6 +417,7 @@ def validate_interpretation_facts(
         facts.preferred_environment,
         facts.risk_environment,
         facts.contradictions,
+        facts.user_context,
         facts.role_matches,
         facts.career_paths,
     )
@@ -397,7 +436,12 @@ def validate_interpretation_facts(
         definition = ROLE_CATALOG.get(role.role_family_key)
         if definition is None:
             raise CareerFactsValidationError(f"unsupported role family: {role.role_family_key}")
-        unsupported_examples = set(role.profession_examples) - set(definition.profession_examples)
+        supported_examples = (
+            _LEGACY_ROLE_EXAMPLES.get(role.role_family_key, ())
+            if role.catalog_version == "career-role-catalog-1"
+            else definition.profession_examples
+        )
+        unsupported_examples = set(role.profession_examples) - set(supported_examples)
         if unsupported_examples:
             raise CareerFactsValidationError(f"unsupported profession examples: {sorted(unsupported_examples)}")
     for path in facts.career_paths:
@@ -441,6 +485,7 @@ def _all_fact_keys(facts: CareerInterpretationFacts) -> set[str]:
         facts.preferred_environment,
         facts.risk_environment,
         facts.contradictions,
+        facts.user_context,
         facts.role_matches,
         facts.career_paths,
     )
@@ -470,6 +515,7 @@ def build_interpretation_fact_rows(
         facts.preferred_environment,
         facts.risk_environment,
         facts.contradictions,
+        facts.user_context,
         facts.role_matches,
         facts.career_paths,
     ):

@@ -288,12 +288,18 @@ async def _generate_career_report_async(
                     role_matches=role_matches,
                     career_paths=career_paths,
                     questionnaire_evidence={row.question_key: row.id for row in answer_rows if row.id is not None},
+                    questionnaire_context={
+                        "current_activity": answers.current_activity,
+                        "change_goal": answers.change_goal,
+                        "current_constraints": answers.current_constraints,
+                    },
                 )
                 report = build_deterministic_career_report_row(
                     facts=facts,
                     generation_id=generation.generation_id,
                     idempotency_key=generation.idempotency_key,
                     version=await repository.allocate_report_version(profile.id),
+                    questionnaire_version=questionnaire.questionnaire_version,
                 )
                 dimension_rows, evidence_rows = build_dimension_rows(
                     career_profile_id=profile.id,

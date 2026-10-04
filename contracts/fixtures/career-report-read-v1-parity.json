@@ -10,6 +10,7 @@
       "prompt": "career-prompt-v2"
     },
     "deterministic_payload": {
+      "contract_version": "career_interpretation_facts_v2",
       "top_dimensions": [
         {
           "fact_key": "dimension:systems_thinking",
@@ -42,7 +43,7 @@
           "fact_key": "role:architecture",
           "role_family_key": "architecture",
           "category": "strong_match",
-          "profession_examples": ["Solution Architect", "Системный аналитик"],
+          "profession_examples": ["Архитектор решений", "Системный аналитик"],
           "reasons": [
             "dimension:systems_thinking",
             "context:industry_regulated"
@@ -87,7 +88,7 @@
     "assembled_payload": {}
   },
   "expected_manifest": {
-    "contract_version": "career_report_presentation_v1",
+    "contract_version": "career_report_presentation_v2",
     "report_status": "narrative_failed",
     "notice": {
       "kind": "narrative_failed",
@@ -227,13 +228,13 @@
         "items": [
           {
             "key": "architecture",
-            "title": "Architecture",
+            "title": "Архитектура систем",
             "category": "Выраженное соответствие",
             "reasons": [
               "Dimension: systems thinking",
               "Context: industry regulated"
             ],
-            "examples": ["Solution Architect", "Системный аналитик"],
+            "examples": ["Архитектор решений", "Системный аналитик"],
             "example_label": "Возможный пример, а не назначение"
           }
         ]

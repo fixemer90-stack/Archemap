@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.modules.career.models import CareerAnswer, CareerQuestionnaireSession
 
-QUESTIONNAIRE_VERSION = "career-q-1"
-CONTEXT_VERSION = "career-context-1"
+QUESTIONNAIRE_VERSION = "career-q-2"
+CONTEXT_VERSION = "career-context-2"
 ADAPTIVE_QUESTIONS_ENABLED = False
 
 
@@ -31,6 +31,36 @@ class PreferredTrack(StrEnum):
     MANAGER = "manager"
     ENTREPRENEUR = "entrepreneur"
     UNKNOWN = "unknown"
+
+
+class WorkModePreference(StrEnum):
+    PRACTICAL = "practical"
+    BALANCED = "balanced"
+    ABSTRACT = "abstract"
+
+
+class HandsOnPreference(StrEnum):
+    CONCEPTUAL = "conceptual"
+    BALANCED = "balanced"
+    HANDS_ON = "hands_on"
+
+
+class AudiencePreference(StrEnum):
+    BEHIND_SCENES = "behind_scenes"
+    AUDIENCE = "audience"
+    STAGE = "stage"
+
+
+class ProductionModePreference(StrEnum):
+    ONE_OFF = "one_off"
+    BALANCED = "balanced"
+    FLOW = "flow"
+
+
+class ServiceFocusPreference(StrEnum):
+    CLIENT = "client"
+    BALANCED = "balanced"
+    SYSTEM = "system"
 
 
 @dataclass(frozen=True)
@@ -52,11 +82,22 @@ QUESTION_BANK: tuple[QuestionDefinition, ...] = (
     QuestionDefinition("change_goal", "change_goal", "bounded_text"),
     QuestionDefinition("collaboration_preference", "people_management", "scale_1_5"),
     QuestionDefinition("current_constraints", "current_context", "bounded_text"),
+    QuestionDefinition("work_mode_preference", "occupational_mode", "choice", required=False),
+    QuestionDefinition("hands_on_preference", "occupational_mode", "choice", required=False),
+    QuestionDefinition("audience_preference", "occupational_mode", "choice", required=False),
+    QuestionDefinition("production_mode_preference", "occupational_mode", "choice", required=False),
+    QuestionDefinition("service_focus_preference", "occupational_mode", "choice", required=False),
 )
 _REQUIRED_KEYS = tuple(question.key for question in QUESTION_BANK if question.required)
 _TAG_RE = re.compile(r"<[^>]*>")
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _SPACE_RE = re.compile(r"\s+")
+
+
+def sanitize_bounded_text(value: str) -> str:
+    without_tags = _TAG_RE.sub(" ", value)
+    without_controls = _CONTROL_RE.sub("", without_tags)
+    return _SPACE_RE.sub(" ", without_controls).strip()
 
 
 class CareerQuestionnaireDraft(BaseModel):
@@ -70,15 +111,18 @@ class CareerQuestionnaireDraft(BaseModel):
     change_goal: str | None = Field(default=None, min_length=1, max_length=500)
     collaboration_preference: int | None = Field(default=None, ge=1, le=5)
     current_constraints: str | None = Field(default=None, min_length=1, max_length=500)
+    work_mode_preference: WorkModePreference | None = None
+    hands_on_preference: HandsOnPreference | None = None
+    audience_preference: AudiencePreference | None = None
+    production_mode_preference: ProductionModePreference | None = None
+    service_focus_preference: ServiceFocusPreference | None = None
 
     @field_validator("current_activity", "change_goal", "current_constraints", mode="before")
     @classmethod
     def sanitize_bounded_text(cls, value: object) -> object:
         if not isinstance(value, str):
             return value
-        without_tags = _TAG_RE.sub(" ", value)
-        without_controls = _CONTROL_RE.sub("", without_tags)
-        return _SPACE_RE.sub(" ", without_controls).strip()
+        return sanitize_bounded_text(value)
 
     @property
     def missing_required(self) -> tuple[str, ...]:
@@ -99,7 +143,14 @@ class CareerQuestionnaireCompleted(CareerQuestionnaireDraft):
 
 
 def questionnaire_answers_hash(answers: CareerQuestionnaireCompleted) -> str:
-    payload = json.dumps(answers.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    # Keep the career-q-1 hash stable for legacy completed sessions: optional
+    # occupational preferences did not exist when their hashes were stored.
+    payload = json.dumps(
+        answers.model_dump(mode="json", exclude_none=True),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 

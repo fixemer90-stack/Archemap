@@ -7,7 +7,8 @@ from typing import Any
 
 from app.modules.career.narrative import CAREER_SECTION_ORDER
 
-PRESENTATION_CONTRACT_VERSION = "career_report_presentation_v1"
+PRESENTATION_CONTRACT_VERSION = "career_report_presentation_v2"
+LEGACY_PRESENTATION_CONTRACT_VERSION = "career_report_presentation_v1"
 
 _SECTION_TITLES = {
     "professional_summary": "Ваш профессиональный профиль",
@@ -39,6 +40,25 @@ _CATEGORY_LABELS = {
     "strong_match": "Выраженное соответствие",
     "possible_match": "Возможное соответствие",
     "context_dependent": "Зависит от контекста",
+}
+_ROLE_FAMILY_LABELS = {
+    "architecture": "Архитектура систем",
+    "product": "Продуктовая работа",
+    "strategy": "Стратегия",
+    "analytics": "Аналитика",
+    "consulting": "Консалтинг",
+    "operations": "Операционная работа",
+    "research": "Исследования",
+    "management": "Управление",
+    "entrepreneurship": "Предпринимательство",
+    "visual_arts": "Изобразительное творчество",
+    "word_and_media": "Слово и медиа",
+    "performing_arts": "Исполнительские искусства",
+    "craft_and_manual_work": "Ремесло и ручная работа",
+    "practical_technology": "Практическая техника",
+    "care_and_service": "Забота и сервис",
+    "land_and_nature": "Земля и природа",
+    "sales_and_field_work": "Продажи и полевая работа",
 }
 _CONTEXT_LABELS = {
     "experience:senior": "Опыт: уверенный профессиональный уровень",
@@ -104,11 +124,21 @@ def _notice(report_status: str) -> dict[str, str] | None:
     return None
 
 
+def _uses_v2_presentation(deterministic: dict[str, Any]) -> bool:
+    if _text(deterministic.get("contract_version")) == "career_interpretation_facts_v2":
+        return True
+    return any(
+        _text(item.get("catalog_version")) == "career-role-catalog-2"
+        for item in _records(deterministic.get("role_matches"))
+    )
+
+
 def build_career_report_presentation(report_payload: dict[str, Any]) -> dict[str, Any]:
     """Derive the semantic web/PDF contract from one persisted read payload."""
 
     deterministic_value = report_payload.get("deterministic_payload")
     deterministic = deterministic_value if isinstance(deterministic_value, dict) else {}
+    uses_v2_presentation = _uses_v2_presentation(deterministic)
     sections_by_key = {_text(item.get("section_key")): item for item in _records(report_payload.get("sections"))}
     states_by_key = {_text(item.get("section_key")): item for item in _records(report_payload.get("section_states"))}
 
@@ -199,7 +229,7 @@ def build_career_report_presentation(report_payload: dict[str, Any]) -> dict[str
         role_items.append(
             {
                 "key": key,
-                "title": _humanize(key),
+                "title": (_ROLE_FAMILY_LABELS.get(key, _humanize(key)) if uses_v2_presentation else _humanize(key)),
                 "category": _CATEGORY_LABELS.get(_text(item.get("category")), "Зависит от контекста"),
                 "reasons": [_humanize(reason) for reason in _strings(item.get("reasons"))],
                 "examples": _strings(item.get("profession_examples")),
@@ -225,7 +255,9 @@ def build_career_report_presentation(report_payload: dict[str, Any]) -> dict[str
 
     report_status = _text(report_payload.get("status"), "pending")
     return {
-        "contract_version": PRESENTATION_CONTRACT_VERSION,
+        "contract_version": (
+            PRESENTATION_CONTRACT_VERSION if uses_v2_presentation else LEGACY_PRESENTATION_CONTRACT_VERSION
+        ),
         "report_status": report_status,
         "notice": _notice(report_status),
         "blocks": blocks,

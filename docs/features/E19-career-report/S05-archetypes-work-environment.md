@@ -12,7 +12,7 @@ Dimensions должны превращаться в понятные, но не 
 
 1. Создать versioned archetype catalog и matching weights.
 2. Возвращать Top-3, score, confidence, positive evidence и ограничения каждого архетипа.
-3. Рассчитать оси среды: structured/flexible, stable/dynamic, individual/collaborative, expert/managerial, operational/strategic, predictable/experimental, supportive/competitive, small/large, local/global, execution/ownership.
+3. Рассчитать организационные оси среды и оси характера занятости: practice/abstract, conceptual/hands-on, behind-scenes/audience-stage, one-off/flow, client/system.
 4. Сформировать preferred-environment conditions.
 5. Сформировать anti-environment как условия риска, а не запреты.
 6. Учитывать Profile Resolver: например, высокий Leadership не равен people management.
@@ -35,7 +35,7 @@ Dimensions должны превращаться в понятные, но не 
 
 ## Реализация и evidence
 
-- `backend/app/modules/career/archetype_engine.py` — versioned multi-dimension catalog, deterministic Top-3, preference/contradiction modifiers и persisted-row adapter.
-- `backend/app/modules/career/environment_engine.py` — 10 normalized axes, preferred conditions и условные risk conditions без запретов.
-- `backend/tests/unit/test_career/test_archetype_environment.py` — expert leader, people manager, autonomous specialist, axis/risk wording и persistence contracts.
-- `uv run pytest tests/unit/test_career/test_archetype_environment.py -q` → `5 passed`.
+- `backend/app/modules/career/archetype_engine.py` — `career-archetypes-2`: versioned multi-dimension catalog, deterministic Top-3, прежние ключи и новые `maker`, `performer`, `practitioner`, `caregiver_service` с preference-aware modifiers.
+- `backend/app/modules/career/environment_engine.py` — `career-environment-2`: 15 normalized axes, включая `practical_abstract`, `conceptual_hands_on`, `behind_scenes_audience_stage`, `one_off_flow`, `client_system`; preferred conditions и условные risk conditions без запретов.
+- `backend/tests/unit/test_career/test_archetype_environment.py` — прежние golden cases, точный состав/полярность 15 осей, practical/audience preferences и persistence contracts.
+- `uv run pytest tests/unit/test_career/test_archetype_environment.py -q` → `7 passed`.

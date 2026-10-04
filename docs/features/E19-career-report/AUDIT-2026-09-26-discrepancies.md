@@ -172,7 +172,7 @@ Dashboard gap закрыт 29 сентября 2026 года revision `4c1423ccd
 - Production Career rollout выполнен 2026-09-30: флаг включён, runtime и scheduler подтверждены. Открыто: report/PDF ID живого пользователя и canary cost/latency (на production не задан OTLP endpoint).
 - Career product page больше не трактует выключенный Career как отсутствие натальной карты: причины `404` разведены по detail, copy закреплён статической UX-проверкой.
 
-## 7. Дизайн-дефект: каталог ролей покрывает только офисно-интеллектуальную занятость
+## 7. Закрытый дизайн-дефект: occupational coverage каталога ролей
 
 Зафиксирован 2026-10-01 при разборе живой генерации `ffac0556-ac76-4083-ba3b-3c5890596b3f` (отчёт `2b7e4d6f-6ff5-439c-9422-f9ef500d9e8e`, статус `ready`). Сборку отчёта не блокирует, но сужает продуктовый смысл Career: итог читается как общий и привязанный к офисно-ИТ-спектру.
 
@@ -197,17 +197,29 @@ Dashboard gap закрыт 29 сентября 2026 года revision `4c1423ccd
 
 Единственное место, где реальная профессия пользователя входит в контекст, — свободные поля анкеты `current_activity`, `change_goal`, `current_constraints`; промпт не требует опираться на них при выборе иллюстраций.
 
-### Что нужно для закрытия
+### Закрытие 2026-10-04
 
-1. Расширить `ROLE_CATALOG` семействами, покрывающими весь спектр занятости, с весами по dimensions/осям и 2–3 примерами каждое: изобразительное творчество, слово и медиа, исполнительские искусства, ремесло и ручная работа, практическая техника, забота и сервис, земля и природа, торговля и полевая работа. Требуется бамп `ROLE_CATALOG_VERSION` и обновление golden-снимков.
-2. Расширить словарь осей среды и preference keys за пределы корпоративной лестницы: практика против абстракции, работа руками, аудитория/сцена, штучное против потока, клиент против системы.
-3. Синхронизировать каталог архетипов и формулировки анкеты, чтобы офисная предпосылка не осталась в других слоях.
-4. Промпт: требовать иллюстрации по всему спектру занятости и опоры на `current_activity` пользователя.
-5. Примеры профессий давать на русском: сейчас весь каталог англоязычный и показывается пользователю как есть, а отчёт целиком русскоязычный.
-6. Обновить критерии и evidence S04, S05, S06 и пересчитать golden evidence.
+Дефект закрыт локальным versioned-релизом без изменения схемы БД:
 
-### Границы
+1. `career-role-catalog-2` содержит 17 семейств и добавляет восемь требуемых групп: `visual_arts`, `word_and_media`, `performing_arts`, `craft_and_manual_work`, `practical_technology`, `care_and_service`, `land_and_nature`, `sales_and_field_work`. Все старые и новые примеры профессий русскоязычные, по 2–3 на семейство.
+2. `career-path-graph-2` замкнут относительно всех ключей каталога; публичный runtime использует безопасный lookup и не получает `KeyError` на catalog entries.
+3. `career-environment-2` добавляет capability-derived оси `practical_abstract`, `conceptual_hands_on`, `behind_scenes_audience_stage`, `one_off_flow`, `client_system`; тесты фиксируют состав и полярность.
+4. `career-q-2` добавляет пять необязательных enum-полей. Для существующего completed q1 router создаёт отдельную editable q2-сессию, переносит совместимые сохранённые ответы и переключает профиль на q2 до новой генерации; историческая q1-сессия не изменяется. `career-resolver-2` эмитит namespaced keys `work_mode:*`, `hands_on:*`, `audience:*`, `production_mode:*`, `service_focus:*` только при наличии ответа; frontend содержит русские labels и choices для каждого нового вопроса.
+5. `career-archetypes-2` добавляет `maker`, `performer`, `practitioner`, `caregiver_service` и preference-aware boosts, сохраняя прежние ключи.
+6. `career_interpretation_facts_v2` / `career-facts-curation-2` безопасно передают очищенные `current_activity`, `change_goal`, `current_constraints` как bounded reference facts для `role_families` и `career_paths`. `career_section_render_input_v2` перечисляет обязательные context references, validator требует их в citations/claims, а `career-segment-prompt-6` запрещает офисно-ИТ default, разрешает выбирать только catalog facts и объявляет пользовательский текст данными, а не инструкциями.
+7. `career_report_presentation_v2` использует одну и ту же русскую карту role-family labels в backend и frontend; shared parity fixture обновлена. Старый `career-role-catalog-1` / `career_interpretation_facts_v1` выбирает `career_report_presentation_v1`, сохраняет прежние title/examples и PDF-семантику, а regeneration валидирует английские profession examples по сохранённой версии v1-каталога.
 
-- Дефект **не закрыт**. Выданные ранее отчёты остаются на версиях каталога, на которых были собраны.
-- Критерий S06 «Профессии не появляются раньше role families» выполняется формально, но покрытие спектра занятости не подтверждено.
-- Продуктовое решение о полном спектре и приоритет — за владельцем продукта: расширение каталога меняет скоринг, то есть это отдельный релиз с новыми версиями каталогов, а не правка промпта.
+### RED → GREEN evidence
+
+- RED focused run: `27 failed, 21 passed`; падения воспроизводили отсутствующие новые семейства, граф v2, пять осей, enum preferences, архетипы, context facts, prompt guardrails и русские presentation labels.
+- GREEN Career unit suite: `uv run pytest tests/unit/test_career -q` → `98 passed, 1 warning`.
+- Frontend/backend semantic parity: `node scripts/check-career-report-parity.mjs` → `Career report web/PDF semantic parity checks passed`.
+- Product UI contract: `node scripts/check-career-product-ux.mjs` → `Career product UX contract checks passed`.
+- Exact frontend Prettier и `npx tsc --noEmit --pretty false` завершились успешно.
+- Финальные exact-path ruff, mypy и docs checks выполняются после последней правки; live-provider smoke не выполнялся.
+
+### Границы закрытия
+
+- DB schema/migration не требуются: существующий unique contract по `(career_profile_id, questionnaire_version)` хранит q1 и q2 раздельно; `CareerProfile.questionnaire_version` закрепляет q2 для новой генерации.
+- Ранее выданные отчёты не пересчитываются: reader/PDF распознают v1 persisted payload и применяют v1 presentation semantics, не смешивая старые английские examples с новыми русскими labels.
+- Закрытие подтверждает локальный deterministic/presentation contract; production или live-provider качество нового occupational coverage не заявляется.

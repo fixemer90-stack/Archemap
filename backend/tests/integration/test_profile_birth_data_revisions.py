@@ -365,6 +365,7 @@ async def test_durable_dispatch_releases_failure_and_recovers_without_duplicate_
     assert (dispatched, failed) == (1, 0)
     assert sent == [
         {
+            "revision_id": result.revision.id,
             "profile_id": profile_id,
             "user_id": user_id,
             "generation_id": result.revision.generation_id,

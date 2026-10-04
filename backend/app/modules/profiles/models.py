@@ -53,6 +53,29 @@ class PersonProfile(BaseModel):
     timezone: Mapped[str] = mapped_column(String(60), nullable=False)  # IANA, e.g. "Europe/Moscow"
 
 
+class ProfileActiveNatalReport(BaseModel):
+    """Owner-scoped pointer to the report currently shown for a profile."""
+
+    __tablename__ = "profile_active_natal_reports"
+    __table_args__ = (
+        UniqueConstraint("profile_id", name="uq_profile_active_natal_reports_profile"),
+        UniqueConstraint("report_id", name="uq_profile_active_natal_reports_report"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("person_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("astrotype_v2_natal_reports.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+
 class ProfileBirthDataRevision(BaseModel):
     """Immutable revision facts with mutable dispatch and generation result state."""
 

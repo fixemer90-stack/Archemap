@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -47,6 +48,51 @@ def test_refinement_request_is_full_snapshot_without_birth_date() -> None:
     assert "birth_date" not in BirthDataRefinementRequest.model_fields
     with pytest.raises(PydanticValidationError):
         BirthDataRefinementRequest.model_validate({"birth_time": None})
+
+
+async def test_time_only_refinement_reuses_current_verified_place_without_new_geocode_token() -> None:
+    user_id = uuid.uuid4()
+    profile_id = uuid.uuid4()
+    profile = SimpleNamespace(
+        id=profile_id,
+        user_id=user_id,
+        birth_time=None,
+        birth_time_accuracy="unknown",
+        birth_place="Moscow, Russia",
+        latitude=55.7558,
+        longitude=37.6176,
+        timezone="Europe/Moscow",
+    )
+    repository = MagicMock()
+    repository.ensure_owned_profile = AsyncMock(return_value=profile)
+    repository.create_revision = AsyncMock(return_value=SimpleNamespace())
+    resolver = AsyncMock()
+    service = BirthDataRefinementService(
+        AsyncMock(),
+        timezone_resolver=resolver,
+        repository=repository,
+        geocode_token_secret=_TOKEN_SECRET,
+    )
+    request = BirthDataRefinementRequest.model_validate(
+        {
+            "birth_time": "08:35",
+            "birth_time_accuracy": "exact",
+            "birth_place": profile.birth_place,
+            "latitude": profile.latitude,
+            "longitude": profile.longitude,
+            "timezone": profile.timezone,
+        }
+    )
+
+    await service.create(
+        user_id=user_id,
+        profile_id=profile_id,
+        request=request,
+        idempotency_key=uuid.uuid4(),
+    )
+
+    repository.create_revision.assert_awaited_once()
+    resolver.resolve.assert_not_awaited()
 
 
 def test_generic_profile_patch_is_name_only_and_rejects_birth_data() -> None:

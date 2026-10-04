@@ -28,6 +28,6 @@ def test_runtime_openapi_exposes_refinement_and_timezone_contracts() -> None:
     assert {"timezone", "selection_token"} <= set(geocode_schema["required"])
     refinement_schema = schema["components"]["schemas"]["BirthDataRefinementRequest"]
     assert "birth_date" not in refinement_schema["properties"]
-    assert "geocode_selection_token" in refinement_schema["required"]
+    assert "geocode_selection_token" not in refinement_schema["required"]
     update_schema = schema["components"]["schemas"]["UpdateProfileRequest"]
     assert set(update_schema["properties"]) == {"name"}

@@ -7,7 +7,8 @@ import asyncio
 import hashlib
 import json
 import uuid
-from datetime import UTC, datetime, time
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, time
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
@@ -44,7 +45,7 @@ from app.modules.astrotype_v2.segment_inputs import build_section_render_inputs_
 from app.modules.astrotype_v2.segment_validation import SegmentValidationError
 from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, build_natal_synthesis_row
 from app.modules.llm.provider import get_llm_provider
-from app.modules.profiles.models import PersonProfile
+from app.modules.profiles.models import PersonProfile, ProfileBirthDataRevision
 from workers.celery_app import app
 
 _SOURCE_VERSION = "v2.0"
@@ -53,6 +54,18 @@ _DETERMINISTIC_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
 _DETERMINISTIC_PROVIDER = "deterministic"
 _DETERMINISTIC_MODEL = "v2-local-runtime"
 logger = structlog.get_logger()
+
+
+@dataclass(frozen=True, slots=True)
+class _RevisionChartInput:
+    id: uuid.UUID
+    birth_date: date
+    birth_time: time | None
+    birth_time_accuracy: str
+    birth_place: str
+    latitude: float
+    longitude: float
+    timezone: str
 
 
 @app.task(  # type: ignore[untyped-decorator]
@@ -69,6 +82,7 @@ def generate_natal_report_v2(
     profile_id: str,
     user_id: str,
     generation_id: str,
+    revision_id: str | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
     """Run the v2 generation pipeline outside the request lifecycle."""
@@ -78,6 +92,7 @@ def generate_natal_report_v2(
             profile_id=profile_id,
             user_id=user_id,
             generation_id=generation_id,
+            revision_id=revision_id,
             force=force,
         )
     )
@@ -88,15 +103,18 @@ async def _generate_natal_report_v2_async(
     profile_id: str,
     user_id: str,
     generation_id: str,
-    force: bool,
+    revision_id: str | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Build and persist a ready natal-only v2 report for one owned profile."""
 
     profile_uuid = uuid.UUID(profile_id)
     user_uuid = uuid.UUID(user_id)
     generation_uuid = uuid.UUID(generation_id)
+    revision_uuid = uuid.UUID(revision_id) if revision_id is not None else None
     async with async_session_factory() as db:
         repository = AstrotypeV2Repository(db)
+        revision: ProfileBirthDataRevision | None = None
         try:
             logger.info(
                 "astrotype_v2_generation_started",
@@ -105,18 +123,54 @@ async def _generate_natal_report_v2_async(
                 user_id=user_id,
                 force=force,
             )
-            await _persist_generation_status(
-                repository=repository,
-                generation_id=generation_uuid,
-                status="running",
-                diagnostics={"force": force, "stage": "started"},
-            )
-            await db.commit()
+            if revision_uuid is not None:
+                revision = await _claim_refinement_revision(
+                    db,
+                    revision_id=revision_uuid,
+                    generation_id=generation_uuid,
+                    profile_id=profile_uuid,
+                    user_id=user_uuid,
+                )
+                if revision.status in {"deterministic_ready", "ready", "failed"}:
+                    existing = await repository.get_report(revision.report_id) if revision.report_id else None
+                    if existing is not None:
+                        return _task_payload(
+                            generation_id=generation_id,
+                            profile_id=profile_uuid,
+                            report=existing,
+                            status=revision.status,
+                            force=force,
+                        )
+                    if revision.status == "failed":
+                        return {
+                            "contract_version": "astrotype_v2_generation_task_v1",
+                            "generation_id": generation_id,
+                            "profile_id": str(profile_uuid),
+                            "status": "failed",
+                            "force": force,
+                        }
+                revision.status = "processing"
+                revision.error_code = None
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status="running",
+                    diagnostics={"force": force, "stage": "started", "source": "birth_data_refinement"},
+                )
+                await repository.flush()
+            else:
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status="running",
+                    diagnostics={"force": force, "stage": "started"},
+                )
+                await db.commit()
             existing_report = await repository.get_latest_report_for_profile(
                 profile_id=profile_uuid,
                 user_id=user_uuid,
             )
-            if existing_report is not None and not force:
+            if existing_report is not None and not force and revision is None:
                 await _persist_generation_status(
                     repository=repository,
                     generation_id=generation_uuid,
@@ -138,7 +192,7 @@ async def _generate_natal_report_v2_async(
                     status="already_exists",
                     force=force,
                 )
-            if not force:
+            if not force and revision is None:
                 existing_report = await _wait_for_existing_report(
                     repository=repository,
                     profile_id=profile_uuid,
@@ -168,7 +222,10 @@ async def _generate_natal_report_v2_async(
                     )
 
             profile = await _load_profile(db, profile_id=profile_uuid, user_id=user_uuid)
-            chart = await _get_or_create_chart(repository=repository, profile=profile, user_id=user_uuid)
+            chart_input = (
+                _chart_input_from_revision(profile=profile, revision=revision) if revision is not None else profile
+            )
+            chart = await _get_or_create_chart(repository=repository, profile=chart_input, user_id=user_uuid)
             positions = await repository.list_planet_positions_for_chart(chart.id)
             houses = await repository.list_houses_for_chart(chart.id)
             aspects = await repository.list_aspects_for_chart(chart.id)
@@ -223,18 +280,20 @@ async def _generate_natal_report_v2_async(
                 await repository.add(infographic)
                 await repository.flush()
 
-            latest_report = await repository.get_latest_report_for_chart(chart.id)
+            next_version = await repository.next_report_version_for_profile(
+                profile_id=profile_uuid,
+                user_id=user_uuid,
+            )
             report = build_deterministic_natal_report_row(
                 chart_id=chart.id,
                 synthesis_row=synthesis,
                 outline_row=outline,
                 infographic_row=infographic,
-                previous_version=latest_report.version if latest_report is not None else 0,
+                previous_version=next_version - 1,
             )
-            report.generation_id = uuid.UUID(generation_id)
+            report.generation_id = generation_uuid
             await repository.add(report)
             await repository.flush()
-            await db.commit()
 
             report_id = report.id
             deterministic_payload = dict(report.assembled_payload or {})
@@ -247,6 +306,16 @@ async def _generate_natal_report_v2_async(
                 report_id=report_id,
                 diagnostics={"stage": "segments"},
             )
+            if revision is not None:
+                revision.chart_id = chart.id
+                revision.report_id = report_id
+                revision.status = "deterministic_ready"
+                revision.error_code = None
+                await repository.activate_report(
+                    profile_id=profile_uuid,
+                    user_id=user_uuid,
+                    report_id=report_id,
+                )
             await repository.flush()
             await db.commit()
 
@@ -286,6 +355,13 @@ async def _generate_natal_report_v2_async(
                     report_id=report_id,
                     diagnostics={"stage": "assembled"},
                 )
+                if revision_uuid is not None:
+                    completed_revision = await db.scalar(
+                        select(ProfileBirthDataRevision).where(ProfileBirthDataRevision.id == revision_uuid)
+                    )
+                    if completed_revision is not None:
+                        completed_revision.status = "ready"
+                        completed_revision.error_code = None
                 await repository.flush()
                 await db.commit()
                 logger.info(
@@ -310,15 +386,22 @@ async def _generate_natal_report_v2_async(
                 failed_report.status = "narrative_failed"
                 failed_report.assembled_payload = deterministic_payload | {
                     "status": "narrative_failed",
-                    "error": str(exc),
+                    "error_code": "narrative_generation_failed",
                 }
                 await _persist_generation_status(
                     repository=repository,
                     generation_id=generation_uuid,
                     status="narrative_failed",
                     report_id=report_id,
-                    diagnostics={"stage": "segments", "error": str(exc)},
+                    diagnostics={"stage": "segments", "error_code": "narrative_generation_failed"},
                 )
+                if revision_uuid is not None:
+                    failed_revision = await db.scalar(
+                        select(ProfileBirthDataRevision).where(ProfileBirthDataRevision.id == revision_uuid)
+                    )
+                    if failed_revision is not None:
+                        failed_revision.status = "deterministic_ready"
+                        failed_revision.error_code = "narrative_generation_failed"
                 await repository.flush()
                 await db.commit()
                 logger.error(
@@ -343,6 +426,13 @@ async def _generate_natal_report_v2_async(
                 status="failed",
                 diagnostics={"stage": "pipeline", "error": "generation aborted"},
             )
+            if revision_uuid is not None:
+                failed_revision = await db.scalar(
+                    select(ProfileBirthDataRevision).where(ProfileBirthDataRevision.id == revision_uuid)
+                )
+                if failed_revision is not None and failed_revision.status not in {"deterministic_ready", "ready"}:
+                    failed_revision.status = "failed"
+                    failed_revision.error_code = "report_generation_failed"
             await db.commit()
             logger.exception(
                 "astrotype_v2_generation_failed",
@@ -364,6 +454,49 @@ async def _load_profile(db: Any, *, profile_id: uuid.UUID, user_id: uuid.UUID) -
     return cast(PersonProfile, profile)
 
 
+async def _claim_refinement_revision(
+    db: Any,
+    *,
+    revision_id: uuid.UUID,
+    generation_id: uuid.UUID,
+    profile_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> ProfileBirthDataRevision:
+    """Lock and validate the durable revision before creating any artifacts."""
+
+    revision = await db.scalar(
+        select(ProfileBirthDataRevision)
+        .where(
+            ProfileBirthDataRevision.id == revision_id,
+            ProfileBirthDataRevision.generation_id == generation_id,
+            ProfileBirthDataRevision.profile_id == profile_id,
+            ProfileBirthDataRevision.user_id == user_id,
+        )
+        .with_for_update()
+    )
+    if revision is None:
+        raise ValueError("Birth-data revision not found")
+    return cast(ProfileBirthDataRevision, revision)
+
+
+def _chart_input_from_revision(*, profile: PersonProfile, revision: ProfileBirthDataRevision) -> _RevisionChartInput:
+    """Rebuild from the committed immutable snapshot, not later profile mutations."""
+
+    snapshot = revision.new_snapshot
+    birth_time_value = snapshot["birth_time"]
+    snapshot_birth_time = time.fromisoformat(birth_time_value) if isinstance(birth_time_value, str) else None
+    return _RevisionChartInput(
+        id=profile.id,
+        birth_date=profile.birth_date,
+        birth_time=snapshot_birth_time,
+        birth_time_accuracy=str(snapshot["birth_time_accuracy"]),
+        birth_place=str(snapshot["birth_place"]),
+        latitude=float(snapshot["latitude"]),
+        longitude=float(snapshot["longitude"]),
+        timezone=str(snapshot["timezone"]),
+    )
+
+
 async def _wait_for_existing_report(
     *,
     repository: AstrotypeV2Repository,
@@ -383,7 +516,7 @@ async def _wait_for_existing_report(
 async def _get_or_create_chart(
     *,
     repository: AstrotypeV2Repository,
-    profile: PersonProfile,
+    profile: PersonProfile | _RevisionChartInput,
     user_id: uuid.UUID,
 ) -> models.NatalChart:
     if profile.latitude == 0.0 and profile.longitude == 0.0:

@@ -6,12 +6,14 @@ import uuid
 from collections.abc import Sequence
 from typing import TypeVar
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models import BaseModel
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.reference_data import canonicalize_body_pair
+from app.modules.profiles.models import PersonProfile, ProfileActiveNatalReport
 
 _V2Model = TypeVar("_V2Model", bound=BaseModel)
 
@@ -250,7 +252,10 @@ class AstrotypeV2Repository:
     async def get_latest_report_for_profile(
         self, *, profile_id: uuid.UUID, user_id: uuid.UUID
     ) -> models.NatalReport | None:
-        """Return latest v2 report for a profile owned by the user."""
+        """Return active report, with legacy latest-report fallback."""
+        active_report = await self.get_active_report_for_profile(profile_id=profile_id, user_id=user_id)
+        if active_report is not None:
+            return active_report
         result = await self.session.execute(
             select(models.NatalReport)
             .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
@@ -262,6 +267,48 @@ class AstrotypeV2Repository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def get_active_report_for_profile(
+        self, *, profile_id: uuid.UUID, user_id: uuid.UUID
+    ) -> models.NatalReport | None:
+        """Return the owner-scoped active report pointer for a profile."""
+        result = await self.session.execute(
+            select(models.NatalReport)
+            .join(ProfileActiveNatalReport, ProfileActiveNatalReport.report_id == models.NatalReport.id)
+            .where(
+                ProfileActiveNatalReport.profile_id == profile_id,
+                ProfileActiveNatalReport.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def activate_report(self, *, profile_id: uuid.UUID, user_id: uuid.UUID, report_id: uuid.UUID) -> None:
+        """Atomically insert or switch one profile's active report pointer."""
+        statement = insert(ProfileActiveNatalReport).values(
+            id=uuid.uuid4(), profile_id=profile_id, user_id=user_id, report_id=report_id
+        )
+        await self.session.execute(
+            statement.on_conflict_do_update(
+                constraint="uq_profile_active_natal_reports_profile",
+                set_={"user_id": user_id, "report_id": report_id, "updated_at": func.now()},
+            )
+        )
+
+    async def next_report_version_for_profile(self, *, profile_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        """Serialize report versions across every chart lineage for a profile."""
+        profile = await self.session.scalar(
+            select(PersonProfile)
+            .where(PersonProfile.id == profile_id, PersonProfile.user_id == user_id)
+            .with_for_update()
+        )
+        if profile is None:
+            raise ValueError("Profile not found")
+        current = await self.session.scalar(
+            select(func.max(models.NatalReport.version))
+            .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
+            .where(models.NatalChart.profile_id == profile_id, models.NatalChart.user_id == user_id)
+        )
+        return int(current or 0) + 1
 
     async def get_latest_report_for_chart(self, chart_id: uuid.UUID) -> models.NatalReport | None:
         """Return the newest versioned v2 report artifact for one chart."""

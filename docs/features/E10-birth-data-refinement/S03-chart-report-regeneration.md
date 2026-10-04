@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Реализовано и проверено локально
 
 ## Контекст
 
@@ -52,12 +52,19 @@ THEN active report pointer switches atomically
 
 ## Критерии приёмки
 
-- [ ] Изменение времени создаёт новый `input_hash` и новую карту, когда расчёт реально меняется.
-- [ ] Изменение места/timezone создаёт карту из корректного UTC-момента и координат.
-- [ ] Старые карта, отчёт, сегменты и PDF остаются в базе.
-- [ ] Старый отчёт читается до `deterministic_ready` новой версии.
-- [ ] Новая версия активируется атомарно и соответствует новой карте.
-- [ ] Narrative строится только на фактах новой карты.
-- [ ] Worker retry не создаёт дубликаты карты, отчёта или ревизии.
-- [ ] Failure не скрывает старый отчёт и не запускает платёж.
-- [ ] Revision status доступен API/UI без утечки внутренних traceback/provider secrets.
+- [x] Изменение времени создаёт новый `input_hash` и новую карту, когда расчёт реально меняется.
+- [x] Изменение места/timezone создаёт карту из корректного UTC-момента и координат.
+- [x] Старые карта, отчёт, сегменты и PDF остаются в базе.
+- [x] Старый отчёт читается до `deterministic_ready` новой версии.
+- [x] Новая версия активируется атомарно и соответствует новой карте.
+- [x] Narrative строится только на фактах новой карты.
+- [x] Worker retry не создаёт дубликаты карты, отчёта или ревизии.
+- [x] Failure не скрывает старый отчёт и не запускает платёж.
+- [x] Revision status доступен API/UI без утечки внутренних traceback/provider secrets.
+
+## Evidence
+
+- Additive migration `d9e0f1a2b3c4` создаёт owner-scoped active-report pointer; локальный upgrade с пустой БД дошёл до head без destructive операций.
+- Worker получает `revision_id`, блокирует durable revision, строит карту из immutable `new_snapshot`, сохраняет status/result links и переключает active report только после deterministic-слоя.
+- PostgreSQL integration: `test_birth_data_refinement_regeneration.py` — 3 passed; время, timezone/координаты, retry-safe chart reuse, сохранность старых артефактов, failure и отсутствие новых payment rows.
+- API/UI status: безопасные `error_code`, polling в Settings и ссылки на текущий/обновлённый отчёт без вывода traceback или provider payload.

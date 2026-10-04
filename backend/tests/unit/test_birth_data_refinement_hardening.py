@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -21,6 +22,7 @@ from app.modules.profiles.refinement import (
     verify_geocode_selection_token,
 )
 from app.modules.profiles.schemas import BirthDataRefinementRequest, UpdateProfileRequest
+from workers.tasks.astrotype_v2 import _chart_input_from_revision
 
 _TOKEN_SECRET = "test-geocode-token"
 
@@ -128,7 +130,7 @@ def test_runtime_openapi_documents_token_enums_auth_not_found_and_retry_header()
     accepted = schema["components"]["schemas"]["BirthDataRefinementAcceptedResponse"]
     status_response = schema["components"]["schemas"]["BirthDataRevisionStatusResponse"]
 
-    assert "geocode_selection_token" in request_schema["required"]
+    assert "geocode_selection_token" not in request_schema["required"]
     assert "selection_token" in schema["components"]["schemas"]["GeocodeResultItem"]["required"]
     assert set(create["responses"]) >= {"202", "400", "401", "403", "404", "409", "422", "429", "503"}
     assert set(revision["responses"]) >= {"200", "401", "403", "404"}
@@ -174,3 +176,62 @@ async def test_dispatch_failure_log_is_redacted(monkeypatch: pytest.MonkeyPatch)
         error_code="broker_unavailable",
     )
     assert "Moscow" not in repr(warning.call_args)
+
+
+async def test_dispatch_passes_revision_identity_to_retry_safe_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    revision = SimpleNamespace(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        generation_id=uuid.uuid4(),
+    )
+    repository = MagicMock()
+    repository.claim_dispatch = AsyncMock(return_value=revision)
+    repository.mark_dispatched = AsyncMock()
+    session = AsyncMock()
+    sender = MagicMock()
+    monkeypatch.setattr("app.modules.profiles.dispatch.BirthDataRevisionRepository", lambda _session: repository)
+
+    assert await dispatch_birth_data_revision(session, revision_id=revision.id, sender=sender) is True
+
+    sender.assert_called_once_with(
+        revision_id=revision.id,
+        profile_id=revision.profile_id,
+        user_id=revision.user_id,
+        generation_id=revision.generation_id,
+    )
+
+
+def test_refinement_chart_input_uses_immutable_revision_snapshot() -> None:
+    profile = SimpleNamespace(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        birth_date=date(1990, 1, 1),
+        birth_time=time(15, 45),
+        birth_time_accuracy="approximate",
+        birth_place="Mutated after refinement",
+        latitude=1.0,
+        longitude=2.0,
+        timezone="UTC",
+    )
+    revision = SimpleNamespace(
+        new_snapshot={
+            "birth_time": "08:35:00",
+            "birth_time_accuracy": "exact",
+            "birth_place": "Москва, Россия",
+            "latitude": 55.7558,
+            "longitude": 37.6173,
+            "timezone": "Europe/Moscow",
+        }
+    )
+
+    chart_input = _chart_input_from_revision(profile=cast(Any, profile), revision=cast(Any, revision))
+
+    assert chart_input.id == profile.id
+    assert chart_input.birth_date == profile.birth_date
+    assert chart_input.birth_time == time(8, 35)
+    assert chart_input.birth_time_accuracy == "exact"
+    assert chart_input.birth_place == "Москва, Россия"
+    assert chart_input.latitude == 55.7558
+    assert chart_input.longitude == 37.6173
+    assert chart_input.timezone == "Europe/Moscow"

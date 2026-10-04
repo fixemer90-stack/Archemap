@@ -460,7 +460,12 @@ class BirthDataRefinementService:
         self.clock = clock
         self.geocode_token_secret = geocode_token_secret
 
-    async def validate_snapshot(self, request: BirthDataRefinementRequest) -> BirthDataSnapshot:
+    async def validate_snapshot(
+        self,
+        request: BirthDataRefinementRequest,
+        *,
+        current_profile: PersonProfile | None = None,
+    ) -> BirthDataSnapshot:
         if request.birth_time_accuracy in {"exact", "approximate"} and request.birth_time is None:
             raise BirthDataAccuracyMismatchError
         if request.birth_time_accuracy == "unknown" and request.birth_time is not None:
@@ -475,23 +480,34 @@ class BirthDataRefinementService:
             or len(request.timezone) > 60
         ):
             raise BirthDataPlaceNotGeocodedError
-        current = self.clock() if self.clock is not None else datetime.now(UTC)
-        verify_geocode_selection_token(
-            token=request.geocode_selection_token,
-            secret=self.geocode_token_secret,
-            place=request.birth_place,
-            latitude=request.latitude,
-            longitude=request.longitude,
-            timezone=request.timezone,
-            now=current,
+        place_changed = current_profile is None or any(
+            (
+                request.birth_place != current_profile.birth_place,
+                request.latitude != current_profile.latitude,
+                request.longitude != current_profile.longitude,
+                request.timezone != current_profile.timezone,
+            )
         )
-        try:
-            ZoneInfo(request.timezone)
-        except ZoneInfoNotFoundError as exc:
-            raise BirthDataPlaceNotGeocodedError from exc
-        resolved_timezone = await self.timezone_resolver.resolve(request.latitude, request.longitude)
-        if resolved_timezone is None or resolved_timezone != request.timezone:
-            raise BirthDataPlaceNotGeocodedError
+        if place_changed:
+            if not request.geocode_selection_token:
+                raise BirthDataPlaceNotGeocodedError
+            current = self.clock() if self.clock is not None else datetime.now(UTC)
+            verify_geocode_selection_token(
+                token=request.geocode_selection_token,
+                secret=self.geocode_token_secret,
+                place=request.birth_place,
+                latitude=request.latitude,
+                longitude=request.longitude,
+                timezone=request.timezone,
+                now=current,
+            )
+            try:
+                ZoneInfo(request.timezone)
+            except ZoneInfoNotFoundError as exc:
+                raise BirthDataPlaceNotGeocodedError from exc
+            resolved_timezone = await self.timezone_resolver.resolve(request.latitude, request.longitude)
+            if resolved_timezone is None or resolved_timezone != request.timezone:
+                raise BirthDataPlaceNotGeocodedError
         return BirthDataSnapshot(
             birth_time=request.birth_time,
             birth_time_accuracy=request.birth_time_accuracy,
@@ -531,7 +547,8 @@ class BirthDataRefinementService:
         request: BirthDataRefinementRequest,
         idempotency_key: uuid.UUID,
     ) -> BirthDataRevisionCreateResult:
-        snapshot = await self.validate_snapshot(request)
+        current_profile = await self.repository.ensure_owned_profile(user_id=user_id, profile_id=profile_id)
+        snapshot = await self.validate_snapshot(request, current_profile=current_profile)
         return await self.repository.create_revision(
             user_id=user_id,
             profile_id=profile_id,

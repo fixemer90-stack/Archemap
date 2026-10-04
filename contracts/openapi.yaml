@@ -1143,7 +1143,7 @@ components:
     BirthDataRefinementRequest:
       type: object
       additionalProperties: false
-      required: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone, geocode_selection_token]
+      required: [birth_time, birth_time_accuracy, birth_place, latitude, longitude, timezone]
       properties:
         birth_time:
           oneOf:
@@ -1170,7 +1170,8 @@ components:
           description: IANA timezone that must match server resolution for latitude/longitude
         geocode_selection_token:
           type: string
-          description: Signed selection proof returned by the geocode endpoint
+          nullable: true
+          description: Signed selection proof returned by the geocode endpoint; required only when place, coordinates, or timezone change
     BirthDataRefinementStatus:
       type: object
       additionalProperties: false

@@ -16,7 +16,9 @@ DISPATCH_CLAIM_TTL = timedelta(minutes=5)
 logger = structlog.get_logger()
 
 
-def _send_generation(*, profile_id: uuid.UUID, user_id: uuid.UUID, generation_id: uuid.UUID) -> Any:
+def _send_generation(
+    *, revision_id: uuid.UUID, profile_id: uuid.UUID, user_id: uuid.UUID, generation_id: uuid.UUID
+) -> Any:
     from workers.tasks.astrotype_v2 import generate_natal_report_v2
 
     return generate_natal_report_v2.apply_async(
@@ -24,6 +26,7 @@ def _send_generation(*, profile_id: uuid.UUID, user_id: uuid.UUID, generation_id
             "profile_id": str(profile_id),
             "user_id": str(user_id),
             "generation_id": str(generation_id),
+            "revision_id": str(revision_id),
             "force": True,
         },
         task_id=f"birth-refinement-{generation_id}",
@@ -56,6 +59,7 @@ async def dispatch_birth_data_revision(
 
     try:
         sender(
+            revision_id=revision.id,
             profile_id=revision.profile_id,
             user_id=revision.user_id,
             generation_id=revision.generation_id,

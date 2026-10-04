@@ -141,6 +141,28 @@ async def test_repository_list_segments_queries_v2_segments_by_outline() -> None
     assert "report_narratives" not in statement_text
 
 
+@pytest.mark.asyncio
+async def test_repository_active_report_lookup_is_profile_and_owner_scoped() -> None:
+    from app.modules.astrotype_v2.repository import AstrotypeV2Repository
+
+    profile_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    expected = object()
+    session = MagicMock()
+    session.execute = AsyncMock(return_value=_ScalarResult(expected))
+
+    result = await AstrotypeV2Repository(session).get_active_report_for_profile(
+        profile_id=profile_id,
+        user_id=user_id,
+    )
+
+    assert result is expected
+    statement_text = str(session.execute.await_args.args[0])
+    assert "profile_active_natal_reports" in statement_text
+    assert "profile_id" in statement_text
+    assert "user_id" in statement_text
+
+
 def test_repository_source_does_not_import_legacy_runtime_modules() -> None:
     repository_path = ROOT / "app" / "modules" / "astrotype_v2" / "repository.py"
     repository_text = repository_path.read_text()

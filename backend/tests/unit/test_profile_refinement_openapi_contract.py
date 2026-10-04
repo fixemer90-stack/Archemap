@@ -31,8 +31,8 @@ def test_canonical_openapi_contains_refinement_paths_and_error_shapes() -> None:
         "latitude",
         "longitude",
         "timezone",
-        "geocode_selection_token",
     }
+    assert "geocode_selection_token" not in request["required"]
     assert {"timezone", "selection_token"} <= set(schemas["GeocodeResultItem"]["required"])
     assert set(schemas["RefinementError"]["properties"]["code"]["enum"]) >= {
         "birth_data_unchanged",

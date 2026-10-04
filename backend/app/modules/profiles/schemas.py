@@ -47,7 +47,7 @@ class BirthDataRefinementRequest(BaseModel):
     latitude: float
     longitude: float
     timezone: str
-    geocode_selection_token: str
+    geocode_selection_token: str | None = None
 
 
 class BirthDataRefinementStatusResponse(BaseModel):

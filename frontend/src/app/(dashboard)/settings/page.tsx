@@ -1,113 +1,97 @@
 "use client";
 
 import { useState } from "react";
+
+import { BirthDataSettings } from "@/components/settings/BirthDataSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function SettingsPage() {
-  const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
-
-  // Profile form
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState("");
-
-  // Password form
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-
   const name = nameDraft ?? user?.name ?? "";
 
-  async function handleUpdateProfile(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleUpdateProfile(event: React.FormEvent) {
+    event.preventDefault();
     setProfileLoading(true);
     setProfileError("");
     setProfileSuccess(false);
-
     try {
-      const res = await fetch("/api/v1/users/me", {
+      const response = await fetch("/api/v1/users/me", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ name: name.trim() }),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
+      if (!response.ok) {
+        const data = await response.json();
         throw new Error(
           typeof data.detail === "string"
             ? data.detail
             : "Ошибка обновления профиля",
         );
       }
-
-      const updatedUser = await res.json();
-      setUser(updatedUser);
+      setUser(await response.json());
       setNameDraft(null);
       setProfileSuccess(true);
-    } catch (err) {
+    } catch (error) {
       setProfileError(
-        err instanceof Error ? err.message : "Что-то пошло не так",
+        error instanceof Error ? error.message : "Что-то пошло не так",
       );
     } finally {
       setProfileLoading(false);
     }
   }
 
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleChangePassword(event: React.FormEvent) {
+    event.preventDefault();
     setPasswordLoading(true);
     setPasswordError("");
     setPasswordSuccess(false);
-
     if (newPassword.length < 8) {
       setPasswordError("Пароль должен быть не менее 8 символов");
       setPasswordLoading(false);
       return;
     }
-
     if (newPassword !== confirmPassword) {
       setPasswordError("Пароли не совпадают");
       setPasswordLoading(false);
       return;
     }
-
     try {
-      const res = await fetch("/api/v1/auth/change-password", {
+      const response = await fetch("/api/v1/auth/change-password", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword,
         }),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
+      if (!response.ok) {
+        const data = await response.json();
         throw new Error(
           typeof data.detail === "string" ? data.detail : "Ошибка смены пароля",
         );
       }
-
       setPasswordSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err) {
+    } catch (error) {
       setPasswordError(
-        err instanceof Error ? err.message : "Что-то пошло не так",
+        error instanceof Error ? error.message : "Что-то пошло не так",
       );
     } finally {
       setPasswordLoading(false);
@@ -115,108 +99,167 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
-      <div>
-        <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+    <main className="mx-auto w-full max-w-6xl space-y-8 overflow-x-clip px-1 pb-16 sm:px-3">
+      <header className="max-w-3xl">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#D7B466]">
+          Личные настройки
+        </p>
+        <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8] sm:text-5xl">
           Настройки
         </h1>
-        <p className="text-sm text-[#D8DCE8] mt-1">
-          Управление профилем и безопасностью
+        <p className="mt-3 text-base leading-7 text-[#C8D0DE]">
+          Проверьте исходные данные расчёта, имя профиля и параметры
+          безопасности.
         </p>
-      </div>
+      </header>
 
-      {/* Profile section */}
-      <div className="glass p-6 space-y-4">
-        <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
-          Профиль
-        </h2>
+      <BirthDataSettings />
 
-        <form onSubmit={handleUpdateProfile} className="space-y-4">
-          {profileError && (
-            <p className="text-sm text-red-500">{profileError}</p>
-          )}
-          {profileSuccess && (
-            <p className="text-sm text-green-500">Профиль обновлён</p>
-          )}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-[24px] border border-white/10 bg-[#111927]/85 p-5 sm:p-7">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#AEB8C8]">
+            Профиль
+          </p>
+          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+            Как к вам обращаться
+          </h2>
+          <form onSubmit={handleUpdateProfile} className="mt-6 space-y-5">
+            {profileError && (
+              <p role="alert" className="text-base text-red-300">
+                {profileError}
+              </p>
+            )}
+            {profileSuccess && (
+              <p aria-live="polite" className="text-base text-emerald-200">
+                Профиль обновлён
+              </p>
+            )}
+            <div className="space-y-2">
+              <label
+                htmlFor="settings-name"
+                className="text-base font-medium text-[#F6F1E8]"
+              >
+                Имя
+              </label>
+              <Input
+                id="settings-name"
+                value={name}
+                onChange={(event) => setNameDraft(event.target.value)}
+                placeholder="Ваше имя"
+                maxLength={120}
+                className="min-h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="settings-email"
+                className="text-base font-medium text-[#D8DCE8]"
+              >
+                Email
+              </label>
+              <Input
+                id="settings-email"
+                value={user?.email || ""}
+                disabled
+                className="min-h-11 opacity-70"
+              />
+              <p className="text-sm leading-6 text-[#9FAABC]">
+                Email нельзя изменить здесь.
+              </p>
+            </div>
+            <Button
+              type="submit"
+              disabled={profileLoading}
+              className="min-h-11"
+            >
+              {profileLoading ? "Сохранение…" : "Сохранить имя"}
+            </Button>
+          </form>
+        </section>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Имя</label>
-            <Input
-              value={name}
-              onChange={(e) => setNameDraft(e.target.value)}
-              placeholder="Ваше имя"
-              maxLength={120}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Email
-            </label>
-            <Input value={user?.email || ""} disabled className="opacity-50" />
-            <p className="text-xs text-muted-foreground">
-              Email нельзя изменить
-            </p>
-          </div>
-
-          <Button type="submit" disabled={profileLoading}>
-            {profileLoading ? "Сохранение..." : "Сохранить"}
-          </Button>
-        </form>
-      </div>
-
-      {/* Password section */}
-      <div className="glass p-6 space-y-4">
-        <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
-          Смена пароля
-        </h2>
-
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          {passwordError && (
-            <p className="text-sm text-red-500">{passwordError}</p>
-          )}
-          {passwordSuccess && (
-            <p className="text-sm text-green-500">Пароль изменён</p>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Текущий пароль</label>
-            <Input
-              type="password"
+        <section className="rounded-[24px] border border-white/10 bg-[#111927]/85 p-5 sm:p-7">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#AEB8C8]">
+            Безопасность
+          </p>
+          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+            Смена пароля
+          </h2>
+          <form onSubmit={handleChangePassword} className="mt-6 space-y-5">
+            {passwordError && (
+              <p role="alert" className="text-base text-red-300">
+                {passwordError}
+              </p>
+            )}
+            {passwordSuccess && (
+              <p aria-live="polite" className="text-base text-emerald-200">
+                Пароль изменён
+              </p>
+            )}
+            <PasswordField
+              id="current-password"
+              label="Текущий пароль"
               value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
+              onChange={setCurrentPassword}
               placeholder="Введите текущий пароль"
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Новый пароль</label>
-            <Input
-              type="password"
+            <PasswordField
+              id="new-password"
+              label="Новый пароль"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={setNewPassword}
               placeholder="Минимум 8 символов"
               minLength={8}
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Подтвердите новый пароль
-            </label>
-            <Input
-              type="password"
+            <PasswordField
+              id="confirm-password"
+              label="Подтвердите новый пароль"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={setConfirmPassword}
               placeholder="Повторите пароль"
             />
-          </div>
-
-          <Button type="submit" disabled={passwordLoading}>
-            {passwordLoading ? "Смена пароля..." : "Сменить пароль"}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={passwordLoading}
+              className="min-h-11"
+            >
+              {passwordLoading ? "Смена пароля…" : "Сменить пароль"}
+            </Button>
+          </form>
+        </section>
       </div>
+    </main>
+  );
+}
+
+function PasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  minLength,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  minLength?: number;
+}) {
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-base font-medium text-[#F6F1E8]">
+        {label}
+      </label>
+      <Input
+        id={id}
+        type="password"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        minLength={minLength}
+        className="min-h-11"
+      />
     </div>
   );
 }

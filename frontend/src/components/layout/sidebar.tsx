@@ -96,7 +96,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-[rgba(216,220,232,0.10)] bg-[rgba(255,255,255,0.03)] backdrop-blur-xl transition-all duration-300",
+        "hidden h-screen flex-col border-r border-[rgba(216,220,232,0.10)] bg-[rgba(255,255,255,0.03)] backdrop-blur-xl transition-all duration-300 md:flex",
         sidebarOpen ? "w-64" : "w-16",
       )}
     >

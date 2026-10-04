@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Локальные тесты закрыты; staging/production evidence и alerts открыты
 
 ## Контекст
 
@@ -78,11 +78,16 @@
 
 ## Критерии приёмки
 
-- [ ] Все backend test classes зелёные, включая реальную PostgreSQL concurrency-проверку.
-- [ ] Frontend state и accessibility tests зелёные.
+- [x] Все backend test classes зелёные, включая реальную PostgreSQL concurrency-проверку.
+- [x] Frontend state и accessibility tests зелёные.
 - [ ] Метрики и безопасные логи доступны на staging.
 - [ ] Alert покрывает stuck и failed generation.
 - [ ] Staging smoke доказывает 24-часовой cooldown и сохранность старого отчёта.
 - [ ] Staging smoke доказывает отсутствие новой оплаты/изменения entitlement.
 - [ ] Rollback feature flag проверен без удаления данных.
 - [ ] Production включается только после зелёного CI и staging evidence.
+
+## Текущий evidence gap
+
+- Локально подтверждены PostgreSQL revision/concurrency, regeneration preservation, API contracts и Settings browser flow.
+- Staging metrics/readback, stuck/failed alert, 24-часовой smoke, entitlement/payment comparison и rollback flag ещё не выполнялись; эти критерии нельзя закрывать локальным тестом.

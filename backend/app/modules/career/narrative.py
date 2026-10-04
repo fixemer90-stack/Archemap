@@ -22,7 +22,7 @@ from app.modules.career.narrative_schemas import (
 )
 from app.modules.career.observability import career_telemetry, estimate_provider_usage
 
-CAREER_PROMPT_VERSION = "career-segment-prompt-4"
+CAREER_PROMPT_VERSION = "career-segment-prompt-5"
 
 _SECTION_METADATA: dict[str, tuple[str, str]] = {
     "professional_summary": ("Ваш профессиональный профиль", "Собрать главную профессиональную механику."),
@@ -121,6 +121,7 @@ def build_career_section_inputs(facts: CareerInterpretationFacts) -> list[Career
                     "language": "ru",
                     "tone": "specific_soft_non_diagnostic",
                     "profession_examples": "conditional_only",
+                    "profession_language": "ru",
                     "low_confidence": "explicitly_conditional",
                 },
                 continuation_policy={"scope": "same_section_only", "allow_continuation": True},
@@ -164,6 +165,7 @@ Claim objects use "text" (never "claim" or "claim_text") and "fact_keys" as a li
 No markdown and no text outside JSON.
 Do not calculate scores, invent roles, paths, professions, chart facts, or user answers.
 Profession examples must remain conditional illustrations, never prescriptions.
+Write every profession name in Russian. Do not leave profession names in English.
 Do not promise income, hiring, success, diagnosis, or certainty.
 Never write the phrases «гарантирует», «гарантированный доход», «успешное трудоустройство», «вы уникальны»,
 «раскройте свой потенциал», «найдите баланс», «следуйте своему сердцу».

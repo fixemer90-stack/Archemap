@@ -106,10 +106,12 @@ def test_section_inputs_are_bounded_and_prompt_is_one_section_only() -> None:
     payload = role_input.model_dump(mode="json")
     assert "raw_chart" not in str(payload)
     assert "raw_answers" not in str(payload)
+    assert payload["style_contract"]["profession_language"] == "ru"
     prompt = build_segment_prompt(role_input)
     assert "role_families" in prompt
     assert "one section" in prompt.lower()
     assert "role:architecture" in prompt
+    assert "Write every profession name in Russian" in prompt
     assert '"dimension": "systems_thinking"' not in prompt
 
 
@@ -456,7 +458,7 @@ def test_segment_prompt_pins_the_canonical_output_contract() -> None:
         assert token in prompt
     assert 'never "claim"' in prompt
     assert "«гарантирует»" in prompt
-    assert CAREER_PROMPT_VERSION == "career-segment-prompt-4"
+    assert CAREER_PROMPT_VERSION == "career-segment-prompt-5"
 
 
 @pytest.mark.asyncio

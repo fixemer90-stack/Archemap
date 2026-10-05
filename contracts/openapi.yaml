@@ -1169,8 +1169,7 @@ components:
           type: string
           description: IANA timezone that must match server resolution for latitude/longitude
         geocode_selection_token:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Signed selection proof returned by the geocode endpoint; required only when place, coordinates, or timezone change
     BirthDataRefinementStatus:
       type: object

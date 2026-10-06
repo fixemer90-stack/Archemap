@@ -6,15 +6,18 @@ from celery import Celery
 
 from app.config import settings
 from app.infrastructure.observability import configure_metrics
+from app.modules.profiles.observability import configure_monitor_gauges
 
 
 def configure_worker_observability() -> bool:
     """Export worker-side Career metrics through the configured OTLP endpoint."""
 
-    return configure_metrics(
+    configured = configure_metrics(
         endpoint=settings.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
         service_name=f"{settings.OTEL_SERVICE_NAME}-worker",
     )
+    configure_monitor_gauges(enabled=settings.BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER)
+    return configured
 
 
 configure_worker_observability()

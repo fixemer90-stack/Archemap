@@ -101,6 +101,7 @@ class Settings(BaseSettings):
 
     # ── Birth-data refinement rollout ─────────────────────────────────
     BIRTH_DATA_REFINEMENT_ENABLED: bool = False
+    BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER: bool = False
     BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: MonitorMinutes = 20
     BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: MonitorMinutes = 15
     BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: MonitorIntervalSeconds = 300

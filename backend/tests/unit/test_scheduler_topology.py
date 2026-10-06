@@ -80,6 +80,9 @@ def test_compose_runs_one_dedicated_refinement_monitor_exporter(filename: str) -
     assert monitor.get("restart") == worker.get("restart")
     assert monitor.get("volumes") == worker.get("volumes")
     assert monitor["environment"]["OTEL_SERVICE_NAME"] != worker["environment"].get("OTEL_SERVICE_NAME")
+    assert monitor["environment"]["BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER"] == "true"
+    for service_name in ("backend", "worker", "scheduler"):
+        assert services[service_name]["environment"].get("BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER", "false") != "true"
 
     if "container_name" in worker:
         assert monitor["container_name"] == "astrotype-refinement-monitor"
@@ -165,17 +168,29 @@ def test_worker_configures_otlp_metrics_from_runtime_settings(monkeypatch: pytes
     from workers import celery_app
 
     calls: list[tuple[str, str]] = []
+    gauge_calls: list[bool] = []
 
     def fake_configure_metrics(*, endpoint: str, service_name: str) -> bool:
         calls.append((endpoint, service_name))
         return True
 
+    def fake_configure_monitor_gauges(*, enabled: bool) -> bool:
+        gauge_calls.append(enabled)
+        return enabled
+
     monkeypatch.setattr(celery_app, "configure_metrics", fake_configure_metrics)
+    monkeypatch.setattr(celery_app, "configure_monitor_gauges", fake_configure_monitor_gauges)
     monkeypatch.setattr(settings, "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://collector:4318/v1/metrics")
     monkeypatch.setattr(settings, "OTEL_SERVICE_NAME", "astrotype-staging")
+    monkeypatch.setattr(settings, "BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER", False)
 
     assert celery_app.configure_worker_observability() is True
     assert calls == [("http://collector:4318/v1/metrics", "astrotype-staging-worker")]
+    assert gauge_calls == [False]
+
+    monkeypatch.setattr(settings, "BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER", True)
+    assert celery_app.configure_worker_observability() is True
+    assert gauge_calls == [False, True]
 
 
 def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> None:

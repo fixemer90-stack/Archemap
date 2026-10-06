@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Protocol
 
 from opentelemetry import metrics
-from opentelemetry.metrics import Observation
+from opentelemetry.metrics import Meter, Observation
 
 _ALLOWED_REQUEST_OUTCOMES = {
     "accepted",
@@ -92,16 +92,34 @@ class BirthDataRefinementTelemetry:
 _meter = metrics.get_meter("archemap.birth_data_refinement")
 _current_stuck = _CurrentGauge()
 _current_recent_failures = _CurrentGauge()
-_meter.create_observable_gauge(
-    "birth_data_refinement_stuck_generations",
-    callbacks=[_current_stuck.observe],
-    description="Current queued or processing birth-data refinements older than the configured threshold",
-)
-_meter.create_observable_gauge(
-    "birth_data_refinement_recent_failures",
-    callbacks=[_current_recent_failures.observe],
-    description="Current birth-data refinement failures inside the configured monitoring window",
-)
+_monitor_gauges_registered = False
+
+
+def configure_monitor_gauges(*, enabled: bool, meter: Meter | None = None) -> bool:
+    """Register current-state gauges only in the dedicated monitor worker."""
+
+    global _monitor_gauges_registered
+    if not enabled:
+        return False
+    if meter is None and _monitor_gauges_registered:
+        return False
+
+    target_meter = meter or _meter
+    target_meter.create_observable_gauge(
+        "birth_data_refinement_stuck_generations",
+        callbacks=[_current_stuck.observe],
+        description="Current queued or processing birth-data refinements older than the configured threshold",
+    )
+    target_meter.create_observable_gauge(
+        "birth_data_refinement_recent_failures",
+        callbacks=[_current_recent_failures.observe],
+        description="Current birth-data refinement failures inside the configured monitoring window",
+    )
+    if meter is None:
+        _monitor_gauges_registered = True
+    return True
+
+
 birth_data_refinement_telemetry = BirthDataRefinementTelemetry(
     requests=_meter.create_counter(
         "birth_data_refinement_requests",

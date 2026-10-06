@@ -45,9 +45,26 @@ def test_refinement_settings_default_to_safe_rollback_values() -> None:
     config = Settings(_env_file=None)
 
     assert config.BIRTH_DATA_REFINEMENT_ENABLED is False
+    assert config.BIRTH_DATA_REFINEMENT_MONITOR_EXPORTER is False
     assert config.BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES == 20
     assert config.BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES == 15
     assert config.BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS == 300
+
+
+def test_monitor_gauges_register_only_for_the_dedicated_exporter() -> None:
+    from app.modules.profiles.observability import configure_monitor_gauges
+
+    meter = MagicMock()
+
+    assert configure_monitor_gauges(enabled=False, meter=meter) is False
+    meter.create_observable_gauge.assert_not_called()
+
+    assert configure_monitor_gauges(enabled=True, meter=meter) is True
+    assert meter.create_observable_gauge.call_count == 2
+    assert {call.args[0] for call in meter.create_observable_gauge.call_args_list} == {
+        "birth_data_refinement_stuck_generations",
+        "birth_data_refinement_recent_failures",
+    }
 
 
 def test_telemetry_accepts_only_bounded_attributes() -> None:

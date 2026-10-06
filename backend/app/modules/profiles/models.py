@@ -169,3 +169,17 @@ Index(
     ProfileBirthDataRevision.profile_id,
     ProfileBirthDataRevision.created_at.desc(),
 )
+Index(
+    "ix_profile_birth_data_revisions_monitor_active_updated_at",
+    ProfileBirthDataRevision.status,
+    ProfileBirthDataRevision.updated_at,
+    postgresql_where=ProfileBirthDataRevision.status.in_(("queued", "processing")),
+)
+Index(
+    "ix_profile_birth_data_revisions_monitor_failure_updated_at",
+    ProfileBirthDataRevision.error_code,
+    ProfileBirthDataRevision.updated_at,
+    postgresql_where=ProfileBirthDataRevision.error_code.in_(
+        ("narrative_generation_failed", "report_generation_failed")
+    ),
+)

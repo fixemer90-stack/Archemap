@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.util
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
+from types import ModuleType
 from typing import cast
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Table, UniqueConstraint, inspect
@@ -93,6 +96,23 @@ def test_revision_history_indexes_keep_created_at_descending() -> None:
     )
 
 
+def test_revision_monitor_indexes_match_the_monitor_query_predicates() -> None:
+    table = cast(Table, ProfileBirthDataRevision.__table__)
+    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled_indexes = {str(index.name): str(CreateIndex(index).compile(dialect=dialect)) for index in table.indexes}
+
+    assert compiled_indexes["ix_profile_birth_data_revisions_monitor_active_updated_at"] == (
+        "CREATE INDEX ix_profile_birth_data_revisions_monitor_active_updated_at "
+        "ON profile_birth_data_revisions (status, updated_at) "
+        "WHERE status IN ('queued', 'processing')"
+    )
+    assert compiled_indexes["ix_profile_birth_data_revisions_monitor_failure_updated_at"] == (
+        "CREATE INDEX ix_profile_birth_data_revisions_monitor_failure_updated_at "
+        "ON profile_birth_data_revisions (error_code, updated_at) "
+        "WHERE error_code IN ('narrative_generation_failed', 'report_generation_failed')"
+    )
+
+
 def test_revision_history_links_use_restrict_to_preserve_history() -> None:
     foreign_keys = {
         column.name: next(iter(column.foreign_keys)).ondelete
@@ -159,3 +179,49 @@ def test_revision_migration_is_additive_immutable_and_targets_current_head() -> 
     upgrade_text = migration_text.split("def downgrade()", maxsplit=1)[0]
     for destructive_operation in ("drop_table", "drop_column", "alter_column", "truncate"):
         assert destructive_operation not in upgrade_text.lower()
+
+
+def test_monitor_index_migration_is_additive_reversible_and_matches_the_orm() -> None:
+    migration_files = sorted((ROOT / "alembic" / "versions").glob("*_add_refinement_monitor_indexes.py"))
+
+    assert len(migration_files) == 1
+    spec = importlib.util.spec_from_file_location("refinement_monitor_indexes_migration", migration_files[0])
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    assert isinstance(module, ModuleType)
+    spec.loader.exec_module(module)
+    assert module.down_revision == "d9e0f1a2b3c4"
+
+    operation = MagicMock()
+    module.__dict__["op"] = operation
+    module.upgrade()
+
+    assert operation.create_index.call_count == 2
+    active_call, failure_call = operation.create_index.call_args_list
+    assert active_call.args == (
+        "ix_profile_birth_data_revisions_monitor_active_updated_at",
+        "profile_birth_data_revisions",
+        ["status", "updated_at"],
+    )
+    assert str(active_call.kwargs["postgresql_where"]) == "status IN ('queued', 'processing')"
+    assert failure_call.args == (
+        "ix_profile_birth_data_revisions_monitor_failure_updated_at",
+        "profile_birth_data_revisions",
+        ["error_code", "updated_at"],
+    )
+    assert str(failure_call.kwargs["postgresql_where"]) == (
+        "error_code IN ('narrative_generation_failed', 'report_generation_failed')"
+    )
+    assert not operation.execute.called
+
+    operation.reset_mock()
+    module.downgrade()
+
+    assert [call.args for call in operation.drop_index.call_args_list] == [
+        ("ix_profile_birth_data_revisions_monitor_failure_updated_at",),
+        ("ix_profile_birth_data_revisions_monitor_active_updated_at",),
+    ]
+    assert all(
+        call.kwargs == {"table_name": "profile_birth_data_revisions"} for call in operation.drop_index.call_args_list
+    )

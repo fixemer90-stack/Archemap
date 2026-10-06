@@ -44,6 +44,8 @@ Celery beat запускает `profiles.monitor_birth_data_refinements` с conf
 
 Monitor обновляет gauges `birth_data_refinement_stuck_generations` и `birth_data_refinement_recent_failures`, затем пишет bounded event `birth_data_refinement_alert` только с агрегатами и порогами. Staging Prometheus загружает `deploy/prometheus-birth-data-refinement.rules.yaml`; failed alert использует authoritative recent-failure gauge `> 0`, а failure counter сохраняется для rate/history анализа без риска потерять первый ненулевой sample.
 
+Monitor query paths поддержаны двумя additive partial PostgreSQL indexes, одинаково определёнными в ORM и migration `e0f1a2b3c4d5`: `(status, updated_at) WHERE status IN ('queued','processing')` и `(error_code, updated_at) WHERE error_code IN ('narrative_generation_failed','report_generation_failed')`. Локальная disposable PostgreSQL 16 проверка подтвердила `alembic upgrade head`, наличие обоих indexes, downgrade до `d9e0f1a2b3c4` с удалением только этих indexes, повторный upgrade до head и `EXPLAIN` выбор каждого index при отключённом sequential scan. Migration не изменяет и не удаляет существующие rows. Это локальное migration/planner evidence, не live staging evidence.
+
 Правила Prometheus реализованы, но доставка уведомления через Alertmanager не настроена и не заявляется как выполненная.
 
 ### Безопасные логи
@@ -79,7 +81,7 @@ Commit `d87dfc8` уже находился в production lineage при откр
 
 ## Критерии приёмки
 
-- [x] Backend telemetry allowlists/redaction, monitor output, scheduler и Prometheus rules покрыты локальными тестами.
+- [x] Backend telemetry allowlists/redaction, dedicated monitor-worker topology, bounded settings, indexed monitor queries, scheduler и Prometheus rules покрыты локальными тестами.
 - [x] Выключенный backend flag не создаёт revision и не вызывает dispatch; read/status остаётся доступен.
 - [x] Frontend скрывает E10 UI при выключенном public flag; staging/prod defaults fail-closed, а явный `true` зарезервирован для controlled stage/canary.
 - [x] Browser source/E2E покрывает profile switch, manual-place rejection, POST 429 sync, keyboard activation и overflow на `320px`/`768px`; запуск подтверждается только фактическим Playwright result.

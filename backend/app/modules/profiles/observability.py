@@ -59,12 +59,14 @@ class BirthDataRefinementTelemetry:
         duration: _Histogram,
         failures: _Counter,
         stuck: _Gauge,
+        recent_failures: _Gauge,
     ) -> None:
         self.requests = requests
         self.cooldowns = cooldowns
         self.duration = duration
         self.failures = failures
         self.stuck = stuck
+        self.recent_failures = recent_failures
 
     def record_request(self, outcome: str) -> None:
         if outcome in _ALLOWED_REQUEST_OUTCOMES:
@@ -83,31 +85,41 @@ class BirthDataRefinementTelemetry:
     def set_stuck_generations(self, count: int) -> None:
         self.stuck.set(max(count, 0))
 
+    def set_recent_failures(self, count: int) -> None:
+        self.recent_failures.set(max(count, 0))
+
 
 _meter = metrics.get_meter("archemap.birth_data_refinement")
 _current_stuck = _CurrentGauge()
+_current_recent_failures = _CurrentGauge()
 _meter.create_observable_gauge(
     "birth_data_refinement_stuck_generations",
     callbacks=[_current_stuck.observe],
     description="Current queued or processing birth-data refinements older than the configured threshold",
 )
+_meter.create_observable_gauge(
+    "birth_data_refinement_recent_failures",
+    callbacks=[_current_recent_failures.observe],
+    description="Current birth-data refinement failures inside the configured monitoring window",
+)
 birth_data_refinement_telemetry = BirthDataRefinementTelemetry(
     requests=_meter.create_counter(
-        "birth_data_refinement_requests_total",
+        "birth_data_refinement_requests",
         description="Birth-data refinement POST requests by bounded outcome",
     ),
     cooldowns=_meter.create_counter(
-        "birth_data_refinement_cooldown_rejections_total",
+        "birth_data_refinement_cooldown_rejections",
         description="Birth-data refinement requests rejected by the cooldown",
     ),
     duration=_meter.create_histogram(
-        "birth_data_refinement_generation_duration_seconds",
+        "birth_data_refinement_generation_duration",
         unit="s",
         description="Birth-data refinement generation duration",
     ),
     failures=_meter.create_counter(
-        "birth_data_refinement_generation_failures_total",
+        "birth_data_refinement_generation_failures",
         description="Birth-data refinement generation failures by bounded code",
     ),
     stuck=_current_stuck,
+    recent_failures=_current_recent_failures,
 )

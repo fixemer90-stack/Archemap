@@ -14,18 +14,24 @@
 
 - Backend: `BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в `Settings`.
 - Frontend: `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в example/local окружении.
-- В `docker-compose.staging.yml`, `docker-compose.prod.yml`, `.env.staging.example` и `.env.production.example` значение задано явно как `true`: это фиксирует намерение уже включённых окружений, а не полагается на default.
+- В `docker-compose.staging.yml` и `docker-compose.prod.yml` backend/worker/scheduler используют `${BIRTH_DATA_REFINEMENT_ENABLED:-true}`, а frontend build/runtime — `${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-true}`. Поэтому operator-owned `.env` может установить оба значения в `false`, сохраняя `true` как default для уже включённых окружений.
+- Изменение backend flag применяется после recreate `backend`, `worker` и `scheduler`. Для `NEXT_PUBLIC_*` runtime-only изменение недостаточно: значение встраивается в Next.js bundle, поэтому для скрытия уже собранного UI обязателен rebuild frontend image с `false` и recreate frontend service.
 - При выключенном backend flag POST возвращает bounded `503 / birth_data_refinement_disabled` до DB mutation и dispatch.
 - Status/read endpoints и завершение уже запущенных worker-задач flag не блокирует.
 - Rollback не удаляет ревизии, карты, отчёты или active-report pointer.
 
 ### Метрики без персональных данных
 
-- `birth_data_refinement_requests_total{outcome}`;
-- `birth_data_refinement_cooldown_rejections_total`;
-- `birth_data_refinement_generation_duration_seconds`;
-- `birth_data_refinement_generation_failures_total{code}`;
-- `birth_data_refinement_stuck_generations`.
+OTel-native instrument names в приложении:
+
+- `birth_data_refinement_requests{outcome}`;
+- `birth_data_refinement_cooldown_rejections`;
+- `birth_data_refinement_generation_duration` с unit `s`;
+- `birth_data_refinement_generation_failures{code}`;
+- `birth_data_refinement_stuck_generations`;
+- `birth_data_refinement_recent_failures`.
+
+Ожидаемые Prometheus series после collector translation: counters получают `_total`, а duration histogram — unit suffix `_seconds`, то есть Story-facing имена остаются `birth_data_refinement_requests_total`, `birth_data_refinement_cooldown_rejections_total`, `birth_data_refinement_generation_duration_seconds` и `birth_data_refinement_generation_failures_total`. Локальные тесты различают OTel source names и Prometheus-facing names; локальный Docker smoke с pinned collector `0.103.0` подтвердил перевод всех четырёх series и обеих gauges. Это не является staging scrape/readback evidence.
 
 `outcome` и `code` принимаются только из фиксированных allowlist. UUID, birth values, координаты, snapshots и тексты исключений не являются metric attributes.
 
@@ -36,21 +42,21 @@ Celery beat запускает `profiles.monitor_birth_data_refinements` с conf
 - `queued|processing` revisions старше `BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES`;
 - `failed` revisions за `BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES`.
 
-При ненулевом результате он обновляет stuck gauge и пишет bounded event `birth_data_refinement_alert` только с агрегатами и порогами. Staging Prometheus загружает `deploy/prometheus-birth-data-refinement.rules.yaml` с правилами на stuck gauge и увеличение failure counter.
+Monitor обновляет gauges `birth_data_refinement_stuck_generations` и `birth_data_refinement_recent_failures`, затем пишет bounded event `birth_data_refinement_alert` только с агрегатами и порогами. Staging Prometheus загружает `deploy/prometheus-birth-data-refinement.rules.yaml`; failed alert использует authoritative recent-failure gauge `> 0`, а failure counter сохраняется для rate/history анализа без риска потерять первый ненулевой sample.
 
 Правила Prometheus реализованы, но доставка уведомления через Alertmanager не настроена и не заявляется как выполненная.
 
 ### Безопасные логи
 
-Refinement failure logs содержат только разрешённые correlation IDs (`revision_id`, `generation_id`) и bounded `error_code`. Birth time/place/coordinates/snapshots и `str(exc)` не логируются. Non-refinement exception logging сохранено отдельно, чтобы не ухудшить существующую диагностику общего v2 pipeline.
+Для refinement execution start/success/narrative-failure/fatal-failure logs содержат только разрешённые correlation IDs (`revision_id`, `generation_id`) и, где применимо, bounded `status`/`error_code`. `user_id`, `profile_id`, `report_id`, birth time/place/coordinates, snapshots и exception strings не логируются. Более богатый non-refinement logging сохранён отдельно, чтобы не ухудшить существующую диагностику общего v2 pipeline.
 
 ## Alert operator checks
 
 1. Открыть staging Prometheus и проверить, что обе rules загружены без evaluation errors.
-2. Проверить текущие значения stuck gauge и failure counter.
+2. Проверить текущие значения stuck/recent-failure gauges и failure counter.
 3. Сопоставить агрегат с revision status в БД без вывода snapshots/birth fields в тикет или лог.
 4. При stuck проверить worker/broker health и возраст revision; не удалять committed rows.
-5. При rollback выключить оба flag, прекратить новые POST, оставить read/status endpoints и worker completion доступными.
+5. При rollback установить оба flag в `false`, recreate backend/worker/scheduler, затем rebuild и recreate frontend; runtime-only frontend env change не скрывает UI из уже собранного bundle. Новые POST должны прекратиться, а read/status endpoints и worker completion остаться доступными.
 
 ## Staging smoke — ещё не выполнен
 

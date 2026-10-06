@@ -60,6 +60,7 @@ async def _monitor_birth_data_refinements_async(*, now: datetime | None = None) 
         recent_failed = int(failed_result.scalar_one())
 
     birth_data_refinement_telemetry.set_stuck_generations(stuck)
+    birth_data_refinement_telemetry.set_recent_failures(recent_failed)
     alerted = stuck > 0 or recent_failed > 0
     if alerted:
         logger.warning(

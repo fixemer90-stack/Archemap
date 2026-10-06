@@ -12,12 +12,12 @@ groups:
           description: One or more queued or processing refinements exceeded the configured age threshold.
           runbook: docs/features/E10-birth-data-refinement/S05-tests-observability-rollout.md#alert-operator-checks
       - alert: BirthDataRefinementGenerationFailures
-        expr: increase(birth_data_refinement_generation_failures_total[15m]) > 0
+        expr: birth_data_refinement_recent_failures > 0
         for: 5m
         labels:
           severity: warning
           service: birth-data-refinement
         annotations:
           summary: Birth-data refinement generation failures detected
-          description: At least one bounded refinement generation failure was recorded in the last 15 minutes.
+          description: The refinement monitor found at least one failed revision inside its configured window.
           runbook: docs/features/E10-birth-data-refinement/S05-tests-observability-rollout.md#alert-operator-checks

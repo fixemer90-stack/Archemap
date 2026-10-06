@@ -55,7 +55,117 @@ _ENGINE_VERSION = "0.1.5"
 _DETERMINISTIC_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
 _DETERMINISTIC_PROVIDER = "deterministic"
 _DETERMINISTIC_MODEL = "v2-local-runtime"
+_SAFE_REFINEMENT_LOG_STATUSES = {
+    "deterministic_ready",
+    "narrative_generating",
+    "partial",
+    "complete",
+    "ready",
+    "narrative_failed",
+    "failed",
+}
 logger = structlog.get_logger()
+
+
+def _log_generation_started(
+    event_logger: Any,
+    *,
+    generation_id: str,
+    revision_id: str | None,
+    profile_id: str,
+    user_id: str,
+    force: bool,
+) -> None:
+    if revision_id is not None:
+        event_logger.info(
+            "birth_data_refinement_generation_started",
+            generation_id=generation_id,
+            revision_id=revision_id,
+        )
+        return
+    event_logger.info(
+        "astrotype_v2_generation_started",
+        generation_id=generation_id,
+        profile_id=profile_id,
+        user_id=user_id,
+        force=force,
+    )
+
+
+def _log_generation_finished(
+    event_logger: Any,
+    *,
+    generation_id: str,
+    revision_id: str | None,
+    report_id: str,
+    profile_id: str,
+    status: str,
+) -> None:
+    if revision_id is not None:
+        event_logger.info(
+            "birth_data_refinement_generation_finished",
+            generation_id=generation_id,
+            revision_id=revision_id,
+            status=status if status in _SAFE_REFINEMENT_LOG_STATUSES else "unknown",
+        )
+        return
+    event_logger.info(
+        "astrotype_v2_generation_finished",
+        generation_id=generation_id,
+        report_id=report_id,
+        profile_id=profile_id,
+        status=status,
+    )
+
+
+def _log_generation_narrative_failed(
+    event_logger: Any,
+    *,
+    generation_id: str,
+    revision_id: str | None,
+    report_id: str,
+    profile_id: str,
+) -> None:
+    if revision_id is not None:
+        event_logger.error(
+            "birth_data_refinement_generation_narrative_failed",
+            generation_id=generation_id,
+            revision_id=revision_id,
+            error_code="narrative_generation_failed",
+        )
+        return
+    event_logger.error(
+        "astrotype_v2_generation_narrative_failed",
+        generation_id=generation_id,
+        report_id=report_id,
+        profile_id=profile_id,
+        error_code="narrative_generation_failed",
+    )
+
+
+def _log_generation_failed(
+    event_logger: Any,
+    *,
+    generation_id: str,
+    revision_id: str | None,
+    profile_id: str,
+    user_id: str,
+) -> None:
+    if revision_id is not None:
+        event_logger.error(
+            "birth_data_refinement_generation_failed",
+            generation_id=generation_id,
+            revision_id=revision_id,
+            error_code="report_generation_failed",
+        )
+        return
+    event_logger.exception(
+        "astrotype_v2_generation_failed",
+        generation_id=generation_id,
+        profile_id=profile_id,
+        user_id=user_id,
+        error_code="report_generation_failed",
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,9 +229,10 @@ async def _generate_natal_report_v2_async(
         repository = AstrotypeV2Repository(db)
         revision: ProfileBirthDataRevision | None = None
         try:
-            logger.info(
-                "astrotype_v2_generation_started",
+            _log_generation_started(
+                logger,
                 generation_id=generation_id,
+                revision_id=revision_id,
                 profile_id=profile_id,
                 user_id=user_id,
                 force=force,
@@ -369,9 +480,10 @@ async def _generate_natal_report_v2_async(
                 await db.commit()
                 if refinement_started is not None:
                     birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
-                logger.info(
-                    "astrotype_v2_generation_finished",
+                _log_generation_finished(
+                    logger,
                     generation_id=generation_id,
+                    revision_id=revision_id,
                     report_id=str(report_id),
                     profile_id=profile_id,
                     status=report.status,
@@ -412,12 +524,12 @@ async def _generate_natal_report_v2_async(
                 if refinement_started is not None:
                     birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
                     birth_data_refinement_telemetry.record_generation_failure("narrative_generation_failed")
-                logger.error(
-                    "astrotype_v2_generation_narrative_failed",
+                _log_generation_narrative_failed(
+                    logger,
                     generation_id=generation_id,
+                    revision_id=revision_id,
                     report_id=str(report_id),
                     profile_id=profile_id,
-                    error_code="narrative_generation_failed",
                 )
                 return _task_payload(
                     generation_id=generation_id,
@@ -445,20 +557,13 @@ async def _generate_natal_report_v2_async(
             if refinement_started is not None:
                 birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
                 birth_data_refinement_telemetry.record_generation_failure("report_generation_failed")
-                logger.error(
-                    "birth_data_refinement_generation_failed",
-                    generation_id=generation_id,
-                    revision_id=revision_id,
-                    error_code="report_generation_failed",
-                )
-            else:
-                logger.exception(
-                    "astrotype_v2_generation_failed",
-                    generation_id=generation_id,
-                    profile_id=profile_id,
-                    user_id=user_id,
-                    error_code="report_generation_failed",
-                )
+            _log_generation_failed(
+                logger,
+                generation_id=generation_id,
+                revision_id=revision_id,
+                profile_id=profile_id,
+                user_id=user_id,
+            )
             raise
 
 

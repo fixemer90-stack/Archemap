@@ -88,7 +88,7 @@ services:
       FRONTEND_URL: https://staging.astrotype.ru
       ALLOWED_ORIGINS: '["https://staging.astrotype.ru"]'
       YANDEX_REDIRECT_URI: https://staging.astrotype.ru/api/v1/auth/oauth/yandex/callback
-      BIRTH_DATA_REFINEMENT_ENABLED: "true"
+      BIRTH_DATA_REFINEMENT_ENABLED: ${BIRTH_DATA_REFINEMENT_ENABLED:-true}
       BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: "20"
       BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: "15"
       BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: "300"
@@ -129,7 +129,7 @@ services:
       FRONTEND_URL: https://staging.astrotype.ru
       ALLOWED_ORIGINS: '["https://staging.astrotype.ru"]'
       YANDEX_REDIRECT_URI: https://staging.astrotype.ru/api/v1/auth/oauth/yandex/callback
-      BIRTH_DATA_REFINEMENT_ENABLED: "true"
+      BIRTH_DATA_REFINEMENT_ENABLED: ${BIRTH_DATA_REFINEMENT_ENABLED:-true}
       BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: "20"
       BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: "15"
       BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: "300"
@@ -159,7 +159,7 @@ services:
       FRONTEND_URL: https://staging.astrotype.ru
       ALLOWED_ORIGINS: '["https://staging.astrotype.ru"]'
       YANDEX_REDIRECT_URI: https://staging.astrotype.ru/api/v1/auth/oauth/yandex/callback
-      BIRTH_DATA_REFINEMENT_ENABLED: "true"
+      BIRTH_DATA_REFINEMENT_ENABLED: ${BIRTH_DATA_REFINEMENT_ENABLED:-true}
       BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: "20"
       BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: "15"
       BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: "300"
@@ -177,11 +177,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED: "true"
+        NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED: ${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-true}
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:8000
-      NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED: "true"
+      NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED: ${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-true}
     depends_on:
       backend:
         condition: service_healthy

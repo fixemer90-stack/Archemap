@@ -54,6 +54,10 @@ app.conf.update(
             "task": "profiles.dispatch_birth_data_refinements",
             "schedule": 60.0,
         },
+        "monitor-birth-data-refinements": {
+            "task": "profiles.monitor_birth_data_refinements",
+            "schedule": float(settings.BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS),
+        },
     },
 )
 

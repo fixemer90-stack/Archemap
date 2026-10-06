@@ -68,3 +68,5 @@ THEN active report pointer switches atomically
 - Worker получает `revision_id`, блокирует durable revision, строит карту из immutable `new_snapshot`, сохраняет status/result links и переключает active report только после deterministic-слоя.
 - PostgreSQL integration: `test_birth_data_refinement_regeneration.py` — 3 passed; время, timezone/координаты, retry-safe chart reuse, сохранность старых артефактов, failure и отсутствие новых payment rows.
 - API/UI status: безопасные `error_code`, polling в Settings и ссылки на текущий/обновлённый отчёт без вывода traceback или provider payload.
+- S05 hardening заменяет refinement failure `str(exc)` на bounded codes и добавляет duration/failure metrics; deployed worker log readback ещё не выполнен.
+- Реальное staging-сравнение payment rows/entitlement до и после refinement остаётся открытым; локальный integration test не заменяет эту проверку.

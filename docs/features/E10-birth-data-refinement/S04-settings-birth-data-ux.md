@@ -218,6 +218,7 @@ Cooldown оформляется как спокойное информацион
 ## Evidence
 
 - `BirthDataSettings` реализует profile selector, summary, edit, geocoder selection, «Было / Стало», server-derived cooldown и polling revision status.
-- Browser E2E `settings-birth-data.spec.ts` проходит в desktop `1440px` и mobile `390px`: основной keyboard flow, no-overflow, axe serious/critical = 0, cooldown и failed-state copy.
+- Browser E2E `settings-birth-data.spec.ts` содержит основной keyboard activation flow, profile switch, manual-place rejection, реальный mocked POST `429`, processing/ready/failed states и overflow checks на `320px`, `390px`, `768px`, `1440px`; факт прохождения фиксируется только свежим Playwright run.
 - Общий dashboard layout получил `min-w-0` и mobile boundary для sidebar; horizontal overflow, найденный первым mobile smoke, устранён и повторный smoke зелёный.
 - `tsc`, ESLint, Prettier и frontend source-contract suite проходят после последней правки.
+- `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED=false` скрывает E10 UI; staging/prod build args задают `true` явно. Deployed rollback smoke остаётся в S05 открытым.

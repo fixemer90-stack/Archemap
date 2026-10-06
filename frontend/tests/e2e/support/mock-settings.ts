@@ -12,6 +12,7 @@ export async function mockSettingsApi(
   options: {
     canRefine?: boolean;
     finalStatus?: "deterministic_ready" | "failed";
+    rejectPostWithCooldown?: boolean;
   } = {},
 ) {
   let revisionReads = 0;
@@ -99,6 +100,19 @@ export async function mockSettingsApi(
       request.method() === "POST"
     ) {
       refinementWrites += 1;
+      if (options.rejectPostWithCooldown) {
+        return json(
+          route,
+          {
+            detail:
+              "Данные рождения можно уточнять не чаще одного раза за 24 часа",
+            code: "birth_data_refinement_cooldown",
+            next_available_at: "2026-10-07T12:00:00Z",
+            retry_after_seconds: 86400,
+          },
+          429,
+        );
+      }
       return json(
         route,
         {

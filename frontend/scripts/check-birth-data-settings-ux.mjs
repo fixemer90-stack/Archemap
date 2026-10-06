@@ -18,6 +18,12 @@ for (const token of ["Профиль", "Безопасность", "BirthDataSet
     throw new Error(`settings page misses ${token}`);
 }
 
+if (!settings.includes("NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED")) {
+  throw new Error(
+    "settings page misses the birth-data refinement rollout flag",
+  );
+}
+
 for (const token of [
   "Уточнить данные",
   "Проверить изменения",

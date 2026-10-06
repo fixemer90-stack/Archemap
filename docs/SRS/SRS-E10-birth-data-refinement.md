@@ -1,6 +1,6 @@
 # SRS-E10: Уточнение времени и места рождения
 
-Статус: целевой контракт; реализация не начата
+Статус: локально реализовано частично; live staging/production verification не завершена
 
 Feature: `docs/features/E10-birth-data-refinement/FEATURE.md`
 
@@ -97,19 +97,21 @@ Feature: `docs/features/E10-birth-data-refinement/FEATURE.md`
 
 ## 5. Нефункциональные требования
 
-| ID        | Требование                                                                 |
-| --------- | -------------------------------------------------------------------------- |
-| NFR-E10.1 | Ownership/auth проверяются сервером для status и mutate endpoints.         |
-| NFR-E10.2 | Cooldown устойчив к рестарту Redis/API и конкурентным запросам.            |
-| NFR-E10.3 | Миграции additive; существующие данные не удаляются и не backfill-mutated. |
-| NFR-E10.4 | Birth snapshots, время и координаты не попадают в логи/metrics labels.     |
-| NFR-E10.5 | POST идемпотентен; фоновые retries не создают дубликаты.                   |
-| NFR-E10.6 | UI доступен с клавиатуры и адаптирован для мобильного экрана.              |
-| NFR-E10.7 | Время ответа синхронного POST не включает выполнение генерации отчёта.     |
-| NFR-E10.8 | Старый отчёт остаётся читаемым при деградации worker/LLM provider.         |
-| NFR-E10.9 | На viewport от 320px нет горизонтального переполнения или обрезания CTA.   |
+| ID         | Требование                                                                 |
+| ---------- | -------------------------------------------------------------------------- |
+| NFR-E10.1  | Ownership/auth проверяются сервером для status и mutate endpoints.         |
+| NFR-E10.2  | Cooldown устойчив к рестарту Redis/API и конкурентным запросам.            |
+| NFR-E10.3  | Миграции additive; существующие данные не удаляются и не backfill-mutated. |
+| NFR-E10.4  | Birth snapshots, время и координаты не попадают в логи/metrics labels.     |
+| NFR-E10.5  | POST идемпотентен; фоновые retries не создают дубликаты.                   |
+| NFR-E10.6  | UI доступен с клавиатуры и адаптирован для мобильного экрана.              |
+| NFR-E10.7  | Время ответа синхронного POST не включает выполнение генерации отчёта.     |
+| NFR-E10.8  | Старый отчёт остаётся читаемым при деградации worker/LLM provider.         |
+| NFR-E10.9  | На viewport от 320px нет горизонтального переполнения или обрезания CTA.   |
 | NFR-E10.10 | Основные touch-target не меньше 44 × 44px; focus-visible различим.         |
-| NFR-E10.11 | Reduced-motion не скрывает состояния и не блокирует действия.             |
+| NFR-E10.11 | Reduced-motion не скрывает состояния и не блокирует действия.              |
+| NFR-E10.12 | Новые POST управляются backend flag; UI управляется отдельным public flag. |
+| NFR-E10.13 | Метрики используют только bounded labels без UUID/birth snapshots.         |
 
 ## 6. Модель данных
 
@@ -172,6 +174,8 @@ stateDiagram-v2
 11. Payment evidence: новые payment rows отсутствуют, entitlement неизменён.
 12. Production rollout за feature flag с метриками failures/stuck jobs.
 
+Пункты 8–12 являются live evidence и не закрываются unit/static/compose tests.
+
 ## 10. Зависимости и риски
 
 ### Зависимости
@@ -197,3 +201,6 @@ stateDiagram-v2
 - Не выполнять drop/rename/truncate существующих таблиц.
 - Feature flag выключен по умолчанию до staging evidence.
 - Rollback выключает новые операции, но не удаляет созданные ревизии/версии.
+- Status/read endpoints и завершение in-flight worker tasks остаются доступными при rollback.
+- На 6 октября 2026 года реальный 24-часовой staging smoke, payment/entitlement comparison и deployed flag rollback не выполнены.
+- Commit `d87dfc8` попал в production lineage до закрытия этого gate; это нарушение процесса, а не evidence успешного rollout.

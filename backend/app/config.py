@@ -95,6 +95,12 @@ class Settings(BaseSettings):
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: str = ""
     OTEL_SERVICE_NAME: str = "archemap-api"
 
+    # ── Birth-data refinement rollout ─────────────────────────────────
+    BIRTH_DATA_REFINEMENT_ENABLED: bool = False
+    BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: int = 20
+    BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: int = 15
+    BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: int = 300
+
     # ── Sentry ────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1

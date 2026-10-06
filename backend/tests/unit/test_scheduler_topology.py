@@ -73,6 +73,16 @@ def test_birth_data_refinement_dispatch_is_registered_in_the_beat_schedule() -> 
     assert schedule["task"] in app.tasks
 
 
+def test_birth_data_refinement_monitor_is_registered_in_the_beat_schedule() -> None:
+    import workers.tasks  # noqa: F401
+
+    schedule = app.conf.beat_schedule["monitor-birth-data-refinements"]
+
+    assert schedule["task"] == "profiles.monitor_birth_data_refinements"
+    assert schedule["schedule"] == 300.0
+    assert schedule["task"] in app.tasks
+
+
 def test_every_beat_schedule_entry_is_a_task_the_worker_can_execute() -> None:
     """Every scheduled task must be registered, or the worker rejects it with KeyError."""
 
@@ -144,6 +154,7 @@ def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> No
     ]
     assert prometheus["volumes"] == [
         "./deploy/prometheus.staging.yaml:/etc/prometheus/prometheus.yml:ro",
+        "./deploy/prometheus-birth-data-refinement.rules.yaml:/etc/prometheus/rules/birth-data-refinement.yaml:ro",
         "prometheus_staging_data:/prometheus",
     ]
     assert "ports" not in prometheus
@@ -172,6 +183,7 @@ def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> No
             "static_configs": [{"targets": ["otel-collector:9464"]}],
         }
     ]
+    assert prometheus_config["rule_files"] == ["/etc/prometheus/rules/*.yaml"]
 
     gateway = services["gateway"]
     assert gateway["depends_on"]["prometheus"] == {"condition": "service_healthy"}

@@ -39,7 +39,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --hostname ${webServerHostname} --port 3000`,
+    command: `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED=true npm run dev -- --hostname ${webServerHostname} --port 3000`,
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

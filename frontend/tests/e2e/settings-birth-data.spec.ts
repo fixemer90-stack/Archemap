@@ -23,14 +23,20 @@ test("birth-data settings are responsive, keyboard-accessible, and preserve the 
   await page
     .getByLabel("Начните вводить город и выберите подсказку")
     .fill("Берлин");
-  await page.getByRole("button", { name: "Берлин, Германия" }).click();
-  await page.getByRole("button", { name: "Проверить изменения" }).click();
+  const suggestion = page.getByRole("button", { name: "Берлин, Германия" });
+  await suggestion.focus();
+  await page.keyboard.press("Enter");
+  const review = page.getByRole("button", { name: "Проверить изменения" });
+  await review.focus();
+  await page.keyboard.press("Enter");
 
   await expect(page.getByText("Было", { exact: true })).toBeVisible();
   await expect(page.getByText("Стало", { exact: true })).toBeVisible();
-  await page
-    .getByRole("button", { name: "Сохранить и обновить расчёт" })
-    .click();
+  const submit = page.getByRole("button", {
+    name: "Сохранить и обновить расчёт",
+  });
+  await submit.focus();
+  await page.keyboard.press("Enter");
 
   await expect(
     page.getByRole("link", { name: "Открыть текущий отчёт" }),
@@ -98,3 +104,69 @@ test("failed regeneration preserves the saved report without payment copy", asyn
   ).toBeVisible();
   await expect(page.getByText(/Повторная оплата не нужна/)).toBeVisible();
 });
+
+test("profile switching updates the displayed birth-data snapshot", async ({
+  page,
+}) => {
+  await mockSettingsApi(page);
+  await page.goto("/settings", { waitUntil: "domcontentloaded" });
+
+  await page.getByLabel("Чьи данные показаны").selectOption("profile-2");
+
+  await expect(page.getByText("Казань, Россия", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Время не указано", { exact: true }),
+  ).toBeVisible();
+});
+
+test("manual place text cannot advance without a geocoder selection", async ({
+  page,
+}) => {
+  await mockSettingsApi(page);
+  await page.goto("/settings", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Уточнить данные" }).click();
+
+  await page
+    .getByLabel("Начните вводить город и выберите подсказку")
+    .fill("Произвольное место");
+
+  await expect(
+    page.getByRole("button", { name: "Проверить изменения" }),
+  ).toBeDisabled();
+});
+
+test("a real 429 response synchronizes the server cooldown", async ({
+  page,
+}) => {
+  await mockSettingsApi(page, { rejectPostWithCooldown: true });
+  await page.goto("/settings", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Уточнить данные" }).click();
+  await page.getByLabel("Время", { exact: true }).fill("09:10");
+  await page.getByRole("button", { name: "Проверить изменения" }).click();
+  await page
+    .getByRole("button", { name: "Сохранить и обновить расчёт" })
+    .click();
+
+  await expect(
+    page.getByText(/Следующее уточнение будет доступно/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Уточнить данные" }),
+  ).toBeDisabled();
+});
+
+for (const width of [320, 768]) {
+  test(`settings remain width-safe at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockSettingsApi(page);
+    await page.goto("/settings", { waitUntil: "domcontentloaded" });
+
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+  });
+}

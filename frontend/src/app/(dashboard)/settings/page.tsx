@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
 
+const birthDataRefinementEnabled =
+  process.env.NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED === "true";
+
 export default function SettingsPage() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -113,7 +116,7 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <BirthDataSettings />
+      {birthDataRefinementEnabled && <BirthDataSettings />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-[24px] border border-white/10 bg-[#111927]/85 p-5 sm:p-7">

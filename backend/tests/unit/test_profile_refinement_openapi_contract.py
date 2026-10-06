@@ -41,5 +41,6 @@ def test_canonical_openapi_contains_refinement_paths_and_error_shapes() -> None:
         "profile_not_owned",
         "idempotency_key_conflict",
         "birth_data_refinement_cooldown",
+        "birth_data_refinement_disabled",
         "refinement_enqueue_unavailable",
     }

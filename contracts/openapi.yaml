@@ -1279,6 +1279,7 @@ components:
             - profile_has_birth_data_revisions
             - idempotency_key_conflict
             - birth_data_refinement_cooldown
+            - birth_data_refinement_disabled
             - refinement_enqueue_unavailable
     RefinementCooldownError:
       type: object

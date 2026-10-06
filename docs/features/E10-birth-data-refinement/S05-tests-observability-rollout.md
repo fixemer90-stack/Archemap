@@ -2,60 +2,57 @@
 
 ## Статус
 
-🟡 Локальные тесты закрыты; staging/production evidence и alerts открыты
+🟡 Локальные observability/rollback-контракты реализованы; live staging/production evidence открыты
 
 ## Контекст
 
-Функция одновременно меняет персональные исходные данные, запускает дорогой pipeline и ограничивает пользователя по времени. Ошибки гонок или регенерации могут привести к несогласованному отчёту. Нужны автоматические проверки и staged rollout.
+Функция меняет персональные исходные данные, запускает фоновый pipeline и ограничивает пользователя по времени. Локальные тесты необходимы, но не заменяют наблюдение за реальным staging, проверку 24-часового окна и сравнение payment/entitlement до и после операции.
 
-## Что сделать
+## Реализованный локальный контракт
 
-### Backend tests
+### Rollback feature flags
 
-- Validation matrix для time/accuracy/place/coordinates/timezone.
-- Ownership и запрет изменения birth date.
-- Cooldown: первый успех, запрос до границы, запрос ровно на границе, после границы.
-- Per-account ограничение при разных profile ID.
-- Два конкурентных POST дают одну ревизию и один generation.
-- Idempotency replay/conflict.
-- No-op/422/503 не создают ложную committed-ревизию.
-- Retry worker-задачи не создаёт дубликаты.
-- Старый отчёт доступен до готовности нового.
-- Failed regeneration не удаляет текущие артефакты.
+- Backend: `BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в `Settings`.
+- Frontend: `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в example/local окружении.
+- В `docker-compose.staging.yml`, `docker-compose.prod.yml`, `.env.staging.example` и `.env.production.example` значение задано явно как `true`: это фиксирует намерение уже включённых окружений, а не полагается на default.
+- При выключенном backend flag POST возвращает bounded `503 / birth_data_refinement_disabled` до DB mutation и dispatch.
+- Status/read endpoints и завершение уже запущенных worker-задач flag не блокирует.
+- Rollback не удаляет ревизии, карты, отчёты или active-report pointer.
 
-### Frontend tests
-
-- View/edit/cooldown/rebuilding/ready/failed states.
-- Геокодер и запрет manual-only place.
-- 429 синхронизирует `next_available_at`.
-- Профильный selector при нескольких профилях.
-- Имя/пароль не блокируются cooldown.
-- Accessibility и responsive layout.
-
-### Наблюдаемость
-
-Метрики без персональных данных:
+### Метрики без персональных данных
 
 - `birth_data_refinement_requests_total{outcome}`;
 - `birth_data_refinement_cooldown_rejections_total`;
 - `birth_data_refinement_generation_duration_seconds`;
 - `birth_data_refinement_generation_failures_total{code}`;
-- количество stuck `queued|processing` старше порога.
+- `birth_data_refinement_stuck_generations`.
 
-Структурные логи содержат revision/profile/user UUID только в соответствии с политикой логирования; birth_time, place, coordinates и snapshots в логи не выводятся.
+`outcome` и `code` принимаются только из фиксированных allowlist. UUID, birth values, координаты, snapshots и тексты исключений не являются metric attributes.
 
-### Rollout
+### Monitor и alert rules
 
-1. Additive migration + backend за feature flag.
-2. Unit/integration/concurrency tests.
-3. Staging: реальный профиль, изменение времени, проверка нового chart/report lineage.
-4. Staging: 429 на второй запрос и проверка `Retry-After`.
-5. Проверка сохранности старого отчёта/PDF и отсутствия платежа.
-6. Включение UI на staging.
-7. Production canary, мониторинг ошибок/stuck jobs.
-8. Полное включение без destructive cleanup исторических данных.
+Celery beat запускает `profiles.monitor_birth_data_refinements` с configurable interval. Monitor считает:
 
-## Staging smoke
+- `queued|processing` revisions старше `BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES`;
+- `failed` revisions за `BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES`.
+
+При ненулевом результате он обновляет stuck gauge и пишет bounded event `birth_data_refinement_alert` только с агрегатами и порогами. Staging Prometheus загружает `deploy/prometheus-birth-data-refinement.rules.yaml` с правилами на stuck gauge и увеличение failure counter.
+
+Правила Prometheus реализованы, но доставка уведомления через Alertmanager не настроена и не заявляется как выполненная.
+
+### Безопасные логи
+
+Refinement failure logs содержат только разрешённые correlation IDs (`revision_id`, `generation_id`) и bounded `error_code`. Birth time/place/coordinates/snapshots и `str(exc)` не логируются. Non-refinement exception logging сохранено отдельно, чтобы не ухудшить существующую диагностику общего v2 pipeline.
+
+## Alert operator checks
+
+1. Открыть staging Prometheus и проверить, что обе rules загружены без evaluation errors.
+2. Проверить текущие значения stuck gauge и failure counter.
+3. Сопоставить агрегат с revision status в БД без вывода snapshots/birth fields в тикет или лог.
+4. При stuck проверить worker/broker health и возраст revision; не удалять committed rows.
+5. При rollback выключить оба flag, прекратить новые POST, оставить read/status endpoints и worker completion доступными.
+
+## Staging smoke — ещё не выполнен
 
 ```text
 1. GET refinement-status -> can_refine=true.
@@ -64,30 +61,27 @@
 4. Старый отчёт читается во время пересчёта.
 5. Новый отчёт использует новую карту/input snapshot.
 6. Повторный POST -> 429 + Retry-After + next_available_at.
-7. В базе одна committed revision, старые chart/report rows сохранены.
-8. YooKassa/payment records не созданы и entitlement не изменён.
+7. Через полные 24 часа серверное окно снова открывается.
+8. В базе одна committed revision, старые chart/report rows сохранены.
+9. YooKassa/payment records не созданы и entitlement не изменён.
+10. Оба flag выключаются; POST блокируется без write/dispatch, reads и in-flight completion работают.
 ```
 
-## Rollback
+## Историческое нарушение production gate
 
-- Выключить feature flag и скрыть UI.
-- Не откатывать/не удалять committed-ревизии, карты и отчёты.
-- Остановить новые enqueue, дать текущим задачам завершиться или безопасно retry.
-- Вернуть чтение на последнюю готовую активную версию.
-- Destructive downgrade таблиц запрещён без отдельного архивирования и проверки отсутствия данных.
+Commit `d87dfc8` уже находился в production lineage при открытых критериях S05. Следовательно, ранее документированное правило «production только после зелёного CI и staging evidence» было нарушено. Текущая реализация добавляет технический rollback flag и локальные проверки, но не превращает отсутствующее историческое staging/production evidence в выполненное.
 
 ## Критерии приёмки
 
-- [x] Все backend test classes зелёные, включая реальную PostgreSQL concurrency-проверку.
-- [x] Frontend state и accessibility tests зелёные.
-- [ ] Метрики и безопасные логи доступны на staging.
-- [ ] Alert покрывает stuck и failed generation.
-- [ ] Staging smoke доказывает 24-часовой cooldown и сохранность старого отчёта.
-- [ ] Staging smoke доказывает отсутствие новой оплаты/изменения entitlement.
-- [ ] Rollback feature flag проверен без удаления данных.
-- [ ] Production включается только после зелёного CI и staging evidence.
+- [x] Backend telemetry allowlists/redaction, monitor output, scheduler и Prometheus rules покрыты локальными тестами.
+- [x] Выключенный backend flag не создаёт revision и не вызывает dispatch; read/status остаётся доступен.
+- [x] Frontend скрывает E10 UI при выключенном public flag; staging/prod включение задано явно.
+- [x] Browser source/E2E покрывает profile switch, manual-place rejection, POST 429 sync, keyboard activation и overflow на `320px`/`768px`; запуск подтверждается только фактическим Playwright result.
+- [ ] Метрики прочитаны на реальном staging из OTLP/Prometheus.
+- [ ] Prometheus alert rules сработали на управляемом stuck/failed staging scenario.
+- [ ] Реальный 24-часовой staging smoke завершён.
+- [ ] Сравнение payment rows и entitlement до/после staging refinement выполнено.
+- [ ] Rollback обоих flag проверен на deployed staging с in-flight worker completion.
+- [ ] Production canary выполнен после перечисленного staging evidence.
 
-## Текущий evidence gap
-
-- Локально подтверждены PostgreSQL revision/concurrency, regeneration preservation, API contracts и Settings browser flow.
-- Staging metrics/readback, stuck/failed alert, 24-часовой smoke, entitlement/payment comparison и rollback flag ещё не выполнялись; эти критерии нельзя закрывать локальным тестом.
+Статические тесты, compose validation и наличие rule-файла не закрывают runtime-критерии выше.

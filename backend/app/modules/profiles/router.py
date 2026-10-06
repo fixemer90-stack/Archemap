@@ -15,6 +15,7 @@ from app.infrastructure.geocoding import NominatimGeocoder
 from app.infrastructure.redis import get_redis_client
 from app.infrastructure.timezone import TimezoneResolver
 from app.modules.profiles.dispatch import dispatch_birth_data_revision
+from app.modules.profiles.observability import birth_data_refinement_telemetry
 from app.modules.profiles.refinement import (
     COOLDOWN_WINDOW,
     BirthDataAccuracyMismatchError,
@@ -213,6 +214,15 @@ async def create_birth_data_refinement(
     idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
     db: AsyncSession = Depends(get_db),
 ) -> BirthDataRefinementAcceptedResponse | JSONResponse:
+    if not settings.BIRTH_DATA_REFINEMENT_ENABLED:
+        birth_data_refinement_telemetry.record_request("disabled")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "Birth-data refinement is temporarily disabled",
+                "code": "birth_data_refinement_disabled",
+            },
+        )
     service = BirthDataRefinementService(
         db,
         timezone_resolver=TimezoneResolver(get_redis_client()),
@@ -227,18 +237,26 @@ async def create_birth_data_refinement(
         )
         await db.commit()
     except BirthDataAccuracyMismatchError as exc:
+        birth_data_refinement_telemetry.record_request("validation_rejected")
         return _refinement_error(exc, status.HTTP_400_BAD_REQUEST)
     except BirthDataNoChangesError as exc:
+        birth_data_refinement_telemetry.record_request("validation_rejected")
         return _refinement_error(exc, status.HTTP_400_BAD_REQUEST)
     except BirthDataPlaceNotGeocodedError as exc:
+        birth_data_refinement_telemetry.record_request("validation_rejected")
         return _refinement_error(exc, status.HTTP_422_UNPROCESSABLE_ENTITY)
     except BirthDataProfileNotOwnedError as exc:
+        birth_data_refinement_telemetry.record_request("forbidden")
         return _refinement_error(exc, status.HTTP_403_FORBIDDEN)
     except BirthDataProfileNotFoundError as exc:
+        birth_data_refinement_telemetry.record_request("not_found")
         return _refinement_error(exc, status.HTTP_404_NOT_FOUND)
     except BirthDataIdempotencyConflictError as exc:
+        birth_data_refinement_telemetry.record_request("conflict")
         return _refinement_error(exc, status.HTTP_409_CONFLICT)
     except BirthDataCooldownError as exc:
+        birth_data_refinement_telemetry.record_request("cooldown")
+        birth_data_refinement_telemetry.record_cooldown_rejection()
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             headers={"Retry-After": str(exc.retry_after_seconds)},
@@ -253,6 +271,7 @@ async def create_birth_data_refinement(
     revision = result.revision
     dispatched = await dispatch_birth_data_revision(db, revision_id=revision.id)
     if not dispatched:
+        birth_data_refinement_telemetry.record_request("enqueue_failed")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -261,6 +280,7 @@ async def create_birth_data_refinement(
             },
         )
 
+    birth_data_refinement_telemetry.record_request("accepted")
     return BirthDataRefinementAcceptedResponse(
         revision_id=revision.id,
         generation_id=revision.generation_id,

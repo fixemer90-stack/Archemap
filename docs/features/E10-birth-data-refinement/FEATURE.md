@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализация завершена локально; staging observability и rollout evidence открыты
+🟡 Локальная реализация усилена rollback/observability; live staging и production evidence открыты
 
 ## Цель
 
@@ -89,16 +89,19 @@ last_successful_refinement_at + 24 часа.
 - [x] `/settings` имеет согласованную визуальную иерархию «данные рождения → профиль → безопасность» и не содержит горизонтального переполнения на ширинах от `320px`.
 - [x] View/edit/cooldown/processing/ready/failed состояния доступны с клавиатуры, имеют читаемый focus и проверены в reduced-motion режиме.
 - [ ] Unit, integration, concurrency, frontend и staging smoke закрывают happy path и ограничения.
+- [x] Backend/frontend feature flags безопасно блокируют новые операции и скрывают UI без удаления данных.
+- [x] Локально добавлены bounded metrics, monitor task и Prometheus rules для stuck/failed generation.
+- [ ] Реальные staging metrics, 24-часовой smoke, payment/entitlement comparison и deployed rollback подтверждены.
 
 ## Stories
 
-| ID  | Story                                                                                | Статус          |
-| --- | ------------------------------------------------------------------------------------ | --------------- |
-| S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)         | ✅ Реализовано  |
-| S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)         | ✅ Реализовано  |
-| S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md)      | ✅ Реализовано  |
-| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ✅ Реализовано  |
-| S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)               | 🟡 Evidence gap |
+| ID  | Story                                                                                | Статус               |
+| --- | ------------------------------------------------------------------------------------ | -------------------- |
+| S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)         | ✅ Реализовано       |
+| S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)         | ✅ Реализовано       |
+| S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md)      | ✅ Реализовано       |
+| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ✅ Реализовано       |
+| S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)               | 🟡 Live evidence gap |
 
 ## Порядок реализации
 
@@ -129,3 +132,5 @@ git diff --check -- docs/features/E10-birth-data-refinement docs/SRS/SRS-E10-bir
 ```
 
 Документирование не закрывает Stories: статусы меняются только после кода, тестов и требуемого runtime smoke.
+
+Commit `d87dfc8` вошёл в production lineage до закрытия документированного S05 gate. Это историческое нарушение явно зафиксировано; новые статические проверки не заменяют отсутствующее live evidence.

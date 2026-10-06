@@ -9,6 +9,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from time import perf_counter
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
@@ -46,6 +47,7 @@ from app.modules.astrotype_v2.segment_validation import SegmentValidationError
 from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, build_natal_synthesis_row
 from app.modules.llm.provider import get_llm_provider
 from app.modules.profiles.models import PersonProfile, ProfileBirthDataRevision
+from app.modules.profiles.observability import birth_data_refinement_telemetry
 from workers.celery_app import app
 
 _SOURCE_VERSION = "v2.0"
@@ -112,6 +114,7 @@ async def _generate_natal_report_v2_async(
     user_uuid = uuid.UUID(user_id)
     generation_uuid = uuid.UUID(generation_id)
     revision_uuid = uuid.UUID(revision_id) if revision_id is not None else None
+    refinement_started = perf_counter() if revision_uuid is not None else None
     async with async_session_factory() as db:
         repository = AstrotypeV2Repository(db)
         revision: ProfileBirthDataRevision | None = None
@@ -364,6 +367,8 @@ async def _generate_natal_report_v2_async(
                         completed_revision.error_code = None
                 await repository.flush()
                 await db.commit()
+                if refinement_started is not None:
+                    birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
                 logger.info(
                     "astrotype_v2_generation_finished",
                     generation_id=generation_id,
@@ -378,7 +383,7 @@ async def _generate_natal_report_v2_async(
                     status=report.status,
                     force=force,
                 )
-            except Exception as exc:
+            except Exception:
                 await db.rollback()
                 failed_report = await repository.get_report(report_id)
                 if failed_report is None:
@@ -404,12 +409,15 @@ async def _generate_natal_report_v2_async(
                         failed_revision.error_code = "narrative_generation_failed"
                 await repository.flush()
                 await db.commit()
+                if refinement_started is not None:
+                    birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
+                    birth_data_refinement_telemetry.record_generation_failure("narrative_generation_failed")
                 logger.error(
                     "astrotype_v2_generation_narrative_failed",
                     generation_id=generation_id,
                     report_id=str(report_id),
                     profile_id=profile_id,
-                    error=str(exc),
+                    error_code="narrative_generation_failed",
                 )
                 return _task_payload(
                     generation_id=generation_id,
@@ -418,7 +426,7 @@ async def _generate_natal_report_v2_async(
                     status="narrative_failed",
                     force=force,
                 )
-        except Exception as exc:
+        except Exception:
             await db.rollback()
             await _persist_generation_status(
                 repository=repository,
@@ -434,13 +442,23 @@ async def _generate_natal_report_v2_async(
                     failed_revision.status = "failed"
                     failed_revision.error_code = "report_generation_failed"
             await db.commit()
-            logger.exception(
-                "astrotype_v2_generation_failed",
-                generation_id=generation_id,
-                profile_id=profile_id,
-                user_id=user_id,
-                error=str(exc),
-            )
+            if refinement_started is not None:
+                birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
+                birth_data_refinement_telemetry.record_generation_failure("report_generation_failed")
+                logger.error(
+                    "birth_data_refinement_generation_failed",
+                    generation_id=generation_id,
+                    revision_id=revision_id,
+                    error_code="report_generation_failed",
+                )
+            else:
+                logger.exception(
+                    "astrotype_v2_generation_failed",
+                    generation_id=generation_id,
+                    profile_id=profile_id,
+                    user_id=user_id,
+                    error_code="report_generation_failed",
+                )
             raise
 
 

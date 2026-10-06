@@ -334,3 +334,25 @@ def test_deployment_examples_keep_refinement_disabled_until_rollout_gates_pass()
         example = (REPOSITORY_ROOT / filename).read_text(encoding="utf-8")
         assert "BIRTH_DATA_REFINEMENT_ENABLED=false" in example
         assert "NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED=false" in example
+
+
+def test_staging_and_production_monitor_thresholds_propagate_operator_values() -> None:
+    environment = {
+        "BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES": "31",
+        "BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES": "17",
+        "BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS": "123",
+    }
+    expected = {
+        "BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES": ("20", "31"),
+        "BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES": ("15", "17"),
+        "BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS": ("300", "123"),
+    }
+    for filename in ("docker-compose.staging.yml", "docker-compose.prod.yml"):
+        compose = yaml.safe_load((REPOSITORY_ROOT / filename).read_text(encoding="utf-8"))
+        services: dict[str, Any] = compose["services"]
+        for service_name in ("backend", "worker", "scheduler"):
+            service_environment = services[service_name]["environment"]
+            for variable, (default, configured) in expected.items():
+                expression = service_environment[variable]
+                assert _resolve_compose_flag(expression, {}) == default
+                assert _resolve_compose_flag(expression, environment) == configured

@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _REPOSITORY_ROOT = _BACKEND_ROOT.parent
 _ENV_FILES = (_BACKEND_ROOT / ".env", _REPOSITORY_ROOT / ".env")
+
+MonitorMinutes = Annotated[int, Field(ge=1, le=1440)]
+MonitorIntervalSeconds = Annotated[int, Field(ge=30, le=3600)]
 
 
 class Settings(BaseSettings):
@@ -97,9 +101,9 @@ class Settings(BaseSettings):
 
     # ── Birth-data refinement rollout ─────────────────────────────────
     BIRTH_DATA_REFINEMENT_ENABLED: bool = False
-    BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: int = 20
-    BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: int = 15
-    BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: int = 300
+    BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: MonitorMinutes = 20
+    BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: MonitorMinutes = 15
+    BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: MonitorIntervalSeconds = 300
 
     # ── Sentry ────────────────────────────────────────────────────────
     SENTRY_DSN: str = ""

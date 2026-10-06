@@ -52,7 +52,7 @@ async def _monitor_birth_data_refinements_async(*, now: datetime | None = None) 
             select(func.count())
             .select_from(ProfileBirthDataRevision)
             .where(
-                ProfileBirthDataRevision.status == "failed",
+                ProfileBirthDataRevision.error_code.in_(("narrative_generation_failed", "report_generation_failed")),
                 ProfileBirthDataRevision.updated_at >= failed_cutoff,
             )
         )

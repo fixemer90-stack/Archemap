@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, time
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.payments.models import Payment
@@ -18,6 +22,7 @@ from app.modules.profiles.models import (
     ProfileBirthDataRevision,
 )
 from app.modules.users.models import User
+from workers.tasks import profile_refinement
 from workers.tasks.astrotype_v2 import _get_or_create_chart, _RevisionChartInput
 
 
@@ -179,6 +184,64 @@ async def test_failed_candidate_does_not_replace_old_active_report(db_session: A
     assert active is not None and active.id == report.id
     assert failed_revision.report_id is None
     assert failed_revision.error_code == "report_generation_failed"
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_monitor_counts_narrative_and_fatal_failures_but_ignores_clean_deterministic_ready(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user_id, profile = await _seed_profile(db_session)
+    now = datetime(2026, 10, 6, 12, 0, tzinfo=UTC)
+    revisions = (
+        ("deterministic_ready", "narrative_generation_failed"),
+        ("failed", "report_generation_failed"),
+        ("deterministic_ready", None),
+        ("deterministic_ready", "unrelated_error"),
+    )
+    for index, (status, error_code) in enumerate(revisions):
+        generation_id = uuid.uuid4()
+        db_session.add(
+            models.NatalReportGeneration(
+                generation_id=generation_id,
+                user_id=user_id,
+                profile_id=profile.id,
+                status=status,
+            )
+        )
+        db_session.add(
+            ProfileBirthDataRevision(
+                user_id=user_id,
+                profile_id=profile.id,
+                previous_snapshot={},
+                new_snapshot={},
+                changed_fields=["timezone"],
+                status=status,
+                generation_id=generation_id,
+                error_code=error_code,
+                idempotency_key=str(uuid.uuid4()),
+                request_hash=f"{index}" * 64,
+                updated_at=now,
+            )
+        )
+    await db_session.commit()
+
+    @asynccontextmanager
+    async def session_context() -> AsyncIterator[AsyncSession]:
+        yield db_session
+
+    telemetry = MagicMock()
+    warning = MagicMock()
+    monkeypatch.setattr(profile_refinement, "async_session_factory", session_context)
+    monkeypatch.setattr(profile_refinement, "birth_data_refinement_telemetry", telemetry)
+    monkeypatch.setattr(profile_refinement.logger, "warning", warning)
+    monkeypatch.setattr(settings, "BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES", 20)
+    monkeypatch.setattr(settings, "BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES", 15)
+
+    result = await profile_refinement._monitor_birth_data_refinements_async(now=now)
+
+    assert result == {"stuck": 0, "recent_failed": 2, "alerted": True}
+    telemetry.set_recent_failures.assert_called_once_with(2)
+    warning.assert_called_once()
 
 
 @pytest.mark.usefixtures("_setup_database")

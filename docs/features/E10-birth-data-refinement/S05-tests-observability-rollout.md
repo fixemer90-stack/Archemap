@@ -14,7 +14,7 @@
 
 - Backend: `BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в `Settings`.
 - Frontend: `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в example/local окружении.
-- В `docker-compose.staging.yml` и `docker-compose.prod.yml` backend/worker/scheduler используют `${BIRTH_DATA_REFINEMENT_ENABLED:-true}`, а frontend build/runtime — `${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-true}`. Поэтому operator-owned `.env` может установить оба значения в `false`, сохраняя `true` как default для уже включённых окружений.
+- В `docker-compose.staging.yml` и `docker-compose.prod.yml` backend/worker/scheduler используют `${BIRTH_DATA_REFINEMENT_ENABLED:-false}`, а frontend build/runtime — `${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-false}`. Отсутствующее operator-owned значение поэтому fail-closed; `true` разрешено задавать явно только для контролируемого staging gate или одобренного production canary.
 - Изменение backend flag применяется после recreate `backend`, `worker` и `scheduler`. Для `NEXT_PUBLIC_*` runtime-only изменение недостаточно: значение встраивается в Next.js bundle, поэтому для скрытия уже собранного UI обязателен rebuild frontend image с `false` и recreate frontend service.
 - При выключенном backend flag POST возвращает bounded `503 / birth_data_refinement_disabled` до DB mutation и dispatch.
 - Status/read endpoints и завершение уже запущенных worker-задач flag не блокирует.
@@ -40,7 +40,7 @@ OTel-native instrument names в приложении:
 Celery beat запускает `profiles.monitor_birth_data_refinements` с configurable interval. Monitor считает:
 
 - `queued|processing` revisions старше `BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES`;
-- `failed` revisions за `BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES`.
+- revisions с bounded `error_code` `narrative_generation_failed|report_generation_failed` за `BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES`, независимо от status. Это включает narrative failure, который намеренно сохраняет пригодный deterministic result со status `deterministic_ready`, и исключает обычный `deterministic_ready` без failure code.
 
 Monitor обновляет gauges `birth_data_refinement_stuck_generations` и `birth_data_refinement_recent_failures`, затем пишет bounded event `birth_data_refinement_alert` только с агрегатами и порогами. Staging Prometheus загружает `deploy/prometheus-birth-data-refinement.rules.yaml`; failed alert использует authoritative recent-failure gauge `> 0`, а failure counter сохраняется для rate/history анализа без риска потерять первый ненулевой sample.
 
@@ -81,7 +81,7 @@ Commit `d87dfc8` уже находился в production lineage при откр
 
 - [x] Backend telemetry allowlists/redaction, monitor output, scheduler и Prometheus rules покрыты локальными тестами.
 - [x] Выключенный backend flag не создаёт revision и не вызывает dispatch; read/status остаётся доступен.
-- [x] Frontend скрывает E10 UI при выключенном public flag; staging/prod включение задано явно.
+- [x] Frontend скрывает E10 UI при выключенном public flag; staging/prod defaults fail-closed, а явный `true` зарезервирован для controlled stage/canary.
 - [x] Browser source/E2E покрывает profile switch, manual-place rejection, POST 429 sync, keyboard activation и overflow на `320px`/`768px`; запуск подтверждается только фактическим Playwright result.
 - [ ] Метрики прочитаны на реальном staging из OTLP/Prometheus.
 - [ ] Prometheus alert rules сработали на управляемом stuck/failed staging scenario.

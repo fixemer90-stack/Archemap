@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -297,15 +298,39 @@ def test_staging_prometheus_loads_refinement_rules() -> None:
     assert config["rule_files"] == ["/etc/prometheus/rules/*.yaml"]
 
 
-def test_staging_and_production_compose_flags_are_operator_configurable_with_enabled_defaults() -> None:
+def _resolve_compose_flag(expression: str, environment: Mapping[str, str]) -> str:
+    match = re.fullmatch(r"\$\{([A-Z0-9_]+):-([^}]*)}", expression)
+    assert match is not None
+    variable, default = match.groups()
+    return environment.get(variable) or default
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [
+        ({}, "false"),
+        ({"BIRTH_DATA_REFINEMENT_ENABLED": "true", "NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED": "true"}, "true"),
+        ({"BIRTH_DATA_REFINEMENT_ENABLED": "false", "NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED": "false"}, "false"),
+    ],
+)
+def test_staging_and_production_compose_flags_fail_closed_and_propagate_operator_values(
+    environment: Mapping[str, str], expected: str
+) -> None:
     for filename in ("docker-compose.staging.yml", "docker-compose.prod.yml"):
         compose = yaml.safe_load((REPOSITORY_ROOT / filename).read_text(encoding="utf-8"))
         services: dict[str, Any] = compose["services"]
         for service_name in ("backend", "worker", "scheduler"):
-            assert services[service_name]["environment"]["BIRTH_DATA_REFINEMENT_ENABLED"] == (
-                "${BIRTH_DATA_REFINEMENT_ENABLED:-true}"
-            )
+            backend_flag = services[service_name]["environment"]["BIRTH_DATA_REFINEMENT_ENABLED"]
+            assert _resolve_compose_flag(backend_flag, environment) == expected
         frontend = services["frontend"]
-        expected_frontend_flag = "${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-true}"
-        assert frontend["build"]["args"]["NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED"] == expected_frontend_flag
-        assert frontend["environment"]["NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED"] == expected_frontend_flag
+        build_flag = frontend["build"]["args"]["NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED"]
+        runtime_flag = frontend["environment"]["NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED"]
+        assert _resolve_compose_flag(build_flag, environment) == expected
+        assert _resolve_compose_flag(runtime_flag, environment) == expected
+
+
+def test_deployment_examples_keep_refinement_disabled_until_rollout_gates_pass() -> None:
+    for filename in (".env.staging.example", ".env.production.example"):
+        example = (REPOSITORY_ROOT / filename).read_text(encoding="utf-8")
+        assert "BIRTH_DATA_REFINEMENT_ENABLED=false" in example
+        assert "NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED=false" in example

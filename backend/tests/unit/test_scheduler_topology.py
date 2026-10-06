@@ -58,7 +58,9 @@ def test_compose_runs_one_singleton_celery_beat_scheduler(filename: str) -> None
 @pytest.mark.parametrize("filename", COMPOSE_FILES)
 def test_compose_runs_one_dedicated_refinement_monitor_exporter(filename: str) -> None:
     services = _load_compose(filename)["services"]
-    monitor_services = [name for name in services if name == "refinement-monitor"]
+    monitor_services = [
+        name for name, service in services.items() if f" -Q {REFINEMENT_MONITOR_QUEUE} " in f" {_command(service)} "
+    ]
 
     assert monitor_services == ["refinement-monitor"]
     monitor = services["refinement-monitor"]

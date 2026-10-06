@@ -14,8 +14,8 @@
 
 - Backend: `BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в `Settings`.
 - Frontend: `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED`, безопасный default `false` в example/local окружении.
-- В `docker-compose.staging.yml` и `docker-compose.prod.yml` backend/worker/scheduler используют `${BIRTH_DATA_REFINEMENT_ENABLED:-false}`, а frontend build/runtime — `${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-false}`. Отсутствующее operator-owned значение поэтому fail-closed; `true` разрешено задавать явно только для контролируемого staging gate или одобренного production canary.
-- Изменение backend flag применяется после recreate `backend`, `worker` и `scheduler`. Для `NEXT_PUBLIC_*` runtime-only изменение недостаточно: значение встраивается в Next.js bundle, поэтому для скрытия уже собранного UI обязателен rebuild frontend image с `false` и recreate frontend service.
+- В `docker-compose.staging.yml` и `docker-compose.prod.yml` backend/worker/refinement-monitor/scheduler используют `${BIRTH_DATA_REFINEMENT_ENABLED:-false}`, а frontend build/runtime — `${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-false}`. Отсутствующее operator-owned значение поэтому fail-closed; `true` разрешено задавать явно только для контролируемого staging gate или одобренного production canary.
+- Изменение backend flag применяется после recreate `backend`, `worker`, `refinement-monitor` и `scheduler`. Для `NEXT_PUBLIC_*` runtime-only изменение недостаточно: значение встраивается в Next.js bundle, поэтому для скрытия уже собранного UI обязателен rebuild frontend image с `false` и recreate frontend service.
 - При выключенном backend flag POST возвращает bounded `503 / birth_data_refinement_disabled` до DB mutation и dispatch.
 - Status/read endpoints и завершение уже запущенных worker-задач flag не блокирует.
 - Rollback не удаляет ревизии, карты, отчёты или active-report pointer.
@@ -37,7 +37,7 @@ OTel-native instrument names в приложении:
 
 ### Monitor и alert rules
 
-Celery beat запускает `profiles.monitor_birth_data_refinements` с configurable interval. Monitor считает:
+Celery beat запускает `profiles.monitor_birth_data_refinements` с configurable interval и route в отдельную очередь `birth-data-monitor`. В каждом local/staging/production Compose ровно один сервис `refinement-monitor` с `--concurrency=1` потребляет только эту очередь и экспортирует gauges из одного process-local instrument state. Основной worker явно потребляет только default queue `celery`, не запускает beat и не может забрать monitor task; singleton scheduler остаётся единственным beat process. Monitor worker использует отдельный OTLP service identity suffix `refinement-monitor-worker`. Monitor считает:
 
 - `queued|processing` revisions старше `BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES`;
 - revisions с bounded `error_code` `narrative_generation_failed|report_generation_failed` за `BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES`, независимо от status. Это включает narrative failure, который намеренно сохраняет пригодный deterministic result со status `deterministic_ready`, и исключает обычный `deterministic_ready` без failure code.
@@ -56,7 +56,7 @@ Monitor обновляет gauges `birth_data_refinement_stuck_generations` и `
 2. Проверить текущие значения stuck/recent-failure gauges и failure counter.
 3. Сопоставить агрегат с revision status в БД без вывода snapshots/birth fields в тикет или лог.
 4. При stuck проверить worker/broker health и возраст revision; не удалять committed rows.
-5. При rollback установить оба flag в `false`, recreate backend/worker/scheduler, затем rebuild и recreate frontend; runtime-only frontend env change не скрывает UI из уже собранного bundle. Новые POST должны прекратиться, а read/status endpoints и worker completion остаться доступными.
+5. При rollback установить оба flag в `false`, recreate backend/worker/refinement-monitor/scheduler, затем rebuild и recreate frontend; runtime-only frontend env change не скрывает UI из уже собранного bundle. Новые POST должны прекратиться, а read/status endpoints и worker completion остаться доступными.
 
 ## Staging smoke — ещё не выполнен
 

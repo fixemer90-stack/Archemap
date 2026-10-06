@@ -109,7 +109,48 @@ services:
       BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: ${BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES:-15}
       BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: ${BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS:-300}
     command: >
-      celery -A workers.celery_app.app worker --loglevel=INFO
+      celery -A workers.celery_app.app worker --loglevel=INFO -Q celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  refinement-monitor:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: astrotype-refinement-monitor
+    environment:
+      DATABASE_URL: postgresql+asyncpg://astrotype:astrotype@postgres:5432/astrotype
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      APP_ENV: development
+      APP_DEBUG: "true"
+      FRONTEND_URL: http://localhost:3000
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_MODEL: ${LLM_MODEL:-mock-self-v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
+      CAREER_REPORT_ENABLED: ${CAREER_REPORT_ENABLED:-false}
+      CAREER_STUCK_AFTER_MINUTES: ${CAREER_STUCK_AFTER_MINUTES:-20}
+      CAREER_VALIDATOR_ALERT_THRESHOLD: ${CAREER_VALIDATOR_ALERT_THRESHOLD:-5}
+      CAREER_MONITOR_WINDOW_MINUTES: ${CAREER_MONITOR_WINDOW_MINUTES:-15}
+      CAREER_LLM_INPUT_COST_PER_MILLION: ${CAREER_LLM_INPUT_COST_PER_MILLION:-0}
+      CAREER_LLM_OUTPUT_COST_PER_MILLION: ${CAREER_LLM_OUTPUT_COST_PER_MILLION:-0}
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-archemap-local}-refinement-monitor
+      BIRTH_DATA_REFINEMENT_ENABLED: ${BIRTH_DATA_REFINEMENT_ENABLED:-false}
+      BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: ${BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES:-20}
+      BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: ${BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES:-15}
+      BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: ${BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS:-300}
+    command: >
+      celery -A workers.celery_app.app worker --loglevel=INFO -Q birth-data-monitor --concurrency=1
     depends_on:
       postgres:
         condition: service_healthy

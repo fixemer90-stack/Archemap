@@ -37,6 +37,9 @@ app.conf.update(
     result_expires=3600,
     task_soft_time_limit=300,
     task_time_limit=600,
+    task_routes={
+        "profiles.monitor_birth_data_refinements": {"queue": "birth-data-monitor"},
+    },
     beat_schedule={
         "check-subscription-renewals": {
             "task": "workers.tasks.renewals.check_and_renew_subscriptions",

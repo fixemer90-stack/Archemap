@@ -15,6 +15,8 @@ COMPOSE_FILES = (
     "docker-compose.prod.yml",
 )
 BEAT_COMMAND = "celery -A workers.celery_app.app beat --loglevel=INFO"
+DEFAULT_WORKER_QUEUE = "celery"
+REFINEMENT_MONITOR_QUEUE = "birth-data-monitor"
 
 
 def _load_compose(filename: str) -> dict[str, Any]:
@@ -53,6 +55,34 @@ def test_compose_runs_one_singleton_celery_beat_scheduler(filename: str) -> None
         assert scheduler["container_name"] == "astrotype-scheduler"
 
 
+@pytest.mark.parametrize("filename", COMPOSE_FILES)
+def test_compose_runs_one_dedicated_refinement_monitor_exporter(filename: str) -> None:
+    services = _load_compose(filename)["services"]
+    monitor_services = [name for name in services if name == "refinement-monitor"]
+
+    assert monitor_services == ["refinement-monitor"]
+    monitor = services["refinement-monitor"]
+    worker = services["worker"]
+    monitor_command = f" {_command(monitor)} "
+    worker_command = f" {_command(worker)} "
+
+    assert f" -Q {REFINEMENT_MONITOR_QUEUE} " in monitor_command
+    assert " --concurrency=1 " in monitor_command
+    assert " beat " not in monitor_command
+    assert f" -Q {DEFAULT_WORKER_QUEUE} " in worker_command
+    assert REFINEMENT_MONITOR_QUEUE not in worker_command
+    assert " -B " not in worker_command
+    assert monitor["build"] == worker["build"]
+    assert monitor.get("env_file") == worker.get("env_file")
+    assert monitor["depends_on"] == worker["depends_on"]
+    assert monitor.get("restart") == worker.get("restart")
+    assert monitor.get("volumes") == worker.get("volumes")
+    assert monitor["environment"]["OTEL_SERVICE_NAME"] != worker["environment"].get("OTEL_SERVICE_NAME")
+
+    if "container_name" in worker:
+        assert monitor["container_name"] == "astrotype-refinement-monitor"
+
+
 def test_career_monitor_is_registered_in_the_local_beat_schedule() -> None:
     import workers.tasks.career  # noqa: F401
 
@@ -83,6 +113,12 @@ def test_birth_data_refinement_monitor_is_registered_in_the_beat_schedule() -> N
     assert schedule["task"] in app.tasks
 
 
+def test_birth_data_refinement_monitor_is_routed_to_the_dedicated_queue() -> None:
+    route = app.conf.task_routes["profiles.monitor_birth_data_refinements"]
+
+    assert route == {"queue": REFINEMENT_MONITOR_QUEUE}
+
+
 def test_every_beat_schedule_entry_is_a_task_the_worker_can_execute() -> None:
     """Every scheduled task must be registered, or the worker rejects it with KeyError."""
 
@@ -109,7 +145,7 @@ def test_staging_has_an_internal_otlp_metrics_collector() -> None:
     ]
     assert "ports" not in collector
 
-    for service_name in ("backend", "worker"):
+    for service_name in ("backend", "worker", "refinement-monitor"):
         assert services[service_name]["depends_on"]["otel-collector"] == {"condition": "service_healthy"}
 
     collector_config = yaml.safe_load(

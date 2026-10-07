@@ -165,7 +165,7 @@ services:
       BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES: ${BIRTH_DATA_REFINEMENT_STUCK_AFTER_MINUTES:-20}
       BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: ${BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES:-15}
       BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: ${BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS:-300}
-    command: celery -A workers.celery_app.app worker --loglevel=INFO -Q birth-data-monitor --concurrency=1
+    command: celery -A workers.celery_app.app worker --loglevel=INFO -Q birth-data-monitor --concurrency=1 --pool=solo
     depends_on:
       postgres:
         condition: service_healthy

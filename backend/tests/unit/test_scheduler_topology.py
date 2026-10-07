@@ -70,6 +70,7 @@ def test_compose_runs_one_dedicated_refinement_monitor_exporter(filename: str) -
 
     assert f" -Q {REFINEMENT_MONITOR_QUEUE} " in monitor_command
     assert " --concurrency=1 " in monitor_command
+    assert " --pool=solo " in monitor_command
     assert " beat " not in monitor_command
     assert f" -Q {DEFAULT_WORKER_QUEUE} " in worker_command
     assert REFINEMENT_MONITOR_QUEUE not in worker_command

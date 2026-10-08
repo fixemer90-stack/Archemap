@@ -41,6 +41,7 @@ class YooKassaProvider:
         return_url: str = "",
         idempotency_key: str | None = None,
         save_payment_method: bool = False,
+        payment_method_id: str | None = None,
     ) -> dict[str, Any]:
         """Create a payment in YooKassa.
 
@@ -64,14 +65,17 @@ class YooKassaProvider:
                 "value": f"{amount:.2f}",
                 "currency": currency,
             },
-            "confirmation": {
-                "type": "redirect",
-                "return_url": return_url or f"{settings.FRONTEND_URL}/dashboard",
-            },
             "capture": capture,
             "description": description,
             "save_payment_method": save_payment_method,
         }
+        if payment_method_id:
+            body["payment_method_id"] = payment_method_id
+        else:
+            body["confirmation"] = {
+                "type": "redirect",
+                "return_url": return_url or f"{settings.FRONTEND_URL}/dashboard",
+            }
 
         if metadata:
             body["metadata"] = metadata

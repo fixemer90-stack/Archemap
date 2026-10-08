@@ -1,6 +1,6 @@
 # Story E6.S12: Renewal webhook lifecycle
 
-Status: ⬜ Не начато
+Status: ✅ Готово локально
 Feature: [E6 Billing & subscriptions](./FEATURE.md)
 Architecture: [Monthly Plus subscription contract](../../architecture/monthly-plus-subscription-contract.md)
 
@@ -23,12 +23,14 @@ Define and implement renewal handling for monthly Plus: renewal pending, succeed
 
 ## Acceptance criteria
 
-- [ ] Provider renewal event is stored before processing.
-- [ ] Renewal success is reconciled against canonical YooKassa payment object.
-- [ ] Renewal success extends current period by exactly one billing interval.
-- [ ] Duplicate renewal events do not double-extend the period.
-- [ ] Renewal failure does not extend period.
-- [ ] Past-due/expired transitions are explicit and visible in billing access state.
+- [x] Provider renewal event is stored before processing.
+- [x] Renewal success is reconciled against canonical YooKassa payment object.
+- [x] Renewal success extends current period by exactly one billing interval.
+- [x] Duplicate renewal events do not double-extend the period.
+- [x] Renewal failure does not extend period.
+- [x] Past-due/expired transitions are explicit and visible in billing access state.
+
+Merchant-cabinet enablement and a real recurring charge remain part of the external YooKassa smoke gate.
 
 ## Verification target
 

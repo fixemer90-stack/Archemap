@@ -195,3 +195,85 @@ class SubscriptionsService:
             current_period_end=period_end.isoformat(),
         )
         return subscription
+
+    async def apply_renewal_success(
+        self,
+        *,
+        subscription_id: UUID,
+        payment: Any,
+        provider_event_id: str,
+    ) -> Subscription:
+        subscription = await self.repository.get_subscription(subscription_id, for_update=True)
+        if subscription is None:
+            raise NotFoundError("Subscription not found")
+        if subscription.current_period_end is None:
+            raise ValidationError("Subscription has no paid period to renew")
+        effective_at = payment.paid_at or datetime.now(UTC)
+        _event, created = await self.repository.append_event(
+            subscription_id=subscription.id,
+            event_key=f"renewal_succeeded:{provider_event_id}",
+            provider_event_id=provider_event_id,
+            event_type="renewal_succeeded",
+            effective_at=effective_at,
+            payload_json={"payment_id": str(payment.id)},
+        )
+        if not created:
+            return subscription
+        definition = CatalogService().get_subscription_plan(str(subscription.metadata_json["plan_code"]))
+        old_end = subscription.current_period_end
+        new_end = add_calendar_months(old_end, definition.interval_count)
+        subscription.status = "active"
+        subscription.current_period_end = new_end
+        subscription.latest_payment_id = payment.id
+        for product in definition.products:
+            await self.entitlements.grant_paid_product(
+                user_id=subscription.user_id,
+                product=product,
+                source_payment_id=payment.id,
+                starts_at=old_end,
+                expires_at=new_end,
+                metadata={"plan_code": definition.plan_code, "subscription_id": str(subscription.id)},
+            )
+        await self.tiers.upgrade_to_plus(subscription.user_id)
+        logger.info(
+            "subscription_transition",
+            subscription_id=str(subscription.id),
+            event_type="renewal_succeeded",
+            old_status="renewal_pending",
+            new_status="active",
+            current_period_end=new_end.isoformat(),
+        )
+        return subscription
+
+    async def apply_renewal_failure(
+        self,
+        *,
+        subscription_id: UUID,
+        provider_event_id: str,
+        reason: str,
+        effective_at: datetime | None = None,
+    ) -> Subscription:
+        subscription = await self.repository.get_subscription(subscription_id, for_update=True)
+        if subscription is None:
+            raise NotFoundError("Subscription not found")
+        moment = effective_at or datetime.now(UTC)
+        _event, created = await self.repository.append_event(
+            subscription_id=subscription.id,
+            event_key=f"renewal_failed:{provider_event_id}",
+            provider_event_id=provider_event_id,
+            event_type="renewal_failed",
+            effective_at=moment,
+            payload_json={"reason": reason},
+        )
+        if created:
+            old_status = subscription.status
+            subscription.status = "past_due"
+            logger.warning(
+                "subscription_transition",
+                subscription_id=str(subscription.id),
+                event_type="renewal_failed",
+                old_status=old_status,
+                new_status="past_due",
+                reason=reason,
+            )
+        return subscription

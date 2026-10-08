@@ -80,6 +80,7 @@ def _payment(metadata_json: dict[str, object] | None = None) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid4(),
         user_id=uuid4(),
+        subscription_id=None,
         provider="yookassa",
         provider_payment_id="provider-payment-id",
         amount=999.0,
@@ -91,6 +92,7 @@ def _payment(metadata_json: dict[str, object] | None = None) -> SimpleNamespace:
         cancelled_at=None,
         error_code=None,
         payment_method_type=None,
+        payment_method_id=None,
         created_at=datetime.now(UTC),
     )
 
@@ -428,6 +430,49 @@ async def test_successful_yookassa_webhook_updates_account_tier_to_plus() -> Non
 
     assert result["processed"] is True
     assert user.account_tier == "plus"
+
+
+async def test_successful_renewal_webhook_extends_subscription_instead_of_reactivating_initial_period() -> None:
+    subscription_id = uuid4()
+    payment = _payment(
+        {
+            "product_id": "astrotype_plus_monthly",
+            "plan_code": "astrotype_plus_monthly",
+            "subscription_id": str(subscription_id),
+            "billing_reason": "renewal",
+        }
+    )
+    payment.subscription_id = subscription_id
+    service = PaymentsService(_FakeDb(payment))  # type: ignore[arg-type]
+    canonical = _canonical_yookassa_payment(payment)
+    canonical["metadata"] = {
+        "payment_id": str(payment.id),
+        "user_id": str(payment.user_id),
+        **payment.metadata_json,
+    }
+
+    with (
+        patch(
+            "app.modules.payments.service.YooKassaProvider.get_payment",
+            new=AsyncMock(return_value=canonical),
+        ),
+        patch(
+            "app.modules.subscriptions.service.SubscriptionsService.apply_renewal_success",
+            new=AsyncMock(),
+        ) as renew,
+        patch(
+            "app.modules.subscriptions.service.SubscriptionsService.activate_initial_payment",
+            new=AsyncMock(),
+        ) as activate,
+    ):
+        result = await service.handle_webhook(
+            provider="yookassa",
+            payload={"event": "payment.succeeded", "object": {"id": "provider-payment-id"}},
+        )
+
+    assert result["processed"] is True
+    renew.assert_awaited_once()
+    activate.assert_not_awaited()
 
 
 async def test_yookassa_webhook_rejects_metadata_mismatch() -> None:

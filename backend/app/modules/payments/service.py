@@ -45,6 +45,7 @@ class PaymentsService:
         return_url: str = "",
         subscription_id: UUID | None = None,
         save_payment_method: bool = False,
+        provider_payment_method_id: str | None = None,
     ) -> Payment:
         """Create a payment and initiate checkout.
 
@@ -72,6 +73,7 @@ class PaymentsService:
                 payment=payment,
                 return_url=return_url,
                 save_payment_method=save_payment_method,
+                payment_method_id=provider_payment_method_id,
             )
         else:
             raise ValidationError(f"Unsupported payment provider: {provider}")
@@ -302,11 +304,19 @@ class PaymentsService:
             if subscription_id is not None:
                 from app.modules.subscriptions.service import SubscriptionsService
 
-                await SubscriptionsService(self.db).activate_initial_payment(
-                    subscription_id=subscription_id,
-                    payment=payment,
-                    provider_event_id=payment.provider_payment_id or str(payment.id),
-                )
+                subscription_service = SubscriptionsService(self.db)
+                if (payment.metadata_json or {}).get("billing_reason") == "renewal":
+                    await subscription_service.apply_renewal_success(
+                        subscription_id=subscription_id,
+                        payment=payment,
+                        provider_event_id=payment.provider_payment_id or str(payment.id),
+                    )
+                else:
+                    await subscription_service.activate_initial_payment(
+                        subscription_id=subscription_id,
+                        payment=payment,
+                        provider_event_id=payment.provider_payment_id or str(payment.id),
+                    )
             else:
                 product = (payment.metadata_json or {}).get("product")
                 product_id = (payment.metadata_json or {}).get("product_id")
@@ -323,10 +333,12 @@ class PaymentsService:
             payment.status = "failed"
             payment.failed_at = datetime.now(UTC)
             payment.error_code = event.get("status")
+            await self._record_renewal_failure(payment, str(event.get("status") or "failed"))
             await self.db.flush()
         elif new_status == "cancelled":
             payment.status = "cancelled"
             payment.cancelled_at = datetime.now(UTC)
+            await self._record_renewal_failure(payment, str(event.get("status") or "cancelled"))
             await self.db.flush()
 
     async def reconcile_latest_pending_provider_payment(self, user_id: UUID) -> None:
@@ -437,11 +449,19 @@ class PaymentsService:
             if subscription_id is not None:
                 from app.modules.subscriptions.service import SubscriptionsService
 
-                await SubscriptionsService(self.db).activate_initial_payment(
-                    subscription_id=subscription_id,
-                    payment=payment,
-                    provider_event_id=payment.provider_payment_id or str(payment.id),
-                )
+                subscription_service = SubscriptionsService(self.db)
+                if (payment.metadata_json or {}).get("billing_reason") == "renewal":
+                    await subscription_service.apply_renewal_success(
+                        subscription_id=subscription_id,
+                        payment=payment,
+                        provider_event_id=payment.provider_payment_id or str(payment.id),
+                    )
+                else:
+                    await subscription_service.activate_initial_payment(
+                        subscription_id=subscription_id,
+                        payment=payment,
+                        provider_event_id=payment.provider_payment_id or str(payment.id),
+                    )
             else:
                 product = (payment.metadata_json or {}).get("product")
                 product_id = (payment.metadata_json or {}).get("product_id")
@@ -475,8 +495,10 @@ class PaymentsService:
         elif new_status == "failed":
             payment.failed_at = datetime.now(UTC)
             payment.error_code = event.get("status")
+            await self._record_renewal_failure(payment, str(event.get("status") or "failed"))
         elif new_status == "cancelled":
             payment.cancelled_at = datetime.now(UTC)
+            await self._record_renewal_failure(payment, str(event.get("status") or "cancelled"))
 
         # Mark webhook as processed
         webhook.processed = True
@@ -498,11 +520,23 @@ class PaymentsService:
             "message": f"Payment status updated: {old_status} → {new_status}",
         }
 
+    async def _record_renewal_failure(self, payment: Payment, reason: str) -> None:
+        if (payment.metadata_json or {}).get("billing_reason") != "renewal" or payment.subscription_id is None:
+            return
+        from app.modules.subscriptions.service import SubscriptionsService
+
+        await SubscriptionsService(self.db).apply_renewal_failure(
+            subscription_id=payment.subscription_id,
+            provider_event_id=payment.provider_payment_id or str(payment.id),
+            reason=reason,
+        )
+
     async def _create_yookassa_payment(
         self,
         payment: Payment,
         return_url: str,
         save_payment_method: bool = False,
+        payment_method_id: str | None = None,
     ) -> dict[str, Any]:
         """Create payment via YooKassa API."""
         yookassa = YooKassaProvider()
@@ -520,6 +554,7 @@ class PaymentsService:
             return_url=return_url,
             idempotency_key=str(payment.id),
             save_payment_method=save_payment_method,
+            payment_method_id=payment_method_id,
         )
 
         return result

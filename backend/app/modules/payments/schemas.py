@@ -72,10 +72,24 @@ class BillingEntitlementSummary(BaseModel):
     expires_at: datetime | None
 
 
+class BillingSubscriptionSummary(BaseModel):
+    """Safe monthly subscription period and renewal state."""
+
+    id: str
+    plan_code: str
+    status: str
+    current_period_start: datetime | None
+    current_period_end: datetime | None
+    cancel_at_period_end: bool
+    next_billing_at: datetime | None
+    grace_until: datetime | None
+
+
 class BillingAccessResponse(BaseModel):
     """Current backend-owned billing/access state for the user."""
 
     account_tier: str
     access_state: str
+    subscription: BillingSubscriptionSummary | None = None
     entitlements: list[BillingEntitlementSummary]
     latest_payment: BillingPaymentSummary | None

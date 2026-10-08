@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -11,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.authorization.models import Entitlement
+from app.modules.subscriptions.models import Subscription
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -41,8 +43,9 @@ class AccountTierService:
 class EntitlementsService:
     """Manage paid product access grants."""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, *, now: Callable[[], datetime] | None = None) -> None:
         self.db = db
+        self._now = now or (lambda: datetime.now(UTC))
 
     async def has_active_product_access(self, user_id: UUID, product: str) -> bool:
         """Return whether the user has an active, unexpired entitlement for a product."""
@@ -58,7 +61,23 @@ class EntitlementsService:
             return False
 
         expires_at = entitlement.expires_at
-        return not (expires_at is not None and expires_at <= datetime.now(UTC))
+        now = self._now()
+        if expires_at is not None and expires_at <= now:
+            return False
+
+        subscription_id = (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id")
+        if not subscription_id:
+            return True
+        result = await self.db.execute(select(Subscription).where(Subscription.id == UUID(str(subscription_id))))
+        subscription = cast(Subscription | None, result.scalar_one_or_none())
+        if subscription is None:
+            return False
+        return (
+            subscription.status in {"active", "cancel_scheduled"}
+            and subscription.current_period_start is not None
+            and subscription.current_period_end is not None
+            and subscription.current_period_start <= now < subscription.current_period_end
+        )
 
     async def build_product_access_state(self, user_id: UUID, product: str) -> dict[str, Any]:
         """Return safe product access state for API gates and clients."""

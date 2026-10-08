@@ -21,6 +21,24 @@ from app.modules.subscriptions.repository import SubscriptionsRepository
 logger = structlog.get_logger()
 
 
+class SubscriptionAccessPolicy:
+    """Pure paid-period policy used by authorization and billing state."""
+
+    ACTIVE_STATUSES = frozenset({"active", "cancel_scheduled"})
+
+    @classmethod
+    def is_active(cls, subscription: Any, *, now: datetime | None = None) -> bool:
+        moment = now or datetime.now(UTC)
+        start = subscription.current_period_start
+        end = subscription.current_period_end
+        return (
+            subscription.status in cls.ACTIVE_STATUSES
+            and start is not None
+            and end is not None
+            and start <= moment < end
+        )
+
+
 class _Repository(Protocol):
     async def ensure_plan(self, **values: Any) -> SubscriptionPlan: ...
     async def create_subscription(self, **values: Any) -> Subscription: ...

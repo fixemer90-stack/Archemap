@@ -1,6 +1,6 @@
 # Story E6.S11: Plus expiry and access control
 
-Status: ⬜ Не начато
+Status: ✅ Готово
 Feature: [E6 Billing & subscriptions](./FEATURE.md)
 Architecture: [Monthly Plus subscription contract](../../architecture/monthly-plus-subscription-contract.md)
 
@@ -23,12 +23,12 @@ Make backend access decisions derive from active, unexpired monthly Plus subscri
 
 ## Acceptance criteria
 
-- [ ] Plus access is false when `current_period_end <= now`.
-- [ ] Plus access is true inside an active paid period.
-- [ ] `account_tier='plus'` alone cannot unlock paid APIs after expiry.
-- [ ] `GET /api/v1/billing/access` returns period start/end and computed state.
-- [ ] Direct v2 paid APIs return locked/402 after expiry.
-- [ ] Expiry boundary behavior is covered by time-frozen tests.
+- [x] Plus access is false when `current_period_end <= now`.
+- [x] Plus access is true inside an active paid period.
+- [x] `account_tier='plus'` alone cannot unlock paid APIs after expiry.
+- [x] `GET /api/v1/billing/access` returns period start/end and computed state.
+- [x] Direct v2 paid APIs return locked/402 after expiry.
+- [x] Expiry boundary behavior is covered by time-frozen tests.
 
 ## Verification target
 

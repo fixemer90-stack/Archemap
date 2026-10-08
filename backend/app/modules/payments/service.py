@@ -17,7 +17,13 @@ from app.modules.authorization.service import AccountTierService, EntitlementsSe
 from app.modules.catalog.service import CatalogService
 from app.modules.payments.models import Payment, PaymentWebhook
 from app.modules.payments.providers.yookassa import YooKassaProvider
-from app.modules.payments.schemas import BillingAccessResponse, BillingEntitlementSummary, BillingPaymentSummary
+from app.modules.payments.schemas import (
+    BillingAccessResponse,
+    BillingEntitlementSummary,
+    BillingPaymentSummary,
+    BillingSubscriptionSummary,
+)
+from app.modules.subscriptions.models import Subscription
 
 logger = structlog.get_logger()
 
@@ -166,6 +172,15 @@ class PaymentsService:
         )
         entitlements = list(entitlements_result.scalars().all())
 
+        subscription_result = await self.db.execute(
+            select(Subscription)
+            .where(Subscription.user_id == user_id)
+            .order_by(Subscription.created_at.desc())
+            .limit(1)
+        )
+        subscriptions = subscription_result.scalars().all()
+        subscription = subscriptions[0] if subscriptions else None
+
         now = datetime.now(UTC)
         active_entitlements = [
             entitlement
@@ -173,7 +188,26 @@ class PaymentsService:
             if entitlement.status == "active" and (entitlement.expires_at is None or entitlement.expires_at > now)
         ]
 
-        if active_entitlements:
+        subscription_active = (
+            subscription is not None
+            and subscription.status in {"active", "cancel_scheduled"}
+            and subscription.current_period_start is not None
+            and subscription.current_period_end is not None
+            and subscription.current_period_start <= now < subscription.current_period_end
+        )
+        if subscription is not None and subscription_active:
+            access_state = "cancel_scheduled" if subscription.cancel_at_period_end else "plus_active"
+            account_tier = "plus"
+        elif subscription and subscription.status == "past_due":
+            access_state = "past_due"
+            account_tier = "free"
+        elif subscription and subscription.status == "suspended":
+            access_state = "plus_suspended"
+            account_tier = "free"
+        elif subscription and subscription.status in {"expired", "cancelled"}:
+            access_state = "plus_expired"
+            account_tier = "free"
+        elif active_entitlements:
             access_state = "plus_active"
             account_tier = "plus"
         elif payment and payment.status in {"pending", "processing"}:
@@ -192,6 +226,24 @@ class PaymentsService:
         return BillingAccessResponse(
             account_tier=account_tier,
             access_state=access_state,
+            subscription=(
+                BillingSubscriptionSummary(
+                    id=str(subscription.id),
+                    plan_code=str((subscription.metadata_json or {}).get("plan_code") or "astrotype_plus_monthly"),
+                    status=subscription.status,
+                    current_period_start=subscription.current_period_start,
+                    current_period_end=subscription.current_period_end,
+                    cancel_at_period_end=subscription.cancel_at_period_end,
+                    next_billing_at=(
+                        subscription.current_period_end
+                        if subscription_active and not subscription.cancel_at_period_end
+                        else None
+                    ),
+                    grace_until=subscription.grace_until,
+                )
+                if subscription
+                else None
+            ),
             entitlements=[
                 BillingEntitlementSummary(
                     product=entitlement.product,

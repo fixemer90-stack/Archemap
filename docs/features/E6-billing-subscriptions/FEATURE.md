@@ -126,7 +126,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [ ] Production smoke proves one test payment creates both a succeeded payment and the expected access record.
 - [x] Monthly Plus plan is defined as a server-owned SaaS subscription plan (`astrotype_plus_monthly`).
 - [x] Subscription records store `current_period_start`, `current_period_end`, renewal/cancellation status and provider identifiers.
-- [ ] Plus access is active only inside the paid monthly period.
+- [x] Plus access is active only inside the paid monthly period.
 - [ ] Renewals extend access only after backend-confirmed successful provider payment.
 - [ ] Cancellation stops future renewal but preserves access until paid period end.
 - [ ] Billing UI shows active-until date, next billing date and cancellation/expired/past-due states.
@@ -146,7 +146,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)    | ✅ Реализовано     |
 | S09 | [Payment confirmation regression and observability](./S09-regression-observability.md) | 🟡 Готово локально |
 | S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md) | ✅ Реализовано |
-| S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md) | ⬜ Не начато |
+| S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md) | ✅ Реализовано |
 | S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md) | ⬜ Не начато |
 | S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md) | ⬜ Не начато |
 | S14 | [Billing UI for monthly Plus period and management](./S14-billing-ui-expiry-management.md) | ⬜ Не начато |

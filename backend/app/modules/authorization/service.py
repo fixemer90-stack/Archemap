@@ -73,6 +73,8 @@ class EntitlementsService:
         product: str,
         source_payment_id: UUID,
         metadata: dict[str, Any] | None = None,
+        starts_at: datetime | None = None,
+        expires_at: datetime | None = None,
     ) -> Entitlement:
         """Grant an active product entitlement idempotently for a succeeded payment."""
         result = await self.db.execute(
@@ -84,6 +86,8 @@ class EntitlementsService:
         existing = result.scalar_one_or_none()
         if existing is not None:
             existing.status = "active"
+            existing.starts_at = starts_at or existing.starts_at
+            existing.expires_at = expires_at
             existing.metadata_json = {**(existing.metadata_json or {}), **(metadata or {})}
             await self.db.flush()
             return existing
@@ -93,8 +97,8 @@ class EntitlementsService:
             product=product,
             status="active",
             source_payment_id=source_payment_id,
-            starts_at=datetime.now(UTC),
-            expires_at=None,
+            starts_at=starts_at or datetime.now(UTC),
+            expires_at=expires_at,
             metadata_json=metadata,
         )
         self.db.add(entitlement)

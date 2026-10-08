@@ -1,6 +1,6 @@
 # Story E6.S10: Monthly Plus subscription model
 
-Status: ⬜ Не начато
+Status: ✅ Готово
 Feature: [E6 Billing & subscriptions](./FEATURE.md)
 Architecture: [Monthly Plus subscription contract](../../architecture/monthly-plus-subscription-contract.md)
 
@@ -33,12 +33,12 @@ Define and implement a server-owned monthly Plus plan and subscription data mode
 
 ## Acceptance criteria
 
-- [ ] Backend catalog defines `astrotype_plus_monthly` as a monthly plan.
-- [ ] Subscription records include `current_period_start` and `current_period_end`.
-- [ ] Initial checkout creates a subscription shell but does not activate Plus.
-- [ ] Initial succeeded payment activates exactly one monthly period.
-- [ ] Subscription lifecycle events are append-only and idempotent.
-- [ ] No monthly Plus entitlement is created with `expires_at=NULL`.
+- [x] Backend catalog defines `astrotype_plus_monthly` as a monthly plan.
+- [x] Subscription records include `current_period_start` and `current_period_end`.
+- [x] Initial checkout creates a subscription shell but does not activate Plus.
+- [x] Initial succeeded payment activates exactly one monthly period.
+- [x] Subscription lifecycle events are append-only and idempotent.
+- [x] No monthly Plus entitlement is created with `expires_at=NULL`.
 
 ## Verification target
 

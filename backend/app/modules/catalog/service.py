@@ -19,6 +19,19 @@ class ProductPrice:
     purchasable: bool = True
 
 
+@dataclass(frozen=True)
+class SubscriptionPlanDefinition:
+    """Server-owned recurring subscription plan definition."""
+
+    plan_code: str
+    display_name: str
+    amount: float
+    currency: str
+    billing_interval: str
+    interval_count: int
+    products: tuple[str, ...]
+
+
 PRODUCT_CATALOG: dict[str, ProductPrice] = {
     "self_full": ProductPrice(
         product_id="self_full",
@@ -37,6 +50,18 @@ PRODUCT_CATALOG: dict[str, ProductPrice] = {
     ),
 }
 
+SUBSCRIPTION_PLAN_CATALOG: dict[str, SubscriptionPlanDefinition] = {
+    "astrotype_plus_monthly": SubscriptionPlanDefinition(
+        plan_code="astrotype_plus_monthly",
+        display_name="Astrotype Plus",
+        amount=999.0,
+        currency="RUB",
+        billing_interval="month",
+        interval_count=1,
+        products=("self", "career", "love", "child"),
+    )
+}
+
 
 class CatalogService:
     """Plan and feature management."""
@@ -49,3 +74,10 @@ class CatalogService:
         if not product.purchasable:
             raise ValidationError(f"Product is retired and not purchasable: {product_id}")
         return product
+
+    def get_subscription_plan(self, plan_code: str) -> SubscriptionPlanDefinition:
+        """Return the immutable server-owned recurring plan definition."""
+        plan = SUBSCRIPTION_PLAN_CATALOG.get(plan_code)
+        if plan is None:
+            raise ValidationError(f"Unknown subscription plan: {plan_code}")
+        return plan

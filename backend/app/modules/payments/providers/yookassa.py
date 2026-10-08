@@ -40,6 +40,7 @@ class YooKassaProvider:
         capture: bool = True,
         return_url: str = "",
         idempotency_key: str | None = None,
+        save_payment_method: bool = False,
     ) -> dict[str, Any]:
         """Create a payment in YooKassa.
 
@@ -69,6 +70,7 @@ class YooKassaProvider:
             },
             "capture": capture,
             "description": description,
+            "save_payment_method": save_payment_method,
         }
 
         if metadata:

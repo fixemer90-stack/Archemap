@@ -124,8 +124,8 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [ ] E8 integration preserves the basic report for Free while requiring active Plus for every other report.
 - [x] Regression tests cover checkout, webhook reconciliation, entitlements, access-state API and frontend status UX.
 - [ ] Production smoke proves one test payment creates both a succeeded payment and the expected access record.
-- [ ] Monthly Plus plan is defined as a server-owned SaaS subscription plan (`astrotype_plus_monthly`).
-- [ ] Subscription records store `current_period_start`, `current_period_end`, renewal/cancellation status and provider identifiers.
+- [x] Monthly Plus plan is defined as a server-owned SaaS subscription plan (`astrotype_plus_monthly`).
+- [x] Subscription records store `current_period_start`, `current_period_end`, renewal/cancellation status and provider identifiers.
 - [ ] Plus access is active only inside the paid monthly period.
 - [ ] Renewals extend access only after backend-confirmed successful provider payment.
 - [ ] Cancellation stops future renewal but preserves access until paid period end.
@@ -145,7 +145,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S07 | [Report and product entitlement gates](./S07-report-product-entitlement-gates.md)      | ✅ Реализовано     |
 | S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)    | ✅ Реализовано     |
 | S09 | [Payment confirmation regression and observability](./S09-regression-observability.md) | 🟡 Готово локально |
-| S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md) | ⬜ Не начато |
+| S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md) | ✅ Реализовано |
 | S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md) | ⬜ Не начато |
 | S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md) | ⬜ Не начато |
 | S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md) | ⬜ Не начато |

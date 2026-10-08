@@ -38,6 +38,7 @@ class PaymentsService:
         metadata: dict[str, Any] | None = None,
         return_url: str = "",
         subscription_id: UUID | None = None,
+        save_payment_method: bool = False,
     ) -> Payment:
         """Create a payment and initiate checkout.
 
@@ -64,6 +65,7 @@ class PaymentsService:
             result = await self._create_yookassa_payment(
                 payment=payment,
                 return_url=return_url,
+                save_payment_method=save_payment_method,
             )
         else:
             raise ValidationError(f"Unsupported payment provider: {provider}")
@@ -242,17 +244,28 @@ class PaymentsService:
             payment.status = "succeeded"
             if payment.paid_at is None:
                 payment.paid_at = datetime.now(UTC)
+            payment.payment_method_id = event.get("payment_method", {}).get("id")
             payment.payment_method_type = event.get("payment_method", {}).get("type")
-            product = (payment.metadata_json or {}).get("product")
-            product_id = (payment.metadata_json or {}).get("product_id")
-            if product:
-                await EntitlementsService(self.db).grant_paid_product(
-                    user_id=payment.user_id,
-                    product=product,
-                    source_payment_id=payment.id,
-                    metadata={"product_id": product_id} if product_id else None,
+            subscription_id = getattr(payment, "subscription_id", None)
+            if subscription_id is not None:
+                from app.modules.subscriptions.service import SubscriptionsService
+
+                await SubscriptionsService(self.db).activate_initial_payment(
+                    subscription_id=subscription_id,
+                    payment=payment,
+                    provider_event_id=payment.provider_payment_id or str(payment.id),
                 )
-            await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+            else:
+                product = (payment.metadata_json or {}).get("product")
+                product_id = (payment.metadata_json or {}).get("product_id")
+                if product:
+                    await EntitlementsService(self.db).grant_paid_product(
+                        user_id=payment.user_id,
+                        product=product,
+                        source_payment_id=payment.id,
+                        metadata={"product_id": product_id} if product_id else None,
+                    )
+                await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
             await self.db.flush()
         elif new_status == "failed":
             payment.status = "failed"
@@ -366,17 +379,28 @@ class PaymentsService:
 
         if new_status == "succeeded" and event.get("paid") is True:
             payment.paid_at = datetime.now(UTC)
+            payment.payment_method_id = event.get("payment_method", {}).get("id")
             payment.payment_method_type = event.get("payment_method", {}).get("type")
-            product = (payment.metadata_json or {}).get("product")
-            product_id = (payment.metadata_json or {}).get("product_id")
-            if product:
-                await EntitlementsService(self.db).grant_paid_product(
-                    user_id=payment.user_id,
-                    product=product,
-                    source_payment_id=payment.id,
-                    metadata={"product_id": product_id} if product_id else None,
+            subscription_id = getattr(payment, "subscription_id", None)
+            if subscription_id is not None:
+                from app.modules.subscriptions.service import SubscriptionsService
+
+                await SubscriptionsService(self.db).activate_initial_payment(
+                    subscription_id=subscription_id,
+                    payment=payment,
+                    provider_event_id=payment.provider_payment_id or str(payment.id),
                 )
-            await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+            else:
+                product = (payment.metadata_json or {}).get("product")
+                product_id = (payment.metadata_json or {}).get("product_id")
+                if product:
+                    await EntitlementsService(self.db).grant_paid_product(
+                        user_id=payment.user_id,
+                        product=product,
+                        source_payment_id=payment.id,
+                        metadata={"product_id": product_id} if product_id else None,
+                    )
+                await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
         elif new_status == "succeeded":
             logger.warning(
                 "webhook_succeeded_without_paid_true",
@@ -426,6 +450,7 @@ class PaymentsService:
         self,
         payment: Payment,
         return_url: str,
+        save_payment_method: bool = False,
     ) -> dict[str, Any]:
         """Create payment via YooKassa API."""
         yookassa = YooKassaProvider()
@@ -442,6 +467,7 @@ class PaymentsService:
             capture=True,
             return_url=return_url,
             idempotency_key=str(payment.id),
+            save_payment_method=save_payment_method,
         )
 
         return result

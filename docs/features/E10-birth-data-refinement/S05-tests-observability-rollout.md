@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Локальные observability/rollback-контракты реализованы; live staging/production evidence открыты
+🟡 Реализация и fail-closed staging deployment завершены; controlled workflow/alert/24h/rollback evidence и production canary открыты
 
 ## Контекст
 
@@ -60,20 +60,40 @@ Monitor query paths поддержаны двумя additive partial PostgreSQL 
 4. При stuck проверить worker/broker health и возраст revision; не удалять committed rows.
 5. При rollback установить оба flag в `false`, recreate backend/worker/refinement-monitor/scheduler, затем rebuild и recreate frontend; runtime-only frontend env change не скрывает UI из уже собранного bundle. Новые POST должны прекратиться, а read/status endpoints и worker completion остаться доступными.
 
-## Staging smoke — ещё не выполнен
+## Выполненное live staging evidence
 
-```text
-1. GET refinement-status -> can_refine=true.
-2. POST с новым временем/местом -> 202, revision_id + generation_id.
-3. GET status -> queued/processing -> deterministic_ready/ready.
-4. Старый отчёт читается во время пересчёта.
-5. Новый отчёт использует новую карту/input snapshot.
-6. Повторный POST -> 429 + Retry-After + next_available_at.
-7. Через полные 24 часа серверное окно снова открывается.
-8. В базе одна committed revision, старые chart/report rows сохранены.
-9. YooKassa/payment records не созданы и entitlement не изменён.
-10. Оба flag выключаются; POST блокируется без write/dispatch, reads и in-flight completion работают.
-```
+На staging 7 октября 2026 года развёрнут exact green SHA `4e4c60048f63e089306e913974ccc5c25843ab7c`.
+
+- GitHub Actions run `37671694295` завершён успешно: Security Audit, backend/frontend lint, contracts, backend/frontend tests/build и Docker image build зелёные.
+- Перед mutation создан dump `/opt/astrotype/backups/staging/predeploy-4e4c60048f63e089306e913974ccc5c25843ab7c-20261007T192550Z.dump`; restore в отдельную disposable database подтвердил одинаковые protected counts `6|6|2|2|12` до и после восстановления.
+- Staging deploy marker прочитан как `4e4c60048f63e089306e913974ccc5c25843ab7c`, migration head — `e0f1a2b3c4d5`; protected counts после additive migration остались `6|6|2|2|12`.
+- Deployment выполнен fail-closed: backend, основной worker, monitor и frontend используют `false`; только dedicated `refinement-monitor` имеет exporter flag `true`.
+- Dedicated monitor запущен в единственном экземпляре с queue `birth-data-monitor`, `--concurrency=1 --pool=solo`. Реальное periodic execution завершилось с `stuck=0`, `recent_failed=0`, `alerted=false`, без `KeyError`/traceback.
+- Staging Prometheus прочитал реальные series `birth_data_refinement_stuck_generations` и `birth_data_refinement_recent_failures`. Обе rules загружены и находятся в ожидаемом состоянии `inactive`; управляемое срабатывание alert ещё не выполнялось.
+- Staging backend health вернул `status=ok`, `database=ok`, `redis=ok`; unauthenticated public staging boundary вернул `401` и сохранил `noindex` boundary.
+- Production во время staging rollout не обновлялся: marker остался `d87dfc8d1d2d14e04d171262f2b00a9d0f9b591a`, migration head — `d9e0f1a2b3c4`, public health — `200`.
+- Для frontend build временно включался swap из-за VPS с `3.8 GiB` RAM; после завершения build swap отключён и файл удалён.
+
+Это подтверждает безопасный fail-closed deployment, миграцию, singleton monitor topology, scheduler execution и частичный Prometheus readback. Оно не подтверждает пользовательский refinement flow, counter/histogram series, alert firing, rollback при in-flight задаче или 24-часовую границу.
+
+## Остаток rollout-задачи
+
+1. Явно включить на staging `BIRTH_DATA_REFINEMENT_ENABLED=true`; recreate `backend`, `worker`, `refinement-monitor` и `scheduler`.
+2. Явно включить `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED=true`; rebuild frontend image и recreate frontend. Runtime-only изменение env не считается включением UI.
+3. Выполнить authenticated workflow на выделенном staging profile:
+   - `GET refinement-status` возвращает `can_refine=true`;
+   - первый `POST` возвращает `202` с `revision_id` и `generation_id`;
+   - status проходит `queued/processing -> deterministic_ready/ready`;
+   - старый отчёт остаётся читаемым во время пересчёта;
+   - новый отчёт использует новую карту/input snapshot;
+   - повторный `POST` возвращает `429`, `Retry-After` и `next_available_at`;
+   - committed revision ровно одна, старые chart/report rows сохранены.
+4. После реального workflow прочитать из Prometheus request/cooldown/duration/failure series, а не только monitor gauges, и зафиксировать bounded labels без персональных данных.
+5. Создать управляемые staging stuck и failed scenarios, дождаться фактического перехода обеих Prometheus rules в firing, затем подтвердить возврат в inactive. Alertmanager delivery остаётся отдельным незакрытым контрактом.
+6. Сравнить payment rows и entitlement до/после refinement; подтвердить отсутствие новых YooKassa/payment rows и отсутствие изменения entitlement.
+7. Во время реально выполняющейся worker-задачи выключить оба flag: новые POST должны блокироваться без DB write/dispatch, status/read должны работать, уже запущенная задача должна завершиться. Для frontend rollback обязателен rebuild с `false`.
+8. Выдержать буквальные полные 24 часа от committed revision и подтвердить повторное открытие серверного окна, не подменяя этот gate изменением времени или данных.
+9. Только после пунктов 1–8 выполнить ограниченный production canary с отдельным backup/restore proof, readback exact deploy SHA и проверкой production rollback.
 
 ## Историческое нарушение production gate
 

@@ -1,6 +1,6 @@
 # Story E6.S13: Cancellation, grace period and plan expiry UX states
 
-Status: ⬜ Не начато
+Status: ✅ Готово
 Feature: [E6 Billing & subscriptions](./FEATURE.md)
 Architecture: [Monthly Plus subscription contract](../../architecture/monthly-plus-subscription-contract.md)
 
@@ -22,12 +22,12 @@ Document and implement cancellation/resume behavior, plus optional grace-period 
 
 ## Acceptance criteria
 
-- [ ] User can cancel renewal without losing already-paid access before `current_period_end`.
-- [ ] `cancel_at_period_end=true` is visible in billing API and UI.
-- [ ] User can resume renewal before expiry when provider supports it.
-- [ ] Past-due state is explicit and never silently extends access.
-- [ ] Grace access, if introduced, has `grace_until` and tests.
-- [ ] Refund/chargeback/suspension can deactivate Plus before natural expiry when required.
+- [x] User can cancel renewal without losing already-paid access before `current_period_end`.
+- [x] `cancel_at_period_end=true` is visible in billing API and UI.
+- [x] User can resume renewal before expiry when provider supports it.
+- [x] Past-due state is explicit and never silently extends access.
+- [x] Grace access, if introduced, has `grace_until` and tests.
+- [x] Refund/chargeback/suspension can deactivate Plus before natural expiry when required.
 
 ## Verification target
 

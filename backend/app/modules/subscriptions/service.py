@@ -31,12 +31,18 @@ class SubscriptionAccessPolicy:
         moment = now or datetime.now(UTC)
         start = subscription.current_period_start
         end = subscription.current_period_end
-        return (
+        normal_period = (
             subscription.status in cls.ACTIVE_STATUSES
             and start is not None
             and end is not None
             and start <= moment < end
         )
+        grace_access = (
+            subscription.status == "past_due"
+            and subscription.grace_until is not None
+            and subscription.grace_until > moment
+        )
+        return normal_period or grace_access
 
 
 class _Repository(Protocol):
@@ -274,6 +280,94 @@ class SubscriptionsService:
                 event_type="renewal_failed",
                 old_status=old_status,
                 new_status="past_due",
+                reason=reason,
+            )
+        return subscription
+
+    async def cancel_at_period_end(
+        self,
+        *,
+        subscription_id: UUID,
+        user_id: UUID,
+        reason: str,
+        now: datetime | None = None,
+    ) -> Subscription:
+        subscription = await self.repository.get_subscription(subscription_id, for_update=True)
+        if subscription is None or subscription.user_id != user_id:
+            raise NotFoundError("Subscription not found")
+        moment = now or datetime.now(UTC)
+        if not SubscriptionAccessPolicy.is_active(subscription, now=moment):
+            raise ValidationError("Subscription is not active")
+        _event, created = await self.repository.append_event(
+            subscription_id=subscription.id,
+            event_key=f"cancel_requested:{subscription.id}:{moment.isoformat()}",
+            provider_event_id=None,
+            event_type="cancel_requested",
+            effective_at=moment,
+            payload_json={"reason": reason},
+        )
+        if created:
+            subscription.status = "cancel_scheduled"
+            subscription.cancel_at_period_end = True
+            subscription.cancelled_at = moment
+        return subscription
+
+    async def resume(
+        self,
+        *,
+        subscription_id: UUID,
+        user_id: UUID,
+        now: datetime | None = None,
+    ) -> Subscription:
+        subscription = await self.repository.get_subscription(subscription_id, for_update=True)
+        if subscription is None or subscription.user_id != user_id:
+            raise NotFoundError("Subscription not found")
+        moment = now or datetime.now(UTC)
+        if subscription.current_period_end is None or subscription.current_period_end <= moment:
+            raise ValidationError("Subscription period has expired")
+        _event, created = await self.repository.append_event(
+            subscription_id=subscription.id,
+            event_key=f"resume_requested:{subscription.id}:{moment.isoformat()}",
+            provider_event_id=None,
+            event_type="resume_requested",
+            effective_at=moment,
+            payload_json={},
+        )
+        if created:
+            subscription.status = "active"
+            subscription.cancel_at_period_end = False
+            subscription.cancelled_at = None
+        return subscription
+
+    async def suspend(
+        self,
+        *,
+        subscription_id: UUID,
+        event_key: str,
+        reason: str,
+        now: datetime | None = None,
+    ) -> Subscription:
+        subscription = await self.repository.get_subscription(subscription_id, for_update=True)
+        if subscription is None:
+            raise NotFoundError("Subscription not found")
+        moment = now or datetime.now(UTC)
+        _event, created = await self.repository.append_event(
+            subscription_id=subscription.id,
+            event_key=event_key,
+            provider_event_id=None,
+            event_type="subscription_suspended",
+            effective_at=moment,
+            payload_json={"reason": reason},
+        )
+        if created:
+            old_status = subscription.status
+            subscription.status = "suspended"
+            logger.warning(
+                "subscription_transition",
+                subscription_id=str(subscription.id),
+                event_type="subscription_suspended",
+                old_status=old_status,
+                new_status="suspended",
                 reason=reason,
             )
         return subscription

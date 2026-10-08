@@ -128,7 +128,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [x] Subscription records store `current_period_start`, `current_period_end`, renewal/cancellation status and provider identifiers.
 - [x] Plus access is active only inside the paid monthly period.
 - [x] Renewals extend access only after backend-confirmed successful provider payment.
-- [ ] Cancellation stops future renewal but preserves access until paid period end.
+- [x] Cancellation stops future renewal but preserves access until paid period end.
 - [ ] Billing UI shows active-until date, next billing date and cancellation/expired/past-due states.
 - [ ] Support/admin observability can answer who has Plus, until when, and why it changed.
 
@@ -148,7 +148,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md) | ✅ Реализовано |
 | S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md) | ✅ Реализовано |
 | S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md) | ✅ Готово локально |
-| S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md) | ⬜ Не начато |
+| S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md) | ✅ Реализовано |
 | S14 | [Billing UI for monthly Plus period and management](./S14-billing-ui-expiry-management.md) | ⬜ Не начато |
 | S15 | [Subscription observability, admin repair and audit trail](./S15-subscription-observability-admin.md) | ⬜ Не начато |
 

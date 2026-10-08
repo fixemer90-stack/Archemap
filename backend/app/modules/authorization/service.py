@@ -72,12 +72,18 @@ class EntitlementsService:
         subscription = cast(Subscription | None, result.scalar_one_or_none())
         if subscription is None:
             return False
-        return (
+        normal_period = (
             subscription.status in {"active", "cancel_scheduled"}
             and subscription.current_period_start is not None
             and subscription.current_period_end is not None
             and subscription.current_period_start <= now < subscription.current_period_end
         )
+        grace_access = (
+            subscription.status == "past_due"
+            and subscription.grace_until is not None
+            and subscription.grace_until > now
+        )
+        return normal_period or grace_access
 
     async def build_product_access_state(self, user_id: UUID, product: str) -> dict[str, Any]:
         """Return safe product access state for API gates and clients."""

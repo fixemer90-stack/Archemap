@@ -130,7 +130,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [x] Renewals extend access only after backend-confirmed successful provider payment.
 - [x] Cancellation stops future renewal but preserves access until paid period end.
 - [x] Billing UI shows active-until date, next billing date and cancellation/expired/past-due states.
-- [ ] Support/admin observability can answer who has Plus, until when, and why it changed.
+- [x] Support/admin observability can answer who has Plus, until when, and why it changed.
 
 ## Stories
 
@@ -150,7 +150,7 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 | S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md)                                       | ✅ Готово локально      |
 | S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md)            | ✅ Реализовано          |
 | S14 | [Billing UI for monthly Plus period and management](./S14-billing-ui-expiry-management.md)            | ✅ Реализовано локально |
-| S15 | [Subscription observability, admin repair and audit trail](./S15-subscription-observability-admin.md) | ⬜ Не начато            |
+| S15 | [Subscription observability, admin repair and audit trail](./S15-subscription-observability-admin.md) | ✅ Реализовано локально |
 
 ## Implementation order
 

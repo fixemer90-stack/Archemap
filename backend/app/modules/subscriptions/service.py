@@ -16,6 +16,7 @@ from app.modules.authorization.service import AccountTierService, EntitlementsSe
 from app.modules.catalog.service import CatalogService, SubscriptionPlanDefinition
 from app.modules.payments.service import PaymentsService
 from app.modules.subscriptions.models import Subscription, SubscriptionEvent, SubscriptionPlan
+from app.modules.subscriptions.observability import subscription_telemetry
 from app.modules.subscriptions.repository import SubscriptionsRepository
 
 logger = structlog.get_logger()
@@ -99,6 +100,31 @@ class SubscriptionsService:
         self.payments = payments or PaymentsService(db)
         self.entitlements = entitlements or EntitlementsService(db)
         self.tiers = tiers or AccountTierService(db)
+
+    @staticmethod
+    def _record_transition(
+        *,
+        subscription: Subscription,
+        event_type: str,
+        old_status: str,
+        new_status: str,
+        level: str = "info",
+        **attributes: Any,
+    ) -> None:
+        log = logger.warning if level == "warning" else logger.info
+        log(
+            "subscription_transition",
+            subscription_id=str(subscription.id),
+            event_type=event_type,
+            old_status=old_status,
+            new_status=new_status,
+            **attributes,
+        )
+        subscription_telemetry.record_transition(
+            event_type=event_type,
+            old_status=old_status,
+            new_status=new_status,
+        )
 
     async def _ensure_plan(self, definition: SubscriptionPlanDefinition) -> SubscriptionPlan:
         return await self.repository.ensure_plan(
@@ -192,9 +218,8 @@ class SubscriptionsService:
                 metadata={"plan_code": definition.plan_code, "subscription_id": str(subscription.id)},
             )
         await self.tiers.upgrade_to_plus(subscription.user_id)
-        logger.info(
-            "subscription_transition",
-            subscription_id=str(subscription.id),
+        self._record_transition(
+            subscription=subscription,
             event_type="initial_payment_succeeded",
             old_status="incomplete",
             new_status="active",
@@ -241,9 +266,8 @@ class SubscriptionsService:
                 metadata={"plan_code": definition.plan_code, "subscription_id": str(subscription.id)},
             )
         await self.tiers.upgrade_to_plus(subscription.user_id)
-        logger.info(
-            "subscription_transition",
-            subscription_id=str(subscription.id),
+        self._record_transition(
+            subscription=subscription,
             event_type="renewal_succeeded",
             old_status="renewal_pending",
             new_status="active",
@@ -274,14 +298,15 @@ class SubscriptionsService:
         if created:
             old_status = subscription.status
             subscription.status = "past_due"
-            logger.warning(
-                "subscription_transition",
-                subscription_id=str(subscription.id),
+            self._record_transition(
+                subscription=subscription,
                 event_type="renewal_failed",
                 old_status=old_status,
                 new_status="past_due",
+                level="warning",
                 reason=reason,
             )
+            subscription_telemetry.record_failure("renewal_failed")
         return subscription
 
     async def cancel_at_period_end(
@@ -307,9 +332,16 @@ class SubscriptionsService:
             payload_json={"reason": reason},
         )
         if created:
+            old_status = subscription.status
             subscription.status = "cancel_scheduled"
             subscription.cancel_at_period_end = True
             subscription.cancelled_at = moment
+            self._record_transition(
+                subscription=subscription,
+                event_type="cancel_requested",
+                old_status=old_status,
+                new_status="cancel_scheduled",
+            )
         return subscription
 
     async def resume(
@@ -334,9 +366,16 @@ class SubscriptionsService:
             payload_json={},
         )
         if created:
+            old_status = subscription.status
             subscription.status = "active"
             subscription.cancel_at_period_end = False
             subscription.cancelled_at = None
+            self._record_transition(
+                subscription=subscription,
+                event_type="resume_requested",
+                old_status=old_status,
+                new_status="active",
+            )
         return subscription
 
     async def suspend(
@@ -362,12 +401,12 @@ class SubscriptionsService:
         if created:
             old_status = subscription.status
             subscription.status = "suspended"
-            logger.warning(
-                "subscription_transition",
-                subscription_id=str(subscription.id),
+            self._record_transition(
+                subscription=subscription,
                 event_type="subscription_suspended",
                 old_status=old_status,
                 new_status="suspended",
+                level="warning",
                 reason=reason,
             )
         return subscription

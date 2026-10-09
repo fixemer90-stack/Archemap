@@ -59,6 +59,7 @@ services:
     volumes:
       - ./deploy/prometheus.staging.yaml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/prometheus-birth-data-refinement.rules.yaml:/etc/prometheus/rules/birth-data-refinement.yaml:ro
+      - ./deploy/prometheus-subscriptions.rules.yaml:/etc/prometheus/rules/subscriptions.yaml:ro
       - prometheus_staging_data:/prometheus
     depends_on:
       otel-collector:

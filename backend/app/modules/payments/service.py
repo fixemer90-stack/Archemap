@@ -24,6 +24,7 @@ from app.modules.payments.schemas import (
     BillingSubscriptionSummary,
 )
 from app.modules.subscriptions.models import Subscription
+from app.modules.subscriptions.observability import subscription_telemetry
 
 logger = structlog.get_logger()
 
@@ -291,6 +292,7 @@ class PaymentsService:
                 payment_id=payment.provider_payment_id,
                 local_payment_id=str(payment.id),
             )
+            subscription_telemetry.record_failure("pending_payment_reconciliation_mismatch")
             return
 
         new_status = self._map_provider_status(event["status"])
@@ -391,6 +393,7 @@ class PaymentsService:
                     payment_id=event["payment_id"],
                     error=str(exc),
                 )
+                subscription_telemetry.record_failure("webhook_provider_reconciliation_failed")
                 webhook.processed = False
                 webhook.processed_at = None
                 webhook.error_message = "Provider reconciliation failed"
@@ -425,6 +428,7 @@ class PaymentsService:
                 payment_id=event["payment_id"],
                 local_payment_id=str(payment.id),
             )
+            subscription_telemetry.record_failure("webhook_payment_mismatch")
             webhook.processed = True
             webhook.processed_at = datetime.now(UTC)
             webhook.error_message = "Payment payload mismatch"

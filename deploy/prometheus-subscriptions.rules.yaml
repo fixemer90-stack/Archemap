@@ -1,0 +1,33 @@
+groups:
+  - name: subscriptions
+    rules:
+      - alert: SubscriptionRenewalFailures
+        expr: increase(subscription_operation_failures_total{code="renewal_failed"}[15m]) >= 3
+        for: 5m
+        labels:
+          severity: warning
+          service: subscriptions
+        annotations:
+          summary: Monthly Plus renewal failures increased
+          description: Three or more subscription renewal failures were recorded during the last 15 minutes.
+          runbook: docs/features/E6-billing-subscriptions/S15-subscription-observability-admin.md#operator-runbook
+      - alert: SubscriptionWebhookReconciliationFailures
+        expr: increase(subscription_operation_failures_total{code=~"webhook_provider_reconciliation_failed|webhook_payment_mismatch|pending_payment_reconciliation_mismatch"}[10m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: subscriptions
+        annotations:
+          summary: Subscription payment reconciliation is failing
+          description: YooKassa reconciliation or immutable payment validation failed during the last 10 minutes.
+          runbook: docs/features/E6-billing-subscriptions/S15-subscription-observability-admin.md#operator-runbook
+      - alert: UnexpectedSubscriptionExpiryTransitions
+        expr: increase(subscription_state_transitions_total{new_status=~"expired|suspended"}[30m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: subscriptions
+        annotations:
+          summary: Plus subscriptions expired or were suspended
+          description: Inspect the lifecycle audit before repairing access or replaying provider reconciliation.
+          runbook: docs/features/E6-billing-subscriptions/S15-subscription-observability-admin.md#operator-runbook

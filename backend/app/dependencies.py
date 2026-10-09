@@ -130,3 +130,16 @@ async def get_current_user(
         )
 
     return user_uuid
+
+
+async def get_current_superuser(
+    current_user: Annotated[UUID, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+) -> UUID:
+    """Require an active verified superuser for internal support endpoints."""
+
+    result = await db.execute(select(User).where(User.id == current_user))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user

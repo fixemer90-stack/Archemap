@@ -1,8 +1,8 @@
 # SRS: E6 — Billing & Subscriptions
 
-Версия: 1.0
-Дата: 2026-06-07
-Статус: Locally implemented except live YooKassa production/staging smoke
+Версия: 1.1
+Дата: 2026-10-09
+Статус: Locally implemented; live YooKassa, alert delivery and E8 matrix gates remain open
 Источник: `docs/features/E6-billing-subscriptions/`
 
 ---
@@ -50,7 +50,7 @@ E6 покрывает не только payment processing, но и весь acc
 | Report UX                    | `docs/features/E10-report-ux-redesign/`                                                                       |
 | LLM narrative                | `docs/features/E11-llm-report-narrative/`                                                                     |
 | Target monthly SaaS contract | `docs/architecture/monthly-plus-subscription-contract.md`                                                     |
-| YooKassa production cutover  | `docs/deployment/yookassa-production-cutover.md`                                                             |
+| YooKassa production cutover  | `docs/deployment/yookassa-production-cutover.md`                                                              |
 
 ---
 
@@ -74,16 +74,20 @@ flowchart TD
 
 ### 2.2 Функции
 
-| Функция | Описание                           | Story |
-| ------- | ---------------------------------- | ----- |
-| F6.1    | Плановый каталог и access matrix   | S01   |
-| F6.2    | Lifecycle access state             | S02   |
-| F6.3    | YooKassa checkout baseline         | S03   |
-| F6.4    | Billing/account summary API        | S04   |
-| F6.5    | Payment-to-access orchestration    | S05   |
-| F6.6    | Report/product preview/full gating | S06   |
-| F6.7    | Entitlement policy engine          | S07   |
-| F6.8    | Frontend billing/upsell flow       | S08   |
+| Функция | Описание                           | Story   |
+| ------- | ---------------------------------- | ------- |
+| F6.1    | Плановый каталог и access matrix   | S01     |
+| F6.2    | Lifecycle access state             | S02     |
+| F6.3    | YooKassa checkout baseline         | S03     |
+| F6.4    | Billing/account summary API        | S04     |
+| F6.5    | Payment-to-access orchestration    | S05     |
+| F6.6    | Report/product preview/full gating | S06     |
+| F6.7    | Entitlement policy engine          | S07     |
+| F6.8    | Frontend billing/upsell flow       | S08     |
+| F6.9    | Monthly subscription and expiry    | S10-S11 |
+| F6.10   | Renewal/cancellation lifecycle     | S12-S13 |
+| F6.11   | Billing period management UI       | S14     |
+| F6.12   | Support audit and observability    | S15     |
 
 ### 2.3 Ограничения
 
@@ -111,7 +115,9 @@ FR-6.1.4 Billing UI и checkout API ДОЛЖНЫ ссылаться на оди�
 
 ### 3.2 Access lifecycle (FR-6.2)
 
-FR-6.2.1 Система ДОЛЖНА различать состояния `free`, `checkout_pending`, `plus_active`, `payment_failed`, `plus_inactive`.
+FR-6.2.1 Система ДОЛЖНА различать состояния `free`,
+`checkout_pending`, `plus_active`, `cancel_scheduled`, `past_due`,
+`payment_failed`, `plus_inactive`, `plus_expired` и `plus_suspended`.
 
 FR-6.2.2 Переходы между состояниями ДОЛЖНЫ управляться backend-событиями, а не только frontend state.
 
@@ -141,7 +147,11 @@ FR-6.4.1 Система ДОЛЖНА иметь endpoint для чтения т�
 
 FR-6.4.2 Этот endpoint ДОЛЖЕН возвращать текущий plan/access status, grants и summary последней активной попытки оплаты при необходимости.
 
-Текущее состояние реализации: `GET /api/v1/billing/access` реализован и возвращает backend-owned `account_tier`, `access_state`, entitlements и безопасный summary последней оплаты. `/billing?checkout=return` читает этот endpoint и показывает pending/active/failure states.
+Текущее состояние реализации: `GET /api/v1/billing/access` реализован и
+возвращает backend-owned `account_tier`, `access_state`, subscription period,
+renewal/cancellation state, entitlements и безопасный summary последней оплаты.
+`/billing?checkout=return`, billing page, dashboard и sidebar читают backend
+значения и не синтезируют даты периода.
 
 ### 3.5 Payment confirmation and access activation (FR-6.5)
 
@@ -232,14 +242,25 @@ FR-6.8.4 Frontend ДОЛЖЕН различать состояния ожида�
 - expires_at
 - metadata_json
 
-### 5.4 Planned logical access model
+### 5.4 Implemented logical access model
 
-Для MVP достаточно следующей логики:
+Локально реализована следующая логика:
 
 - `free` — entitlement отсутствует
 - `plus_active` — account tier равен `plus` и/или active entitlement существует, в зависимости от endpoint contract
 - `plus_inactive` — entitlement истёк или отключён
 - `checkout_pending` — payment создан/обновляется, но доступ ещё не активирован
+- `cancel_scheduled` — автопродление отключено, но оплаченный период активен
+- `past_due` — renewal failed; доступ возможен только в явном grace period
+- `plus_expired` — оплаченный период завершён
+- `plus_suspended` — доступ остановлен provider/legal событием
+
+### 5.5 Monthly subscription audit
+
+`subscription_events` хранит append-only lifecycle events с уникальным
+`event_key`, provider event id, effective timestamp и audit metadata. Ручная
+reconciliation всегда требует reason и записывает operator user id до
+server-to-server проверки PSP.
 
 Account-tier foundation documented separately in `docs/architecture/account-tier-role-foundation.md`, `docs/features/E7-account-tier-role-foundation/FEATURE.md`, and `docs/SRS/SRS-E7-account-tier-role-foundation.md`: first implementation stores and exposes `free`/`plus` status only; product access must remain entitlement-based.
 
@@ -254,6 +275,8 @@ Account-tier foundation documented separately in `docs/architecture/account-tier
 | Catalog                       | Коммерческая truth-модель планов и grants       |
 | Payments                      | Create/list/get payment, webhook reconciliation |
 | Authorization/Entitlements    | Активация и проверка доступа                    |
+| Subscriptions                 | Paid periods, renewals, cancellation and events |
+| Admin/support                 | Read-only support summary and audited reconcile |
 | Reports/Products              | Применение access policy к данным и ответам     |
 | Frontend billing/report pages | Рендер access state, preview/full и CTA         |
 
@@ -271,14 +294,19 @@ Account-tier foundation documented separately in `docs/architecture/account-tier
 
 ### 7.1 Required endpoints
 
-| Endpoint                                  | Назначение                            |
-| ----------------------------------------- | ------------------------------------- |
-| `GET /api/v1/catalog/plans`               | Читать server-owned plan catalog      |
-| `POST /api/v1/payments`                   | Создать checkout по plan/product id   |
-| `GET /api/v1/payments/{id}`               | Получить статус попытки оплаты        |
-| `POST /api/v1/payments/webhooks/yookassa` | Подтвердить оплату через webhook      |
-| `GET /api/v1/billing/access`              | Получить current access state         |
-| `GET /api/v1/reports/...`                 | Получить preview/full report contract |
+| Endpoint                                     | Назначение                            |
+| -------------------------------------------- | ------------------------------------- |
+| `GET /api/v1/catalog/plans`                  | Читать server-owned plan catalog      |
+| `POST /api/v1/payments`                      | Создать checkout по plan/product id   |
+| `GET /api/v1/payments/{id}`                  | Получить статус попытки оплаты        |
+| `POST /api/v1/payments/webhooks/yookassa`    | Подтвердить оплату через webhook      |
+| `GET /api/v1/billing/access`                 | Получить current access state         |
+| `POST /api/v1/subscriptions/checkout`        | Создать monthly Plus checkout         |
+| `POST /api/v1/subscriptions/{id}/cancel`     | Отключить renewal в конце периода     |
+| `POST /api/v1/subscriptions/{id}/resume`     | Возобновить renewal до expiry         |
+| `GET /api/v1/admin/subscriptions/support`    | Support-safe subscription audit       |
+| `POST /api/v1/admin/subscriptions/reconcile` | Audited provider reconciliation       |
+| `GET /api/v1/reports/...`                    | Получить preview/full report contract |
 
 ### 7.2 Response principles
 
@@ -304,6 +332,10 @@ Frontend должен строиться вокруг трёх проверок:
 - `/billing?checkout=return` читает user access state;
 - v2 report page не предполагает full access заранее и умеет показать locked CTA;
 - direct route не раскрывает paid report content без backend-grant.
+- active monthly Plus всегда показывает backend-provided period end;
+- cancel/resume controls refresh backend state after mutation;
+- past-due/expired states предлагают retry/reactivation, а
+  `cancel_scheduled` не показывается как ошибка.
 
 ---
 
@@ -332,43 +364,44 @@ Frontend должен строиться вокруг трёх проверок:
 
 ---
 
-## 11. Target SaaS monthly Plus requirements
+## 11. SaaS monthly Plus requirements
 
-Status: target contract, documentation only until S10-S15 are implemented.
+Status: S10-S15 implemented and verified locally. Live YooKassa recurring,
+webhook, payment and alert-delivery evidence remains open.
 
 ### 11.1 Functional requirements
 
-| ID | Requirement |
-| --- | --- |
-| FR-6.9.1 | System MUST define a monthly plan `astrotype_plus_monthly` in the backend-owned catalog. |
-| FR-6.9.2 | System MUST create a subscription shell before initial checkout and must not activate Plus before provider confirmation. |
-| FR-6.9.3 | Initial successful paid payment MUST set `current_period_start` and `current_period_end = current_period_start + 1 month`. |
-| FR-6.9.4 | Renewal success MUST extend `current_period_end` by exactly one billing interval after server-to-server reconciliation. |
-| FR-6.9.5 | Renewal failure MUST NOT extend access. |
-| FR-6.9.6 | `GET /api/v1/billing/access` MUST return subscription status, period end, next billing date and cancellation state. |
-| FR-6.9.7 | Paid APIs MUST deny Plus-only access after `current_period_end`. |
-| FR-6.9.8 | Monthly Plus entitlements MUST have `expires_at=current_period_end`; `expires_at=NULL` is invalid for subscription-derived access. |
-| FR-6.9.9 | User cancellation MUST set cancel-at-period-end semantics, not immediate loss of already-paid access. |
-| FR-6.9.10 | Subscription state changes MUST be auditable through append-only events. |
+| ID        | Requirement                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| FR-6.9.1  | System MUST define a monthly plan `astrotype_plus_monthly` in the backend-owned catalog.                                           |
+| FR-6.9.2  | System MUST create a subscription shell before initial checkout and must not activate Plus before provider confirmation.           |
+| FR-6.9.3  | Initial successful paid payment MUST set `current_period_start` and `current_period_end = current_period_start + 1 month`.         |
+| FR-6.9.4  | Renewal success MUST extend `current_period_end` by exactly one billing interval after server-to-server reconciliation.            |
+| FR-6.9.5  | Renewal failure MUST NOT extend access.                                                                                            |
+| FR-6.9.6  | `GET /api/v1/billing/access` MUST return subscription status, period end, next billing date and cancellation state.                |
+| FR-6.9.7  | Paid APIs MUST deny Plus-only access after `current_period_end`.                                                                   |
+| FR-6.9.8  | Monthly Plus entitlements MUST have `expires_at=current_period_end`; `expires_at=NULL` is invalid for subscription-derived access. |
+| FR-6.9.9  | User cancellation MUST set cancel-at-period-end semantics, not immediate loss of already-paid access.                              |
+| FR-6.9.10 | Subscription state changes MUST be auditable through append-only events.                                                           |
 
-### 11.2 Target data model additions
+### 11.2 Implemented data model additions
 
-| Table | Purpose |
-| --- | --- |
-| `subscription_plans` | Server-owned monthly Plus plan, price, currency, interval and grants. |
-| `subscriptions` | User subscription lifecycle, provider identity, status, current paid period and cancellation flags. |
-| `subscription_events` | Append-only lifecycle audit trail for provider/local subscription events. |
+| Table                 | Purpose                                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| `subscription_plans`  | Server-owned monthly Plus plan, price, currency, interval and grants.                               |
+| `subscriptions`       | User subscription lifecycle, provider identity, status, current paid period and cancellation flags. |
+| `subscription_events` | Append-only lifecycle audit trail for provider/local subscription events.                           |
 
-### 11.3 Target API additions
+### 11.3 Implemented API additions
 
-| Endpoint | Purpose |
-| --- | --- |
-| `POST /api/v1/subscriptions/checkout` | Create monthly Plus checkout attempt. |
-| `POST /api/v1/subscriptions/{id}/cancel` | Stop future renewal while keeping current paid-period access. |
-| `POST /api/v1/subscriptions/{id}/resume` | Resume renewal before current period ends. |
-| `GET /api/v1/billing/access` | Extended response with subscription period and renewal/cancellation state. |
+| Endpoint                                 | Purpose                                                                    |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| `POST /api/v1/subscriptions/checkout`    | Create monthly Plus checkout attempt.                                      |
+| `POST /api/v1/subscriptions/{id}/cancel` | Stop future renewal while keeping current paid-period access.              |
+| `POST /api/v1/subscriptions/{id}/resume` | Resume renewal before current period ends.                                 |
+| `GET /api/v1/billing/access`             | Extended response with subscription period and renewal/cancellation state. |
 
-### 11.4 Target UI requirements
+### 11.4 Implemented UI requirements
 
 Billing and account surfaces MUST show:
 
@@ -379,9 +412,9 @@ Billing and account surfaces MUST show:
 - expired/past-due retry CTA;
 - no active Plus state without an explicit period end.
 
-### 11.5 Target verification
+### 11.5 Verification boundary
 
-Monthly SaaS implementation cannot close until tests prove:
+Local tests prove:
 
 - active access inside paid period;
 - inactive access after exact expiry boundary;
@@ -391,12 +424,21 @@ Monthly SaaS implementation cannot close until tests prove:
 - billing UI renders period and next billing date;
 - no subscription-derived entitlement has `expires_at=NULL`.
 
+Live gates remain open for YooKassa merchant configuration, HTTPS webhook
+delivery, a real payment-to-period smoke, OTEL/Prometheus readback and alert
+notification delivery.
+
 ---
 
 ## 12. Риски и открытые вопросы
 
-1. Текущий backend catalog описывает разовые продукты `self_full` и `career_full`, а frontend продаёт единый Plus — это нужно унифицировать до активной реализации checkout UX.
+1. Legacy one-time products `self_full` and `career_full` remain available in
+   the backend catalog, while the billing UI now uses the monthly
+   `astrotype_plus_monthly` checkout. Their retirement/migration policy remains
+   a separate compatibility decision.
 2. Target decision: Plus is a monthly SaaS subscription. Existing non-expiring access must be handled by an explicit migration/legal/product policy, not silently converted.
 3. Решение по уровням принято: базовый Self/natal report доступен Free и Plus; Career, Love, Child и любой другой не-базовый отчёт требуют активный Plus. Детали payload/locked-mode реализуются по E8.
-4. Нужно выбрать единственный source of truth для `plan_code/product_id` naming, чтобы billing page, catalog и payment API не разъехались.
-5. Нужно проверить точную recurring/autopayment capability YooKassa для текущего merchant account перед реализацией renewal code.
+4. `astrotype_plus_monthly` is the source of truth for monthly UI checkout;
+   legacy product ids remain compatibility-only until an explicit retirement
+   decision.
+5. Нужно проверить точную recurring/autopayment capability YooKassa для текущего merchant account before live enablement; local renewal code is not provider evidence.

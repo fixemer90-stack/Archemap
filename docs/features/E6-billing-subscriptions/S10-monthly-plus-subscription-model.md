@@ -22,14 +22,14 @@ Define and implement a server-owned monthly Plus plan and subscription data mode
 
 ## Files expected to change when implemented
 
-| Area | Expected files |
-| --- | --- |
-| Models/migrations | `backend/app/modules/subscriptions/models.py`, `backend/alembic/versions/*` |
-| Catalog | `backend/app/modules/catalog/service.py` |
-| Payments orchestration | `backend/app/modules/payments/service.py` |
-| Subscription service | `backend/app/modules/subscriptions/service.py` |
-| Schemas/API | `backend/app/modules/subscriptions/schemas.py`, `backend/app/modules/subscriptions/router.py` |
-| Tests | `backend/tests/unit/test_subscriptions*.py`, `backend/tests/unit/test_payments.py` |
+| Area                   | Expected files                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| Models/migrations      | `backend/app/modules/subscriptions/models.py`, `backend/alembic/versions/*`                   |
+| Catalog                | `backend/app/modules/catalog/service.py`                                                      |
+| Payments orchestration | `backend/app/modules/payments/service.py`                                                     |
+| Subscription service   | `backend/app/modules/subscriptions/service.py`                                                |
+| Schemas/API            | `backend/app/modules/subscriptions/schemas.py`, `backend/app/modules/subscriptions/router.py` |
+| Tests                  | `backend/tests/unit/test_subscriptions*.py`, `backend/tests/unit/test_payments.py`            |
 
 ## Acceptance criteria
 

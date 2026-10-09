@@ -96,8 +96,12 @@ Allowed `access_state` values:
 - `free`
 - `checkout_pending`
 - `plus_active`
+- `cancel_scheduled`
+- `past_due`
 - `payment_failed`
 - `plus_inactive`
+- `plus_expired`
+- `plus_suspended`
 
 ### Astrotype v2 report entitlement gates
 
@@ -150,11 +154,12 @@ Optional helper if the frontend later needs payment-attempt-specific status. It 
 
 ---
 
-## Target monthly SaaS subscription API
+## Monthly SaaS subscription API
 
-Status: target contract, not current implementation.
+Status: implemented locally; live recurring YooKassa capability and delivery
+remain external gates.
 
-Monthly Plus must move from product-only payment creation to subscription-owned checkout and lifecycle endpoints.
+Monthly Plus uses subscription-owned checkout and lifecycle endpoints instead of the legacy product-only UI checkout.
 
 ### POST /api/v1/subscriptions/checkout
 
@@ -182,7 +187,7 @@ Response:
 }
 ```
 
-### GET /api/v1/billing/access target shape
+### GET /api/v1/billing/access monthly shape
 
 For monthly Plus, billing access must expose subscription period and renewal state:
 
@@ -218,9 +223,9 @@ For monthly Plus, billing access must expose subscription period and renewal sta
 }
 ```
 
-### Additional monthly subscription states
+### Monthly subscription states
 
-Target `access_state` values extend the current list:
+Monthly `access_state` values extend the one-time payment baseline:
 
 - `free`
 - `checkout_pending`
@@ -247,3 +252,48 @@ Resumes renewal before `current_period_end` when provider capability allows it.
 - Failed renewal does not extend access.
 - Cancellation does not revoke already-paid access before period end.
 - Frontend renders dates from backend only; it must not synthesize expiry or renewal dates.
+
+## Admin/support subscription API
+
+Status: implemented locally. Both endpoints require an active verified
+superuser.
+
+### GET /api/v1/admin/subscriptions/support
+
+Query parameter: `email`.
+
+Returns support-safe subscription state:
+
+- user and subscription identifiers;
+- plan code/display name;
+- lifecycle status;
+- current paid period and next billing date;
+- latest payment id/status;
+- up to 100 append-only subscription events.
+
+It does not return provider credentials, card data, raw webhook payloads or
+payment secrets.
+
+### POST /api/v1/admin/subscriptions/reconcile
+
+```json
+{
+  "email": "user@example.com",
+  "reason": "support ticket BILL-42"
+}
+```
+
+The reason is mandatory. Before provider reconciliation, the backend appends a
+`manual_reconciliation_requested` event containing the reason and operator user
+id. The operation reconciles the latest pending provider payment; it does not
+directly edit subscription dates or grant access.
+
+## Subscription observability contract
+
+- structured log event: `subscription_transition`;
+- OTEL counter: `subscription_state_transitions`;
+- OTEL counter: `subscription_operation_failures`;
+- bounded attributes only; email, raw provider payloads and exception text are
+  not metric labels;
+- staging Prometheus rules are defined in
+  `deploy/prometheus-subscriptions.rules.yaml`.

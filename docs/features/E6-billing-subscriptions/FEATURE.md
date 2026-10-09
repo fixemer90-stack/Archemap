@@ -43,7 +43,10 @@ Still missing or environment-dependent:
 - live YooKassa smoke proving deployed webhook -> succeeded payment -> active entitlement;
 - merchant/accounting confirmation of the production receipt/54-FZ scheme;
 - an application-level checkout kill switch and automated refund lifecycle;
-- target monthly SaaS subscription lifecycle: monthly plan, recurring renewal, explicit period end, cancellation/resume, expiry enforcement and billing UI period management.
+- live OTEL -> Prometheus rule evaluation and alert-delivery evidence for the
+  subscription alerts;
+- the E8 account-level matrix proof that Free keeps only the basic report while
+  every non-basic report requires active Plus.
 
 Implemented in code/docs:
 
@@ -52,6 +55,13 @@ Implemented in code/docs:
 - account-tier `free`/`plus` update after confirmed payment;
 - backend v2 report/product gates that use entitlements;
 - user-visible billing status tied to backend state.
+- monthly `astrotype_plus_monthly` checkout and paid-period activation;
+- exact expiry enforcement and expiring subscription-derived entitlements;
+- idempotent renewal success/failure lifecycle;
+- cancellation/resume, suspension and optional grace access policy;
+- billing UI period, next charge and renewal-management states;
+- append-only subscription events, bounded metrics, staging alert rules and
+  superuser support/reconciliation endpoints.
 
 ## Scope
 
@@ -204,11 +214,11 @@ The full test-to-production sequence is defined in
 with test credentials, then switch to the production shop and run one controlled
 real payment with provider, webhook, database and entitlement readback.
 
-Target monthly SaaS implementation must additionally verify:
+Monthly SaaS implementation is verified locally with:
 
 ```bash
 cd backend
-./.venv/bin/python -m pytest tests/unit/test_subscriptions*.py tests/unit/test_billing_access.py tests/unit/test_payments.py -q
+./.venv/bin/python -m pytest tests/unit/test_subscriptions*.py tests/unit/test_subscription_events.py tests/unit/test_reconciliation.py tests/unit/test_subscription_observability_config.py tests/unit/test_payments.py -q
 cd ../frontend
 node scripts/check-billing-ux.mjs
 npx tsc --noEmit --pretty false

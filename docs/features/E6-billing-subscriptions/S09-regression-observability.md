@@ -50,10 +50,19 @@ npx tsc --noEmit --pretty false
 Latest local result:
 
 ```text
-backend/tests/unit/test_payments.py: 22 passed
+backend unit suite: 669 passed
+backend integration suite: 23 passed against disposable PostgreSQL 16 + Redis
 ruff: All checks passed!
-mypy: Success: no issues found in 291 source files
+mypy: Success: no issues found in 367 source files
 Billing UX structure check passed
-frontend eslint: passed
+frontend npm test: passed
+frontend eslint: 0 errors, 2 pre-existing auth-navigation warnings
 frontend TypeScript: passed
+frontend production build: passed
+monthly subscription migration: upgrade head, downgrade -1, re-upgrade head passed
+staging Compose config: passed with disposable non-secret env placeholders
 ```
+
+The live YooKassa checkbox remains open: none of the local results above proves
+merchant-cabinet webhook registration, external HTTPS delivery or a real
+provider payment.

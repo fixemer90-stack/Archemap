@@ -209,6 +209,7 @@ def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> No
     assert prometheus["volumes"] == [
         "./deploy/prometheus.staging.yaml:/etc/prometheus/prometheus.yml:ro",
         "./deploy/prometheus-birth-data-refinement.rules.yaml:/etc/prometheus/rules/birth-data-refinement.yaml:ro",
+        "./deploy/prometheus-subscriptions.rules.yaml:/etc/prometheus/rules/subscriptions.yaml:ro",
         "prometheus_staging_data:/prometheus",
     ]
     assert "ports" not in prometheus

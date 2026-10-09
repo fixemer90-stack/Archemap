@@ -39,7 +39,9 @@ def upgrade() -> None:
     op.create_table(
         "subscriptions",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("plan_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("subscription_plans.id"), nullable=False),
         sa.Column("provider", sa.String(50), nullable=False, server_default="yookassa"),
         sa.Column("provider_subscription_id", sa.String(255), nullable=True),
@@ -50,7 +52,16 @@ def upgrade() -> None:
         sa.Column("cancel_at_period_end", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("cancelled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("grace_until", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("latest_payment_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("payments.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "latest_payment_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey(
+                "payments.id",
+                name="fk_subscriptions_latest_payment_id_payments",
+                ondelete="SET NULL",
+            ),
+            nullable=True,
+        ),
         sa.Column("metadata_json", _json, nullable=False, server_default=sa.text("'{}'::json")),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -77,7 +88,12 @@ def upgrade() -> None:
     op.create_table(
         "subscription_events",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("subscription_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "subscription_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("subscriptions.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("event_key", sa.String(255), nullable=False),
         sa.Column("provider_event_id", sa.String(255), nullable=True),
         sa.Column("event_type", sa.String(80), nullable=False),

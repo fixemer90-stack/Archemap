@@ -30,16 +30,12 @@ def test_access_policy_enforces_inclusive_start_and_exclusive_end() -> None:
     assert SubscriptionAccessPolicy.is_active(_subscription(), now=NOW) is True
     assert SubscriptionAccessPolicy.is_active(_subscription(current_period_start=NOW), now=NOW) is True
     assert (
-        SubscriptionAccessPolicy.is_active(
-            _subscription(current_period_start=NOW + timedelta(seconds=1)), now=NOW
-        )
+        SubscriptionAccessPolicy.is_active(_subscription(current_period_start=NOW + timedelta(seconds=1)), now=NOW)
         is False
     )
     assert SubscriptionAccessPolicy.is_active(_subscription(current_period_end=NOW), now=NOW) is False
     assert (
-        SubscriptionAccessPolicy.is_active(
-            _subscription(current_period_end=NOW - timedelta(seconds=1)), now=NOW
-        )
+        SubscriptionAccessPolicy.is_active(_subscription(current_period_end=NOW - timedelta(seconds=1)), now=NOW)
         is False
     )
     assert SubscriptionAccessPolicy.is_active(_subscription(status="suspended"), now=NOW) is False

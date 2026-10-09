@@ -49,7 +49,15 @@ class Subscription(BaseModel):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     grace_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     latest_payment_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("payments.id", ondelete="SET NULL"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey(
+            "payments.id",
+            name="fk_subscriptions_latest_payment_id_payments",
+            ondelete="SET NULL",
+            use_alter=True,
+        ),
+        nullable=True,
+        index=True,
     )
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 

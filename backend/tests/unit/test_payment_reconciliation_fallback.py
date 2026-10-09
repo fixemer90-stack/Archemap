@@ -24,8 +24,17 @@ class _ListScalarResult:
 
 
 class _BillingStateDb:
-    def __init__(self, payments: list[object], entitlements: list[object]) -> None:
-        self.results = [_ListScalarResult(payments), _ListScalarResult(entitlements)]
+    def __init__(
+        self,
+        payments: list[object],
+        entitlements: list[object],
+        subscriptions: list[object] | None = None,
+    ) -> None:
+        self.results = [
+            _ListScalarResult(payments),
+            _ListScalarResult(entitlements),
+            _ListScalarResult(subscriptions or []),
+        ]
         self.flushed = 0
 
     async def execute(self, _query: object) -> _ListScalarResult:

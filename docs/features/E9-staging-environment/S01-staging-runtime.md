@@ -35,8 +35,8 @@
 - [x] Публичный HTTPS smoke пройден после настройки DNS.
 - [ ] Только gateway подключён к `astrotype_edge`; backend/frontend недоступны в общей edge network.
 - [ ] Staging использует отдельную YooKassa test-shop credential pair, не совпадающую с production runtime.
-- [ ] Staging deploy marker и runtime files соответствуют одному точному green commit.
-- [ ] Все сервисы текущего Compose contract, включая scheduler, запущены на VPS.
+- [x] Staging deploy marker и runtime files соответствуют одному точному green commit.
+- [x] Все сервисы текущего Compose contract, включая scheduler, запущены на VPS.
 - [ ] Auth cookies на staging HTTPS имеют атрибут `Secure`.
 - [ ] Fresh test-shop payment создаёт обработанный automatic webhook row и полный access readback.
 
@@ -77,6 +77,22 @@ VPS 2026-09-12:
 - staging DB: 6 users, 1 succeeded/paid test payment, active `self` entitlement, `account_tier=plus`, 0 webhook rows;
 - `.deploy-sha` остаётся `0a498a0` и не идентифицирует фактическую E9 source revision;
 - live Compose/runbook/env files происходят из разных repository revisions.
+
+## E6 rollout evidence — 2026-10-09
+
+- staging развёрнут из exact green SHA `a38101bfcf223a1b73d6daaeb92f67f9c4b06e92`;
+- `.deploy-sha.staging` прочитан обратно с тем же SHA, scope — `release:main-full`;
+- перед миграцией создан dump `backups/staging/pre-e6-20261009T221419Z.dump`, SHA-256 `188b40e9758f88b9ca2ad81dd2b2529ab9a1c46381e426b005b4fceb7d6539ad`; restore в disposable database сохранил counts `users=7`, `payments=4`, `entitlements=4`;
+- Alembic staging обновлён с `e0f1a2b3c4d5` до `f1a2b3c4d5e6`; после миграции protected counts не изменились;
+- backend, frontend, worker, refinement-monitor, scheduler, PostgreSQL, Redis, OTEL collector, Prometheus и gateway запущены; backend/Prometheus healthy, worker сообщает `ready`, scheduler отправляет periodic tasks;
+- OpenAPI содержит monthly subscription checkout, cancel/resume, billing access и admin support/reconciliation routes;
+- Prometheus загрузил правила `SubscriptionRenewalFailures`, `SubscriptionWebhookReconciliationFailures`, `UnexpectedSubscriptionExpiryTransitions` со здоровьем `ok`;
+- public staging: без Basic Auth `401`, с Basic Auth health `200`, `/billing` `200`, app-session boundary `401`; `X-Robots-Tag: noindex, nofollow, noarchive` присутствует;
+- production health после rollout остаётся `200`; production deploy marker не изменялся;
+- provider probe подтверждает test-shop object: `status=succeeded`, `paid=true`, `test=true`, `999.00 RUB`;
+- gateway-only edge isolation всё ещё не соблюдена: `astrotype_edge` содержит staging backend/frontend вместе с gateway;
+- staging и production по-прежнему используют одинаковую YooKassa credential pair;
+- fresh automatic webhook/payment smoke не выполнялся, поэтому webhook criterion остаётся открытым.
 
 Точный анализ и closure proof: `./AUDIT-discrepancies.md`.
 

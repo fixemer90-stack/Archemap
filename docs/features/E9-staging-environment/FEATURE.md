@@ -43,8 +43,8 @@
 - [x] Production health остаётся HTTP 200 после подключения edge network.
 - [ ] Только staging gateway подключён к общей `astrotype_edge`; backend/frontend остаются в private staging network.
 - [ ] YooKassa test-shop credentials отличаются от credentials production runtime.
-- [ ] Live staging соответствует одному точному green commit и staging deploy marker.
-- [ ] Текущая Compose topology, включая scheduler, развёрнута полностью.
+- [x] Live staging соответствует одному точному green commit и staging deploy marker.
+- [x] Текущая Compose topology, включая scheduler, развёрнута полностью.
 - [ ] Staging auth cookies используют `Secure` на публичном HTTPS host.
 - [ ] YooKassa test-shop automatic webhook/readback smoke пройден.
 

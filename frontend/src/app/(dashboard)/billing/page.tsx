@@ -14,7 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useBillingAccess } from "@/hooks/use-billing-access";
 import {
+  cancelSubscription,
   getBillingAccess,
+  resumeSubscription,
   type BillingAccessResponse,
   type BillingAccessState,
 } from "@/lib/api/payments";
@@ -32,6 +34,17 @@ const plusFeatures = [
   "возврат к отчёту из кабинета",
   "PDF и дальнейшие обновления продукта",
 ];
+
+function formatBillingDate(value: string | null): string {
+  if (!value) return "дата не указана";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
 
 const trustSteps = [
   {
@@ -74,6 +87,18 @@ const returnStatusCopy: Record<
       "Оплата подтверждена, полный доступ привязан к вашему аккаунту.",
     tone: "success",
   },
+  cancel_scheduled: {
+    title: "Автопродление отключено",
+    description:
+      "Plus остаётся активным до конца уже оплаченного периода. Нового списания не будет.",
+    tone: "success",
+  },
+  past_due: {
+    title: "Не удалось продлить Plus",
+    description:
+      "Платёж за следующий период не подтвердился. Оформите подписку заново, чтобы восстановить доступ.",
+    tone: "warning",
+  },
   payment_failed: {
     title: "Оплата не завершена",
     description:
@@ -84,6 +109,18 @@ const returnStatusCopy: Record<
     title: "Плюс сейчас не активен",
     description:
       "В аккаунте есть прошлый доступ, но сейчас он не действует. Можно обновить оплату и снова открыть полный отчёт.",
+    tone: "warning",
+  },
+  plus_expired: {
+    title: "Срок Plus истёк",
+    description:
+      "Оплаченный период завершился. Оформите месячную подписку заново, чтобы открыть полный отчёт.",
+    tone: "warning",
+  },
+  plus_suspended: {
+    title: "Plus приостановлен",
+    description:
+      "Доступ временно остановлен из-за платёжного или юридического статуса. Обратитесь в поддержку перед новой оплатой.",
     tone: "warning",
   },
 };
@@ -158,7 +195,9 @@ function BillingReturnStatus() {
           </p>
         </div>
         {access?.access_state === "payment_failed" ||
-        access?.access_state === "plus_inactive" ? (
+        access?.access_state === "plus_inactive" ||
+        access?.access_state === "past_due" ||
+        access?.access_state === "plus_expired" ? (
           <button
             type="button"
             className="text-left text-sm font-medium text-[#F6F1E8] underline underline-offset-4"
@@ -193,12 +232,65 @@ function FeatureList({ items }: { items: string[] }) {
 }
 
 function BillingAccountStatus() {
-  const { access, isLoadingAccess, accessError, isPlusActive } =
-    useBillingAccess();
+  const {
+    access,
+    isLoadingAccess,
+    accessError,
+    isPlusActive,
+    refreshAccess,
+  } = useBillingAccess();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const latestPaymentStatus = access?.latest_payment?.status;
+  const subscription = access?.subscription;
   const activeEntitlement = access?.entitlements.find(
     (entitlement) => entitlement.status === "active",
   );
+  const canCancel =
+    subscription !== null &&
+    subscription !== undefined &&
+    access?.access_state === "plus_active" &&
+    !subscription.cancel_at_period_end;
+  const canResume =
+    subscription !== null &&
+    subscription !== undefined &&
+    access?.access_state === "cancel_scheduled";
+
+  async function updateRenewal(action: "cancel" | "resume") {
+    if (!subscription) return;
+    setIsUpdating(true);
+    setActionError(null);
+    try {
+      if (action === "cancel") {
+        await cancelSubscription(subscription.id);
+      } else {
+        await resumeSubscription(subscription.id);
+      }
+      await refreshAccess();
+    } catch {
+      setActionError(
+        action === "cancel"
+          ? "Не удалось отключить автопродление. Попробуйте позже."
+          : "Не удалось возобновить автопродление. Попробуйте позже.",
+      );
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  const statusDescription = accessError
+    ? "Не удалось получить статус доступа. Попробуйте обновить страницу или повторить проверку позже."
+    : access?.access_state === "past_due"
+      ? "Не удалось продлить Plus. Оформите подписку заново, чтобы восстановить доступ."
+      : access?.access_state === "plus_expired"
+        ? "Срок Plus истёк. Можно оформить подписку заново."
+        : access?.access_state === "plus_suspended"
+          ? "Plus приостановлен. Обратитесь в поддержку, чтобы уточнить дальнейшие действия."
+          : access?.access_state === "cancel_scheduled"
+            ? "Автопродление отключено, но полный отчёт открыт до конца оплаченного периода."
+            : isPlusActive
+              ? "Оплата подтверждена сервером: полный личный отчёт открыт для этого аккаунта."
+              : "Plus не активен. Доступ открывается по месячной подписке.";
 
   return (
     <ProductSurfaceCard className="border-[rgba(216,180,90,0.26)] bg-[linear-gradient(135deg,rgba(216,180,90,0.11),rgba(255,255,255,0.045))]">
@@ -217,11 +309,7 @@ function BillingAccountStatus() {
                   : "Plus не активен"}
             </h2>
             <p className="max-w-3xl text-sm leading-6 text-[#D8DCE8]">
-              {accessError
-                ? "Не удалось получить статус доступа. Попробуйте обновить страницу или повторить проверку позже."
-                : isPlusActive
-                  ? "Оплата подтверждена сервером: полный личный отчёт открыт для этого аккаунта."
-                  : "Сейчас аккаунт в базовом статусе. Plus появится здесь после подтверждения оплаты YooKassa."}
+              {statusDescription}
             </p>
           </div>
         </div>
@@ -235,28 +323,59 @@ function BillingAccountStatus() {
           {isPlusActive ? "Аккаунт Plus" : "Базовый аккаунт"}
         </span>
       </div>
-      <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+      <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-          <dt className="text-[rgba(216,220,232,0.58)]">Доступ</dt>
+          <dt className="text-[rgba(216,220,232,0.58)]">План</dt>
           <dd className="mt-1 font-medium text-[#F6F1E8]">
-            {isPlusActive ? "полный отчёт открыт" : "полный отчёт закрыт"}
+            Astrotype Plus · 999 ₽ / месяц
+          </dd>
+        </div>
+        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+          <dt className="text-[rgba(216,220,232,0.58)]">Plus активен до</dt>
+          <dd className="mt-1 font-medium text-[#F6F1E8]">
+            {formatBillingDate(subscription?.current_period_end ?? null)}
+          </dd>
+        </div>
+        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
+          <dt className="text-[rgba(216,220,232,0.58)]">Следующее списание</dt>
+          <dd className="mt-1 font-medium text-[#F6F1E8]">
+            {subscription?.cancel_at_period_end
+              ? "Автопродление отключено"
+              : formatBillingDate(subscription?.next_billing_at ?? null)}
           </dd>
         </div>
         <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
           <dt className="text-[rgba(216,220,232,0.58)]">Последняя оплата</dt>
           <dd className="mt-1 font-medium text-[#F6F1E8]">
-            {latestPaymentStatus ?? "нет подтверждённой оплаты"}
-          </dd>
-        </div>
-        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-          <dt className="text-[rgba(216,220,232,0.58)]">Привязка</dt>
-          <dd className="mt-1 font-medium text-[#F6F1E8]">
-            {activeEntitlement
-              ? "есть активный доступ"
-              : "активного доступа нет"}
+            {latestPaymentStatus ??
+              (activeEntitlement ? "есть активный доступ" : "нет оплаты")}
           </dd>
         </div>
       </dl>
+      {canCancel || canResume ? (
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isUpdating}
+            onClick={() => void updateRenewal(canCancel ? "cancel" : "resume")}
+          >
+            {isUpdating
+              ? "Обновляем…"
+              : canCancel
+                ? "Отменить автопродление"
+                : "Возобновить автопродление"}
+          </Button>
+          <p className="text-xs leading-5 text-[rgba(216,220,232,0.62)]">
+            Отключение автопродления не сокращает уже оплаченный период.
+          </p>
+        </div>
+      ) : null}
+      {actionError ? (
+        <p className="mt-3 text-sm text-[#FFB4A8]" role="alert">
+          {actionError}
+        </p>
+      ) : null}
     </ProductSurfaceCard>
   );
 }

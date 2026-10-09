@@ -78,7 +78,13 @@ export function Sidebar() {
   const router = useRouter();
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const logout = useAuthStore((s) => s.logout);
-  const { isPlusActive, isLoadingAccess } = useBillingAccess();
+  const { access, isPlusActive, isLoadingAccess } = useBillingAccess();
+  const activeUntil = access?.subscription?.current_period_end
+    ? new Intl.DateTimeFormat("ru-RU", {
+        day: "numeric",
+        month: "short",
+      }).format(new Date(access.subscription.current_period_end))
+    : null;
 
   async function handleLogout() {
     try {
@@ -148,7 +154,9 @@ export function Sidebar() {
                     : "Plus не активен"}
               </span>
               <span className="block text-xs text-[rgba(216,220,232,0.62)]">
-                Статус аккаунта
+                {isPlusActive && activeUntil
+                  ? `активен до ${activeUntil}`
+                  : "Статус аккаунта"}
               </span>
             </span>
           )}

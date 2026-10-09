@@ -129,28 +129,28 @@ The browser return from YooKassa is only a UX signal. It must trigger status ref
 - [x] Plus access is active only inside the paid monthly period.
 - [x] Renewals extend access only after backend-confirmed successful provider payment.
 - [x] Cancellation stops future renewal but preserves access until paid period end.
-- [ ] Billing UI shows active-until date, next billing date and cancellation/expired/past-due states.
+- [x] Billing UI shows active-until date, next billing date and cancellation/expired/past-due states.
 - [ ] Support/admin observability can answer who has Plus, until when, and why it changed.
 
 ## Stories
 
-| ID  | Story                                                                                  | Status             |
-| --- | -------------------------------------------------------------------------------------- | ------------------ |
-| S01 | [Server-owned checkout creation](./S01-server-owned-checkout-creation.md)              | ✅ Реализовано     |
-| S02 | [YooKassa webhook reconciliation](./S02-yookassa-webhook-reconciliation.md)            | ✅ Реализовано     |
-| S03 | [Payment success state and entitlement grant](./S03-payment-success-entitlement.md)    | ✅ Реализовано     |
-| S04 | [Production webhook readiness](./S04-production-webhook-readiness.md)                  | 🟡 Runbook готов   |
-| S05 | [Billing access-state API](./S05-billing-access-state-api.md)                          | ✅ Реализовано     |
-| S06 | [Payment-to-account-tier status update](./S06-payment-to-account-tier-status.md)       | ✅ Реализовано     |
-| S07 | [Report and product entitlement gates](./S07-report-product-entitlement-gates.md)      | ✅ Реализовано     |
-| S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)    | ✅ Реализовано     |
-| S09 | [Payment confirmation regression and observability](./S09-regression-observability.md) | 🟡 Готово локально |
-| S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md) | ✅ Реализовано |
-| S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md) | ✅ Реализовано |
-| S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md) | ✅ Готово локально |
-| S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md) | ✅ Реализовано |
-| S14 | [Billing UI for monthly Plus period and management](./S14-billing-ui-expiry-management.md) | ⬜ Не начато |
-| S15 | [Subscription observability, admin repair and audit trail](./S15-subscription-observability-admin.md) | ⬜ Не начато |
+| ID  | Story                                                                                                 | Status                  |
+| --- | ----------------------------------------------------------------------------------------------------- | ----------------------- |
+| S01 | [Server-owned checkout creation](./S01-server-owned-checkout-creation.md)                             | ✅ Реализовано          |
+| S02 | [YooKassa webhook reconciliation](./S02-yookassa-webhook-reconciliation.md)                           | ✅ Реализовано          |
+| S03 | [Payment success state and entitlement grant](./S03-payment-success-entitlement.md)                   | ✅ Реализовано          |
+| S04 | [Production webhook readiness](./S04-production-webhook-readiness.md)                                 | 🟡 Runbook готов        |
+| S05 | [Billing access-state API](./S05-billing-access-state-api.md)                                         | ✅ Реализовано          |
+| S06 | [Payment-to-account-tier status update](./S06-payment-to-account-tier-status.md)                      | ✅ Реализовано          |
+| S07 | [Report and product entitlement gates](./S07-report-product-entitlement-gates.md)                     | ✅ Реализовано          |
+| S08 | [Frontend billing return and status UX](./S08-frontend-billing-return-status-ux.md)                   | ✅ Реализовано          |
+| S09 | [Payment confirmation regression and observability](./S09-regression-observability.md)                | 🟡 Готово локально      |
+| S10 | [Monthly Plus subscription model](./S10-monthly-plus-subscription-model.md)                           | ✅ Реализовано          |
+| S11 | [Plus expiry and access control](./S11-plus-expiry-access-control.md)                                 | ✅ Реализовано          |
+| S12 | [Renewal webhook lifecycle](./S12-renewal-webhook-lifecycle.md)                                       | ✅ Готово локально      |
+| S13 | [Cancellation, grace period and plan expiry UX states](./S13-cancellation-grace-period.md)            | ✅ Реализовано          |
+| S14 | [Billing UI for monthly Plus period and management](./S14-billing-ui-expiry-management.md)            | ✅ Реализовано локально |
+| S15 | [Subscription observability, admin repair and audit trail](./S15-subscription-observability-admin.md) | ⬜ Не начато            |
 
 ## Implementation order
 

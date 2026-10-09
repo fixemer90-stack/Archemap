@@ -5,9 +5,9 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api-client";
-import { createPayment } from "@/lib/api/payments";
+import { createSubscriptionCheckout } from "@/lib/api/payments";
 
-const PLUS_PRODUCT_ID = "self_full";
+const PLUS_PLAN_CODE = "astrotype_plus_monthly";
 
 function getBillingReturnUrl(): string {
   const url = new URL("/billing", window.location.origin);
@@ -39,8 +39,8 @@ export function BillingCheckoutButton() {
     setErrorMessage(null);
 
     try {
-      const payment = await createPayment({
-        product_id: PLUS_PRODUCT_ID,
+      const payment = await createSubscriptionCheckout({
+        plan_code: PLUS_PLAN_CODE,
         return_url: getBillingReturnUrl(),
       });
 

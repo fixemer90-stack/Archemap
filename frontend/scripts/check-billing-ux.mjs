@@ -43,6 +43,13 @@ for (const marker of [
   "Plus не активен",
   "Аккаунт Plus",
   "полный отчёт открыт",
+  "Plus активен до",
+  "Следующее списание",
+  "Автопродление отключено",
+  "Не удалось продлить Plus",
+  "Срок Plus истёк",
+  "Отменить автопродление",
+  "Возобновить автопродление",
 ]) {
   if (!billingPage.includes(marker)) {
     throw new Error(`Billing page missing marker: ${marker}`);
@@ -94,9 +101,9 @@ for (const marker of [
 }
 
 for (const marker of [
-  'PLUS_PRODUCT_ID = "self_full"',
-  "createPayment({",
-  "product_id: PLUS_PRODUCT_ID",
+  'PLUS_PLAN_CODE = "astrotype_plus_monthly"',
+  "createSubscriptionCheckout({",
+  "plan_code: PLUS_PLAN_CODE",
   "return_url: getBillingReturnUrl()",
   "window.location.assign(payment.confirmation_url)",
 ]) {
@@ -147,6 +154,10 @@ for (const marker of [
   "return_url?: string",
   "type BillingAccessResponse",
   "access_state: BillingAccessState",
+  "type BillingSubscriptionSummary",
+  "current_period_end: string | null",
+  "cancelSubscription",
+  "resumeSubscription",
   'api.post<PaymentResponse>("/api/v1/payments", request)',
   'api.get<BillingAccessResponse>("/api/v1/billing/access")',
 ]) {

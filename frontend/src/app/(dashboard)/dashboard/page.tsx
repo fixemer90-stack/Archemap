@@ -90,10 +90,12 @@ function getAccessStatusCopy({
   isPlusActive,
   isLoadingAccess,
   accessError,
+  currentPeriodEnd,
 }: {
   isPlusActive: boolean;
   isLoadingAccess: boolean;
   accessError: boolean;
+  currentPeriodEnd: string | null;
 }) {
   if (isLoadingAccess) {
     return {
@@ -106,9 +108,16 @@ function getAccessStatusCopy({
   }
 
   if (isPlusActive) {
+    const activeUntil = currentPeriodEnd
+      ? new Intl.DateTimeFormat("ru-RU", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(new Date(currentPeriodEnd))
+      : null;
     return {
       eyebrow: "Аккаунт Plus",
-      title: "Plus активен",
+      title: activeUntil ? `Plus активен до ${activeUntil}` : "Plus активен",
       text: "Полный личный отчёт открыт и привязан к этому аккаунту.",
       cta: "Управлять доступом",
       href: "/billing",
@@ -129,7 +138,8 @@ function getAccessStatusCopy({
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const { isPlusActive, isLoadingAccess, accessError } = useBillingAccess();
+  const { access, isPlusActive, isLoadingAccess, accessError } =
+    useBillingAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -173,6 +183,7 @@ export default function DashboardPage() {
     isPlusActive,
     isLoadingAccess,
     accessError,
+    currentPeriodEnd: access?.subscription?.current_period_end ?? null,
   });
 
   return (

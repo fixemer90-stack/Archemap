@@ -1,30 +1,32 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
-  User,
-  Heart,
   Baby,
   Briefcase,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   Crown,
-  Settings,
+  Heart,
+  LayoutDashboard,
   LogOut,
+  Settings,
+  Sparkles,
+  User,
+  X,
+  type LucideIcon,
 } from "lucide-react";
+
 import { useBillingAccess } from "@/hooks/use-billing-access";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
 
 const navItems = [
-  {
-    title: "Главная",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
+  { title: "Главная", href: "/dashboard", icon: LayoutDashboard },
 ];
 
 const productItems = [
@@ -32,53 +34,75 @@ const productItems = [
     title: "Self",
     href: "/products/self",
     icon: User,
-    color: "#5B3FD6",
-    description: "Архетипический профиль",
+    color: "#8DA8FF",
   },
   {
     title: "Love",
     href: "/products/love",
     icon: Heart,
-    color: "#B84A6B",
-    description: "Совместимость пары",
+    color: "#D77A98",
     disabled: true,
   },
   {
     title: "Child",
     href: "/products/child",
     icon: Baby,
-    color: "#6BAFBD",
-    description: "Профиль ребёнка",
+    color: "#7DC5D1",
     disabled: true,
   },
   {
     title: "Career",
     href: "/products/career",
     icon: Briefcase,
-    color: "#C28A2E",
-    description: "Карьерные сценарии",
+    color: "#D8B45A",
   },
 ];
 
 const settingsItems = [
-  {
-    title: "Оплата",
-    href: "/billing",
-    icon: CreditCard,
-  },
-  {
-    title: "Настройки",
-    href: "/settings",
-    icon: Settings,
-  },
+  { title: "Оплата", href: "/billing", icon: CreditCard },
+  { title: "Настройки", href: "/settings", icon: Settings },
 ];
+
+type NavigationItem = {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  color?: string;
+  disabled?: boolean;
+};
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const sidebarOpen = useUIStore((s) => s.sidebarOpen);
-  const logout = useAuthStore((s) => s.logout);
+  const sidebarOpen = useUIStore((state) => state.sidebarOpen);
+  const mobileSidebarOpen = useUIStore((state) => state.mobileSidebarOpen);
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const setMobileSidebarOpen = useUIStore(
+    (state) => state.setMobileSidebarOpen,
+  );
+  const logout = useAuthStore((state) => state.logout);
   const { access, isPlusActive, isLoadingAccess } = useBillingAccess();
+
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname, setMobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileSidebarOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileSidebarOpen, setMobileSidebarOpen]);
+
   const activeUntil = access?.subscription?.current_period_end
     ? new Intl.DateTimeFormat("ru-RU", {
         day: "numeric",
@@ -93,188 +117,282 @@ export function Sidebar() {
         credentials: "include",
       });
     } catch {
-      // Proceed with local logout even if API fails
+      // Proceed with local logout even if API fails.
     }
     logout();
     router.push("/login");
   }
 
-  return (
-    <aside
-      className={cn(
-        "hidden h-screen flex-col border-r border-[rgba(216,220,232,0.10)] bg-[rgba(255,255,255,0.03)] backdrop-blur-xl transition-all duration-300 md:flex",
-        sidebarOpen ? "w-64" : "w-16",
-      )}
-    >
-      <div className="flex h-16 items-center border-b border-[rgba(216,220,232,0.10)] px-4">
-        {sidebarOpen && (
-          <Link
-            href="/dashboard"
-            className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]"
-          >
-            Astrotype
-          </Link>
-        )}
-        {!sidebarOpen && (
-          <Link
-            href="/dashboard"
-            className="mx-auto font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#D8B45A]"
-          >
-            A
-          </Link>
-        )}
-      </div>
+  const sharedPanelProps = {
+    pathname,
+    isPlusActive,
+    isLoadingAccess,
+    activeUntil,
+    handleLogout,
+  };
 
-      <div className="px-2 pb-2">
-        <Link
-          href="/billing"
-          className={cn(
-            "flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition-all",
-            isPlusActive
-              ? "border-[rgba(216,180,90,0.36)] bg-[rgba(216,180,90,0.12)] text-[#F6F1E8]"
-              : "border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.045)] text-[#D8DCE8] hover:border-[rgba(216,180,90,0.28)] hover:text-[#F6F1E8]",
-            !sidebarOpen && "justify-center px-2",
-          )}
-          aria-label={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
-          title={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
+  return (
+    <>
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-white/10 bg-[#0B0D14]/90 shadow-[20px_0_60px_rgba(3,5,12,0.22)] backdrop-blur-2xl transition-[width] duration-300 motion-reduce:transition-none md:flex md:w-[4.75rem]",
+          sidebarOpen && "xl:w-[17.5rem]",
+        )}
+      >
+        <SidebarPanel expanded={sidebarOpen} {...sharedPanelProps} />
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-[5.15rem] hidden h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-[#171426] text-[#D8DCE8] shadow-lg transition hover:border-[#D8B45A]/40 hover:text-[#F6F1E8] motion-reduce:transition-none xl:flex"
+          aria-label={sidebarOpen ? "Свернуть меню" : "Развернуть меню"}
+          title={sidebarOpen ? "Свернуть меню" : "Развернуть меню"}
         >
-          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(216,180,90,0.14)] text-[#D8B45A]">
-            <Crown className="h-4 w-4" />
-            {isPlusActive ? (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#7CF29A] ring-2 ring-[#171426]" />
-            ) : null}
+          {sidebarOpen ? (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </aside>
+
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" role="presentation">
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#05070C]/78 backdrop-blur-sm"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Закрыть меню"
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Навигация"
+            className="relative flex h-dvh w-[88vw] max-w-[21rem] flex-col border-r border-white/12 bg-[#0B0D14]/98 shadow-[24px_0_80px_rgba(0,0,0,0.48)]"
+          >
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[#D8DCE8] transition hover:bg-white/[0.08] hover:text-[#F6F1E8] motion-reduce:transition-none"
+              aria-label="Закрыть меню"
+              title="Закрыть меню"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <SidebarPanel mobile expanded {...sharedPanelProps} />
+          </aside>
+        </div>
+      )}
+    </>
+  );
+}
+
+function SidebarPanel({
+  pathname,
+  expanded,
+  mobile = false,
+  isPlusActive,
+  isLoadingAccess,
+  activeUntil,
+  handleLogout,
+}: {
+  pathname: string;
+  expanded: boolean;
+  mobile?: boolean;
+  isPlusActive: boolean;
+  isLoadingAccess: boolean;
+  activeUntil: string | null;
+  handleLogout: () => void;
+}) {
+  const showFullBrand = mobile || expanded;
+  const labelClass = mobile ? "block" : expanded ? "hidden xl:block" : "hidden";
+  const itemAlignment = mobile
+    ? "justify-start"
+    : expanded
+      ? "justify-center xl:justify-start"
+      : "justify-center";
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(circle_at_20%_0%,rgba(91,63,214,0.24),transparent_64%)]"
+        aria-hidden="true"
+      />
+
+      <div
+        className={cn(
+          "relative flex h-[4.75rem] shrink-0 items-center border-b border-white/10",
+          mobile
+            ? "px-5 pr-16"
+            : "justify-center px-3 xl:justify-start xl:px-5",
+        )}
+      >
+        <Link
+          href="/dashboard"
+          className="flex min-w-0 items-center gap-3 text-[#F6F1E8]"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#D8B45A]/30 bg-[linear-gradient(145deg,rgba(216,180,90,0.18),rgba(91,63,214,0.24))] text-[#E6C66F] shadow-[0_8px_30px_rgba(91,63,214,0.16)]">
+            <Sparkles className="h-[18px] w-[18px]" />
           </span>
-          {sidebarOpen && (
-            <span className="min-w-0">
-              <span className="block font-semibold">
-                {isLoadingAccess
-                  ? "Проверяем Plus"
-                  : isPlusActive
-                    ? "Plus активен"
-                    : "Plus не активен"}
+          {showFullBrand && (
+            <span className={cn("min-w-0", labelClass)}>
+              <span className="block truncate font-[family-name:var(--font-cormorant)] text-xl font-semibold tracking-[0.04em]">
+                Astrotype
               </span>
-              <span className="block text-xs text-[rgba(216,220,232,0.62)]">
-                {isPlusActive && activeUntil
-                  ? `активен до ${activeUntil}`
-                  : "Статус аккаунта"}
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D8B45A]/70">
+                карта личности
               </span>
             </span>
           )}
         </Link>
       </div>
 
-      {/* Main nav */}
-      <nav className="space-y-1 p-2" aria-label="Главная навигация">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-gradient-to-br from-[rgba(91,63,214,0.30)] to-[rgba(216,180,90,0.10)] text-[#F6F1E8] border border-[rgba(91,63,214,0.30)]"
-                  : "text-[#D8DCE8] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
-                !sidebarOpen && "justify-center",
-              )}
-              aria-label={item.title}
-              title={item.title}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {sidebarOpen && <span>{item.title}</span>}
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-4 [scrollbar-width:thin] [scrollbar-color:rgba(216,220,232,0.18)_transparent]">
+        <Link
+          href="/billing"
+          className={cn(
+            "mb-4 flex min-h-12 items-center gap-3 rounded-2xl border px-2.5 py-2.5 transition motion-reduce:transition-none",
+            isPlusActive
+              ? "border-[#D8B45A]/35 bg-[linear-gradient(135deg,rgba(216,180,90,0.14),rgba(91,63,214,0.10))] text-[#F6F1E8]"
+              : "border-white/10 bg-white/[0.035] text-[#D8DCE8] hover:border-[#D8B45A]/25 hover:bg-white/[0.055]",
+            itemAlignment,
+          )}
+          aria-label={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
+          title={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
+        >
+          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#D8B45A]/12 text-[#D8B45A]">
+            <Crown className="h-4 w-4" />
+            {isPlusActive && (
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#7CF29A] ring-2 ring-[#171426]" />
+            )}
+          </span>
+          <span className={cn("min-w-0", labelClass)}>
+            <span className="block truncate text-sm font-semibold">
+              {isLoadingAccess
+                ? "Проверяем Plus"
+                : isPlusActive
+                  ? "Plus активен"
+                  : "Plus не активен"}
+            </span>
+            <span className="block truncate text-[11px] text-[#AEB8C8]">
+              {isPlusActive && activeUntil
+                ? `активен до ${activeUntil}`
+                : "Статус аккаунта"}
+            </span>
+          </span>
+        </Link>
 
-      {/* Products */}
-      <div className="flex-1 space-y-1 p-2">
-        {sidebarOpen && (
-          <p className="px-3 py-1 text-xs text-[rgba(216,220,232,0.30)] uppercase tracking-wider">
+        <nav className="space-y-1" aria-label="Главная навигация">
+          {navItems.map((item) => (
+            <SidebarLink
+              key={item.href}
+              item={item}
+              active={pathname === item.href}
+              labelClass={labelClass}
+              itemAlignment={itemAlignment}
+            />
+          ))}
+        </nav>
+
+        <div className="my-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+        <nav className="space-y-1" aria-label="Продукты">
+          <p
+            className={cn(
+              "mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#AEB8C8]/55",
+              labelClass,
+            )}
+          >
             Продукты
           </p>
-        )}
-        {productItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
+          {productItems.map((item) => (
+            <SidebarLink
               key={item.href}
-              href={item.disabled ? "#" : item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
-                item.disabled
-                  ? "text-[rgba(216,220,232,0.25)] cursor-not-allowed"
-                  : isActive
-                    ? "bg-gradient-to-br from-[rgba(91,63,214,0.30)] to-[rgba(216,180,90,0.10)] text-[#F6F1E8] border border-[rgba(91,63,214,0.30)]"
-                    : "text-[#D8DCE8] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
-                !sidebarOpen && "justify-center",
-              )}
-              aria-label={item.title}
-              title={item.disabled ? `${item.title} — скоро` : item.title}
-              aria-current={isActive ? "page" : undefined}
-              onClick={item.disabled ? (e) => e.preventDefault() : undefined}
-            >
-              <item.icon
-                className="h-5 w-5 shrink-0"
-                style={{ color: item.disabled ? undefined : item.color }}
-              />
-              {sidebarOpen && (
-                <div className="flex-1 min-w-0">
-                  <span>{item.title}</span>
-                  {item.disabled && (
-                    <span className="ml-2 text-[10px] text-[rgba(216,220,232,0.30)]">
-                      скоро
-                    </span>
-                  )}
-                </div>
-              )}
-            </Link>
-          );
-        })}
+              item={item}
+              active={pathname === item.href}
+              labelClass={labelClass}
+              itemAlignment={itemAlignment}
+            />
+          ))}
+        </nav>
       </div>
 
-      {/* Settings */}
       <nav
-        className="space-y-1 p-2 border-t border-[rgba(216,220,232,0.10)]"
+        className="relative shrink-0 space-y-1 border-t border-white/10 bg-[#0B0D14]/72 p-2.5"
         aria-label="Настройки"
       >
-        {settingsItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-gradient-to-br from-[rgba(91,63,214,0.30)] to-[rgba(216,180,90,0.10)] text-[#F6F1E8] border border-[rgba(91,63,214,0.30)]"
-                  : "text-[#D8DCE8] hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
-                !sidebarOpen && "justify-center",
-              )}
-              aria-label={item.title}
-              title={item.title}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {sidebarOpen && <span>{item.title}</span>}
-            </Link>
-          );
-        })}
-
+        {settingsItems.map((item) => (
+          <SidebarLink
+            key={item.href}
+            item={item}
+            active={pathname === item.href}
+            labelClass={labelClass}
+            itemAlignment={itemAlignment}
+          />
+        ))}
         <button
+          type="button"
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[#D8DCE8] transition-all hover:bg-[rgba(255,255,255,0.05)] hover:text-[#F6F1E8]",
-            !sidebarOpen && "justify-center",
+            "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[#AEB8C8] transition hover:bg-white/[0.05] hover:text-[#F6F1E8] motion-reduce:transition-none",
+            itemAlignment,
           )}
           aria-label="Выйти"
           title="Выйти"
         >
-          <LogOut className="h-5 w-5 shrink-0" />
-          {sidebarOpen && <span>Выйти</span>}
+          <LogOut className="h-[18px] w-[18px] shrink-0" />
+          <span className={labelClass}>Выйти</span>
         </button>
       </nav>
-    </aside>
+    </div>
+  );
+}
+
+function SidebarLink({
+  item,
+  active,
+  labelClass,
+  itemAlignment,
+}: {
+  item: NavigationItem;
+  active: boolean;
+  labelClass: string;
+  itemAlignment: string;
+}) {
+  return (
+    <Link
+      href={item.disabled ? "#" : item.href}
+      className={cn(
+        "group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-xl px-3 py-2 text-sm font-medium transition motion-reduce:transition-none",
+        item.disabled
+          ? "cursor-not-allowed text-[#AEB8C8]/30"
+          : active
+            ? "border border-[#8DA8FF]/20 bg-[linear-gradient(100deg,rgba(91,63,214,0.24),rgba(141,168,255,0.08))] text-[#F6F1E8] shadow-[inset_3px_0_0_rgba(216,180,90,0.85)]"
+            : "text-[#C8D0DE] hover:bg-white/[0.05] hover:text-[#F6F1E8]",
+        itemAlignment,
+      )}
+      aria-label={item.title}
+      aria-current={active ? "page" : undefined}
+      aria-disabled={item.disabled || undefined}
+      title={item.disabled ? `${item.title} — скоро` : item.title}
+      onClick={item.disabled ? (event) => event.preventDefault() : undefined}
+    >
+      <item.icon
+        className="h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-105 motion-reduce:transition-none"
+        style={{ color: item.disabled ? undefined : item.color }}
+      />
+      <span className={cn("min-w-0 flex-1 truncate", labelClass)}>
+        {item.title}
+      </span>
+      {item.disabled && (
+        <span
+          className={cn(
+            "rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#AEB8C8]/45",
+            labelClass,
+          )}
+        >
+          скоро
+        </span>
+      )}
+    </Link>
   );
 }

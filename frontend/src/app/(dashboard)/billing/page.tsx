@@ -232,13 +232,8 @@ function FeatureList({ items }: { items: string[] }) {
 }
 
 function BillingAccountStatus() {
-  const {
-    access,
-    isLoadingAccess,
-    accessError,
-    isPlusActive,
-    refreshAccess,
-  } = useBillingAccess();
+  const { access, isLoadingAccess, accessError, isPlusActive, refreshAccess } =
+    useBillingAccess();
   const [isUpdating, setIsUpdating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const latestPaymentStatus = access?.latest_payment?.status;

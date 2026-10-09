@@ -236,11 +236,7 @@ function BillingAccountStatus() {
     useBillingAccess();
   const [isUpdating, setIsUpdating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const latestPaymentStatus = access?.latest_payment?.status;
   const subscription = access?.subscription;
-  const activeEntitlement = access?.entitlements.find(
-    (entitlement) => entitlement.status === "active",
-  );
   const canCancel =
     subscription !== null &&
     subscription !== undefined &&
@@ -318,7 +314,7 @@ function BillingAccountStatus() {
           {isPlusActive ? "Аккаунт Plus" : "Базовый аккаунт"}
         </span>
       </div>
-      <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
           <dt className="text-[rgba(216,220,232,0.58)]">План</dt>
           <dd className="mt-1 font-medium text-[#F6F1E8]">
@@ -337,13 +333,6 @@ function BillingAccountStatus() {
             {subscription?.cancel_at_period_end
               ? "Автопродление отключено"
               : formatBillingDate(subscription?.next_billing_at ?? null)}
-          </dd>
-        </div>
-        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-          <dt className="text-[rgba(216,220,232,0.58)]">Последняя оплата</dt>
-          <dd className="mt-1 font-medium text-[#F6F1E8]">
-            {latestPaymentStatus ??
-              (activeEntitlement ? "есть активный доступ" : "нет оплаты")}
           </dd>
         </div>
       </dl>

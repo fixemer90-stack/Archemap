@@ -59,6 +59,8 @@ for (const marker of [
 for (const forbidden of [
   "699–999 ₽",
   "€7.99–€9.99",
+  "Последняя оплата",
+  "latestPaymentStatus",
   "закрытый доступ к себе",
   "relational-слой",
   "стиль привязанности",

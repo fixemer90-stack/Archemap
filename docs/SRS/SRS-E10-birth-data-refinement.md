@@ -1,6 +1,6 @@
 # SRS-E10: Уточнение времени и места рождения
 
-Статус: локально реализовано частично; live staging/production verification не завершена
+Статус: controlled staging workflow/metrics/alerts/rollback подтверждены; 24h gate и production canary не завершены
 
 Feature: `docs/features/E10-birth-data-refinement/FEATURE.md`
 
@@ -202,5 +202,5 @@ stateDiagram-v2
 - Feature flag выключен по умолчанию до staging evidence.
 - Rollback выключает новые операции, но не удаляет созданные ревизии/версии.
 - Status/read endpoints и завершение in-flight worker tasks остаются доступными при rollback.
-- На 6 октября 2026 года реальный 24-часовой staging smoke, payment/entitlement comparison и deployed flag rollback не выполнены.
+- 8–9 октября 2026 года controlled staging workflow, payment/entitlement comparison, Prometheus firing/inactive transitions и deployed flag rollback с завершением delayed in-flight worker task подтверждены. Буквальный 24-часовой gate и production canary остаются открыты.
 - Commit `d87dfc8` попал в production lineage до закрытия этого gate; это нарушение процесса, а не evidence успешного rollout.

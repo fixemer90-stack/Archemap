@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализация и fail-closed staging deployment завершены; controlled workflow/alert/24h/rollback evidence и production canary открыты
+🟡 Controlled staging workflow, метрики, alerts, payment/entitlement и deployed rollback подтверждены; открыты буквальная 24-часовая граница и production canary
 
 ## Контекст
 
@@ -76,24 +76,25 @@ Monitor query paths поддержаны двумя additive partial PostgreSQL 
 
 Это подтверждает безопасный fail-closed deployment, миграцию, singleton monitor topology, scheduler execution и частичный Prometheus readback. Оно не подтверждает пользовательский refinement flow, counter/histogram series, alert firing, rollback при in-flight задаче или 24-часовую границу.
 
+## Controlled staging evidence 8 октября 2026 года
+
+На staging с marker `4e4c60048f63e089306e913974ccc5c25843ab7c` выполнен полный controlled workflow до 24-часовой границы и production canary.
+
+- Перед включением создан backup `backups/staging/pre-e10-controlled-4e4c60048f63e089306e913974ccc5c25843ab7c-20261008T182213Z.dump`, размер `526315` bytes, SHA-256 `6ef31dbd9e9d123c1caa9b4059285e6736910911d337dc8e44af3a5b0dc370f7`.
+- Оба flag были явно включены; backend/worker/refinement-monitor/scheduler пересозданы, frontend собран с public flag `true`. После smoke выполнен deployed rollback, и текущее live-состояние снова fail-closed: оба flag `false` во всех соответствующих сервисах, frontend пересобран с `false`.
+- Authenticated staging profile `00f67608-a0a9-41f0-88c9-e1513c7e11f9`: status до операции вернул `can_refine=true`; POST вернул `202`, revision `59482b6f-96db-4afb-bc32-df4d9d4b2bd6`, generation `2857f967-5498-48d8-ab14-0172165af4b5`; второй POST вернул `429`, `Retry-After: 86400`, `next_available_at=2026-10-09T18:27:25.228612Z`.
+- Старый отчёт оставался читаемым до, во время и после пересчёта; новый отчёт читается. Сохранены старые chart/report rows; создана ровно одна revision, новая карта имеет новый input hash и birth datetime и совпадает с revision snapshot по coordinates/timezone.
+- Narrative mock завершился bounded `narrative_generation_failed`, при этом revision сохранила пригодный статус `deterministic_ready`; это ожидаемый failure-path contract, а не потеря deterministic result.
+- Для владельца workflow payment rows остались `3 -> 3`, entitlements `3 -> 3`; стабильные hashes до/после совпали: payments `af2cd1c34c4db0d4420b4eba0bcf00e685cbdcabcf2b0b5b1871fd3d429c0fee`, entitlements `9b8aad40847a093ac4d596f55cbb58b2d1d0187cd8fca1508ec4c0921e83e89f`.
+- Prometheus прочитал `requests_total{outcome="accepted"}=1`, `requests_total{outcome="cooldown"}=1`, `cooldown_rejections_total=1`, duration histogram count `1` / sum `0.40338439401239157`, `generation_failures_total{code="narrative_generation_failed"}=1`, а также singleton-monitor gauges.
+- `BirthDataRefinementGenerationFailures` реально перешёл `pending -> firing -> inactive`; `BirthDataRefinementStuckGenerations` на управляемом временном `processing`/old-`updated_at` scenario перешёл `pending -> firing -> inactive`. После восстановления revision оба gauges прочитаны как `0`.
+- Deployed rollback подтверждён отдельной delayed in-flight revision `aeb08592-26b2-4c5c-9735-7dafb9604da1`: backend/frontend rollback containers созданы в `19:10:11Z`/`19:10:44Z`, revision завершилась в `19:13:03Z` после `180.915688s`, а clean worker с flag `false` пересоздан в `19:13:05Z`. После rollback новый POST возвращает bounded `503 birth_data_refinement_disabled`, status/revision и старый/новый отчёты возвращают `200`, revision count остаётся `1`; временная worker-инструментация и swap отсутствуют.
+- После перезапуска VPS 9 октября live readback подтвердил healthy staging services, flags `false`, отсутствие временной worker-инструментации и неизменные deploy markers; production public health остаётся `200`, production marker — `d87dfc8d1d2d14e04d171262f2b00a9d0f9b591a`.
+
 ## Остаток rollout-задачи
 
-1. Явно включить на staging `BIRTH_DATA_REFINEMENT_ENABLED=true`; recreate `backend`, `worker`, `refinement-monitor` и `scheduler`.
-2. Явно включить `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED=true`; rebuild frontend image и recreate frontend. Runtime-only изменение env не считается включением UI.
-3. Выполнить authenticated workflow на выделенном staging profile:
-   - `GET refinement-status` возвращает `can_refine=true`;
-   - первый `POST` возвращает `202` с `revision_id` и `generation_id`;
-   - status проходит `queued/processing -> deterministic_ready/ready`;
-   - старый отчёт остаётся читаемым во время пересчёта;
-   - новый отчёт использует новую карту/input snapshot;
-   - повторный `POST` возвращает `429`, `Retry-After` и `next_available_at`;
-   - committed revision ровно одна, старые chart/report rows сохранены.
-4. После реального workflow прочитать из Prometheus request/cooldown/duration/failure series, а не только monitor gauges, и зафиксировать bounded labels без персональных данных.
-5. Создать управляемые staging stuck и failed scenarios, дождаться фактического перехода обеих Prometheus rules в firing, затем подтвердить возврат в inactive. Alertmanager delivery остаётся отдельным незакрытым контрактом.
-6. Сравнить payment rows и entitlement до/после refinement; подтвердить отсутствие новых YooKassa/payment rows и отсутствие изменения entitlement.
-7. Во время реально выполняющейся worker-задачи выключить оба flag: новые POST должны блокироваться без DB write/dispatch, status/read должны работать, уже запущенная задача должна завершиться. Для frontend rollback обязателен rebuild с `false`.
-8. Выдержать буквальные полные 24 часа от committed revision и подтвердить повторное открытие серверного окна, не подменяя этот gate изменением времени или данных.
-9. Только после пунктов 1–8 выполнить ограниченный production canary с отдельным backup/restore proof, readback exact deploy SHA и проверкой production rollback.
+1. После `2026-10-09T18:27:25.228612Z` подтвердить на первой controlled revision буквальное повторное открытие серверного окна без изменения времени или данных. На момент live readback `2026-10-09T16:11:30Z` полные 24 часа ещё не истекли.
+2. Только после закрытия 24-часового gate выполнить ограниченный production canary с отдельным backup/restore proof, readback exact deploy SHA и проверкой production rollback.
 
 ## Историческое нарушение production gate
 
@@ -105,11 +106,11 @@ Commit `d87dfc8` уже находился в production lineage при откр
 - [x] Выключенный backend flag не создаёт revision и не вызывает dispatch; read/status остаётся доступен.
 - [x] Frontend скрывает E10 UI при выключенном public flag; staging/prod defaults fail-closed, а явный `true` зарезервирован для controlled stage/canary.
 - [x] Browser source/E2E покрывает profile switch, manual-place rejection, POST 429 sync, keyboard activation и overflow на `320px`/`768px`; запуск подтверждается только фактическим Playwright result.
-- [ ] Метрики прочитаны на реальном staging из OTLP/Prometheus.
-- [ ] Prometheus alert rules сработали на управляемом stuck/failed staging scenario.
+- [x] Метрики прочитаны на реальном staging из OTLP/Prometheus.
+- [x] Prometheus alert rules сработали на управляемом stuck/failed staging scenario.
 - [ ] Реальный 24-часовой staging smoke завершён.
-- [ ] Сравнение payment rows и entitlement до/после staging refinement выполнено.
-- [ ] Rollback обоих flag проверен на deployed staging с in-flight worker completion.
+- [x] Сравнение payment rows и entitlement до/после staging refinement выполнено.
+- [x] Rollback обоих flag проверен на deployed staging с in-flight worker completion.
 - [ ] Production canary выполнен после перечисленного staging evidence.
 
 Статические тесты, compose validation и наличие rule-файла не закрывают runtime-критерии выше.

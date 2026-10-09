@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Локальная реализация усилена rollback/observability; live staging и production evidence открыты
+🟡 Controlled staging workflow и rollback подтверждены; открыты буквальная 24-часовая граница и production canary
 
 ## Цель
 
@@ -91,17 +91,17 @@ last_successful_refinement_at + 24 часа.
 - [ ] Unit, integration, concurrency, frontend и staging smoke закрывают happy path и ограничения.
 - [x] Backend/frontend feature flags безопасно блокируют новые операции и скрывают UI без удаления данных.
 - [x] Локально добавлены bounded metrics, monitor task и Prometheus rules для stuck/failed generation.
-- [ ] Реальные staging metrics, 24-часовой smoke, payment/entitlement comparison и deployed rollback подтверждены.
+- [ ] Буквальный 24-часовой staging smoke и последующий production canary подтверждены.
 
 ## Stories
 
-| ID  | Story                                                                                | Статус               |
-| --- | ------------------------------------------------------------------------------------ | -------------------- |
-| S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)         | ✅ Реализовано       |
-| S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)         | ✅ Реализовано       |
-| S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md)      | ✅ Реализовано       |
-| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ✅ Реализовано       |
-| S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)               | 🟡 Live evidence gap |
+| ID  | Story                                                                                | Статус            |
+| --- | ------------------------------------------------------------------------------------ | ----------------- |
+| S01 | [Хранилище ревизий и атомарный cooldown](./S01-revision-storage-cooldown.md)         | ✅ Реализовано    |
+| S02 | [API уточнения и контракт геокодирования](./S02-refinement-api-geocoding.md)         | ✅ Реализовано    |
+| S03 | [Пересчёт карты и безопасная версия отчёта](./S03-chart-report-regeneration.md)      | ✅ Реализовано    |
+| S04 | [UX и визуальный дизайн данных рождения в Settings](./S04-settings-birth-data-ux.md) | ✅ Реализовано    |
+| S05 | [Тесты, наблюдаемость и rollout](./S05-tests-observability-rollout.md)               | 🟡 24h/prod gates |
 
 ## Порядок реализации
 

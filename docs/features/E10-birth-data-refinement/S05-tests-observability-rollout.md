@@ -91,9 +91,22 @@ Monitor query paths поддержаны двумя additive partial PostgreSQL 
 - Deployed rollback подтверждён отдельной delayed in-flight revision `aeb08592-26b2-4c5c-9735-7dafb9604da1`: backend/frontend rollback containers созданы в `19:10:11Z`/`19:10:44Z`, revision завершилась в `19:13:03Z` после `180.915688s`, а clean worker с flag `false` пересоздан в `19:13:05Z`. После rollback новый POST возвращает bounded `503 birth_data_refinement_disabled`, status/revision и старый/новый отчёты возвращают `200`, revision count остаётся `1`; временная worker-инструментация и swap отсутствуют.
 - После перезапуска VPS 9 октября live readback подтвердил healthy staging services, flags `false`, отсутствие временной worker-инструментации и неизменные deploy markers; production public health остаётся `200`, production marker — `d87dfc8d1d2d14e04d171262f2b00a9d0f9b591a`.
 
+## Повторное включение staging UI — 9 октября 2026 года
+
+После полного rollout E6 на staging выяснилось, что E10 остался в ранее проверенном fail-closed состоянии, поэтому карточка «Данные рождения» не отображалась пользователям.
+
+- В `.env.staging` оба operator-owned flag явно переключены в `true`: `BIRTH_DATA_REFINEMENT_ENABLED` и `NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED`.
+- Backend, основной worker, dedicated refinement monitor и scheduler пересозданы; runtime readback во всех четырёх процессах показывает backend flag `true`.
+- Frontend пересобран, а не только перезапущен; runtime public flag равен `true`, live bundle содержит `BirthDataSettings`, status/POST API paths и copy карточки «Данные рождения».
+- Публичный `/settings` за Basic Auth возвращает HTTP 200; оба refinement endpoint без app session возвращают HTTP 401, а не 404/503.
+- Backend health остаётся `status=ok`, worker/monitor сообщают `ready`, scheduler запущен; production public health остаётся HTTP 200.
+- Env rollback source сохранён на VPS как `.env.staging.pre-e10-enable-20261009T224833Z`.
+
+Это включает интерфейс уточнения времени, точности и места рождения. Изменение самой календарной даты рождения по-прежнему вне E10 contract.
+
 ## Остаток rollout-задачи
 
-1. После `2026-10-09T18:27:25.228612Z` подтвердить на первой controlled revision буквальное повторное открытие серверного окна без изменения времени или данных. На момент live readback `2026-10-09T16:11:30Z` полные 24 часа ещё не истекли.
+1. После `2026-10-09T18:27:25.228612Z` подтвердить на первой controlled revision буквальное повторное открытие серверного окна без изменения времени или данных.
 2. Только после закрытия 24-часового gate выполнить ограниченный production canary с отдельным backup/restore proof, readback exact deploy SHA и проверкой production rollback.
 
 ## Историческое нарушение production gate

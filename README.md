@@ -15,7 +15,8 @@
     <a href="#-быстрый-старт">Быстрый старт</a> ·
     <a href="#-продукт">Продукт</a> ·
     <a href="#-архитектура">Архитектура</a> ·
-    <a href="#-документация">Документация</a>
+    <a href="#-документация">Документация</a> ·
+    <a href="PATCHLOG.md">Patch log</a>
   </p>
 </div>
 
@@ -242,6 +243,7 @@ npm test
 
 ```text
 Astrotype/
+├── PATCHLOG.md                    # Фактически доставленные production patches
 ├── backend/
 │   ├── app/
 │   │   ├── api/                 # Versioned API routers
@@ -294,6 +296,7 @@ Astrotype/
 
 | Документ                                                                                                                                       | Назначение                                                 |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [`PATCHLOG.md`](PATCHLOG.md)                                                                                                                   | Production patches, runtime evidence и rollback anchors    |
 | [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md)                                                                                                     | Активная дорожная карта v2                                 |
 | [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md)                                                   | Umbrella SRS для v2 cloud-core natal platform              |
 | [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)                                       | C4 architecture, progressive delivery, v1 quarantine       |

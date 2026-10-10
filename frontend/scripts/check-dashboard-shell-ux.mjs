@@ -5,10 +5,12 @@ const root = process.cwd();
 const sidebarPath = path.join(root, "src/components/layout/sidebar.tsx");
 const headerPath = path.join(root, "src/components/layout/header.tsx");
 const storePath = path.join(root, "src/stores/ui-store.ts");
+const layoutPath = path.join(root, "src/app/layout.tsx");
 
 const sidebar = fs.readFileSync(sidebarPath, "utf8");
 const header = fs.readFileSync(headerPath, "utf8");
 const store = fs.readFileSync(storePath, "utf8");
+const layout = fs.readFileSync(layoutPath, "utf8");
 
 for (const token of [
   "h-dvh",
@@ -27,6 +29,22 @@ for (const token of [
 for (const token of ["Открыть меню", "toggleMobileSidebar", "md:hidden"]) {
   if (!header.includes(token)) {
     throw new Error(`dashboard header contract misses ${token}`);
+  }
+}
+
+for (const forbidden of ["useTheme", "Включить светлую тему", "Moon", "Sun"]) {
+  if (header.includes(forbidden)) {
+    throw new Error(
+      `dashboard header still exposes incomplete light theme via ${forbidden}`,
+    );
+  }
+}
+
+for (const token of ['className="dark"', 'forcedTheme="dark"']) {
+  if (!layout.includes(token)) {
+    throw new Error(
+      `root layout does not lock the supported dark theme via ${token}`,
+    );
   }
 }
 

@@ -58,15 +58,25 @@ assert.equal(
   "global background: missing theme background variable",
 );
 
-assertMarkers("theme toggle", rootLayout + header, [
+assertMarkers("supported theme", rootLayout, [
+  'className="dark"',
   'defaultTheme="dark"',
+  'forcedTheme="dark"',
   "enableSystem={false}",
+]);
+for (const forbidden of [
   "activeTheme",
   "resolvedTheme",
   "setTheme(nextTheme)",
   "Включить светлую тему",
   "Включить тёмную тему",
-]);
+]) {
+  assert.equal(
+    header.includes(forbidden),
+    false,
+    `supported theme: header must not expose ${forbidden}`,
+  );
+}
 
 assertMarkers("homepage", homepage, [
   'data-product-surface-preview="illustrative"',

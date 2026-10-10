@@ -43,10 +43,10 @@ assert.equal(
 );
 
 assertMarkers("global background", globals, [
-  "--background: #f6f1e8;",
-  "--background: #0d0f16;",
+  "--canvas: #e9e4dc;",
+  "--canvas: #0d0f16;",
   "--surface-background: var(--page-background);",
-  "#fff7e8",
+  "#fbf4e8",
   "circle at 16% 0",
   "#26304a",
   "#0b0d13 45%",

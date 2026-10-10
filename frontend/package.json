@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "test": "node scripts/check-report-ux.mjs && node scripts/check-auth-ux.mjs && node scripts/check-billing-ux.mjs && node scripts/check-v2-report-view-model.mjs && node scripts/check-v2-report-reader-dom.mjs && node scripts/check-v2-report-generation-state.mjs && node scripts/check-product-surface-redesign.mjs && node scripts/check-career-product-ux.mjs && node scripts/check-career-report-reader.mjs && node scripts/check-career-report-parity.mjs && node scripts/check-career-sample-parity.mjs && node scripts/check-birth-data-settings-ux.mjs && node scripts/check-dashboard-shell-ux.mjs",
+    "test": "node scripts/check-theme-contract.mjs && node scripts/check-report-ux.mjs && node scripts/check-auth-ux.mjs && node scripts/check-billing-ux.mjs && node scripts/check-v2-report-view-model.mjs && node scripts/check-v2-report-reader-dom.mjs && node scripts/check-v2-report-generation-state.mjs && node scripts/check-product-surface-redesign.mjs && node scripts/check-career-product-ux.mjs && node scripts/check-career-report-reader.mjs && node scripts/check-career-report-parity.mjs && node scripts/check-career-sample-parity.mjs && node scripts/check-birth-data-settings-ux.mjs && node scripts/check-dashboard-shell-ux.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:update": "playwright test --update-snapshots"

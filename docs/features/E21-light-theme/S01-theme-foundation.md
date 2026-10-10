@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -36,13 +36,19 @@
 
 ## Критерии приёмки
 
-- [ ] Определены light/dark значения всех обязательных semantic tokens.
-- [ ] Canvas светлой темы не равен `#FFFFFF` и визуально отделён от surfaces.
-- [ ] Для обычного текста подтверждён contrast не ниже 4.5:1.
-- [ ] Для крупного текста и UI boundaries подтверждены применимые WCAG AA thresholds.
-- [ ] Product accents не используются напрямую как body text без contrast-safe варианта.
-- [ ] Static contract test сначала падает, затем проходит.
-- [ ] Root theme остаётся принудительно тёмной до S06.
+- [x] Определены light/dark значения всех обязательных semantic tokens.
+- [x] Canvas светлой темы не равен `#FFFFFF` и визуально отделён от surfaces.
+- [x] Для обычного текста подтверждён contrast не ниже 4.5:1.
+- [x] Для крупного текста и UI boundaries подтверждены применимые WCAG AA thresholds.
+- [x] Product accents не используются напрямую как body text без contrast-safe варианта.
+- [x] Static contract test сначала падает, затем проходит.
+- [x] Root theme остаётся принудительно тёмной до S06.
+
+## Evidence
+
+- RED: `node scripts/check-theme-contract.mjs` — отсутствовал `--canvas`.
+- GREEN: `node scripts/check-theme-contract.mjs` — semantic token и contrast contract пройден.
+- Formatting: `npx prettier --check src/app/globals.css scripts/check-theme-contract.mjs`.
 
 ## Проверка
 

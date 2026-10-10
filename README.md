@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Astrotype</h1>
-  <p><strong>Премиальная платформа астрологических self‑reports: active v2 — natal‑only cloud‑core с evidence‑backed LLM‑нарративом.</strong></p>
+  <p><strong>Платформа персональных астрологических отчётов: Self v2, Career, monthly Plus и безопасное уточнение данных рождения.</strong></p>
 
   <p>
     <a href="https://github.com/fixemer90-stack/Archemap/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/fixemer90-stack/Archemap/ci.yml?branch=main&label=CI&style=for-the-badge"></a>
@@ -24,11 +24,13 @@
 
 ## ✨ Что такое Astrotype
 
-Astrotype — это full‑stack SaaS для персональных натальных отчётов. Активное направление v2 — natal‑only cloud‑core платформа: после регистрации/заполнения профиля backend рассчитывает проверяемую deterministic foundation, сразу показывает пользователю базовую натальную карту/факты/синтез, а LLM‑нарратив догружается асинхронно поверх сохранённых evidence‑backed данных.
+Astrotype — full‑stack SaaS для персональных отчётов. В production работают базовый Self v2, специализированный Career Report, месячная Plus‑подписка и уточнение времени/места рождения с безопасным пересчётом отчёта.
 
-Базовый натальный отчёт доступен на любом уровне зарегистрированного аккаунта. Все остальные отчёты доступны только при активном Plus.
+Базовый Self доступен каждому авторизованному пользователю. Career доступен при активном Plus или сохранённом grandfathered Career entitlement. Love и Child пока не выпущены.
 
-Ключевой принцип проекта: расчёт остаётся проверяемым и объяснимым; LLM не рассчитывает карту, не добавляет факты и не блокирует первый полезный экран.
+Ключевой принцип проекта: расчёты остаются проверяемыми и объяснимыми. LLM не рассчитывает натальную карту, scores или доступ пользователя — она пишет нарратив только поверх сохранённых deterministic/evidence‑backed данных.
+
+### Self v2 generation pipeline
 
 ```text
 birth/profile data → deterministic_ready foundation → async DeepSeek LLM segments → complete report → UI / PDF
@@ -38,26 +40,36 @@ birth/profile data → deterministic_ready foundation → async DeepSeek LLM seg
 
 ## 🧭 Продукт
 
-| Вертикаль                | Что получает пользователь                                                                              | Статус                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
-| **Astrotype Self v2**    | Натальная карта, deterministic foundation, responsive reader, real DeepSeek LLM‑нарратив без соционики | ✅ Web/backend/runtime реализованы, CI green |
-| **Astrotype v1 archive** | Исторические Self/Career/LLM narrative документы и идеи для справки                                    | 📦 Архив, не активный контракт               |
-| **Astrotype Love**       | Совместимость, паттерны отношений, триггеры конфликтов                                                 | 🧭 После v2 foundation                       |
-| **Astrotype Child**      | Профиль ребёнка, семейная интерпретация, рекомендации по воспитанию                                    | 🧭 После v2 foundation                       |
+| Вертикаль                  | Что получает пользователь                                                                                       | Статус                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Astrotype Self v2**      | Натальная карта, deterministic foundation, responsive reader и evidence‑backed LLM‑нарратив без соционики       | ✅ Работает в production                               |
+| **Astrotype Career**       | Questionnaire, 12 deterministic Career Dimensions, роли/траектории, async narrative, responsive reader и PDF    | ✅ Работает в production для Plus/grandfathered access |
+| **Monthly Plus**           | Месячный период доступа, renewal, cancel/resume, expiry/past-due состояния и управляемый billing UI             | ✅ Работает в production                               |
+| **Birth-data refinement**  | Уточнение времени и места рождения, revision history, cooldown и безопасное переключение на пересчитанный отчёт | ✅ Включено в production                               |
+| **Legacy compatibility**   | Исторические generic Self/Career артефакты и маршруты до контролируемого retirement                             | 🟡 E20 retirement ещё не выполнен                      |
+| **Astrotype Love / Child** | Совместимость и профиль ребёнка                                                                                 | ⬜ Не выпущены                                         |
+
+### Текущее production-состояние
+
+- Публичный web/API: `https://astrotype.ru`.
+- Production работает в проверенной тёмной теме; light theme пока не является выпущенной возможностью.
+- Birth-data refinement включён в backend и frontend production runtime.
+- Полная история production rollout, backup и rollback anchors ведётся в [`PATCHLOG.md`](PATCHLOG.md).
+- GitHub `main` может содержать docs-only commits новее runtime SHA; источником истины о реально развёрнутой версии является production marker, зафиксированный в Patch log.
 
 ### Почему это не «астро‑гадалка»
 
 - Расчёт строится от исходных данных рождения и астрологических объектов.
 - Каждый вывод имеет `evidence trail`: chart rows → facts → synthesis → section evidence ids.
-- v2 natal‑only: соционика, Model A, information functions и MBTI не входят в активный v2 отчёт.
+- Self v2 natal‑only: соционика, Model A, information functions и MBTI не входят в активный Self v2 отчёт.
 - Технические детали доступны, но не превращаются в отдельный dashboard: deterministic foundation — первый полезный экран, LLM‑нарратив догружается позже.
 - LLM‑слой пишет валидируемые personality sections поверх persisted facts/synthesis/outline, но не рассчитывает карту и не добавляет факты.
 
 ---
 
-## 🖼️ UX отчёта
+## 🖼️ UX отчётов
 
-Self v2 проектируется как progressive report, а не debug view и не ожидание пустого экрана.
+Self v2 работает как progressive report, а не debug view и не ожидание пустого экрана.
 
 Порядок пользовательского восприятия:
 
@@ -66,6 +78,8 @@ Self v2 проектируется как progressive report, а не debug view
 3. **Статус нарратива** — `narrative_generating` / `partial` / `complete` без скрытия базовых расчётов.
 4. **LLM‑главы** — core pattern, perception/mind, emotions, agency/desire, relationships/intimacy, growth vector.
 5. **Компактная техническая база** — calculation details остаются доступны, но не выглядят как отдельный dashboard.
+
+Career использует отдельный pipeline: questionnaire → deterministic Career Dimensions → resolver → archetypes/roles/paths → асинхронные narrative sections → единый persisted payload для web reader и PDF.
 
 Подробнее:
 
@@ -77,37 +91,42 @@ Self v2 проектируется как progressive report, а не debug view
 
 ## 🏗️ Архитектура
 
-Astrotype v2 — cloud‑core bounded context поверх существующей платформенной авторизации/профилей. v2 не реиспользует legacy report/socionics REST методы и не импортирует v1 narrative DTO.
+Astrotype — cloud‑core платформа поверх общей авторизации, профилей, billing и entitlement layer. Self v2 и Career — отдельные bounded contexts с собственными deterministic/LLM pipelines. Generic `reports`/`rules` routes пока остаются зарегистрированными для legacy compatibility; их контролируемый retirement описан в E20.
 
 ```mermaid
 graph LR
     U[User] --> FE[Web / PWA / Thin clients]
     FE --> API[FastAPI API]
-    API --> AUTH[Existing Auth & Profiles]
-    API --> V2[astrotype_v2 bounded context]
-    V2 --> CHART[Deterministic Chart Adapter]
-    V2 --> FACTS[Facts + Synthesis + Outline]
-    V2 --> FOUNDATION[deterministic_ready foundation]
-    V2 --> JOBS[Celery LLM segment jobs]
+    API --> AUTH[Auth & Profiles]
+    API --> BILLING[Billing / Subscriptions / Entitlements]
+    API --> SELF[Self v2 bounded context]
+    API --> CAREER[Career bounded context]
+    API --> REFINE[Birth-data refinement]
+    SELF --> DET[Deterministic chart / facts / synthesis]
+    CAREER --> CD[Career dimensions / resolver / roles]
+    DET --> JOBS[Celery jobs]
+    CD --> JOBS
+    REFINE --> JOBS
     JOBS --> LLM[LLM Provider]
-    JOBS --> SEGMENTS[ReportSegmentV2]
-    V2 --> REPORT[NatalReportV2]
-    V2 --> PG[(PostgreSQL source of truth)]
-    JOBS --> REDIS[(Redis broker only)]
-    FOUNDATION --> FE
-    REPORT --> FE
+    SELF --> PG[(PostgreSQL source of truth)]
+    CAREER --> PG
+    BILLING --> PG
+    JOBS --> REDIS[(Redis broker/runtime)]
+    SCHED[Celery Beat] --> JOBS
+    MON[Refinement monitor] --> JOBS
 ```
 
 ### Backend
 
 - **FastAPI** + Pydantic v2
-- existing auth/profile infrastructure remains the platform layer
+- auth/profile, billing/subscriptions and entitlement services form the platform layer
 - `backend/app/modules/astrotype_v2/` is the new natal‑only bounded context
+- `backend/app/modules/career/` owns questionnaire, deterministic Career artifacts, narrative, reader and PDF contracts
 - **SQLAlchemy 2.0 async** + Alembic
 - **PostgreSQL 16** for canonical v2 chart/fact/report artifacts
-- **Redis 7** as broker/runtime only, not durable report storage
+- **Redis 7** as Celery broker/runtime only, not durable report storage
 - deterministic chart adapter over the existing low-level chart calculator
-- **Celery** for async LLM segment generation
+- **Celery** worker, Beat scheduler and singleton refinement-monitor queue
 - report/calculation JSON persisted in PostgreSQL; PDF renders on demand from stored JSON
 
 ### Frontend
@@ -118,13 +137,15 @@ graph LR
 - **Zustand** for client state
 - **React Hook Form + Zod** for forms
 - progressive report reader: deterministic foundation first, LLM sections inserted when ready
+- responsive dashboard shell: expanded desktop sidebar, compact tablet rail and mobile drawer
 
 ### Integrations
 
 - Existing email/password auth, verification and OAuth remain platform capabilities
 - Yandex OAuth with HttpOnly cookies
 - Password reset and account linking
-- YooKassa / Yandex Pay payment architecture
+- YooKassa payments and monthly Plus subscription lifecycle
+- Birth-data geocoding/refinement with revision history and cooldown
 - GitHub Actions CI/CD
 - Docker Compose local environment
 
@@ -149,14 +170,17 @@ docker compose up -d --build
 
 Сервисы:
 
-| Сервис      | URL                                 |
-| ----------- | ----------------------------------- |
-| Frontend    | http://localhost:3000               |
-| Backend API | http://localhost:8000               |
-| API health  | http://localhost:8000/api/v1/health |
-| PostgreSQL  | `localhost:5432`                    |
-| Redis       | `localhost:6379`                    |
-| OpenAPI     | http://localhost:8000/docs          |
+| Сервис             | URL / назначение                                              |
+| ------------------ | ------------------------------------------------------------- |
+| Frontend           | http://localhost:3000                                         |
+| Backend API        | http://localhost:8000                                         |
+| API health         | http://localhost:8000/api/v1/health                           |
+| OpenAPI            | http://localhost:8000/docs                                    |
+| PostgreSQL         | `localhost:5432`, canonical application/report storage        |
+| Redis              | `localhost:6379`, Celery broker/result backend                |
+| Worker             | main Celery queue: Self, Career, PDF, notifications, renewals |
+| Scheduler          | Celery Beat periodic jobs                                     |
+| Refinement monitor | singleton `birth-data-monitor` queue                          |
 
 ### Полезные Docker-команды
 
@@ -164,6 +188,7 @@ docker compose up -d --build
 docker compose ps
 docker compose logs -f backend
 docker compose logs -f frontend
+docker compose logs -f worker scheduler refinement-monitor
 docker compose up -d --build
 docker compose down
 ```
@@ -188,11 +213,27 @@ EMAIL_PROVIDER=console uv run alembic upgrade head
 EMAIL_PROVIDER=console uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### Worker
+PostgreSQL и Redis должны быть доступны до запуска API/worker процессов.
+
+### Main worker
 
 ```bash
 cd backend
-EMAIL_PROVIDER=console uv run celery -A workers.celery_app.app worker --loglevel=INFO
+EMAIL_PROVIDER=console uv run celery -A workers.celery_app.app worker --loglevel=INFO -Q celery
+```
+
+### Scheduler
+
+```bash
+cd backend
+EMAIL_PROVIDER=console uv run celery -A workers.celery_app.app beat --loglevel=INFO
+```
+
+### Birth-data refinement monitor
+
+```bash
+cd backend
+EMAIL_PROVIDER=console uv run celery -A workers.celery_app.app worker --loglevel=INFO -Q birth-data-monitor --concurrency=1 --pool=solo
 ```
 
 ### Frontend
@@ -233,9 +274,10 @@ npm run build
 ```bash
 cd frontend
 npm test
+npm run test:e2e
 ```
 
-Скрипт проверяет narrative‑first порядок секций, glossary markers и то, что technical/debug components не появляются до advanced details.
+`npm test` запускает статические regression contracts для report/auth/billing UX, product surfaces, Career product/reader/parity, birth-data settings и dashboard shell. `npm run test:e2e` запускает Playwright browser smoke для Career flow.
 
 ---
 
@@ -267,11 +309,11 @@ Astrotype/
 │   └── scripts/                 # UX regression checks
 ├── contracts/                   # OpenAPI and AsyncAPI contracts
 ├── docs/
-│   ├── ROADMAP-v2.md             # Active v2 roadmap
+│   ├── ROADMAP-v2.md             # Self v2 core roadmap
 │   ├── SRS/                      # Software Requirements Specs
 │   ├── architecture/             # v2 C4, DB, cloud-core and calculation docs
 │   ├── design/                   # v2 report samples/mockups
-│   ├── features/                 # Active v2 epic/story documentation
+│   ├── features/                 # Self v2, platform, Career и retirement feature/story docs
 │   ├── archive/                  # Historical v1 docs, reference-only
 │   └── reviews/                  # Review findings and remediation docs
 ├── docker-compose.yml
@@ -294,39 +336,40 @@ Astrotype/
 
 ## 📚 Документация
 
-| Документ                                                                                                                                       | Назначение                                                 |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [`PATCHLOG.md`](PATCHLOG.md)                                                                                                                   | Production patches, runtime evidence и rollback anchors    |
-| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md)                                                                                                     | Активная дорожная карта v2                                 |
-| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md)                                                   | Umbrella SRS для v2 cloud-core natal platform              |
-| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)                                       | C4 architecture, progressive delivery, v1 quarantine       |
-| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md)                                       | v2 PostgreSQL source-of-truth schema                       |
-| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md)                   | Natal report pipeline and section architecture             |
-| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy          |
-| [`docs/architecture/account-tier-role-foundation.md`](docs/architecture/account-tier-role-foundation.md)                                       | Free/Plus account-tier role foundation                     |
-| [`docs/architecture/account-levels-report-access-policy.md`](docs/architecture/account-levels-report-access-policy.md)                         | Матрица уровней аккаунта и доступа к отчётам               |
-| [`docs/architecture/current-payment-confirmation-flow.md`](docs/architecture/current-payment-confirmation-flow.md)                             | Current YooKassa payment confirmation and entitlement flow |
-| [`docs/deployment/yookassa-production-cutover.md`](docs/deployment/yookassa-production-cutover.md)                                             | Test-to-production YooKassa cutover and rollback runbook   |
-| [`docs/deployment/staging-vps.md`](docs/deployment/staging-vps.md)                                                                             | Isolated staging runtime and YooKassa test-shop runbook    |
-| [`docs/features/E6-billing-subscriptions/FEATURE.md`](docs/features/E6-billing-subscriptions/FEATURE.md)                                       | Billing/payment feature contract and atomic stories        |
-| [`docs/features/E8-account-level-report-access/FEATURE.md`](docs/features/E8-account-level-report-access/FEATURE.md)                           | Basic-for-all / Plus-only report access contract           |
-| [`docs/features/E10-birth-data-refinement/FEATURE.md`](docs/features/E10-birth-data-refinement/FEATURE.md)                                     | Settings workflow for birth time/place refinement          |
-| [`docs/SRS/SRS-E10-birth-data-refinement.md`](docs/SRS/SRS-E10-birth-data-refinement.md)                                                       | 24-hour cooldown, revision and recalculation contract      |
-| [`docs/design/astrotype_career_report.md`](docs/design/astrotype_career_report.md)                                                             | Career Report product and scoring design                   |
-| [`docs/design/astrotype-career-report-sample.html`](docs/design/astrotype-career-report-sample.html)                                           | Canonical responsive Career Report visual sample           |
-| [`docs/features/E19-career-report/FEATURE.md`](docs/features/E19-career-report/FEATURE.md)                                                     | Career Report feature and atomic implementation Stories    |
-| [`docs/SRS/SRS-E19-career-report.md`](docs/SRS/SRS-E19-career-report.md)                                                                       | Career Report functional, data, API and quality contract   |
-| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references               |
-| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                                  |
-| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                          |
-| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json)                         | Sample data for v2 report visual contract                  |
-| [`docs/features/README.md`](docs/features/README.md)                                                                                           | Active v2 feature/story index                              |
-| [`docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`](docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md)                   | Real-provider LLM runtime integration and smoke gates      |
-| [`docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`](docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md)                   | Narrative depth quality contract and validation gates      |
-| [`docs/archive/README.md`](docs/archive/README.md)                                                                                             | Archive rules: v1 is reference-only                        |
-| [`docs/archive/v1/`](docs/archive/v1/)                                                                                                         | Historical v1 docs retained away from active contracts     |
-| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                                             | REST API contract, when present                            |
-| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                                           | Async/event contract, when present                         |
+| Документ                                                                                                                                       | Назначение                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [`PATCHLOG.md`](PATCHLOG.md)                                                                                                                   | Production patches, runtime evidence и rollback anchors              |
+| [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md)                                                                                                     | Self v2 core roadmap; production status — в Patch log и Feature docs |
+| [`docs/SRS/SRS-E16-astrotype-v2-cloud-core.md`](docs/SRS/SRS-E16-astrotype-v2-cloud-core.md)                                                   | Umbrella SRS для v2 cloud-core natal platform                        |
+| [`docs/architecture/astrotype-v2-c4-architecture.md`](docs/architecture/astrotype-v2-c4-architecture.md)                                       | C4 architecture, progressive delivery, v1 quarantine                 |
+| [`docs/architecture/astrotype-v2-database-design.md`](docs/architecture/astrotype-v2-database-design.md)                                       | v2 PostgreSQL source-of-truth schema                                 |
+| [`docs/architecture/astrotype-v2-natal-report-architecture.md`](docs/architecture/astrotype-v2-natal-report-architecture.md)                   | Natal report pipeline and section architecture                       |
+| [`docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md`](docs/architecture/astrotype-v2-cloud-core-mobile-desktop-strategy.md) | Cloud-core, Android/PWA and thin desktop strategy                    |
+| [`docs/architecture/account-tier-role-foundation.md`](docs/architecture/account-tier-role-foundation.md)                                       | Free/Plus account-tier role foundation                               |
+| [`docs/architecture/account-levels-report-access-policy.md`](docs/architecture/account-levels-report-access-policy.md)                         | Матрица уровней аккаунта и доступа к отчётам                         |
+| [`docs/architecture/current-payment-confirmation-flow.md`](docs/architecture/current-payment-confirmation-flow.md)                             | Current YooKassa payment confirmation and entitlement flow           |
+| [`docs/deployment/yookassa-production-cutover.md`](docs/deployment/yookassa-production-cutover.md)                                             | Test-to-production YooKassa cutover and rollback runbook             |
+| [`docs/deployment/staging-vps.md`](docs/deployment/staging-vps.md)                                                                             | Isolated staging runtime and YooKassa test-shop runbook              |
+| [`docs/features/E6-billing-subscriptions/FEATURE.md`](docs/features/E6-billing-subscriptions/FEATURE.md)                                       | Billing/payment feature contract and atomic stories                  |
+| [`docs/features/E8-account-level-report-access/FEATURE.md`](docs/features/E8-account-level-report-access/FEATURE.md)                           | Basic-for-all / Plus-only report access contract                     |
+| [`docs/features/E10-birth-data-refinement/FEATURE.md`](docs/features/E10-birth-data-refinement/FEATURE.md)                                     | Settings workflow for birth time/place refinement                    |
+| [`docs/SRS/SRS-E10-birth-data-refinement.md`](docs/SRS/SRS-E10-birth-data-refinement.md)                                                       | 24-hour cooldown, revision and recalculation contract                |
+| [`docs/design/astrotype_career_report.md`](docs/design/astrotype_career_report.md)                                                             | Career Report product and scoring design                             |
+| [`docs/design/astrotype-career-report-sample.html`](docs/design/astrotype-career-report-sample.html)                                           | Canonical responsive Career Report visual sample                     |
+| [`docs/features/E19-career-report/FEATURE.md`](docs/features/E19-career-report/FEATURE.md)                                                     | Career Report feature and atomic implementation Stories              |
+| [`docs/SRS/SRS-E19-career-report.md`](docs/SRS/SRS-E19-career-report.md)                                                                       | Career Report functional, data, API and quality contract             |
+| [`docs/features/E20-legacy-career-retirement/FEATURE.md`](docs/features/E20-legacy-career-retirement/FEATURE.md)                               | Planned safe retirement of legacy Career v1 paths                    |
+| [`docs/architecture/astrotype-v2-derived-calculations/README.md`](docs/architecture/astrotype-v2-derived-calculations/README.md)               | Derived deterministic calculation references                         |
+| [`docs/architecture/astrotype-v2-balance-calculation.md`](docs/architecture/astrotype-v2-balance-calculation.md)                               | Balance calculation rules                                            |
+| [`docs/design/astrotype-v2-infographic-db-report-sample.html`](docs/design/astrotype-v2-infographic-db-report-sample.html)                     | Canonical v2 report visual sample                                    |
+| [`docs/design/astrotype-v2-infographic-db-report-data.json`](docs/design/astrotype-v2-infographic-db-report-data.json)                         | Sample data for v2 report visual contract                            |
+| [`docs/features/README.md`](docs/features/README.md)                                                                                           | Self v2, platform, Career and retirement feature index               |
+| [`docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`](docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md)                   | Real-provider LLM runtime integration and smoke gates                |
+| [`docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`](docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md)                   | Narrative depth quality contract and validation gates                |
+| [`docs/archive/README.md`](docs/archive/README.md)                                                                                             | Archive rules: v1 is reference-only                                  |
+| [`docs/archive/v1/`](docs/archive/v1/)                                                                                                         | Historical v1 docs retained away from active contracts               |
+| [`contracts/openapi.yaml`](contracts/openapi.yaml)                                                                                             | REST API contract, when present                                      |
+| [`contracts/asyncapi.yaml`](contracts/asyncapi.yaml)                                                                                           | Async/event contract, when present                                   |
 
 ---
 
@@ -337,10 +380,12 @@ GitHub Actions запускает:
 - backend lint, format check, mypy;
 - frontend ESLint, Prettier, TypeScript;
 - backend unit/integration tests;
-- frontend report UX regression and build;
+- frontend static UX regression contracts;
+- Playwright Career browser smoke;
+- production frontend build;
 - OpenAPI / AsyncAPI validation;
 - Python and npm security audit;
-- Docker image build in the image workflow.
+- backend and frontend Docker image builds after all required gates.
 
 Workflows:
 

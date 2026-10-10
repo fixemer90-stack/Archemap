@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -37,13 +37,19 @@
 
 ## Критерии приёмки
 
-- [ ] Button, Input, Card и используемые overlays не зависят от dark-only literals.
-- [ ] Focus-visible различим на всех surfaces в обеих темах.
-- [ ] Disabled state остаётся читаемым и очевидно неактивным.
-- [ ] Error/destructive состояния не теряют смысл на светлом фоне.
-- [ ] Glass surfaces отделяются от canvas без чрезмерной белизны.
-- [ ] Component checks проходят в light и dark.
-- [ ] Принудительная тёмная тема пока сохранена.
+- [x] Button, Input, Card и используемые overlays не зависят от dark-only literals.
+- [x] Focus-visible различим на всех surfaces в обеих темах.
+- [x] Disabled state остаётся читаемым и очевидно неактивным.
+- [x] Error/destructive состояния не теряют смысл на светлом фоне.
+- [x] Glass surfaces отделяются от canvas без чрезмерной белизны.
+- [x] Component checks проходят в light и dark.
+- [x] Принудительная тёмная тема пока сохранена.
+
+## Evidence
+
+- RED: `node scripts/check-theme-contract.mjs` — `button.tsx` содержал theme-sensitive literals.
+- GREEN: semantic migration для Button/Input/Card/Skeleton и glass utilities.
+- Checks: `node scripts/check-theme-contract.mjs`, `npx eslint src/components/ui scripts/check-theme-contract.mjs`, `npx tsc --noEmit --pretty false`, `npm test`.
 
 ## Проверка
 

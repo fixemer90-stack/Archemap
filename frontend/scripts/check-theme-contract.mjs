@@ -4,6 +4,7 @@ import path from "node:path";
 const root = process.cwd();
 const globalsPath = path.join(root, "src/app/globals.css");
 const globals = fs.readFileSync(globalsPath, "utf8");
+const uiRoot = path.join(root, "src/components/ui");
 
 const requiredTokens = [
   "--canvas",
@@ -82,6 +83,17 @@ for (const [foreground, background, minimum, label] of contrastPairs) {
   }
 }
 
-console.log(
-  "theme contract passed: semantic tokens, literals, contrast, rollout gate",
-);
+for (const entry of fs.readdirSync(uiRoot)) {
+  if (!entry.endsWith(".tsx")) continue;
+  const source = fs.readFileSync(path.join(uiRoot, entry), "utf8");
+  if (
+    /(?:bg|text|border|ring|shadow)-\[(?:#|rgba?\()/.test(source) ||
+    /(?:bg|text|border)-(?:white|black)(?:\/\d+)?/.test(source)
+  ) {
+    throw new Error(
+      `UI primitive ${entry} still uses a theme-sensitive literal`,
+    );
+  }
+}
+
+console.log("theme contract passed: semantic tokens, contrast, and primitives");

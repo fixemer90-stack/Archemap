@@ -293,52 +293,52 @@
 /* ── Glass card utility ─────────────────────────────────────── */
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(216, 220, 232, 0.18);
+    background: color-mix(in srgb, var(--surface-elevated) 82%, transparent);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-soft);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-radius: 20px;
   }
 
   .glass-subtle {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(216, 220, 232, 0.1);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-default);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-radius: 20px;
   }
 
-  /* Violet → Gold gradient for primary CTA */
   .btn-gradient {
-    background: linear-gradient(135deg, #5b3fd6, #d8b45a);
-    color: #f6f1e8;
+    background: var(--control);
+    color: var(--text-inverse);
     border: none;
     border-radius: 999px;
-    transition: opacity 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      transform 0.2s ease;
   }
   .btn-gradient:hover {
-    opacity: 0.9;
+    background: var(--control-hover);
   }
 
-  /* Silver border for secondary */
   .btn-silver {
     background: transparent;
-    border: 1px solid rgba(216, 220, 232, 0.3);
-    color: #d8dce8;
+    border: 1px solid var(--border-strong);
+    color: var(--text-secondary);
     border-radius: 999px;
     transition:
       border-color 0.2s ease,
       color 0.2s ease;
   }
   .btn-silver:hover {
-    border-color: #8da8ff;
-    color: #8da8ff;
+    border-color: var(--link);
+    color: var(--link);
   }
 
-  /* Evidence block styling */
   .evidence-block {
-    background: rgba(91, 63, 214, 0.08);
-    border-left: 3px solid #5b3fd6;
+    background: var(--accent-violet-soft);
+    border-left: 3px solid var(--control);
     border-radius: 0 12px 12px 0;
     padding: 0.75rem 1rem;
   }

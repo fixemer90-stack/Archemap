@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 Реализовано, browser matrix в S06
 
 ## Контекст
 
@@ -31,13 +31,19 @@
 
 ## Критерии приёмки
 
-- [ ] Все auth routes целиком оформлены в light и dark.
-- [ ] V2 и Career readers сохраняют читаемую narrative hierarchy.
-- [ ] Chart grid, labels, series и tooltip читаемы в обеих темах.
-- [ ] Статусы charts различаются не только цветом.
-- [ ] Loading/locked/error/retry/not-found states не содержат mixed-theme surfaces.
-- [ ] Длинные отчёты не дают белых разрывов и неверных sticky/overlay backgrounds.
-- [ ] Root lock остаётся тёмным до S06.
+- [x] Все auth routes используют semantic light/dark contract.
+- [x] V2 и Career readers используют theme-aware hierarchy tokens.
+- [x] Chart grid, labels, series и tooltip используют отдельные chart tokens.
+- [x] Статусы charts имеют текстовые/структурные labels и не зависят только от цвета.
+- [x] Loading/locked/error/retry/not-found states не содержат theme-sensitive literals.
+- [ ] Длинные отчёты не дают разрывов и неверных sticky/overlay backgrounds — browser matrix S06.
+- [x] Root lock остаётся тёмным до S06.
+
+## Evidence
+
+- RED: расширенный `node scripts/check-theme-contract.mjs` упал на `billing-checkout-button.tsx` и report/chart/auth literals.
+- GREEN: все active auth/report/chart/glossary/loading/error surfaces переведены на semantic/chart/state tokens; raw HEX/RGBA в active TSX запрещены.
+- Checks: `node scripts/check-auth-ux.mjs`, `node scripts/check-report-ux.mjs`, `node scripts/check-career-report-reader.mjs`, `npm test`, ESLint и TypeScript.
 
 ## Проверка
 

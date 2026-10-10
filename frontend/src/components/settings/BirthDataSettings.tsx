@@ -307,7 +307,7 @@ export function BirthDataSettings() {
   }
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-accent-gold/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.12),transparent_38%),#101724] shadow-elevated">
+    <section className="overflow-hidden rounded-[28px] border border-accent-gold/25 bg-[radial-gradient(circle_at_top_right,var(--accent-gold-soft),transparent_38%),var(--surface)] shadow-elevated">
       <div className="border-b border-border-default p-5 sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-2xl">

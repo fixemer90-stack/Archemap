@@ -43,9 +43,9 @@ export function DeterministicReportFallback({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <Card className="border-[#D8B45A]/30 bg-[#D8B45A]/10">
+      <Card className="border-border-default/30 bg-surface-subtle/10">
         <CardHeader className="space-y-3">
-          <div className="flex items-center gap-3 text-[#D8B45A]">
+          <div className="flex items-center gap-3 text-accent-gold">
             <AlertTriangle className="h-5 w-5" />
             <CardTitle>{copy.title}</CardTitle>
           </div>

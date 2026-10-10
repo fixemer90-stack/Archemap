@@ -36,7 +36,7 @@ export function renderNarrativeParagraphs(paragraphs: string[]) {
 
 export function NarrativeHero({ hero }: NarrativeHeroProps) {
   return (
-    <Card className="border-[#C28A2E]/30 bg-[#C28A2E]/5">
+    <Card className="border-border-default/30 bg-surface-subtle/5">
       <CardHeader>
         <CardDescription>Мягкое начало отчёта</CardDescription>
         <CardTitle className="text-3xl leading-tight">{hero.title}</CardTitle>

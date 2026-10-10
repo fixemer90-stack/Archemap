@@ -38,12 +38,12 @@ export function V2KeyAspectsTable({ aspects }: V2KeyAspectsTableProps) {
 
   return (
     <section data-v2-calculation-block="key_aspects" className="space-y-4">
-      <h3 className="text-[21px] font-semibold text-[#F4EADB]">
+      <h3 className="text-[21px] font-semibold text-text-primary">
         Ключевые аспекты
       </h3>
-      <div className="overflow-x-auto rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
+      <div className="overflow-x-auto rounded-[22px] border border-border-default bg-[var(--hero-background)] shadow-elevated">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="text-[#C4CCDB]">
+          <thead className="text-text-secondary">
             <tr>
               <th className="px-4 py-3">Связка</th>
               <th className="px-4 py-3">
@@ -55,10 +55,10 @@ export function V2KeyAspectsTable({ aspects }: V2KeyAspectsTableProps) {
               <th className="px-4 py-3">Тип</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#2d3548] text-[#DCE4F3]">
+          <tbody className="divide-y divide-[var(--border-default)] text-text-secondary">
             {aspects.map((aspect) => (
               <tr key={`${aspect.bodyA}-${aspect.bodyB}-${aspect.aspectCode}`}>
-                <td className="px-4 py-3 text-[#F4EADB]">
+                <td className="px-4 py-3 text-text-primary">
                   {bodyLabel(aspect.bodyA)} — {bodyLabel(aspect.bodyB)}
                 </td>
                 <td className="px-4 py-3">{labelFor(aspect.aspectCode)}</td>
@@ -67,8 +67,8 @@ export function V2KeyAspectsTable({ aspects }: V2KeyAspectsTableProps) {
                   <span
                     className={
                       toneFor(aspect.aspectCode) === "resource"
-                        ? "rounded-full bg-[rgba(111,168,255,0.15)] px-3 py-1 text-xs text-[#afd0ff]"
-                        : "rounded-full bg-[rgba(255,111,131,0.14)] px-3 py-1 text-xs text-[#ffa3ae]"
+                        ? "rounded-full bg-surface-subtle px-3 py-1 text-xs text-info"
+                        : "rounded-full bg-surface-subtle px-3 py-1 text-xs text-text-secondary"
                     }
                   >
                     {toneFor(aspect.aspectCode) === "resource"

@@ -157,10 +157,7 @@ function LoginForm() {
         </Button>
 
         <p className="text-center text-sm">
-          <Link
-            href="/forgot-password"
-            className="text-[#8DA8FF] hover:underline"
-          >
+          <Link href="/forgot-password" className="text-link hover:underline">
             Забыли пароль?
           </Link>
         </p>
@@ -190,7 +187,7 @@ function LoginForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Нет аккаунта?{" "}
-        <Link href="/register" className="text-[#8DA8FF] hover:underline">
+        <Link href="/register" className="text-link hover:underline">
           Зарегистрироваться
         </Link>
       </p>

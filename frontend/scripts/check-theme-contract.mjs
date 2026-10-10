@@ -9,15 +9,22 @@ const surfaceRoots = [
   path.join(root, "src/components/layout"),
   path.join(root, "src/components/product-surface"),
   path.join(root, "src/components/settings"),
+  path.join(root, "src/components/billing"),
+  path.join(root, "src/components/glossary"),
+  path.join(root, "src/components/chart"),
+  path.join(root, "src/components/report"),
+  path.join(root, "src/components/astrotype-v2"),
   path.join(root, "src/app/page.tsx"),
+  path.join(root, "src/app/(auth)"),
   path.join(root, "src/app/(dashboard)/dashboard"),
   path.join(root, "src/app/(dashboard)/settings"),
   path.join(root, "src/app/(dashboard)/billing"),
   path.join(root, "src/app/(dashboard)/subscriptions"),
+  path.join(root, "src/app/(dashboard)/report"),
   path.join(root, "src/app/(dashboard)/products/self"),
   path.join(root, "src/app/(dashboard)/products/love"),
   path.join(root, "src/app/(dashboard)/products/child"),
-  path.join(root, "src/app/(dashboard)/products/career/page.tsx"),
+  path.join(root, "src/app/(dashboard)/products/career"),
 ];
 
 const requiredTokens = [
@@ -103,7 +110,8 @@ function assertNoThemeLiterals(filePath, label) {
     /(?:bg|text|border|ring|shadow|fill|stroke|from|via|to)-\[(?:#|rgba?\()/.test(
       source,
     ) ||
-    /(?:bg|text|border)-(?:white|black)(?:\/\d+)?/.test(source)
+    /(?:bg|text|border)-(?:white|black)(?:\/\d+)?/.test(source) ||
+    /#[0-9a-f]{3,8}\b|rgba?\(/i.test(source)
   ) {
     throw new Error(`${label} still uses a theme-sensitive literal`);
   }

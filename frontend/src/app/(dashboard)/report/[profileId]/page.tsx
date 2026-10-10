@@ -112,7 +112,7 @@ function CareerReportContent({ data }: { data: ReportData }) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <Card className="border-[#C28A2E]/30 bg-[#C28A2E]/5">
+      <Card className="border-border-default/30 bg-surface-subtle/5">
         <CardHeader>
           <CardDescription>Карьерный профиль</CardDescription>
           <CardTitle className="text-3xl">{data.profile.name}</CardTitle>
@@ -197,7 +197,7 @@ function CareerReportContent({ data }: { data: ReportData }) {
                 </div>
                 <div className="h-2 rounded-full bg-muted">
                   <div
-                    className="h-2 rounded-full bg-[#C28A2E]"
+                    className="h-2 rounded-full bg-surface-subtle"
                     style={{
                       width: `${Math.max(4, Math.min(100, score * 100))}%`,
                     }}

@@ -15,13 +15,13 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
   return (
     <section
       data-v2-reader-block="calculation_layer"
-      className="space-y-[18px] text-[#F4EADB]"
+      className="space-y-[18px] text-text-primary"
     >
-      <header className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6">
-        <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#D9B86F]">
+      <header className="rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated md:p-6">
+        <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-accent-gold">
           Расчётная основа
         </div>
-        <h2 className="mt-3 text-[21px] font-semibold text-[#F4EADB] md:text-[28px]">
+        <h2 className="mt-3 text-[21px] font-semibold text-text-primary md:text-[28px]">
           Карта и ключевые показатели
         </h2>
         <V2KeyIndicators indicators={layer.keyIndicators} />

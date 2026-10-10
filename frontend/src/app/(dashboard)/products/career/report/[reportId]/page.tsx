@@ -88,10 +88,10 @@ export default function CareerReportPage() {
   if (loading)
     return (
       <div
-        className="flex min-h-[50vh] items-center justify-center text-[#D8DCE8]"
+        className="flex min-h-[50vh] items-center justify-center text-text-secondary"
         aria-live="polite"
       >
-        <Loader2 className="mr-3 h-5 w-5 animate-spin text-[#D7B466]" />{" "}
+        <Loader2 className="mr-3 h-5 w-5 animate-spin text-accent-gold" />{" "}
         Загружаем профессиональный профиль…
       </div>
     );
@@ -115,7 +115,7 @@ export default function CareerReportPage() {
     );
 
   return (
-    <article className="career-reader mx-auto max-w-5xl space-y-10 bg-transparent px-4 pb-20 text-[#F6F1E8] sm:px-6 print:max-w-none print:bg-white print:px-0 print:pb-0 print:text-[#111827]">
+    <article className="career-reader mx-auto max-w-5xl space-y-10 bg-transparent px-4 pb-20 text-text-primary sm:px-6 print:max-w-none print:bg-surface-elevated print:px-0 print:pb-0 print:text-text-secondary">
       <nav
         className="flex flex-wrap items-center justify-between gap-3 print:hidden"
         aria-label="Действия с отчётом"
@@ -140,24 +140,24 @@ export default function CareerReportPage() {
         </div>
       </nav>
 
-      <header className="relative grid overflow-hidden rounded-[28px] border border-[#D7B466]/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.18),transparent_40%),linear-gradient(145deg,#151c2a,#0d131f)] p-7 shadow-2xl sm:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
+      <header className="relative grid overflow-hidden rounded-[28px] border border-border-default/25 bg-[var(--hero-background)] p-7 shadow-2xl sm:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
         <div>
-          <p className="text-xs uppercase tracking-[0.28em] text-[#D7B466]">
+          <p className="text-xs uppercase tracking-[0.28em] text-accent-gold">
             Astrotype Career
           </p>
           <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-cormorant)] text-4xl font-semibold leading-tight sm:text-6xl">
             Профессиональная механика без готовых ярлыков
           </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-[#C8D0DE]">
+          <p className="mt-5 max-w-2xl text-sm leading-7 text-text-secondary">
             Этот отчёт помогает увидеть рабочий ритм, способы принимать решения,
             условия эффективности и несколько возможных направлений. Он не
             назначает профессию.
           </p>
-          <div className="mt-7 flex flex-wrap gap-2 text-xs text-[#D8DCE8]">
-            <span className="rounded-full border border-white/10 px-3 py-1.5">
+          <div className="mt-7 flex flex-wrap gap-2 text-xs text-text-secondary">
+            <span className="rounded-full border border-border-default px-3 py-1.5">
               Расчёт сохранён
             </span>
-            <span className="rounded-full border border-white/10 px-3 py-1.5">
+            <span className="rounded-full border border-border-default px-3 py-1.5">
               {
                 report.sections.filter((section) => section.status === "ready")
                   .length
@@ -167,19 +167,19 @@ export default function CareerReportPage() {
           </div>
         </div>
         <aside className="grid content-end gap-3" aria-label="Краткий профиль">
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#98A4B8]">
+          <div className="rounded-2xl border border-border-default bg-scrim p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted">
               Ведущий профиль
             </p>
-            <p className="mt-2 text-lg font-semibold text-[#F6F1E8]">
+            <p className="mt-2 text-lg font-semibold text-text-primary">
               {report.dimensions[0]?.label ?? "Профессиональная механика"}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#98A4B8]">
+          <div className="rounded-2xl border border-border-default bg-scrim p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted">
               Рабочий вектор
             </p>
-            <p className="mt-2 text-lg font-semibold capitalize text-[#F6F1E8]">
+            <p className="mt-2 text-lg font-semibold capitalize text-text-primary">
               {report.roles[0]?.title ?? "Контекстный выбор"}
             </p>
           </div>
@@ -188,15 +188,15 @@ export default function CareerReportPage() {
 
       <nav
         aria-label="Разделы отчёта"
-        className="grid overflow-hidden rounded-2xl border border-white/10 bg-[#0d1420] sm:grid-cols-2 lg:grid-cols-5 print:hidden"
+        className="grid overflow-hidden rounded-2xl border border-border-default bg-surface-subtle sm:grid-cols-2 lg:grid-cols-5 print:hidden"
       >
         {report.sections.map((section, index) => (
           <a
             key={section.key}
             href={`#${section.key}`}
-            className="border-white/10 p-4 text-sm text-[#C8D0DE] transition hover:bg-white/[0.04] hover:text-[#F6F1E8] sm:border-r sm:border-b"
+            className="border-border-default p-4 text-sm text-text-secondary transition hover:bg-surface-elevated/[0.04] hover:text-text-primary sm:border-r sm:border-b"
           >
-            <span className="block text-xs font-semibold text-[#D7B466]">
+            <span className="block text-xs font-semibold text-accent-gold">
               {String(index + 1).padStart(2, "0")}
             </span>
             <span className="mt-1 block">{section.title}</span>
@@ -221,16 +221,16 @@ export default function CareerReportPage() {
             id={section.key}
             data-presentation-key={section.key}
             data-section-status={section.status}
-            className="scroll-mt-8 rounded-[24px] border border-white/10 bg-[#111927]/85 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] sm:p-9"
+            className="scroll-mt-8 rounded-[24px] border border-border-default bg-surface-subtle/85 p-6 shadow-elevated sm:p-9"
           >
-            <p className="text-xs font-semibold tracking-[0.22em] text-[#D7B466]">
+            <p className="text-xs font-semibold tracking-[0.22em] text-accent-gold">
               {String(index + 1).padStart(2, "0")}
             </p>
             <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl font-semibold">
               {section.title}
             </h2>
             {section.body ? (
-              <div className="mt-5 space-y-4 text-[15px] leading-8 text-[#D8DCE8]">
+              <div className="mt-5 space-y-4 text-[15px] leading-8 text-text-secondary">
                 {section.body.split("\n\n").map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
                 ))}
@@ -244,16 +244,16 @@ export default function CareerReportPage() {
 
       <section
         data-presentation-key="dimensions"
-        className="rounded-[24px] border border-[#D7B466]/20 bg-[#0e1623] p-6 sm:p-9"
+        className="rounded-[24px] border border-border-default/20 bg-surface-subtle p-6 sm:p-9"
       >
         <div className="max-w-2xl">
-          <p className="text-xs uppercase tracking-[0.22em] text-[#D7B466]">
+          <p className="text-xs uppercase tracking-[0.22em] text-accent-gold">
             Практические акценты
           </p>
           <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl font-semibold">
             Выраженные рабочие тенденции
           </h2>
-          <p className="mt-3 text-sm leading-6 text-[#B9C3D3]">
+          <p className="mt-3 text-sm leading-6 text-text-secondary">
             <CareerTerm term="Выраженность" /> показывает силу темы, но не делит
             качества на хорошие и плохие.
           </p>
@@ -262,16 +262,16 @@ export default function CareerReportPage() {
           {report.dimensions.map((dimension) => (
             <article
               key={dimension.key}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+              className="rounded-2xl border border-border-default bg-surface-elevated/[0.03] p-5"
             >
               <div className="flex items-start justify-between gap-3">
                 <h3 className="font-medium">{dimension.label}</h3>
-                <strong className="text-2xl text-[#E2C27A]">
+                <strong className="text-2xl text-accent-gold">
                   {Math.round(dimension.score)}
                 </strong>
               </div>
               {dimension.confidence !== null && (
-                <p className="mt-3 text-xs text-[#8795AA]">
+                <p className="mt-3 text-xs text-text-muted">
                   <CareerTerm term="Уверенность" />:{" "}
                   {dimension.confidence_label.toLocaleLowerCase("ru-RU")}
                 </p>
@@ -286,18 +286,18 @@ export default function CareerReportPage() {
           {report.contradictions.length > 0 && (
             <div
               data-presentation-key="contradictions"
-              className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+              className="rounded-[22px] border border-border-default bg-surface-subtle p-6"
             >
               <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
                 Полезные развилки
               </h2>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-text-secondary">
                 {report.contradictions.map((item) => (
                   <li key={item.key}>
                     — {item.label}
                     {(item.capability_score !== null ||
                       item.motivation_score !== null) && (
-                      <span className="block text-xs text-[#8795AA]">
+                      <span className="block text-xs text-text-muted">
                         {item.capability_score !== null &&
                           `Способность: ${item.capability_score}`}
                         {item.capability_score !== null &&
@@ -315,12 +315,12 @@ export default function CareerReportPage() {
           {report.context.length > 0 && (
             <div
               data-presentation-key="context"
-              className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+              className="rounded-[22px] border border-border-default bg-surface-subtle p-6"
             >
               <h2 className="font-[family-name:var(--font-cormorant)] text-2xl">
                 Учтённый контекст
               </h2>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-[#C8D0DE]">
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-text-secondary">
                 {report.context.map((item) => (
                   <li key={item.key}>— {item.label}</li>
                 ))}
@@ -333,7 +333,7 @@ export default function CareerReportPage() {
       {report.roles.length > 0 && (
         <section className="space-y-5" data-presentation-key="roles">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-[#D7B466]">
+            <p className="text-xs uppercase tracking-[0.22em] text-accent-gold">
               Направления
             </p>
             <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl">
@@ -344,14 +344,14 @@ export default function CareerReportPage() {
             {report.roles.map((role) => (
               <article
                 key={role.key}
-                className="rounded-[22px] border border-white/10 bg-[#111927] p-6"
+                className="rounded-[22px] border border-border-default bg-surface-subtle p-6"
               >
-                <span className="rounded-full border border-[#D7B466]/25 px-3 py-1 text-xs text-[#E2C27A]">
+                <span className="rounded-full border border-border-default/25 px-3 py-1 text-xs text-accent-gold">
                   {role.category}
                 </span>
                 <h3 className="mt-4 text-xl capitalize">{role.title}</h3>
                 {role.examples.length > 0 && (
-                  <p className="mt-4 text-sm leading-6 text-[#C8D0DE]">
+                  <p className="mt-4 text-sm leading-6 text-text-secondary">
                     <strong>{role.example_label}:</strong>{" "}
                     {role.examples.join(", ")}.
                   </p>
@@ -364,9 +364,9 @@ export default function CareerReportPage() {
 
       <details
         data-presentation-key="technical_basis"
-        className="rounded-2xl border border-white/10 bg-[#0d1420] p-5 text-sm text-[#B9C3D3]"
+        className="rounded-2xl border border-border-default bg-surface-subtle p-5 text-sm text-text-secondary"
       >
-        <summary className="cursor-pointer font-medium text-[#F6F1E8]">
+        <summary className="cursor-pointer font-medium text-text-primary">
           {report.technicalBasis.title}
         </summary>
         <p className="mt-4 leading-6">{report.technicalBasis.body}</p>
@@ -375,13 +375,13 @@ export default function CareerReportPage() {
         @media print {
           html,
           body {
-            background: #ffffff !important;
-            color: #111827 !important;
+            background: var(--surface-elevated) !important;
+            color: var(--text-primary) !important;
           }
 
           .career-reader {
-            background: #ffffff !important;
-            color: #111827 !important;
+            background: var(--surface-elevated) !important;
+            color: var(--text-primary) !important;
           }
 
           .career-reader header,
@@ -389,10 +389,10 @@ export default function CareerReportPage() {
           .career-reader article,
           .career-reader details {
             break-inside: avoid;
-            border-color: #d1d5db !important;
-            background: #ffffff !important;
+            border-color: var(--text-secondary) !important;
+            background: var(--surface-elevated) !important;
             box-shadow: none !important;
-            color: #111827 !important;
+            color: var(--text-primary) !important;
           }
 
           .career-reader div {
@@ -407,7 +407,7 @@ export default function CareerReportPage() {
           .career-reader strong,
           .career-reader summary,
           .career-reader span {
-            color: #111827 !important;
+            color: var(--text-primary) !important;
           }
 
           .career-reader [role="tooltip"] {
@@ -421,7 +421,7 @@ export default function CareerReportPage() {
 
 function SectionPlaceholder({ status }: { status: string }) {
   return (
-    <div className="mt-5 rounded-xl border border-dashed border-white/15 p-5 text-sm leading-6 text-[#AEB9CA]">
+    <div className="mt-5 rounded-xl border border-dashed border-border-default p-5 text-sm leading-6 text-text-secondary">
       {status === "failed"
         ? "Пояснение не удалось получить. Расчёт и остальные разделы сохранены."
         : "Пояснение готовится. Базовые показатели уже доступны ниже."}
@@ -433,7 +433,7 @@ function CareerTerm({ term }: { term: keyof typeof TERM_HELP }) {
   const tooltipId = `career-term-${useId().replaceAll(":", "")}`;
   return (
     <span
-      className="group relative inline-flex whitespace-nowrap border-b border-dotted border-[#D7B466] text-[#E5C97F]"
+      className="group relative inline-flex whitespace-nowrap border-b border-dotted border-border-default text-accent-gold"
       tabIndex={0}
       data-career-term={term}
       aria-describedby={tooltipId}
@@ -442,7 +442,7 @@ function CareerTerm({ term }: { term: keyof typeof TERM_HELP }) {
       <span
         id={tooltipId}
         role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-[min(18rem,calc(100vw-2rem))] whitespace-normal rounded-xl border border-[#D7B466]/25 bg-[#09101a] p-3 text-left text-xs font-normal leading-5 text-[#D8DCE8] shadow-xl group-hover:block group-focus:block"
+        className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-[min(18rem,calc(100vw-2rem))] whitespace-normal rounded-xl border border-border-default/25 bg-surface-subtle p-3 text-left text-xs font-normal leading-5 text-text-secondary shadow-xl group-hover:block group-focus:block"
       >
         {TERM_HELP[term]}
       </span>

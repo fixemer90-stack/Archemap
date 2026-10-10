@@ -34,27 +34,27 @@ const productItems = [
     title: "Self",
     href: "/products/self",
     icon: User,
-    color: "#8DA8FF",
+    color: "var(--product-self)",
   },
   {
     title: "Love",
     href: "/products/love",
     icon: Heart,
-    color: "#D77A98",
+    color: "var(--product-love)",
     disabled: true,
   },
   {
     title: "Child",
     href: "/products/child",
     icon: Baby,
-    color: "#7DC5D1",
+    color: "var(--product-child)",
     disabled: true,
   },
   {
     title: "Career",
     href: "/products/career",
     icon: Briefcase,
-    color: "#D8B45A",
+    color: "var(--chart-series-2)",
   },
 ];
 
@@ -246,7 +246,7 @@ function SidebarPanel({
         </Link>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-4 [scrollbar-width:thin] [scrollbar-color:rgba(216,220,232,0.18)_transparent]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-4 [scrollbar-width:thin] [scrollbar-color:var(--border-default)_transparent]">
         <Link
           href="/billing"
           className={cn(

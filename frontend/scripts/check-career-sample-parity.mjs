@@ -69,12 +69,12 @@ assert.ok(
   "Reader must keep a bounded responsive web canvas",
 );
 assert.ok(
-  reader.includes("bg-[#111927]"),
-  "Reader must keep the dark report surface language",
+  reader.includes("bg-surface"),
+  "Reader must keep a theme-aware report surface language",
 );
 assert.ok(
-  reader.includes("text-[#D7B466]"),
-  "Reader must keep the gold accent direction",
+  reader.includes("text-accent-gold"),
+  "Reader must keep the contrast-safe gold accent direction",
 );
 assert.ok(
   protocol.checklist.some((item) => item.includes("not an acceptance signal")),

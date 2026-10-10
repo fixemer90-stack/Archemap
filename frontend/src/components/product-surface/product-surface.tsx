@@ -22,7 +22,7 @@ export function ProductSurfaceShell({
         className="pointer-events-none fixed inset-0 opacity-[0.055]"
         style={{
           backgroundImage:
-            "radial-gradient(circle, #D8DCE8 1px, transparent 1px)",
+            "radial-gradient(circle, var(--text-secondary) 1px, transparent 1px)",
           backgroundSize: "52px 52px",
         }}
       />

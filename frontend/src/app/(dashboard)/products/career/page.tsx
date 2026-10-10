@@ -399,7 +399,7 @@ export default function CareerProductPage() {
                   key={profile.id}
                   type="button"
                   onClick={() => void openQuestionnaire(profile)}
-                  className="glass space-y-3 p-5 text-left transition hover:border-accent-gold/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A]"
+                  className="glass space-y-3 p-5 text-left transition hover:border-accent-gold/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--product-career)]"
                 >
                   <div className="flex items-center justify-between">
                     <strong className="text-text-primary">
@@ -613,7 +613,7 @@ function QuestionField({
               type="button"
               aria-pressed={value === score}
               onClick={() => onChange(score)}
-              className={`rounded-xl border p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A] ${value === score ? "border-accent-gold bg-accent-gold/15 text-text-primary" : "border-border-default text-text-secondary"}`}
+              className={`rounded-xl border p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--product-career)] ${value === score ? "border-accent-gold bg-accent-gold/15 text-text-primary" : "border-border-default text-text-secondary"}`}
             >
               {score}
             </button>
@@ -638,7 +638,7 @@ function QuestionField({
               type="button"
               aria-pressed={value === choice.value}
               onClick={() => onChange(choice.value)}
-              className={`rounded-xl border p-4 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A] ${value === choice.value ? "border-accent-gold bg-accent-gold/15 text-text-primary" : "border-border-default text-text-secondary"}`}
+              className={`rounded-xl border p-4 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--product-career)] ${value === choice.value ? "border-accent-gold bg-accent-gold/15 text-text-primary" : "border-border-default text-text-secondary"}`}
             >
               {choice.label}
             </button>

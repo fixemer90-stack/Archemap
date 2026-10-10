@@ -16,7 +16,7 @@ interface CareerCTAProps {
 
 export function CareerCTA({ cta, profileId }: CareerCTAProps) {
   return (
-    <Card className="border-[#C28A2E]/30">
+    <Card className="border-border-default/30">
       <CardHeader>
         <CardDescription>Карьерный отчёт</CardDescription>
         <CardTitle>{cta.title}</CardTitle>

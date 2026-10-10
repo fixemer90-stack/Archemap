@@ -42,19 +42,19 @@ interface ChartData {
 
 // ── Aspect colors ──────────────────────────────────────────────────
 const ASPECT_COLORS: Record<string, string> = {
-  conjunction: "text-[#E54D4D]",
-  opposition: "text-[#E57A7A]",
-  trine: "text-[#6BAFBD]",
-  sextile: "text-[#8DA8FF]",
-  square: "text-[#D8B45A]",
-  quincunx: "text-[rgba(216,220,232,0.40)]",
+  conjunction: "text-error",
+  opposition: "text-error",
+  trine: "text-product-child",
+  sextile: "text-link",
+  square: "text-accent-gold",
+  quincunx: "text-text-secondary",
 };
 
 // ── Chart Planets Component ────────────────────────────────────────
 export function ChartPlanets({ planets }: { planets: Planet[] }) {
   return (
     <div className="glass p-4">
-      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-text-primary">
         Планеты
       </h3>
       <div className="space-y-2">
@@ -64,26 +64,28 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
             className="flex items-center justify-between text-sm"
           >
             <div className="flex items-center gap-2">
-              <span className="text-lg text-[#D8B45A]">
+              <span className="text-lg text-accent-gold">
                 {PLANET_SYMBOLS[planet.name] || "?"}
               </span>
-              <span className="font-medium text-[#F6F1E8]">
+              <span className="font-medium text-text-primary">
                 {planetNameRu(planet.name)}
               </span>
               {planet.is_retrograde && (
-                <span className="text-xs text-[#E57A7A]">℞</span>
+                <span className="text-xs text-error">℞</span>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[#8DA8FF]">
+              <span className="text-link">
                 {SIGN_SYMBOLS[planet.sign] || "?"}
               </span>
-              <span className="text-[#D8DCE8]">{signNameRu(planet.sign)}</span>
-              <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
+              <span className="text-text-secondary">
+                {signNameRu(planet.sign)}
+              </span>
+              <span className="font-mono text-xs text-text-secondary">
                 {(planet.degree ?? planet.sign_degree ?? 0).toFixed(2)}°
               </span>
               {planet.house && (
-                <span className="text-xs text-[rgba(216,220,232,0.40)]">
+                <span className="text-xs text-text-secondary">
                   Дом {planet.house}
                 </span>
               )}
@@ -99,7 +101,7 @@ export function ChartPlanets({ planets }: { planets: Planet[] }) {
 export function ChartHouses({ houses }: { houses: House[] }) {
   return (
     <div className="glass p-4">
-      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-text-primary">
         Дома
       </h3>
       <div className="grid grid-cols-2 gap-2">
@@ -108,12 +110,12 @@ export function ChartHouses({ houses }: { houses: House[] }) {
             key={house.number}
             className="flex items-center justify-between text-sm"
           >
-            <span className="text-[#D8DCE8]">Дом {house.number}</span>
+            <span className="text-text-secondary">Дом {house.number}</span>
             <div className="flex items-center gap-1">
-              <span className="text-[#8DA8FF]">
+              <span className="text-link">
                 {SIGN_SYMBOLS[house.sign] || "?"}
               </span>
-              <span className="font-mono text-xs text-[rgba(216,220,232,0.60)]">
+              <span className="font-mono text-xs text-text-secondary">
                 {(house.longitude ?? 0).toFixed(2)}°
               </span>
             </div>
@@ -128,32 +130,32 @@ export function ChartHouses({ houses }: { houses: House[] }) {
 export function ChartAspects({ aspects }: { aspects: Aspect[] }) {
   return (
     <div className="glass p-4">
-      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-text-primary">
         Аспекты
       </h3>
       <div className="space-y-1">
         {aspects.map((aspect, i) => (
           <div key={i} className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-[#F6F1E8]">
+              <span className="font-medium text-text-primary">
                 {planetNameRu(aspect.planet_a)}
               </span>
               <span
                 className={
-                  ASPECT_COLORS[aspect.aspect_type] || "text-[#D8DCE8]"
+                  ASPECT_COLORS[aspect.aspect_type] || "text-text-secondary"
                 }
               >
                 {aspectTypeRu(aspect.aspect_type)}
               </span>
-              <span className="font-medium text-[#F6F1E8]">
+              <span className="font-medium text-text-primary">
                 {planetNameRu(aspect.planet_b)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-[rgba(216,220,232,0.50)]">
+              <span className="font-mono text-xs text-text-secondary">
                 орб: {(aspect.orb ?? 0).toFixed(2)}°
               </span>
-              <span className="text-xs text-[rgba(216,220,232,0.40)]">
+              <span className="text-xs text-text-secondary">
                 {aspectDirectionRu(aspect.is_applying)}
               </span>
             </div>
@@ -211,7 +213,7 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
 
   return (
     <div className="glass p-4">
-      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-[#F6F1E8]">
+      <h3 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold mb-3 text-text-primary">
         Колесо карты
       </h3>
       <svg
@@ -226,7 +228,7 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
           cy={center}
           r={radius}
           fill="none"
-          stroke="#D8DCE8"
+          stroke="var(--text-secondary)"
           strokeWidth={0.5}
           opacity={0.3}
         />
@@ -236,7 +238,7 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
           cy={center}
           r={radius * 0.4}
           fill="none"
-          stroke="#D8DCE8"
+          stroke="var(--text-secondary)"
           strokeWidth={0.5}
           opacity={0.2}
         />
@@ -249,7 +251,7 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
             y1={center}
             x2={pos.x}
             y2={pos.y}
-            stroke="#D8DCE8"
+            stroke="var(--text-secondary)"
             strokeWidth={0.5}
             opacity={0.15}
           />
@@ -262,8 +264,8 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
               cx={x}
               cy={y}
               r={12}
-              fill="#17142A"
-              stroke="rgba(216,220,232,0.20)"
+              fill="var(--text-inverse)"
+              stroke="var(--chart-grid)"
               strokeWidth={1}
             />
             <text
@@ -272,7 +274,7 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
               textAnchor="middle"
               dominantBaseline="central"
               className="text-xs"
-              fill="#D8B45A"
+              fill="var(--chart-series-2)"
             >
               {PLANET_SYMBOLS[planet.name] || "?"}
             </text>
@@ -291,12 +293,12 @@ export function ChartWheel({ chart }: { chart: ChartData }) {
 
           const color =
             aspect.aspect_type === "trine"
-              ? "#6BAFBD"
+              ? "var(--chart-series-3)"
               : aspect.aspect_type === "square"
-                ? "#D8B45A"
+                ? "var(--chart-series-2)"
                 : aspect.aspect_type === "opposition"
-                  ? "#E57A7A"
-                  : "rgba(216,220,232,0.20)";
+                  ? "var(--chart-highlight)"
+                  : "var(--chart-grid)";
 
           return (
             <line

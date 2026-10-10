@@ -35,8 +35,8 @@ function CallbackContent() {
 
   return (
     <div className="w-full max-w-sm space-y-6 text-center">
-      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#5B3FD6] border-t-[#D8B45A]" />
-      <p className="text-[#D8DCE8]">Завершение входа через Яндекс...</p>
+      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-border-default border-t-[var(--chart-series-2)]" />
+      <p className="text-text-secondary">Завершение входа через Яндекс...</p>
     </div>
   );
 }
@@ -46,8 +46,8 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <div className="w-full max-w-sm space-y-6 text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#5B3FD6] border-t-[#D8B45A]" />
-          <p className="text-[#D8DCE8]">Загрузка...</p>
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-border-default border-t-[var(--chart-series-2)]" />
+          <p className="text-text-secondary">Загрузка...</p>
         </div>
       }
     >

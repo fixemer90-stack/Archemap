@@ -38,9 +38,9 @@ export function V2KeyIndicators({ indicators }: V2KeyIndicatorsProps) {
         {items.map(([label, primary, secondary]) => (
           <div
             key={label}
-            className="rounded-[17px] border border-[#263046] bg-[#101622] p-[13px]"
+            className="rounded-[17px] border border-border-default bg-surface-subtle p-[13px]"
           >
-            <div className="text-[15px] font-semibold text-[#FFE2A1]">
+            <div className="text-[15px] font-semibold text-warning">
               {label === "Асцендент" ||
               label === "MC" ||
               label === "Управитель ASC" ? (
@@ -49,10 +49,10 @@ export function V2KeyIndicators({ indicators }: V2KeyIndicatorsProps) {
                 label
               )}
             </div>
-            <div className="mt-2 text-[18px] font-semibold leading-tight text-[#F4EADB]">
+            <div className="mt-2 text-[18px] font-semibold leading-tight text-text-primary">
               {formatValue(primary)}
             </div>
-            <div className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+            <div className="mt-2 text-[12px] leading-[1.45] text-text-muted">
               {formatValue(secondary)}
             </div>
           </div>

@@ -74,7 +74,7 @@ export function BillingCheckoutButton() {
         )}
       </Button>
       {errorMessage ? (
-        <p className="text-xs leading-5 text-[#FFB4A8]" role="alert">
+        <p className="text-xs leading-5 text-error" role="alert">
           {errorMessage}
         </p>
       ) : null}

@@ -67,12 +67,12 @@ function LockedReportAccess({
   return (
     <div className="mx-auto max-w-3xl space-y-6 py-6">
       <ReportReturnAction />
-      <Card className="border-[rgba(216,180,90,0.30)] bg-[rgba(216,180,90,0.06)]">
+      <Card className="border-border-default bg-surface-subtle">
         <CardHeader>
           <CardDescription>Доступ к отчёту</CardDescription>
           <CardTitle>{locked.upgrade.title}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-[#D8DCE8]">
+        <CardContent className="space-y-4 text-sm leading-6 text-text-secondary">
           <p>{locked.upgrade.description}</p>
           <Button asChild>
             <Link href={locked.upgrade.href}>Открыть оплату</Link>
@@ -104,7 +104,7 @@ export default function AstrotypeV2ReportPage() {
           <CardDescription>Натальный портрет</CardDescription>
           <CardTitle>Готовим ваш отчёт</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-[#D8DCE8]">
+        <CardContent className="space-y-4 text-sm leading-6 text-text-secondary">
           <p>{generation.error || generation.message}</p>
           {generation.progress ? (
             <p className="text-xs text-muted-foreground">

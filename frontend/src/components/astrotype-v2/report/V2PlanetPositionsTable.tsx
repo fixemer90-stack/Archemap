@@ -16,14 +16,14 @@ export function V2PlanetPositionsTable({
   return (
     <section
       data-v2-calculation-block="planet_positions"
-      className="h-full w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)]"
+      className="h-full w-full rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated"
     >
-      <h3 className="mb-4 text-[21px] font-semibold text-[#F4EADB]">
+      <h3 className="mb-4 text-[21px] font-semibold text-text-primary">
         Положения планет
       </h3>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="text-[#C4CCDB]">
+          <thead className="text-text-secondary">
             <tr>
               <th className="px-4 py-3">
                 <V2GlossaryTerm term="Планета" />
@@ -43,10 +43,10 @@ export function V2PlanetPositionsTable({
               <th className="px-4 py-3">Ключевые аспекты из выборки</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#2d3548] text-[#DCE4F3]">
+          <tbody className="divide-y divide-[var(--border-default)] text-text-secondary">
             {orderedPositions.map((position) => (
               <tr key={position.body}>
-                <td className="px-4 py-3 font-medium text-[#F4EADB]">
+                <td className="px-4 py-3 font-medium text-text-primary">
                   {bodyLabel(position.body)}
                 </td>
                 <td className="px-4 py-3">{position.sign}</td>

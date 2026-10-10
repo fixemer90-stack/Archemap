@@ -9,7 +9,7 @@ export default function AuthLayout({
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.03]"
         style={{
-          backgroundImage: `radial-gradient(circle, #D8DCE8 1px, transparent 1px)`,
+          backgroundImage: `radial-gradient(circle, var(--text-secondary) 1px, transparent 1px)`,
           backgroundSize: "40px 40px",
         }}
       />

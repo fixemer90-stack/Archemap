@@ -54,21 +54,21 @@ export function V2CalculationMatrix({
   return (
     <section
       data-v2-calculation-block="calculation_matrix"
-      className="w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] md:p-6"
+      className="w-full rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated md:p-6"
     >
-      <h3 className="text-[21px] font-semibold text-[#F4EADB]">
+      <h3 className="text-[21px] font-semibold text-text-primary">
         Расчётные акценты карты
       </h3>
-      <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+      <p className="mt-2 text-[12px] leading-[1.45] text-text-muted">
         Компактная сводка производных расчётов: тип домов, ориентация карты,
         квадранты и профиль аспектной сети.
       </p>
       <div className="mt-4 grid gap-[14px] md:grid-cols-2">
-        <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">
+        <div className="rounded-[15px] border border-border-default bg-surface-subtle p-[14px]">
+          <h4 className="font-semibold text-warning">
             <V2GlossaryTerm term="Тип домов" />
           </h4>
-          <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+          <p className="mt-2 text-[12px] leading-[1.45] text-text-muted">
             Типы домов показывают, как тема включается в жизни: быстро
             проявляется, удерживается или постепенно перерабатывается.
           </p>
@@ -79,21 +79,21 @@ export function V2CalculationMatrix({
           </div>
         </div>
 
-        <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">
+        <div className="rounded-[15px] border border-border-default bg-surface-subtle p-[14px]">
+          <h4 className="font-semibold text-warning">
             <V2GlossaryTerm term="Квадрант" />
           </h4>
           <div className="mt-3 grid grid-cols-2 gap-[10px]">
             {quadrants.map(([label, value]) => (
               <div
                 key={label}
-                className="min-h-[82px] rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]"
+                className="min-h-[82px] rounded-[15px] border border-border-default bg-surface-subtle p-[14px]"
               >
-                <b className="text-[#FFE2A1]">{label}</b>
-                <span className="float-right font-extrabold text-white">
+                <b className="text-warning">{label}</b>
+                <span className="float-right font-extrabold text-text-secondary">
                   {formatValue(value)}%
                 </span>
-                <small className="mt-2 block clear-both text-[#9FB0CC]">
+                <small className="mt-2 block clear-both text-text-muted">
                   {quadrantDescription(label)}
                 </small>
               </div>
@@ -101,11 +101,11 @@ export function V2CalculationMatrix({
           </div>
         </div>
 
-        <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">
+        <div className="rounded-[15px] border border-border-default bg-surface-subtle p-[14px]">
+          <h4 className="font-semibold text-warning">
             <V2GlossaryTerm term="Ориентация карты" />
           </h4>
-          <p className="mt-2 text-[12px] leading-[1.45] text-[#9FB0CC]">
+          <p className="mt-2 text-[12px] leading-[1.45] text-text-muted">
             Это не оценка характера, а распределение планет по половинам карты:
             где сильнее проявляются темы жизни.
           </p>
@@ -113,15 +113,15 @@ export function V2CalculationMatrix({
             {hemiTopBottom.map(([label, value]) => (
               <OrientationRow key={label} label={label} value={value} />
             ))}
-            <div className="my-[13px] h-px bg-[#263046]" />
+            <div className="my-[13px] h-px bg-surface-subtle" />
             {hemiEastWest.map(([label, value]) => (
               <OrientationRow key={label} label={label} value={value} />
             ))}
           </div>
         </div>
 
-        <div className="rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-          <h4 className="font-semibold text-[#FFE2A1]">
+        <div className="rounded-[15px] border border-border-default bg-surface-subtle p-[14px]">
+          <h4 className="font-semibold text-warning">
             <V2GlossaryTerm term="Профиль аспектов" />
           </h4>
           <div className="mt-3 grid grid-cols-3 gap-[10px]">
@@ -142,12 +142,12 @@ export function V2CalculationMatrix({
             {exactAspects.map((aspect) => (
               <li
                 key={`${aspect.bodyA}-${aspect.bodyB}-${aspect.aspectCode}`}
-                className="rounded-[12px] border border-[#263046] bg-[#101622] px-[10px] py-[9px]"
+                className="rounded-[12px] border border-border-default bg-surface-subtle px-[10px] py-[9px]"
               >
-                <b className="block text-[#fff2d6]">
+                <b className="block text-text-primary">
                   {bodyLabel(aspect.bodyA)} — {bodyLabel(aspect.bodyB)}
                 </b>
-                <span className="block text-[12px] text-[#9FB0CC]">
+                <span className="block text-[12px] text-text-muted">
                   {aspectLabel(aspect.aspectCode)}, orb{" "}
                   {formatValue(aspect.orbDegrees)}°
                 </span>
@@ -191,14 +191,14 @@ function BarRow({
           : "grid grid-cols-[128px_minmax(0,1fr)_46px] items-center gap-3"
       }
     >
-      <div className="text-[15px] text-[#DCE4F3]">{label}</div>
-      <div className="h-4 overflow-hidden rounded-[99px] border border-[#2c3548] bg-[#0b1019]">
+      <div className="text-[15px] text-text-secondary">{label}</div>
+      <div className="h-4 overflow-hidden rounded-[99px] border border-border-default bg-surface-subtle">
         <span
-          className="block h-full bg-[linear-gradient(90deg,#d9b86f,#f2d991)]"
+          className="block h-full bg-[var(--hero-background)]"
           style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
         />
       </div>
-      <div className="text-right text-[15px] text-[#AEB6C7]">{value}%</div>
+      <div className="text-right text-[15px] text-text-secondary">{value}%</div>
     </div>
   );
 }
@@ -207,7 +207,7 @@ function HouseModeRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-1.5">
       <BarRow label={label} value={value} compact />
-      <p className="pl-0 text-[12px] leading-[1.45] text-[#8E99B4] md:pl-[116px]">
+      <p className="pl-0 text-[12px] leading-[1.45] text-text-muted md:pl-[116px]">
         {houseModeDescription(label)}
       </p>
     </div>
@@ -231,7 +231,7 @@ function OrientationRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-1.5">
       <BarRow label={label} value={value} compact />
-      <p className="pl-0 text-[12px] leading-[1.45] text-[#8E99B4] md:pl-[116px]">
+      <p className="pl-0 text-[12px] leading-[1.45] text-text-muted md:pl-[116px]">
         {orientationDescription(label)}
       </p>
     </div>
@@ -266,9 +266,11 @@ function quadrantDescription(label: string): string {
 
 function CountCard({ value, label }: { value: number; label: string }) {
   return (
-    <div className="min-h-[82px] rounded-[15px] border border-[#263046] bg-[#101622] p-[14px]">
-      <b className="block text-[30px] leading-none text-[#FFE2A1]">{value}</b>
-      <span className="mt-[6px] block text-[12px] text-[#9FB0CC]">{label}</span>
+    <div className="min-h-[82px] rounded-[15px] border border-border-default bg-surface-subtle p-[14px]">
+      <b className="block text-[30px] leading-none text-warning">{value}</b>
+      <span className="mt-[6px] block text-[12px] text-text-muted">
+        {label}
+      </span>
     </div>
   );
 }

@@ -33,9 +33,9 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
   return (
     <section
       data-v2-calculation-block="aspect_network"
-      className="h-full min-h-[600px] w-full rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.3)] max-[1100px]:min-h-0"
+      className="h-full min-h-[600px] w-full rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated max-[1100px]:min-h-0"
     >
-      <h3 className="mb-[14px] text-[21px] font-semibold leading-tight text-[#F4EADB]">
+      <h3 className="mb-[14px] text-[21px] font-semibold leading-tight text-text-primary">
         <V2GlossaryTerm term="Сеть ключевых аспектов" />
       </h3>
       <div className="flex min-h-[500px] items-center justify-center max-[1100px]:min-h-0">
@@ -60,7 +60,7 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
                   dx="0"
                   dy="8"
                   stdDeviation="8"
-                  floodColor="#000000"
+                  floodColor="var(--scrim)"
                   floodOpacity="0.35"
                 />
               </filter>
@@ -70,7 +70,7 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
               cy={CENTER}
               r={RADIUS}
               fill="none"
-              stroke="#252d3d"
+              stroke="var(--border-default)"
               strokeWidth="1.5"
             />
             <circle
@@ -78,7 +78,7 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
               cy={CENTER}
               r="106"
               fill="none"
-              stroke="#1b2434"
+              stroke="var(--surface)"
               strokeDasharray="4 8"
             />
             {edges.map((edge) => {
@@ -96,7 +96,11 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
                   className={
                     tone === "resource" ? "asp-resource" : "asp-tension"
                   }
-                  stroke={tone === "resource" ? "#6fa8ff" : "#ff6f83"}
+                  stroke={
+                    tone === "resource"
+                      ? "var(--chart-series-1)"
+                      : "var(--chart-highlight)"
+                  }
                   strokeLinecap="round"
                   strokeOpacity="0.78"
                   strokeWidth={strokeWidth(edge.strength)}
@@ -113,15 +117,15 @@ export function V2AspectNetwork({ network }: V2AspectNetworkProps) {
                   cx={node.x}
                   cy={node.y}
                   r="22"
-                  fill="#111827"
-                  stroke="#d9b86f"
+                  fill="var(--text-primary)"
+                  stroke="var(--chart-series-2)"
                   strokeOpacity="0.65"
                 />
                 <text
                   x={node.x}
                   y={node.y + 4}
                   textAnchor="middle"
-                  className="fill-[#F5E9D0] text-[12px] font-semibold"
+                  className="fill-chart-series-2 text-[12px] font-semibold"
                 >
                   {node.shortLabel}
                 </text>

@@ -74,9 +74,9 @@ export function ReportGenerationProgress({
     ),
   );
   return (
-    <Card className="mx-auto max-w-3xl border-[#5B3FD6]/30 bg-[rgba(23,20,42,0.92)]">
+    <Card className="mx-auto max-w-3xl border-border-default/30 bg-surface-subtle">
       <CardHeader className="space-y-4 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#5B3FD6]/20 text-[#D8B45A]">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-subtle/20 text-accent-gold">
           {timedOut ? (
             <TimerReset className="h-7 w-7" />
           ) : (
@@ -84,12 +84,12 @@ export function ReportGenerationProgress({
           )}
         </div>
         <div className="space-y-2">
-          <CardTitle className="font-[family-name:var(--font-cormorant)] text-3xl text-[#F6F1E8]">
+          <CardTitle className="font-[family-name:var(--font-cormorant)] text-3xl text-text-primary">
             {timedOut
               ? "Текстовый отчёт ещё собирается"
               : "Собираем ваш текстовый отчёт"}
           </CardTitle>
-          <p className="text-sm leading-6 text-[#D8DCE8]">
+          <p className="text-sm leading-6 text-text-secondary">
             {timedOut
               ? "Подробный текст ещё формируется. Вы можете обновить статус или запустить повторную генерацию. Отчёт появится здесь, как только будет готова полная версия."
               : "Сейчас формируем полную версию отчёта. Пока сборка не завершена, на этом экране не показываются промежуточные технические данные."}
@@ -97,13 +97,15 @@ export function ReportGenerationProgress({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="rounded-2xl border border-[#D8B45A]/20 bg-[#F6F1E8]/5 p-4 text-sm text-[#F6F1E8]">
-          <div className="mb-3 flex items-center gap-2 text-[#D8B45A]">
+        <div className="rounded-2xl border border-border-default/20 bg-surface-subtle/5 p-4 text-sm text-text-primary">
+          <div className="mb-3 flex items-center gap-2 text-accent-gold">
             <Clock3 className="h-4 w-4" />
             <span>Прошло около {elapsedSeconds} сек.</span>
           </div>
           {runningStageLabel && (
-            <p className="mb-3 text-sm text-[#D8DCE8]">{runningStageLabel}.</p>
+            <p className="mb-3 text-sm text-text-secondary">
+              {runningStageLabel}.
+            </p>
           )}
           {failedStageLabel && (
             <p className="mb-3 text-sm text-amber-200">
@@ -111,21 +113,21 @@ export function ReportGenerationProgress({
             </p>
           )}
           {stageProgress && (
-            <p className="mb-3 text-xs text-[#D8DCE8]">
+            <p className="mb-3 text-xs text-text-secondary">
               Готово этапов: {stageProgress.completed_stages}/
               {stageProgress.total_stages}
             </p>
           )}
           {completedStageLabels.length > 0 && (
             <div className="mb-3 space-y-2">
-              <p className="text-xs uppercase tracking-wide text-[#D8B45A]">
+              <p className="text-xs uppercase tracking-wide text-accent-gold">
                 Уже готовы
               </p>
               <div className="flex flex-wrap gap-2">
                 {completedStageLabels.map((label) => (
                   <span
                     key={label}
-                    className="rounded-full border border-[#D8B45A]/25 bg-[#F6F1E8]/5 px-2 py-1 text-xs text-[#F6F1E8]"
+                    className="rounded-full border border-border-default/25 bg-surface-subtle/5 px-2 py-1 text-xs text-text-primary"
                   >
                     {label}
                   </span>
@@ -133,9 +135,9 @@ export function ReportGenerationProgress({
               </div>
             </div>
           )}
-          <div className="h-2 overflow-hidden rounded-full bg-[#F6F1E8]/10">
+          <div className="h-2 overflow-hidden rounded-full bg-surface-subtle/10">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#5B3FD6] via-[#8DA8FF] to-[#D8B45A] transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-control via-chart-series-2 to-accent-gold transition-all"
               style={{
                 width: `${Math.min(100, Math.max(12, (elapsedSeconds / 90) * 100))}%`,
               }}

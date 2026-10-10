@@ -14,7 +14,7 @@ interface GlossaryModalProps {
 export function GlossaryModal({ term, entry, onClose }: GlossaryModalProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end bg-black/50 p-0 sm:items-center sm:justify-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end bg-scrim p-0 sm:items-center sm:justify-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby={`glossary-${term}`}

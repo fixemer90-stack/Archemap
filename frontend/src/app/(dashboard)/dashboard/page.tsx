@@ -39,7 +39,7 @@ const products = [
     description:
       "Главный личный отчёт: карта рождения, внутренний ритм, сильные опоры и зоны роста.",
     icon: User,
-    color: "#D8B45A",
+    color: "var(--chart-series-2)",
     status: "available",
     href: "/products/self",
   },
@@ -49,7 +49,7 @@ const products = [
     description:
       "Будущее направление про близость, притяжение, границы и повторяющиеся сценарии в паре.",
     icon: Heart,
-    color: "#B84A6B",
+    color: "var(--product-love)",
     status: "coming_soon",
     href: "/products/love",
   },
@@ -59,7 +59,7 @@ const products = [
     description:
       "Будущее направление для родителя: темперамент ребёнка, поддержка и бережная среда развития.",
     icon: Baby,
-    color: "#6BAFBD",
+    color: "var(--chart-series-3)",
     status: "coming_soon",
     href: "/products/child",
   },
@@ -69,7 +69,7 @@ const products = [
     description:
       "Рабочие сценарии: где легче проявляться, какой темп подходит и какие роли не забирают ресурс.",
     icon: Briefcase,
-    color: "#C28A2E",
+    color: "var(--product-career)",
     status: "available",
     href: "/products/career",
   },

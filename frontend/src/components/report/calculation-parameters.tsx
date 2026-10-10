@@ -18,8 +18,10 @@ const ITEMS: Array<{
 
 export function CalculationParameters({ params }: CalculationParametersProps) {
   return (
-    <section className="rounded-lg border border-[#D8B45A]/25 bg-[#D8B45A]/5 p-4 text-sm">
-      <h3 className="mb-3 font-semibold text-[#D8B45A]">Расчётные параметры</h3>
+    <section className="rounded-lg border border-border-default/25 bg-surface-subtle/5 p-4 text-sm">
+      <h3 className="mb-3 font-semibold text-accent-gold">
+        Расчётные параметры
+      </h3>
       <dl className="grid gap-2 sm:grid-cols-2">
         {ITEMS.map((item) => (
           <div key={item.key} className="rounded-md bg-background/30 p-3">

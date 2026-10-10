@@ -375,13 +375,13 @@ export default function CareerReportPage() {
         @media print {
           html,
           body {
-            background: var(--surface-elevated) !important;
-            color: var(--text-primary) !important;
+            background: var(--print-canvas) !important;
+            color: var(--print-text) !important;
           }
 
           .career-reader {
-            background: var(--surface-elevated) !important;
-            color: var(--text-primary) !important;
+            background: var(--print-canvas) !important;
+            color: var(--print-text) !important;
           }
 
           .career-reader header,
@@ -389,10 +389,10 @@ export default function CareerReportPage() {
           .career-reader article,
           .career-reader details {
             break-inside: avoid;
-            border-color: var(--text-secondary) !important;
-            background: var(--surface-elevated) !important;
+            border-color: var(--print-border) !important;
+            background: var(--print-canvas) !important;
             box-shadow: none !important;
-            color: var(--text-primary) !important;
+            color: var(--print-text) !important;
           }
 
           .career-reader div {
@@ -407,7 +407,7 @@ export default function CareerReportPage() {
           .career-reader strong,
           .career-reader summary,
           .career-reader span {
-            color: var(--text-primary) !important;
+            color: var(--print-text) !important;
           }
 
           .career-reader [role="tooltip"] {

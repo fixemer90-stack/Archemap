@@ -228,6 +228,7 @@ function SidebarPanel({
       >
         <Link
           href="/dashboard"
+          aria-label="Astrotype — в кабинет"
           className="flex min-w-0 items-center gap-3 text-text-primary"
         >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-accent-gold/30 bg-[var(--hero-background)] text-accent-gold shadow-elevated">

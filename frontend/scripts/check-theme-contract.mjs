@@ -146,6 +146,11 @@ for (const viewport of [390, 820, 1440]) {
     throw new Error(`theme browser matrix misses ${viewport}px viewport`);
   }
 }
+if (
+  !playwrightConfig.includes("theme(?:-visual|-accessibility)?\\.spec\\.ts")
+) {
+  throw new Error("tablet theme project must not expand unrelated e2e suites");
+}
 
 for (const spec of ["theme-visual.spec.ts", "theme-accessibility.spec.ts"]) {
   if (!fs.existsSync(path.join(root, "tests/e2e", spec))) {

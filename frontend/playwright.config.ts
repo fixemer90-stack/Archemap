@@ -32,6 +32,7 @@ export default defineConfig({
     },
     {
       name: "chromium-tablet",
+      testMatch: /theme(?:-visual|-accessibility)?\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 820, height: 1180 },

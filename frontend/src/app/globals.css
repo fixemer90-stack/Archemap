@@ -48,6 +48,9 @@
   --product-love: #a63d61;
   --product-child: #287a8b;
   --product-career: #8a5b08;
+  --print-canvas: #ffffff;
+  --print-text: #111827;
+  --print-border: #d1d5db;
   --page-background: radial-gradient(
     circle at 16% 0,
     #fbf4e8,

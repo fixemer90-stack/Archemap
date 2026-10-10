@@ -337,13 +337,13 @@ export default function CareerProductPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 pb-16 sm:px-6">
       <header className="space-y-3">
-        <p className="text-xs uppercase tracking-[0.24em] text-[#CFA75A]">
+        <p className="text-xs uppercase tracking-[0.24em] text-accent-gold">
           Astrotype Career
         </p>
-        <h1 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+        <h1 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary">
           Как вы работаете, выбираете и развиваетесь
         </h1>
-        <p className="max-w-3xl text-sm leading-7 text-[#D8DCE8]">
+        <p className="max-w-3xl text-sm leading-7 text-text-secondary">
           Отчёт объясняет профессиональную механику и условия, в которых ваши
           склонности раскрываются. Он не назначает профессию и не обещает
           результат вместо вашего решения.
@@ -359,15 +359,15 @@ export default function CareerProductPage() {
         ].map((item) => (
           <div
             key={item}
-            className="flex gap-3 text-sm leading-6 text-[#D8DCE8]"
+            className="flex gap-3 text-sm leading-6 text-text-secondary"
           >
-            <span className="text-[#CFA75A]">✦</span>
+            <span className="text-accent-gold">✦</span>
             <span>{item}</span>
           </div>
         ))}
       </section>
 
-      <p className="rounded-xl border border-[#CFA75A]/20 bg-[#CFA75A]/5 p-4 text-sm text-[#E9E1D2]">
+      <p className="rounded-xl border border-accent-gold/20 bg-accent-gold/5 p-4 text-sm text-text-primary">
         Ответы уточняют, как врождённые склонности применяются в вашем реальном
         контексте. Они не меняют и не «подгоняют» натальную карту.
       </p>
@@ -386,12 +386,12 @@ export default function CareerProductPage() {
         <section className="space-y-4" aria-labelledby="career-profile-heading">
           <h2
             id="career-profile-heading"
-            className="text-xl font-semibold text-[#F6F1E8]"
+            className="text-xl font-semibold text-text-primary"
           >
             Выберите профиль
           </h2>
           {loading ? (
-            <p className="text-sm text-[#D8DCE8]">Загружаем профили…</p>
+            <p className="text-sm text-text-secondary">Загружаем профили…</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {profiles.map((profile) => (
@@ -399,18 +399,18 @@ export default function CareerProductPage() {
                   key={profile.id}
                   type="button"
                   onClick={() => void openQuestionnaire(profile)}
-                  className="glass space-y-3 p-5 text-left transition hover:border-[#CFA75A]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A]"
+                  className="glass space-y-3 p-5 text-left transition hover:border-accent-gold/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A]"
                 >
                   <div className="flex items-center justify-between">
-                    <strong className="text-[#F6F1E8]">
+                    <strong className="text-text-primary">
                       {profile.name || "Без имени"}
                     </strong>
-                    <Briefcase className="h-4 w-4 text-[#CFA75A]" />
+                    <Briefcase className="h-4 w-4 text-accent-gold" />
                   </div>
-                  <p className="text-xs text-[#AEB4C4]">
+                  <p className="text-xs text-text-secondary">
                     {profile.birth_date} · {profile.birth_place}
                   </p>
-                  <span className="inline-flex items-center text-sm text-[#E6C77D]">
+                  <span className="inline-flex items-center text-sm text-accent-gold">
                     Продолжить <ArrowRight className="ml-1 h-4 w-4" />
                   </span>
                 </button>
@@ -427,10 +427,10 @@ export default function CareerProductPage() {
 
       {locked && (
         <section className="glass space-y-4 p-6" aria-live="polite">
-          <h2 className="text-xl font-semibold text-[#F6F1E8]">
+          <h2 className="text-xl font-semibold text-text-primary">
             Career входит в Plus
           </h2>
-          <p className="text-sm leading-6 text-[#D8DCE8]">
+          <p className="text-sm leading-6 text-text-secondary">
             Доступ проверен на сервере. Защищённые расчёты и предварительный
             отчёт не показываются без активного доступа.
           </p>
@@ -447,17 +447,17 @@ export default function CareerProductPage() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-[#AEB4C4]">
+              <p className="text-xs text-text-secondary">
                 Профиль: {selectedProfile.name}
               </p>
               <h2
                 id="questionnaire-heading"
-                className="text-xl font-semibold text-[#F6F1E8]"
+                className="text-xl font-semibold text-text-primary"
               >
                 Профессиональный контекст
               </h2>
             </div>
-            <div className="text-right text-xs text-[#AEB4C4]">
+            <div className="text-right text-xs text-text-secondary">
               <p>
                 {step + 1} из {questions.length}
               </p>
@@ -477,10 +477,10 @@ export default function CareerProductPage() {
             aria-valuemax={questions.length}
             aria-valuenow={step + 1}
             aria-valuetext={`${step + 1} из ${questions.length}`}
-            className="h-1.5 overflow-hidden rounded-full bg-white/10"
+            className="h-1.5 overflow-hidden rounded-full bg-surface-elevated"
           >
             <div
-              className="h-full bg-[#CFA75A] transition-all"
+              className="h-full bg-accent-gold transition-all"
               style={{ width: `${((step + 1) / questions.length) * 100}%` }}
             />
           </div>
@@ -490,7 +490,7 @@ export default function CareerProductPage() {
             onChange={(value) => updateAnswer(currentQuestion, value)}
           />
           {step === questions.length - 1 && (
-            <label className="flex items-start gap-3 rounded-xl border border-white/10 p-4 text-sm leading-6 text-[#D8DCE8]">
+            <label className="flex items-start gap-3 rounded-xl border border-border-default p-4 text-sm leading-6 text-text-secondary">
               <input
                 required
                 type="checkbox"
@@ -540,13 +540,13 @@ export default function CareerProductPage() {
         <section className="glass space-y-5 p-6" aria-live="polite">
           <div className="flex items-center gap-3">
             <Loader2
-              className={`h-5 w-5 text-[#CFA75A] ${generation.status === "ready" ? "" : "animate-spin"}`}
+              className={`h-5 w-5 text-accent-gold ${generation.status === "ready" ? "" : "animate-spin"}`}
             />
             <div>
-              <h2 className="text-xl font-semibold text-[#F6F1E8]">
+              <h2 className="text-xl font-semibold text-text-primary">
                 Отчёт собирается по разделам
               </h2>
-              <p className="text-sm text-[#D8DCE8]">
+              <p className="text-sm text-text-secondary">
                 Расчёт:{" "}
                 {generation.deterministic_status === "ready"
                   ? "готов"
@@ -559,7 +559,7 @@ export default function CareerProductPage() {
           {generation.deterministic_status === "ready" &&
             generation.report_id && (
               <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/5 p-4">
-                <p className="text-sm leading-6 text-[#D8DCE8]">
+                <p className="text-sm leading-6 text-text-secondary">
                   Базовый профессиональный профиль уже готов. Можно читать его,
                   пока пояснения продолжают появляться.
                 </p>
@@ -603,7 +603,9 @@ function QuestionField({
   if (question.answer_type === "scale_1_5")
     return (
       <fieldset className="space-y-4">
-        <legend className="text-lg font-medium text-[#F6F1E8]">{label}</legend>
+        <legend className="text-lg font-medium text-text-primary">
+          {label}
+        </legend>
         <div className="grid grid-cols-5 gap-2">
           {[1, 2, 3, 4, 5].map((score) => (
             <button
@@ -611,13 +613,13 @@ function QuestionField({
               type="button"
               aria-pressed={value === score}
               onClick={() => onChange(score)}
-              className={`rounded-xl border p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A] ${value === score ? "border-[#CFA75A] bg-[#CFA75A]/15 text-[#F6F1E8]" : "border-white/10 text-[#D8DCE8]"}`}
+              className={`rounded-xl border p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A] ${value === score ? "border-accent-gold bg-accent-gold/15 text-text-primary" : "border-border-default text-text-secondary"}`}
             >
               {score}
             </button>
           ))}
         </div>
-        <div className="flex justify-between text-xs text-[#AEB4C4]">
+        <div className="flex justify-between text-xs text-text-secondary">
           <span>Совсем не близко</span>
           <span>Очень близко</span>
         </div>
@@ -626,7 +628,9 @@ function QuestionField({
   if (question.answer_type === "choice")
     return (
       <fieldset className="space-y-4">
-        <legend className="text-lg font-medium text-[#F6F1E8]">{label}</legend>
+        <legend className="text-lg font-medium text-text-primary">
+          {label}
+        </legend>
         <div className="grid gap-3">
           {(CHOICES[question.key] ?? []).map((choice) => (
             <button
@@ -634,7 +638,7 @@ function QuestionField({
               type="button"
               aria-pressed={value === choice.value}
               onClick={() => onChange(choice.value)}
-              className={`rounded-xl border p-4 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A] ${value === choice.value ? "border-[#CFA75A] bg-[#CFA75A]/15 text-[#F6F1E8]" : "border-white/10 text-[#D8DCE8]"}`}
+              className={`rounded-xl border p-4 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#CFA75A] ${value === choice.value ? "border-accent-gold bg-accent-gold/15 text-text-primary" : "border-border-default text-text-secondary"}`}
             >
               {choice.label}
             </button>
@@ -644,7 +648,7 @@ function QuestionField({
     );
   return (
     <label className="block space-y-3">
-      <span className="text-lg font-medium text-[#F6F1E8]">{label}</span>
+      <span className="text-lg font-medium text-text-primary">{label}</span>
       <Input
         aria-label={label}
         type={question.answer_type === "integer" ? "number" : "text"}

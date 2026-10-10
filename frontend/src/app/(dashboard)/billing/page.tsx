@@ -177,10 +177,10 @@ function BillingReturnStatus() {
     : returnStatusCopy.checkout_pending;
   const toneClass =
     copy.tone === "success"
-      ? "border-[rgba(74,222,128,0.34)] bg-[rgba(74,222,128,0.08)] text-[#BFF5CF]"
+      ? "border-success bg-success/10 text-success"
       : copy.tone === "warning"
-        ? "border-[rgba(255,180,168,0.30)] bg-[rgba(255,180,168,0.08)] text-[#FFD1CA]"
-        : "border-[rgba(216,180,90,0.28)] bg-[rgba(216,180,90,0.08)] text-[#F6F1E8]";
+        ? "border-error bg-error/10 text-error"
+        : "border-accent-gold bg-accent-gold-soft text-text-primary";
 
   return (
     <section className={`rounded-[24px] border p-5 ${toneClass}`} role="status">
@@ -190,7 +190,7 @@ function BillingReturnStatus() {
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {copy.title}
           </p>
-          <p className="max-w-3xl text-sm leading-6 text-[rgba(246,241,232,0.78)]">
+          <p className="max-w-3xl text-sm leading-6 text-text-secondary">
             {errorMessage ?? copy.description}
           </p>
         </div>
@@ -200,7 +200,7 @@ function BillingReturnStatus() {
         access?.access_state === "plus_expired" ? (
           <button
             type="button"
-            className="text-left text-sm font-medium text-[#F6F1E8] underline underline-offset-4"
+            className="text-left text-sm font-medium text-text-primary underline underline-offset-4"
             onClick={() =>
               document
                 .getElementById("plus")
@@ -221,9 +221,9 @@ function FeatureList({ items }: { items: string[] }) {
       {items.map((item) => (
         <li
           key={item}
-          className="flex gap-3 text-sm leading-relaxed text-[#D8DCE8]"
+          className="flex gap-3 text-sm leading-relaxed text-text-secondary"
         >
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#D8B45A]" />
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-gold" />
           <span>{item}</span>
         </li>
       ))}
@@ -284,22 +284,22 @@ function BillingAccountStatus() {
               : "Plus не активен. Доступ открывается по месячной подписке.";
 
   return (
-    <ProductSurfaceCard className="border-[rgba(216,180,90,0.26)] bg-[linear-gradient(135deg,rgba(216,180,90,0.11),rgba(255,255,255,0.045))]">
+    <ProductSurfaceCard className="border-accent-gold bg-[var(--hero-background)]">
       <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(216,180,90,0.34)] bg-[rgba(216,180,90,0.14)] text-[#D8B45A]">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-gold bg-accent-gold-soft text-accent-gold">
             <Crown className="h-5 w-5" />
           </span>
           <div className="space-y-2">
             <SurfaceEyebrow>Текущий статус аккаунта</SurfaceEyebrow>
-            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary">
               {isLoadingAccess
                 ? "Проверяем Plus"
                 : isPlusActive
                   ? "Plus активен"
                   : "Plus не активен"}
             </h2>
-            <p className="max-w-3xl text-sm leading-6 text-[#D8DCE8]">
+            <p className="max-w-3xl text-sm leading-6 text-text-secondary">
               {statusDescription}
             </p>
           </div>
@@ -307,29 +307,29 @@ function BillingAccountStatus() {
         <span
           className={
             isPlusActive
-              ? "rounded-full border border-[rgba(124,242,154,0.34)] bg-[rgba(124,242,154,0.10)] px-4 py-2 text-sm font-semibold text-[#BFF5CF]"
-              : "rounded-full border border-[rgba(216,220,232,0.16)] bg-[rgba(255,255,255,0.045)] px-4 py-2 text-sm font-semibold text-[#D8DCE8]"
+              ? "rounded-full border border-success bg-success/10 px-4 py-2 text-sm font-semibold text-success"
+              : "rounded-full border border-border-default bg-surface-subtle px-4 py-2 text-sm font-semibold text-text-secondary"
           }
         >
           {isPlusActive ? "Аккаунт Plus" : "Базовый аккаунт"}
         </span>
       </div>
       <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-          <dt className="text-[rgba(216,220,232,0.58)]">План</dt>
-          <dd className="mt-1 font-medium text-[#F6F1E8]">
+        <div className="rounded-2xl border border-border-default bg-surface-subtle p-4">
+          <dt className="text-text-muted">План</dt>
+          <dd className="mt-1 font-medium text-text-primary">
             Astrotype Plus · 999 ₽ / месяц
           </dd>
         </div>
-        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-          <dt className="text-[rgba(216,220,232,0.58)]">Plus активен до</dt>
-          <dd className="mt-1 font-medium text-[#F6F1E8]">
+        <div className="rounded-2xl border border-border-default bg-surface-subtle p-4">
+          <dt className="text-text-muted">Plus активен до</dt>
+          <dd className="mt-1 font-medium text-text-primary">
             {formatBillingDate(subscription?.current_period_end ?? null)}
           </dd>
         </div>
-        <div className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-4">
-          <dt className="text-[rgba(216,220,232,0.58)]">Следующее списание</dt>
-          <dd className="mt-1 font-medium text-[#F6F1E8]">
+        <div className="rounded-2xl border border-border-default bg-surface-subtle p-4">
+          <dt className="text-text-muted">Следующее списание</dt>
+          <dd className="mt-1 font-medium text-text-primary">
             {subscription?.cancel_at_period_end
               ? "Автопродление отключено"
               : formatBillingDate(subscription?.next_billing_at ?? null)}
@@ -350,13 +350,13 @@ function BillingAccountStatus() {
                 ? "Отменить автопродление"
                 : "Возобновить автопродление"}
           </Button>
-          <p className="text-xs leading-5 text-[rgba(216,220,232,0.62)]">
+          <p className="text-xs leading-5 text-text-muted">
             Отключение автопродления не сокращает уже оплаченный период.
           </p>
         </div>
       ) : null}
       {actionError ? (
-        <p className="mt-3 text-sm text-[#FFB4A8]" role="alert">
+        <p className="mt-3 text-sm text-error" role="alert">
           {actionError}
         </p>
       ) : null}
@@ -379,17 +379,17 @@ export default function BillingPage() {
         title="Статус аккаунта и доступ к полному отчёту"
         lead="Страница оплаты в Astrotype — не витрина с мелкими пакетами, а спокойное объяснение: что открывает Плюс, как проходит оплата и почему доступ включается только после подтверждения."
         aside={
-          <ProductSurfaceCard className="space-y-5 border-[rgba(216,180,90,0.24)] bg-[rgba(255,255,255,0.06)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#D8DCE8]">
+          <ProductSurfaceCard className="space-y-5 border-accent-gold bg-surface-subtle">
+            <p className="text-xs uppercase tracking-[0.28em] text-text-secondary">
               Цена Плюс
             </p>
             <div className="flex items-end gap-2">
-              <span className="text-6xl font-semibold tracking-tight text-[#F6F1E8]">
+              <span className="text-6xl font-semibold tracking-tight text-text-primary">
                 999 ₽
               </span>
-              <span className="pb-2 text-sm text-[#D8DCE8]">/ месяц</span>
+              <span className="pb-2 text-sm text-text-secondary">/ месяц</span>
             </div>
-            <p className="text-sm leading-6 text-[rgba(216,220,232,0.78)]">
+            <p className="text-sm leading-6 text-text-secondary">
               Оплата открывается в YooKassa. После подтверждения статус аккаунта
               обновится автоматически.
             </p>
@@ -399,7 +399,7 @@ export default function BillingPage() {
           </ProductSurfaceCard>
         }
       >
-        <div className="grid gap-3 pt-2 text-sm text-[#D8DCE8] sm:grid-cols-3">
+        <div className="grid gap-3 pt-2 text-sm text-text-secondary sm:grid-cols-3">
           {[
             "без данных карты в Astrotype",
             "возврат не равен успеху оплаты",
@@ -407,7 +407,7 @@ export default function BillingPage() {
           ].map((item) => (
             <div
               key={item}
-              className="rounded-2xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.045)] px-4 py-3"
+              className="rounded-2xl border border-border-default bg-surface-subtle px-4 py-3"
             >
               {item}
             </div>
@@ -419,10 +419,10 @@ export default function BillingPage() {
         <ProductSurfaceCard className="space-y-6">
           <div className="space-y-2">
             <SurfaceEyebrow>Бесплатный</SurfaceEyebrow>
-            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary">
               Базовый статус
             </h2>
-            <p className="text-sm leading-6 text-[#D8DCE8]">
+            <p className="text-sm leading-6 text-text-secondary">
               Подходит, чтобы войти в продукт, создать профиль и увидеть первый
               слой карты без ощущения закрытой двери.
             </p>
@@ -433,13 +433,13 @@ export default function BillingPage() {
           </Button>
         </ProductSurfaceCard>
 
-        <ProductSurfaceCard className="space-y-6 border-[rgba(216,180,90,0.28)] bg-[rgba(216,180,90,0.055)]">
+        <ProductSurfaceCard className="space-y-6 border-accent-gold bg-accent-gold-soft">
           <div className="space-y-2">
             <SurfaceEyebrow>Плюс</SurfaceEyebrow>
-            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary">
               Полный личный отчёт
             </h2>
-            <p className="text-sm leading-6 text-[#D8DCE8]">
+            <p className="text-sm leading-6 text-text-secondary">
               Плюс открывает подробный личный отчёт и сохраняет доступ в вашем
               аккаунте после подтверждения оплаты.
             </p>
@@ -452,10 +452,10 @@ export default function BillingPage() {
       <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <ProductSurfaceCard className="space-y-4">
           <SurfaceEyebrow>Как подтверждается оплата</SurfaceEyebrow>
-          <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+          <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary">
             Сначала подтверждение, потом доступ
           </h2>
-          <p className="text-sm leading-7 text-[#D8DCE8]">
+          <p className="text-sm leading-7 text-text-secondary">
             Эта страница может показать, что вы вернулись из YooKassa, но не
             делает вывод об оплате сама. Astrotype ждёт проверенный статус и
             только потом меняет доступ.
@@ -465,36 +465,38 @@ export default function BillingPage() {
         <div className="grid gap-4">
           {trustSteps.map((step, index) => (
             <ProductSurfaceCard key={step.title} className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[rgba(216,180,90,0.16)] text-sm font-semibold text-[#D8B45A]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-gold-soft text-sm font-semibold text-accent-gold">
                 {index + 1}
               </div>
               <div className="space-y-2">
-                <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+                <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
                   {step.title}
                 </h3>
-                <p className="text-sm leading-6 text-[#D8DCE8]">{step.text}</p>
+                <p className="text-sm leading-6 text-text-secondary">
+                  {step.text}
+                </p>
               </div>
             </ProductSurfaceCard>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-[rgba(141,168,255,0.22)] bg-[rgba(141,168,255,0.06)] p-6 md:p-8">
+      <section className="rounded-[28px] border border-info bg-info/10 p-6 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
-            <p className="flex items-center gap-2 text-sm font-semibold text-[#F6F1E8]">
-              <ShieldCheck className="h-4 w-4 text-[#8DA8FF]" />
+            <p className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+              <ShieldCheck className="h-4 w-4 text-link" />
               Бесплатный статус и Плюс сейчас не режут продукт по скрытым
               правилам
             </p>
-            <p className="max-w-3xl text-sm leading-6 text-[#D8DCE8]">
+            <p className="max-w-3xl text-sm leading-6 text-text-secondary">
               Статус виден в аккаунте, а доступ к платным материалам проверяется
               на стороне сервиса. Так пользователь не зависит от случайного
               состояния страницы после оплаты.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-[#D8DCE8]">
-            <Clock3 className="h-4 w-4 text-[#D8B45A]" />
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <Clock3 className="h-4 w-4 text-accent-gold" />
             Проверка обычно занимает меньше минуты
           </div>
         </div>

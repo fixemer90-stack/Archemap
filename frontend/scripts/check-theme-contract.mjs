@@ -5,6 +5,20 @@ const root = process.cwd();
 const globalsPath = path.join(root, "src/app/globals.css");
 const globals = fs.readFileSync(globalsPath, "utf8");
 const uiRoot = path.join(root, "src/components/ui");
+const surfaceRoots = [
+  path.join(root, "src/components/layout"),
+  path.join(root, "src/components/product-surface"),
+  path.join(root, "src/components/settings"),
+  path.join(root, "src/app/page.tsx"),
+  path.join(root, "src/app/(dashboard)/dashboard"),
+  path.join(root, "src/app/(dashboard)/settings"),
+  path.join(root, "src/app/(dashboard)/billing"),
+  path.join(root, "src/app/(dashboard)/subscriptions"),
+  path.join(root, "src/app/(dashboard)/products/self"),
+  path.join(root, "src/app/(dashboard)/products/love"),
+  path.join(root, "src/app/(dashboard)/products/child"),
+  path.join(root, "src/app/(dashboard)/products/career/page.tsx"),
+];
 
 const requiredTokens = [
   "--canvas",
@@ -83,17 +97,37 @@ for (const [foreground, background, minimum, label] of contrastPairs) {
   }
 }
 
-for (const entry of fs.readdirSync(uiRoot)) {
-  if (!entry.endsWith(".tsx")) continue;
-  const source = fs.readFileSync(path.join(uiRoot, entry), "utf8");
+function assertNoThemeLiterals(filePath, label) {
+  const source = fs.readFileSync(filePath, "utf8");
   if (
-    /(?:bg|text|border|ring|shadow)-\[(?:#|rgba?\()/.test(source) ||
+    /(?:bg|text|border|ring|shadow|fill|stroke|from|via|to)-\[(?:#|rgba?\()/.test(
+      source,
+    ) ||
     /(?:bg|text|border)-(?:white|black)(?:\/\d+)?/.test(source)
   ) {
-    throw new Error(
-      `UI primitive ${entry} still uses a theme-sensitive literal`,
-    );
+    throw new Error(`${label} still uses a theme-sensitive literal`);
   }
 }
 
-console.log("theme contract passed: semantic tokens, contrast, and primitives");
+for (const entry of fs.readdirSync(uiRoot)) {
+  if (!entry.endsWith(".tsx")) continue;
+  assertNoThemeLiterals(path.join(uiRoot, entry), `UI primitive ${entry}`);
+}
+
+function walk(target) {
+  const stat = fs.statSync(target);
+  if (stat.isFile()) return [target];
+  return fs
+    .readdirSync(target, { withFileTypes: true })
+    .flatMap((entry) => walk(path.join(target, entry.name)));
+}
+
+for (const target of surfaceRoots.flatMap(walk)) {
+  if (/\.(?:ts|tsx)$/.test(target)) {
+    assertNoThemeLiterals(target, path.relative(root, target));
+  }
+}
+
+console.log(
+  "theme contract passed: semantic tokens, primitives, and product surfaces",
+);

@@ -104,13 +104,13 @@ export default function SettingsPage() {
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 overflow-x-clip px-1 pb-16 sm:px-3">
       <header className="max-w-3xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#D7B466]">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent-gold">
           Личные настройки
         </p>
-        <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8] sm:text-5xl">
+        <h1 className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary sm:text-5xl">
           Настройки
         </h1>
-        <p className="mt-3 text-base leading-7 text-[#C8D0DE]">
+        <p className="mt-3 text-base leading-7 text-text-secondary">
           Проверьте исходные данные расчёта, имя профиля и параметры
           безопасности.
         </p>
@@ -119,11 +119,11 @@ export default function SettingsPage() {
       {birthDataRefinementEnabled && <BirthDataSettings />}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-[24px] border border-white/10 bg-[#111927]/85 p-5 sm:p-7">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#AEB8C8]">
+        <section className="rounded-[24px] border border-border-default bg-surface/85 p-5 sm:p-7">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-text-muted">
             Профиль
           </p>
-          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
             Как к вам обращаться
           </h2>
           <form onSubmit={handleUpdateProfile} className="mt-6 space-y-5">
@@ -140,7 +140,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <label
                 htmlFor="settings-name"
-                className="text-base font-medium text-[#F6F1E8]"
+                className="text-base font-medium text-text-primary"
               >
                 Имя
               </label>
@@ -156,7 +156,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <label
                 htmlFor="settings-email"
-                className="text-base font-medium text-[#D8DCE8]"
+                className="text-base font-medium text-text-secondary"
               >
                 Email
               </label>
@@ -166,7 +166,7 @@ export default function SettingsPage() {
                 disabled
                 className="min-h-11 opacity-70"
               />
-              <p className="text-sm leading-6 text-[#9FAABC]">
+              <p className="text-sm leading-6 text-text-muted">
                 Email нельзя изменить здесь.
               </p>
             </div>
@@ -180,11 +180,11 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        <section className="rounded-[24px] border border-white/10 bg-[#111927]/85 p-5 sm:p-7">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#AEB8C8]">
+        <section className="rounded-[24px] border border-border-default bg-surface/85 p-5 sm:p-7">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-text-muted">
             Безопасность
           </p>
-          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
             Смена пароля
           </h2>
           <form onSubmit={handleChangePassword} className="mt-6 space-y-5">
@@ -251,7 +251,7 @@ function PasswordField({
 }) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-base font-medium text-[#F6F1E8]">
+      <label htmlFor={id} className="text-base font-medium text-text-primary">
         {label}
       </label>
       <Input

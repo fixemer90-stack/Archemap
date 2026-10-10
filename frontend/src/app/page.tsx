@@ -35,33 +35,33 @@ const inside = [
 function ReportPreview() {
   return (
     <ProductSurfaceCard
-      className="space-y-5 border-[rgba(216,180,90,0.22)] bg-[rgba(10,12,22,0.52)]"
+      className="space-y-5 border-accent-gold bg-overlay"
       data-product-surface-preview="illustrative"
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.28em] text-[#8DA8FF]">
+          <p className="text-xs uppercase tracking-[0.28em] text-link">
             Пример структуры
           </p>
-          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+          <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
             Как выглядит личный портрет
           </h2>
         </div>
-        <MoonStar className="h-8 w-8 text-[#D8B45A]" />
+        <MoonStar className="h-8 w-8 text-accent-gold" />
       </div>
-      <p className="text-sm leading-6 text-[rgba(216,220,232,0.76)]">
+      <p className="text-sm leading-6 text-text-secondary">
         Это демонстрационный фрагмент интерфейса, а не готовый отчёт конкретного
         человека. Он показывает темп: краткая формула, затем объяснение, затем
         практический вывод.
       </p>
-      <div className="rounded-3xl border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] p-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-[#D8B45A]">
+      <div className="rounded-3xl border border-border-default bg-surface-subtle p-5">
+        <p className="text-xs uppercase tracking-[0.24em] text-accent-gold">
           Главный мотив
         </p>
-        <p className="mt-3 font-[family-name:var(--font-cormorant)] text-2xl leading-tight text-[#F6F1E8]">
+        <p className="mt-3 font-[family-name:var(--font-cormorant)] text-2xl leading-tight text-text-primary">
           Сначала понять внутренний ритм, потом выбирать форму действия.
         </p>
-        <p className="mt-4 text-sm leading-6 text-[#D8DCE8]">
+        <p className="mt-4 text-sm leading-6 text-text-secondary">
           Отчёт не навешивает ярлык. Он показывает, какие части карты тянут к
           самостоятельности, где нужна опора на других и как это проявляется в
           обычных решениях.
@@ -71,9 +71,9 @@ function ReportPreview() {
         {inside.map((item) => (
           <div
             key={item}
-            className="flex items-start gap-3 rounded-2xl border border-[rgba(216,220,232,0.10)] bg-[rgba(216,220,232,0.045)] p-3 text-sm text-[#D8DCE8]"
+            className="flex items-start gap-3 rounded-2xl border border-border-default bg-surface-subtle p-3 text-sm text-text-secondary"
           >
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#D8B45A]" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent-gold" />
             <span>{item}</span>
           </div>
         ))}
@@ -85,15 +85,15 @@ function ReportPreview() {
 export default function HomePage() {
   return (
     <ProductSurfaceShell>
-      <header className="mb-7 flex items-center justify-between rounded-full border border-[rgba(216,220,232,0.12)] bg-[rgba(255,255,255,0.04)] px-5 py-3 backdrop-blur-xl">
+      <header className="mb-7 flex items-center justify-between rounded-full border border-border-default bg-surface-subtle px-5 py-3 backdrop-blur-xl">
         <Link
           href="/"
-          className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]"
+          className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-text-primary"
         >
           Astrotype
         </Link>
         <nav className="flex items-center gap-2">
-          <Button variant="ghost" asChild className="text-[#D8DCE8]">
+          <Button variant="ghost" asChild className="text-text-secondary">
             <Link href="/login">Войти</Link>
           </Button>
           <Button asChild>
@@ -131,13 +131,13 @@ export default function HomePage() {
         <section className="grid gap-5 lg:grid-cols-3" id="report-structure">
           {steps.map((step, index) => (
             <ProductSurfaceCard key={step.title} className="space-y-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[linear-gradient(135deg,#5B3FD6,#D8B45A)] text-sm font-semibold text-[#F6F1E8]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--hero-background)] text-sm font-semibold text-text-primary">
                 {index + 1}
               </div>
-              <h2 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+              <h2 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
                 {step.title}
               </h2>
-              <p className="text-sm leading-7 text-[rgba(216,220,232,0.76)]">
+              <p className="text-sm leading-7 text-text-secondary">
                 {step.text}
               </p>
             </ProductSurfaceCard>
@@ -147,10 +147,10 @@ export default function HomePage() {
         <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <ProductSurfaceCard className="space-y-4">
             <SurfaceEyebrow>Что вы получаете</SurfaceEyebrow>
-            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]">
+            <h2 className="font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary">
               Отчёт, к которому можно возвращаться
             </h2>
-            <p className="text-sm leading-7 text-[#D8DCE8]">
+            <p className="text-sm leading-7 text-text-secondary">
               Это не карточка с одним ответом. Внутри — карта, ключевые темы,
               подробные разделы и спокойные вопросы, которые помогают увидеть
               себя точнее.
@@ -163,12 +163,9 @@ export default function HomePage() {
               "развёрнутый портрет личности",
               "практические выводы без давления",
             ].map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl bg-[rgba(255,255,255,0.04)] p-4"
-              >
-                <Sparkles className="mb-3 h-5 w-5 text-[#D8B45A]" />
-                <p className="text-sm leading-6 text-[#D8DCE8]">{item}</p>
+              <div key={item} className="rounded-2xl bg-surface-subtle p-4">
+                <Sparkles className="mb-3 h-5 w-5 text-accent-gold" />
+                <p className="text-sm leading-6 text-text-secondary">{item}</p>
               </div>
             ))}
           </ProductSurfaceCard>

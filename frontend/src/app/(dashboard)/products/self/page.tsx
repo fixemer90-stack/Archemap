@@ -39,17 +39,17 @@ export default function SelfProductPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+        <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
           Astrotype Self
         </h1>
-        <p className="text-sm text-[#D8DCE8] mt-1">
+        <p className="text-sm text-text-secondary mt-1">
           Натальная карта, факты, синтез и V2 natal-only отчёт.
         </p>
       </div>
 
       {/* What you get */}
       <div className="glass p-6 space-y-4">
-        <h2 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-[#F6F1E8]">
+        <h2 className="font-[family-name:var(--font-cormorant)] text-lg font-semibold text-text-primary">
           Что входит в отчёт
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -60,8 +60,8 @@ export default function SelfProductPage() {
             "Цепочка доказательств: факты → синтез → разделы отчёта",
           ].map((item) => (
             <div key={item} className="flex items-start gap-2">
-              <span className="text-[#D8B45A] mt-0.5 text-xs">✦</span>
-              <span className="text-sm text-[#D8DCE8]">{item}</span>
+              <span className="text-accent-gold mt-0.5 text-xs">✦</span>
+              <span className="text-sm text-text-secondary">{item}</span>
             </div>
           ))}
         </div>
@@ -70,7 +70,7 @@ export default function SelfProductPage() {
       {/* My reports */}
       {profiles.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
+          <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-text-primary">
             Мои отчёты Self
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -78,15 +78,15 @@ export default function SelfProductPage() {
               <Link
                 key={profile.id}
                 href={`/report/v2/${profile.id}`}
-                className="glass p-5 space-y-2 hover:border-[rgba(91,63,214,0.40)] transition-all group"
+                className="glass p-5 space-y-2 hover:border-control transition-all group"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-[#F6F1E8]">
+                  <span className="font-medium text-text-primary">
                     {profile.name || "Без имени"}
                   </span>
-                  <ArrowRight className="h-4 w-4 text-[rgba(216,220,232,0.30)] group-hover:text-[#D8B45A] transition-colors" />
+                  <ArrowRight className="h-4 w-4 text-text-muted group-hover:text-accent-gold transition-colors" />
                 </div>
-                <p className="text-xs text-[rgba(216,220,232,0.50)]">
+                <p className="text-xs text-text-muted">
                   {profile.birth_date} · {profile.birth_place}
                 </p>
               </Link>
@@ -98,7 +98,7 @@ export default function SelfProductPage() {
       {/* Empty state */}
       {!loading && profiles.length === 0 && (
         <div className="glass p-8 text-center space-y-4">
-          <p className="text-[#D8DCE8]">
+          <p className="text-text-secondary">
             У вас пока нет отчётов Self. Введите данные рождения и получите свою
             карту.
           </p>

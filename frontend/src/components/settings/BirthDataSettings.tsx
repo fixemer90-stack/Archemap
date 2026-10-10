@@ -284,10 +284,10 @@ export function BirthDataSettings() {
   if (loading) {
     return (
       <section
-        className="rounded-[24px] border border-white/10 bg-[#111927]/90 p-6"
+        className="rounded-[24px] border border-border-default bg-surface/90 p-6"
         aria-live="polite"
       >
-        <Loader2 className="mr-2 inline h-5 w-5 animate-spin text-[#D7B466] motion-reduce:animate-none" />
+        <Loader2 className="mr-2 inline h-5 w-5 animate-spin text-accent-gold motion-reduce:animate-none" />
         Загружаем данные рождения…
       </section>
     );
@@ -295,11 +295,11 @@ export function BirthDataSettings() {
 
   if (!profile) {
     return (
-      <section className="rounded-[24px] border border-white/10 bg-[#111927]/90 p-6">
-        <h2 className="font-[family-name:var(--font-cormorant)] text-2xl text-[#F6F1E8]">
+      <section className="rounded-[24px] border border-border-default bg-surface/90 p-6">
+        <h2 className="font-[family-name:var(--font-cormorant)] text-2xl text-text-primary">
           Данные рождения
         </h2>
-        <p className="mt-3 text-base text-[#C8D0DE]">
+        <p className="mt-3 text-base text-text-secondary">
           Сначала создайте профиль, чтобы управлять исходными данными расчёта.
         </p>
       </section>
@@ -307,22 +307,22 @@ export function BirthDataSettings() {
   }
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[#D7B466]/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.12),transparent_38%),#101724] shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
-      <div className="border-b border-white/10 p-5 sm:p-8">
+    <section className="overflow-hidden rounded-[28px] border border-accent-gold/25 bg-[radial-gradient(circle_at_top_right,rgba(215,180,102,0.12),transparent_38%),#101724] shadow-elevated">
+      <div className="border-b border-border-default p-5 sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#D7B466]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-gold">
               Исходные данные расчёта
             </p>
-            <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8] sm:text-4xl">
+            <h2 className="mt-2 font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary sm:text-4xl">
               Данные рождения
             </h2>
-            <p className="mt-3 text-base leading-7 text-[#C8D0DE]">
+            <p className="mt-3 text-base leading-7 text-text-secondary">
               Изменение времени или места повлияет на натальную карту и отчёт.
               Текущий отчёт останется доступен, пока новый расчёт готовится.
             </p>
           </div>
-          <span className="w-fit rounded-full border border-[#D7B466]/25 bg-[#D7B466]/10 px-3 py-2 text-sm text-[#F2D99B]">
+          <span className="w-fit rounded-full border border-accent-gold/25 bg-accent-gold/10 px-3 py-2 text-sm text-accent-gold">
             {availability?.can_refine === false
               ? "Изменение временно недоступно"
               : "Можно уточнить"}
@@ -333,7 +333,7 @@ export function BirthDataSettings() {
           <div className="mt-6 max-w-md">
             <label
               htmlFor="birth-profile"
-              className="mb-2 block text-base font-medium text-[#F6F1E8]"
+              className="mb-2 block text-base font-medium text-text-primary"
             >
               Чьи данные показаны
             </label>
@@ -345,7 +345,7 @@ export function BirthDataSettings() {
                 setEditing(false);
                 setProgress(null);
               }}
-              className="min-h-11 w-full rounded-xl border border-white/15 bg-[#0B111C] px-4 text-base text-[#F6F1E8] outline-none focus-visible:ring-2 focus-visible:ring-[#D7B466]"
+              className="min-h-11 w-full rounded-xl border border-border-default bg-surface px-4 text-base text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {profiles.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -374,14 +374,14 @@ export function BirthDataSettings() {
             {!confirming ? (
               <div className="space-y-7">
                 <fieldset className="space-y-4">
-                  <legend className="text-lg font-semibold text-[#F6F1E8]">
+                  <legend className="text-lg font-semibold text-text-primary">
                     Время рождения
                   </legend>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label
                         htmlFor="birth-time"
-                        className="mb-2 block text-base text-[#E5E9F0]"
+                        className="mb-2 block text-base text-text-primary"
                       >
                         Время
                       </label>
@@ -397,7 +397,7 @@ export function BirthDataSettings() {
                     <div>
                       <label
                         htmlFor="birth-accuracy"
-                        className="mb-2 block text-base text-[#E5E9F0]"
+                        className="mb-2 block text-base text-text-primary"
                       >
                         Насколько точно известно время
                       </label>
@@ -410,7 +410,7 @@ export function BirthDataSettings() {
                           setAccuracy(next);
                           if (next === "unknown") setBirthTime("");
                         }}
-                        className="min-h-11 w-full rounded-xl border border-white/15 bg-[#0B111C] px-4 text-base text-[#F6F1E8] outline-none focus-visible:ring-2 focus-visible:ring-[#D7B466]"
+                        className="min-h-11 w-full rounded-xl border border-border-default bg-surface px-4 text-base text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
                         <option value="exact">
                           Точное — известно по документам
@@ -427,12 +427,12 @@ export function BirthDataSettings() {
                 </fieldset>
 
                 <fieldset className="space-y-3">
-                  <legend className="text-lg font-semibold text-[#F6F1E8]">
+                  <legend className="text-lg font-semibold text-text-primary">
                     Место рождения
                   </legend>
                   <label
                     htmlFor="birth-place"
-                    className="block text-base text-[#E5E9F0]"
+                    className="block text-base text-text-primary"
                   >
                     Начните вводить город и выберите подсказку
                   </label>
@@ -451,26 +451,26 @@ export function BirthDataSettings() {
                       className="min-h-11"
                     />
                     {searching && (
-                      <Loader2 className="absolute right-3 top-3 h-5 w-5 animate-spin text-[#D7B466] motion-reduce:animate-none" />
+                      <Loader2 className="absolute right-3 top-3 h-5 w-5 animate-spin text-accent-gold motion-reduce:animate-none" />
                     )}
                   </div>
                   <p
                     id="birth-place-help"
-                    className="text-sm leading-6 text-[#AEB8C8]"
+                    className="text-sm leading-6 text-text-muted"
                   >
                     Координаты и часовой пояс определятся автоматически после
                     выбора.
                   </p>
                   {suggestions.length > 0 && (
                     <ul
-                      className="max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-[#0B111C] p-2"
+                      className="max-h-64 overflow-y-auto rounded-xl border border-border-default bg-surface p-2"
                       aria-label="Подсказки места рождения"
                     >
                       {suggestions.map((item) => (
                         <li key={`${item.display_name}-${item.latitude}`}>
                           <button
                             type="button"
-                            className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-base text-[#E5E9F0] hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D7B466]"
+                            className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-base text-text-primary hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                             onClick={() => {
                               setSelectedPlace(item);
                               setPlaceQuery(item.display_name);
@@ -556,7 +556,7 @@ export function BirthDataSettings() {
               )}
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="max-w-2xl text-base leading-7 text-[#B9C3D3]">
+              <p className="max-w-2xl text-base leading-7 text-text-secondary">
                 Новый расчёт создаётся без повторной оплаты. Имя и пароль можно
                 менять независимо.
               </p>
@@ -588,17 +588,17 @@ function SummaryItem({
   note?: string;
 }) {
   return (
-    <div className="min-w-0 border-l border-white/10 pl-4">
-      <div className="mb-2 flex items-center gap-2 text-[#D7B466] [&_svg]:h-4 [&_svg]:w-4">
+    <div className="min-w-0 border-l border-border-default pl-4">
+      <div className="mb-2 flex items-center gap-2 text-accent-gold [&_svg]:h-4 [&_svg]:w-4">
         {icon}
         <dt className="text-sm font-medium uppercase tracking-[0.08em]">
           {label}
         </dt>
       </div>
-      <dd className="break-words text-base font-medium leading-7 text-[#F6F1E8]">
+      <dd className="break-words text-base font-medium leading-7 text-text-primary">
         {value}
       </dd>
-      {note && <p className="mt-1 text-sm leading-5 text-[#9FAABC]">{note}</p>}
+      {note && <p className="mt-1 text-sm leading-5 text-text-muted">{note}</p>}
     </div>
   );
 }
@@ -643,16 +643,16 @@ function ReviewChanges({
   return (
     <div className="space-y-6" aria-live="polite">
       <div>
-        <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+        <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
           Проверьте изменения
         </h3>
-        <p className="mt-2 text-base leading-7 text-[#C8D0DE]">
+        <p className="mt-2 text-base leading-7 text-text-secondary">
           После сохранения начнётся новый расчёт. Текущий отчёт останется
           доступен до готовности обновлённого.
         </p>
       </div>
-      <div className="overflow-hidden rounded-xl border border-white/10">
-        <div className="grid grid-cols-[minmax(5rem,.7fr)_1fr_1fr] bg-white/5 px-3 py-3 text-sm text-[#AEB8C8]">
+      <div className="overflow-hidden rounded-xl border border-border-default">
+        <div className="grid grid-cols-[minmax(5rem,.7fr)_1fr_1fr] bg-surface-elevated px-3 py-3 text-sm text-text-muted">
           <span>Поле</span>
           <span>Было</span>
           <span>Стало</span>
@@ -660,11 +660,11 @@ function ReviewChanges({
         {rows.map((row) => (
           <div
             key={row.label}
-            className="grid grid-cols-[minmax(5rem,.7fr)_1fr_1fr] gap-2 border-t border-white/10 px-3 py-4 text-sm leading-6"
+            className="grid grid-cols-[minmax(5rem,.7fr)_1fr_1fr] gap-2 border-t border-border-default px-3 py-4 text-sm leading-6"
           >
-            <strong className="text-[#F6F1E8]">{row.label}</strong>
-            <span className="break-words text-[#AEB8C8]">{row.before}</span>
-            <span className="break-words text-[#F2D99B]">{row.after}</span>
+            <strong className="text-text-primary">{row.label}</strong>
+            <span className="break-words text-text-muted">{row.before}</span>
+            <span className="break-words text-accent-gold">{row.after}</span>
           </div>
         ))}
       </div>
@@ -723,18 +723,20 @@ function ProgressState({
     progress.status === "deterministic_ready" || progress.status === "ready";
   return (
     <div
-      className="rounded-2xl border border-white/10 bg-black/15 p-5 sm:p-6"
+      className="rounded-2xl border border-border-default bg-scrim p-5 sm:p-6"
       aria-live="polite"
     >
       <div className="flex items-start gap-3">
         {["queued", "processing"].includes(progress.status) ? (
-          <Loader2 className="mt-1 h-5 w-5 shrink-0 animate-spin text-[#D7B466] motion-reduce:animate-none" />
+          <Loader2 className="mt-1 h-5 w-5 shrink-0 animate-spin text-accent-gold motion-reduce:animate-none" />
         ) : (
-          <Check className="mt-1 h-5 w-5 shrink-0 text-[#D7B466]" />
+          <Check className="mt-1 h-5 w-5 shrink-0 text-accent-gold" />
         )}
         <div>
-          <h3 className="text-xl font-semibold text-[#F6F1E8]">{content[0]}</h3>
-          <p className="mt-2 text-base leading-7 text-[#C8D0DE]">
+          <h3 className="text-xl font-semibold text-text-primary">
+            {content[0]}
+          </h3>
+          <p className="mt-2 text-base leading-7 text-text-secondary">
             {content[1]}
           </p>
         </div>

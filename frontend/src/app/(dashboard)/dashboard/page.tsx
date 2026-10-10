@@ -214,22 +214,22 @@ export default function DashboardPage() {
           )
         }
         aside={
-          <ProductSurfaceCard className="space-y-5 border-[rgba(216,180,90,0.22)] bg-[rgba(255,255,255,0.06)]">
+          <ProductSurfaceCard className="space-y-5 border-accent-gold bg-surface-subtle">
             <SurfaceEyebrow>
               {primaryProfile ? "Последний отчёт" : "Первый шаг"}
             </SurfaceEyebrow>
             {primaryProfile ? (
               <>
-                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
                   {primaryProfile.name || "Без имени"}
                 </h2>
-                <div className="space-y-2 text-sm text-[#D8DCE8]">
+                <div className="space-y-2 text-sm text-text-secondary">
                   <p className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-[#D8B45A]" />
+                    <CalendarDays className="h-4 w-4 text-accent-gold" />
                     {formatProfileDate(primaryProfile.birth_date)}
                   </p>
                   <p className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[#D8B45A]" />
+                    <MapPin className="h-4 w-4 text-accent-gold" />
                     {primaryProfile.birth_place || "Место не указано"}
                   </p>
                 </div>
@@ -242,10 +242,10 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
                   Постройте первую карту
                 </h2>
-                <p className="text-sm leading-6 text-[#D8DCE8]">
+                <p className="text-sm leading-6 text-text-secondary">
                   Достаточно даты, времени и места рождения. Всё остальное
                   появится в отчёте после расчёта.
                 </p>
@@ -286,18 +286,18 @@ export default function DashboardPage() {
         className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"
         aria-label="Статус Plus"
       >
-        <ProductSurfaceCard className="border-[rgba(216,180,90,0.24)] bg-[linear-gradient(135deg,rgba(216,180,90,0.10),rgba(255,255,255,0.045))]">
+        <ProductSurfaceCard className="border-accent-gold bg-[var(--hero-background)]">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[rgba(216,180,90,0.30)] bg-[rgba(216,180,90,0.14)] text-[#D8B45A]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-gold bg-accent-gold-soft text-accent-gold">
                 <Crown className="h-5 w-5" />
               </span>
               <div className="space-y-2">
                 <SurfaceEyebrow>{accessStatus.eyebrow}</SurfaceEyebrow>
-                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+                <h2 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
                   {accessStatus.title}
                 </h2>
-                <p className="max-w-2xl text-sm leading-6 text-[#D8DCE8]">
+                <p className="max-w-2xl text-sm leading-6 text-text-secondary">
                   {accessStatus.text}
                 </p>
               </div>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
           </div>
         </ProductSurfaceCard>
 
-        <ProductSurfaceCard className="space-y-3 text-sm leading-6 text-[#D8DCE8]">
+        <ProductSurfaceCard className="space-y-3 text-sm leading-6 text-text-secondary">
           <SurfaceEyebrow>Где это видно</SurfaceEyebrow>
           <p>
             Статус Plus теперь вынесен в кабинет, левую панель и страницу
@@ -324,12 +324,12 @@ export default function DashboardPage() {
             <SurfaceEyebrow>Мои отчёты</SurfaceEyebrow>
             <h2
               id="reports-heading"
-              className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]"
+              className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary"
             >
               Личные карты и портреты
             </h2>
           </div>
-          <p className="max-w-xl text-sm leading-6 text-[rgba(216,220,232,0.70)]">
+          <p className="max-w-xl text-sm leading-6 text-text-secondary">
             Сначала отчёт, потом дополнительные направления. Главный путь всегда
             остаётся на виду.
           </p>
@@ -341,22 +341,22 @@ export default function DashboardPage() {
               <Link
                 key={profile.id}
                 href={`/report/v2/${profile.id}`}
-                className="group rounded-[28px] border border-[rgba(216,220,232,0.13)] bg-[rgba(255,255,255,0.045)] p-6 shadow-xl shadow-black/10 transition hover:border-[rgba(216,180,90,0.42)] hover:bg-[rgba(255,255,255,0.07)]"
+                className="group rounded-[28px] border border-border-default bg-surface-subtle p-6 shadow-xl shadow-black/10 transition hover:border-accent-gold hover:bg-surface-subtle"
               >
                 <div className="flex items-start justify-between gap-5">
                   <div className="space-y-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-[#8DA8FF]">
+                    <p className="text-xs uppercase tracking-[0.28em] text-link">
                       {index === 0 ? "Основной путь" : "Сохранённый профиль"}
                     </p>
-                    <h3 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+                    <h3 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
                       {profile.name || "Без имени"}
                     </h3>
-                    <div className="space-y-2 text-sm text-[#D8DCE8]">
+                    <div className="space-y-2 text-sm text-text-secondary">
                       <p>{formatProfileDate(profile.birth_date)}</p>
                       <p>{profile.birth_place || "Место не указано"}</p>
                     </div>
                   </div>
-                  <span className="rounded-full border border-[rgba(216,180,90,0.28)] px-4 py-2 text-sm text-[#F6F1E8] transition group-hover:border-[#D8B45A]">
+                  <span className="rounded-full border border-accent-gold px-4 py-2 text-sm text-text-primary transition group-hover:border-accent-gold">
                     Открыть
                   </span>
                 </div>
@@ -367,10 +367,10 @@ export default function DashboardPage() {
           <ProductSurfaceCard className="grid gap-6 text-center md:grid-cols-[1fr_auto] md:items-center md:text-left">
             <div className="space-y-3">
               <SurfaceEyebrow>Пока пусто</SurfaceEyebrow>
-              <h3 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+              <h3 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
                 Создайте первую карту рождения
               </h3>
-              <p className="text-sm leading-6 text-[#D8DCE8]">
+              <p className="text-sm leading-6 text-text-secondary">
                 Кабинет станет рабочим пространством после первого профиля:
                 появится отчёт, дата рождения и быстрый возврат к чтению.
               </p>
@@ -380,7 +380,7 @@ export default function DashboardPage() {
             </Button>
           </ProductSurfaceCard>
         ) : (
-          <ProductSurfaceCard className="text-sm text-[#D8DCE8]">
+          <ProductSurfaceCard className="text-sm text-text-secondary">
             Загружаем ваши отчёты…
           </ProductSurfaceCard>
         )}
@@ -391,7 +391,7 @@ export default function DashboardPage() {
           <SurfaceEyebrow>Направления</SurfaceEyebrow>
           <h2
             id="products-heading"
-            className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-[#F6F1E8]"
+            className="mt-2 font-[family-name:var(--font-cormorant)] text-4xl font-semibold text-text-primary"
           >
             Что можно открыть из кабинета
           </h2>
@@ -414,16 +414,16 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-[#F6F1E8]">
+                    <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
                       {product.title}
                     </h3>
                     {product.status === "coming_soon" ? (
-                      <span className="rounded-full border border-[rgba(216,220,232,0.16)] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[rgba(216,220,232,0.54)]">
+                      <span className="rounded-full border border-border-default px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-text-muted">
                         позже
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm leading-6 text-[#D8DCE8]">
+                  <p className="text-sm leading-6 text-text-secondary">
                     {product.description}
                   </p>
                 </div>

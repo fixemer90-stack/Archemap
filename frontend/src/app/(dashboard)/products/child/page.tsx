@@ -6,25 +6,25 @@ export default function ChildProductPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-[#F6F1E8]">
+        <h1 className="font-[family-name:var(--font-cormorant)] text-3xl font-semibold text-text-primary">
           Astrotype Child
         </h1>
-        <p className="text-sm text-[#D8DCE8] mt-1">
+        <p className="text-sm text-text-secondary mt-1">
           Профиль ребёнка: темперамент, сильные стороны, рекомендации по
           воспитанию.
         </p>
       </div>
 
       <div className="glass p-8 text-center space-y-6 max-w-lg mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-[rgba(107,175,189,0.15)] flex items-center justify-center mx-auto">
-          <Baby className="h-8 w-8 text-[#6BAFBD]" />
+        <div className="w-16 h-16 rounded-2xl bg-product-child/15 flex items-center justify-center mx-auto">
+          <Baby className="h-8 w-8 text-product-child" />
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-[#F6F1E8]">
+          <h2 className="font-[family-name:var(--font-cormorant)] text-xl font-semibold text-text-primary">
             Скоро
           </h2>
-          <p className="text-sm text-[#D8DCE8] leading-relaxed">
+          <p className="text-sm text-text-secondary leading-relaxed">
             Astrotype Child поможет родителям понять темперамент и сильные
             стороны ребёнка через призму натальной карты. Не диагноз — а
             бережные гипотезы и поддерживающие практики.
@@ -32,7 +32,7 @@ export default function ChildProductPage() {
         </div>
 
         <div className="space-y-3 text-left">
-          <h3 className="text-sm font-medium text-[#F6F1E8]">
+          <h3 className="text-sm font-medium text-text-primary">
             Что будет в отчёте:
           </h3>
           <ul className="space-y-2">
@@ -45,9 +45,9 @@ export default function ChildProductPage() {
             ].map((item) => (
               <li
                 key={item}
-                className="flex items-start gap-2 text-sm text-[#D8DCE8]"
+                className="flex items-start gap-2 text-sm text-text-secondary"
               >
-                <span className="text-[#6BAFBD] mt-0.5">✦</span>
+                <span className="text-product-child mt-0.5">✦</span>
                 {item}
               </li>
             ))}

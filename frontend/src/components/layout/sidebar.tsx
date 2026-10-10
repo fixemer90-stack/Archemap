@@ -135,7 +135,7 @@ export function Sidebar() {
     <>
       <aside
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-white/10 bg-[#0B0D14]/90 shadow-[20px_0_60px_rgba(3,5,12,0.22)] backdrop-blur-2xl transition-[width] duration-300 motion-reduce:transition-none md:flex md:w-[4.75rem]",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-border-default bg-surface/90 shadow-elevated backdrop-blur-2xl transition-[width] duration-300 motion-reduce:transition-none md:flex md:w-[4.75rem]",
           sidebarOpen && "xl:w-[17.5rem]",
         )}
       >
@@ -143,7 +143,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={toggleSidebar}
-          className="absolute -right-3 top-[5.15rem] hidden h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-[#171426] text-[#D8DCE8] shadow-lg transition hover:border-[#D8B45A]/40 hover:text-[#F6F1E8] motion-reduce:transition-none xl:flex"
+          className="absolute -right-3 top-[5.15rem] hidden h-7 w-7 items-center justify-center rounded-full border border-border-default bg-surface text-text-secondary shadow-lg transition hover:border-accent-gold/40 hover:text-text-primary motion-reduce:transition-none xl:flex"
           aria-label={sidebarOpen ? "Свернуть меню" : "Развернуть меню"}
           title={sidebarOpen ? "Свернуть меню" : "Развернуть меню"}
         >
@@ -159,7 +159,7 @@ export function Sidebar() {
         <div className="fixed inset-0 z-50 md:hidden" role="presentation">
           <button
             type="button"
-            className="absolute inset-0 bg-[#05070C]/78 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/78 backdrop-blur-sm"
             onClick={() => setMobileSidebarOpen(false)}
             aria-label="Закрыть меню"
           />
@@ -167,12 +167,12 @@ export function Sidebar() {
             role="dialog"
             aria-modal="true"
             aria-label="Навигация"
-            className="relative flex h-dvh w-[88vw] max-w-[21rem] flex-col border-r border-white/12 bg-[#0B0D14]/98 shadow-[24px_0_80px_rgba(0,0,0,0.48)]"
+            className="relative flex h-dvh w-[88vw] max-w-[21rem] flex-col border-r border-border-default bg-surface/98 shadow-elevated"
           >
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(false)}
-              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[#D8DCE8] transition hover:bg-white/[0.08] hover:text-[#F6F1E8] motion-reduce:transition-none"
+              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border-default bg-surface-elevated/[0.04] text-text-secondary transition hover:bg-surface-elevated/[0.08] hover:text-text-primary motion-reduce:transition-none"
               aria-label="Закрыть меню"
               title="Закрыть меню"
             >
@@ -214,13 +214,13 @@ function SidebarPanel({
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(circle_at_20%_0%,rgba(91,63,214,0.24),transparent_64%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[var(--hero-background)]"
         aria-hidden="true"
       />
 
       <div
         className={cn(
-          "relative flex h-[4.75rem] shrink-0 items-center border-b border-white/10",
+          "relative flex h-[4.75rem] shrink-0 items-center border-b border-border-default",
           mobile
             ? "px-5 pr-16"
             : "justify-center px-3 xl:justify-start xl:px-5",
@@ -228,9 +228,9 @@ function SidebarPanel({
       >
         <Link
           href="/dashboard"
-          className="flex min-w-0 items-center gap-3 text-[#F6F1E8]"
+          className="flex min-w-0 items-center gap-3 text-text-primary"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#D8B45A]/30 bg-[linear-gradient(145deg,rgba(216,180,90,0.18),rgba(91,63,214,0.24))] text-[#E6C66F] shadow-[0_8px_30px_rgba(91,63,214,0.16)]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-accent-gold/30 bg-[var(--hero-background)] text-accent-gold shadow-elevated">
             <Sparkles className="h-[18px] w-[18px]" />
           </span>
           {showFullBrand && (
@@ -238,7 +238,7 @@ function SidebarPanel({
               <span className="block truncate font-[family-name:var(--font-cormorant)] text-xl font-semibold tracking-[0.04em]">
                 Astrotype
               </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D8B45A]/70">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-gold/70">
                 карта личности
               </span>
             </span>
@@ -252,17 +252,17 @@ function SidebarPanel({
           className={cn(
             "mb-4 flex min-h-12 items-center gap-3 rounded-2xl border px-2.5 py-2.5 transition motion-reduce:transition-none",
             isPlusActive
-              ? "border-[#D8B45A]/35 bg-[linear-gradient(135deg,rgba(216,180,90,0.14),rgba(91,63,214,0.10))] text-[#F6F1E8]"
-              : "border-white/10 bg-white/[0.035] text-[#D8DCE8] hover:border-[#D8B45A]/25 hover:bg-white/[0.055]",
+              ? "border-accent-gold/35 bg-[var(--hero-background)] text-text-primary"
+              : "border-border-default bg-surface-elevated/[0.035] text-text-secondary hover:border-accent-gold/25 hover:bg-surface-elevated/[0.055]",
             itemAlignment,
           )}
           aria-label={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
           title={isPlusActive ? "Аккаунт Plus активен" : "Plus не активен"}
         >
-          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#D8B45A]/12 text-[#D8B45A]">
+          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent-gold/12 text-accent-gold">
             <Crown className="h-4 w-4" />
             {isPlusActive && (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#7CF29A] ring-2 ring-[#171426]" />
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-background" />
             )}
           </span>
           <span className={cn("min-w-0", labelClass)}>
@@ -273,7 +273,7 @@ function SidebarPanel({
                   ? "Plus активен"
                   : "Plus не активен"}
             </span>
-            <span className="block truncate text-[11px] text-[#AEB8C8]">
+            <span className="block truncate text-[11px] text-text-muted">
               {isPlusActive && activeUntil
                 ? `активен до ${activeUntil}`
                 : "Статус аккаунта"}
@@ -298,7 +298,7 @@ function SidebarPanel({
         <nav className="space-y-1" aria-label="Продукты">
           <p
             className={cn(
-              "mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#AEB8C8]/55",
+              "mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted/55",
               labelClass,
             )}
           >
@@ -317,7 +317,7 @@ function SidebarPanel({
       </div>
 
       <nav
-        className="relative shrink-0 space-y-1 border-t border-white/10 bg-[#0B0D14]/72 p-2.5"
+        className="relative shrink-0 space-y-1 border-t border-border-default bg-surface/72 p-2.5"
         aria-label="Настройки"
       >
         {settingsItems.map((item) => (
@@ -333,7 +333,7 @@ function SidebarPanel({
           type="button"
           onClick={handleLogout}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[#AEB8C8] transition hover:bg-white/[0.05] hover:text-[#F6F1E8] motion-reduce:transition-none",
+            "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-text-muted transition hover:bg-surface-elevated/[0.05] hover:text-text-primary motion-reduce:transition-none",
             itemAlignment,
           )}
           aria-label="Выйти"
@@ -364,10 +364,10 @@ function SidebarLink({
       className={cn(
         "group relative flex min-h-11 items-center gap-3 overflow-hidden rounded-xl px-3 py-2 text-sm font-medium transition motion-reduce:transition-none",
         item.disabled
-          ? "cursor-not-allowed text-[#AEB8C8]/30"
+          ? "cursor-not-allowed text-text-muted/30"
           : active
-            ? "border border-[#8DA8FF]/20 bg-[linear-gradient(100deg,rgba(91,63,214,0.24),rgba(141,168,255,0.08))] text-[#F6F1E8] shadow-[inset_3px_0_0_rgba(216,180,90,0.85)]"
-            : "text-[#C8D0DE] hover:bg-white/[0.05] hover:text-[#F6F1E8]",
+            ? "border border-link/20 bg-[var(--hero-background)] text-text-primary shadow-elevated"
+            : "text-text-secondary hover:bg-surface-elevated/[0.05] hover:text-text-primary",
         itemAlignment,
       )}
       aria-label={item.title}
@@ -386,7 +386,7 @@ function SidebarLink({
       {item.disabled && (
         <span
           className={cn(
-            "rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#AEB8C8]/45",
+            "rounded-full border border-border-default px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-text-muted/45",
             labelClass,
           )}
         >

@@ -32,7 +32,15 @@ for (const token of ["Открыть меню", "toggleMobileSidebar", "md:hidde
   }
 }
 
-for (const forbidden of ["useTheme", "Включить светлую тему", "Moon", "Sun"]) {
+for (const forbidden of [
+  "Bell",
+  "Уведомления",
+  'aria-hidden="true"',
+  "useTheme",
+  "Включить светлую тему",
+  "Moon",
+  "Sun",
+]) {
   if (header.includes(forbidden)) {
     throw new Error(
       `dashboard header still exposes incomplete light theme via ${forbidden}`,

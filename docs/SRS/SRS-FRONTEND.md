@@ -1,7 +1,7 @@
 # SRS: Frontend — Astrotype Web Application
 
-**Версия:** 1.0
-**Дата:** 2026-05-30
+**Версия:** 1.1
+**Дата:** 2026-10-10
 **Статус:** In Progress
 **Автор:** Astrotype Team
 
@@ -47,6 +47,8 @@ Frontend — это клиентский слой платформы, взаим
 | Frontend Architecture | `docs/FRONTEND-ARCHITECTURE.md` |
 | Component Library | `docs/COMPONENT-LIBRARY.md` |
 | Design Code | `docs/astrotype_design_code.md` |
+| E21 Light Theme | `docs/features/E21-light-theme/FEATURE.md` |
+| E21 Light Theme SRS | `docs/SRS/SRS-E21-light-theme.md` |
 | Backend SRS E3 | `docs/SRS-E3-chart-engine.md` |
 | Backend SRS E4 | `docs/SRS-E4-rules-content.md` |
 | MVP Status | `docs/MVP-STATUS.md` |
@@ -158,7 +160,7 @@ Frontend не содержит бизнес-логики. Вся логика �
 
 **FR-F.6.1** Система ДОЛЖНА предоставлять страницу настроек аккаунта.
 
-**FR-F.6.2** Система ДОЛЖНА позволять смену темы (light/dark/system).
+**FR-F.6.2** После закрытия E21 система ДОЛЖНА позволять смену темы (`light/dark/system`). До прохождения E21 completeness gate интерфейс ДОЛЖЕН оставаться принудительно тёмным и не показывать недоделанный переключатель.
 
 **FR-F.6.3** Система ДОЛЖНА позволять выход из аккаунта.
 
@@ -229,7 +231,7 @@ Frontend не содержит бизнес-логики. Вся логика �
 
 **Root Layout** (`app/layout.tsx`):
 - Inter + Cormorant Garamond fonts (CSS variables: `--font-inter`, `--font-cormorant`)
-- ThemeProvider (defaultTheme=dark, Astrotype always-dark)
+- ThemeProvider (`defaultTheme=dark`, временный `forcedTheme=dark` до закрытия E21)
 - QueryProvider (TanStack Query)
 - lang="ru"
 
@@ -240,7 +242,7 @@ Frontend не содержит бизнес-логики. Вся логика �
 
 **Dashboard Layout** (`app/(dashboard)/layout.tsx`):
 - Sidebar (glass, навигация)
-- Header (glass, user menu, theme toggle)
+- Header (glass, mobile navigation action; theme selector возвращается только после E21 completeness gate)
 - Main content area
 
 ---

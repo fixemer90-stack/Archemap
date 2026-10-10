@@ -69,10 +69,11 @@ v2 foundation is not:
 | V2-E14 | QA, smoke, rollout               | ✅ Completed             | Verify generation quality, runtime reliability and rollout safety.                                      | `docs/features/E16-v2-e14-qa-smoke-rollout/FEATURE.md`             |
 | V2-E15 | LLM runtime integration          | ✅ Completed             | Connect V2 narrative segments to the configured real LLM provider with honest progress/failure states.  | `docs/features/E16-v2-e15-llm-runtime-integration/FEATURE.md`      |
 | V2-E16 | Narrative depth quality          | ✅ Completed             | Harden prompts, synthesis inputs and validators so report prose is deep rather than shallow.            | `docs/features/E16-v2-e16-narrative-depth-quality/FEATURE.md`      |
-| V2-E18 | Product surface redesign         | ⬜ Planned               | Redesign homepage, dashboard and billing so they match the v2 report visual language.                   | `docs/features/E16-v2-e18-product-surface-redesign/FEATURE.md`     |
+| V2-E18 | Product surface redesign         | ✅ Implemented           | Redesign homepage, dashboard and billing so they match the v2 report visual language.                   | `docs/features/E16-v2-e18-product-surface-redesign/FEATURE.md`     |
 | E6     | Monthly Plus SaaS billing        | ⬜ Target docs ready     | Convert payment-confirmed access into monthly Plus subscription with explicit period, renewal and expiry control. | `docs/features/E6-billing-subscriptions/FEATURE.md`                |
 | E8     | Account-level report access      | ⬜ Target docs ready     | Keep the basic report available to every account and require active Plus for all other reports.                    | `docs/features/E8-account-level-report-access/FEATURE.md`          |
 | E19    | Career Report                    | ⬜ Target docs ready     | Build an evidence-backed professional report from v2 natal data, user answers and deterministic Career Dimensions. | `docs/features/E19-career-report/FEATURE.md`                       |
+| E21    | Cohesive light theme             | ⬜ Target docs ready     | Add a warm, token-driven light theme across every active web surface before restoring the theme selector.          | `docs/features/E21-light-theme/FEATURE.md`                         |
 
 ---
 

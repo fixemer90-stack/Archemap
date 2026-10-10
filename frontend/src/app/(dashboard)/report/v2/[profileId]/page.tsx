@@ -102,7 +102,11 @@ export default function AstrotypeV2ReportPage() {
       <Card>
         <CardHeader>
           <CardDescription>Натальный портрет</CardDescription>
-          <CardTitle>Готовим ваш отчёт</CardTitle>
+          <CardTitle>
+            {generation.state === "failed"
+              ? "Не удалось подготовить отчёт"
+              : "Готовим ваш отчёт"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-text-secondary">
           <p>{generation.error || generation.message}</p>

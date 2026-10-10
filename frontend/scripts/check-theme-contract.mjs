@@ -4,6 +4,10 @@ import path from "node:path";
 const root = process.cwd();
 const globalsPath = path.join(root, "src/app/globals.css");
 const globals = fs.readFileSync(globalsPath, "utf8");
+const playwrightConfig = fs.readFileSync(
+  path.join(root, "playwright.config.ts"),
+  "utf8",
+);
 const uiRoot = path.join(root, "src/components/ui");
 const surfaceRoots = [
   path.join(root, "src/components/layout"),
@@ -134,6 +138,18 @@ function walk(target) {
 for (const target of surfaceRoots.flatMap(walk)) {
   if (/\.(?:ts|tsx)$/.test(target)) {
     assertNoThemeLiterals(target, path.relative(root, target));
+  }
+}
+
+for (const viewport of [390, 820, 1440]) {
+  if (!playwrightConfig.includes(`width: ${viewport}`)) {
+    throw new Error(`theme browser matrix misses ${viewport}px viewport`);
+  }
+}
+
+for (const spec of ["theme-visual.spec.ts", "theme-accessibility.spec.ts"]) {
+  if (!fs.existsSync(path.join(root, "tests/e2e", spec))) {
+    throw new Error(`theme browser completeness gate misses ${spec}`);
   }
 }
 

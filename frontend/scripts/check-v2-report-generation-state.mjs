@@ -38,8 +38,14 @@ assert.match(hook, /deterministic_ready/);
 assert.match(hook, /narrative_generating/);
 assert.match(hook, /partial/);
 assert.match(hook, /complete/);
+assert.doesNotMatch(
+  hook,
+  /\$\{(?:status\.status|reportStatus)\}/,
+  "raw generation statuses must not leak into customer-facing copy",
+);
 
 assert.match(page, /useV2ReportGeneration/);
+assert.match(page, /Не удалось подготовить отчёт/);
 assert.match(page, /if \(generation\.report\)/);
 assert.doesNotMatch(
   page,

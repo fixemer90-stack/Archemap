@@ -76,6 +76,19 @@ function isVisibleReportStatus(status: string): boolean {
   return VISIBLE_REPORT_STATUSES.has(status);
 }
 
+function getGenerationMessage(status: string): string {
+  if (status === "queued") {
+    return "Отчёт поставлен в очередь. Проверяем готовность...";
+  }
+  if (status === "running") {
+    return "Собираем основу отчёта...";
+  }
+  if (status === "narrative_generating") {
+    return "Дополняем отчёт текстовыми пояснениями...";
+  }
+  return "Проверяем готовность отчёта...";
+}
+
 export function useV2ReportGeneration(
   profileId: string,
 ): UseV2ReportGenerationResult {
@@ -140,14 +153,12 @@ export function useV2ReportGeneration(
 
     if (isVisibleReportStatus(reportStatus)) {
       setState("polling");
-      setMessage(
-        `Отчёт уже доступен, нарратив ещё обновляется: ${reportStatus}`,
-      );
+      setMessage("Отчёт уже доступен, текстовые пояснения ещё дополняются.");
       return false;
     }
 
     setState("queued");
-    setMessage(`Отчёт в работе: ${reportStatus}`);
+    setMessage("Отчёт в работе. Проверяем готовность...");
     return false;
   }, []);
 
@@ -156,7 +167,7 @@ export function useV2ReportGeneration(
       const status = await fetchAstrotypeV2GenerationStatus(id);
       setGenerationStatus(status);
       setGenerationId(status.generation_id);
-      setMessage(`Статус генерации: ${status.status}`);
+      setMessage(getGenerationMessage(status.status));
 
       let reportIsTerminal = false;
       if (status.report_id) {
@@ -165,7 +176,7 @@ export function useV2ReportGeneration(
 
       if (reportIsTerminal || isTerminalGenerationStatus(status.status)) {
         if (!status.report_id && status.status !== "already_exists") {
-          throw new Error(`Генерация завершилась без отчёта: ${status.status}`);
+          throw new Error("Генерация завершилась без готового отчёта");
         }
         inFlightRef.current = false;
         return;

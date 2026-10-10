@@ -491,6 +491,8 @@ def assemble_career_report_row(*, report: CareerReport, segment_rows: list[Caree
         status = "ready"
     elif failed and not ready_sections:
         status = "narrative_failed"
+    elif failed and ready_sections:
+        status = "partial_failure"
     elif ready_sections:
         status = "generating_sections"
     else:

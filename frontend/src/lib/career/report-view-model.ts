@@ -217,7 +217,7 @@ function usesV2Presentation(deterministic: Record<string, unknown>): boolean {
 }
 
 function reportNotice(status: string): CareerReportPresentation["notice"] {
-  if (status === "narrative_failed") {
+  if (status === "narrative_failed" || status === "partial_failure") {
     return {
       kind: "narrative_failed",
       title: "Часть пояснений временно недоступна.",

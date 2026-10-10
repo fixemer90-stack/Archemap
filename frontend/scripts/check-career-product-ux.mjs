@@ -41,6 +41,12 @@ expect(
   "Career client must poll by generation id",
 );
 expect(
+  /\[\s*"ready",\s*"partial_failure",\s*"narrative_failed",\s*"failed"\s*\]/.test(
+    page,
+  ),
+  "Career generation polling must stop on terminal partial failure",
+);
+expect(
   page.includes("missingRequired"),
   "Career UI must expose required-answer validation",
 );

@@ -470,6 +470,48 @@ async def test_provider_failure_keeps_deterministic_report_and_section_retry_is_
 
 
 @pytest.mark.asyncio
+async def test_partial_narrative_assembly_is_terminal_instead_of_stuck_generating() -> None:
+    facts = _facts()
+    generation_id = uuid.uuid4()
+    report = build_deterministic_career_report_row(
+        facts=facts,
+        generation_id=generation_id,
+        idempotency_key="career-report-partial",
+        version=1,
+    )
+    inputs = build_career_section_inputs(facts)
+    ready = await run_career_segment_generation(
+        provider=MockCareerSegmentProvider(),
+        section_input=inputs[0],
+        career_profile_id=facts.profile_id,
+        chart_id=facts.chart_id,
+        generation_id=generation_id,
+    )
+
+    class FailingProvider:
+        provider_name = "failing"
+        model_name = "test"
+
+        async def generate_segment(self, *, prompt: str, section_input: Any) -> dict[str, Any]:
+            del prompt, section_input
+            raise RuntimeError("provider unavailable")
+
+    failed = await run_career_segment_generation(
+        provider=FailingProvider(),
+        section_input=inputs[1],
+        career_profile_id=facts.profile_id,
+        chart_id=facts.chart_id,
+        generation_id=generation_id,
+    )
+
+    assembled = assemble_career_report_row(report=report, segment_rows=[ready, failed])
+
+    assert assembled.status == "partial_failure"
+    assert len(assembled.narrative_payload["sections"]) == 1
+    assert assembled.assembled_payload["status"] == "partial_failure"
+
+
+@pytest.mark.asyncio
 async def test_provider_failure_records_safe_diagnostics_without_model_prose() -> None:
     from app.modules.llm.exceptions import LLMInvalidResponseError
 

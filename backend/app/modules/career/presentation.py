@@ -103,7 +103,7 @@ def _number(value: object) -> int | float | None:
 
 
 def _notice(report_status: str) -> dict[str, str] | None:
-    if report_status == "narrative_failed":
+    if report_status in {"narrative_failed", "partial_failure"}:
         return {
             "kind": "narrative_failed",
             "title": "Часть пояснений временно недоступна.",

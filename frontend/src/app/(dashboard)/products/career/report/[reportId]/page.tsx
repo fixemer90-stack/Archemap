@@ -71,7 +71,9 @@ export default function CareerReportPage() {
   useEffect(() => {
     if (
       !payload ||
-      ["ready", "narrative_failed", "failed"].includes(payload.status)
+      ["ready", "partial_failure", "narrative_failed", "failed"].includes(
+        payload.status,
+      )
     )
       return;
     const timer = window.setInterval(() => void load(), 3000);

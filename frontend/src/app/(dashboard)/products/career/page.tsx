@@ -204,7 +204,9 @@ export default function CareerProductPage() {
   useEffect(() => {
     if (
       !generation ||
-      ["ready", "narrative_failed", "failed"].includes(generation.status)
+      ["ready", "partial_failure", "narrative_failed", "failed"].includes(
+        generation.status,
+      )
     )
       return;
     const timer = window.setInterval(async () => {

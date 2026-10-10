@@ -49,6 +49,12 @@ expect(
   "Context constraints must survive view-model mapping",
 );
 expect(
+  /\[\s*"ready",\s*"partial_failure",\s*"narrative_failed",\s*"failed"\s*\]/.test(
+    page,
+  ),
+  "Career reader polling must stop on terminal partial failure",
+);
+expect(
   page.includes("narrative_failed"),
   "Reader must preserve deterministic content on narrative failure",
 );

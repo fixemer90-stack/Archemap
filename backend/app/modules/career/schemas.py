@@ -36,6 +36,7 @@ class CareerLifecycleStatus(StrEnum):
     CALCULATING_DIMENSIONS = "calculating_dimensions"
     DETERMINISTIC_READY = "deterministic_ready"
     GENERATING_SECTIONS = "generating_sections"
+    PARTIAL_FAILURE = "partial_failure"
     READY = "ready"
     NARRATIVE_FAILED = "narrative_failed"
     FAILED = "failed"

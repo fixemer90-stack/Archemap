@@ -2,7 +2,7 @@
 
 **Версия:** 1.0
 **Дата:** 2026-10-10
-**Статус:** Planned
+**Статус:** Implemented locally; CI/staging rollout pending
 **Feature:** `docs/features/E21-light-theme/FEATURE.md`
 
 ## 1. Введение
@@ -17,7 +17,7 @@
 
 ### 1.3 Текущий baseline
 
-До закрытия E21 root layout принудительно использует dark theme, а пользовательский switcher отсутствует. Это fail-closed состояние, а не финальный отказ от светлой темы.
+Semantic migration, selector и локальные browser gates реализованы. Staging продолжает считаться fail-closed до доставки точного green SHA, authenticated smoke и проверки rollback к dark lock.
 
 ## 2. Общее описание
 
@@ -44,7 +44,7 @@
 
 **FR-E21.1.3** Выбранный режим ДОЛЖЕН сохраняться между reload и переходами по маршрутам.
 
-**FR-E21.1.4** До закрытия E21 система ДОЛЖНА оставаться принудительно тёмной и не показывать недоступный switcher.
+**FR-E21.1.4** До прохождения completeness gate система ДОЛЖНА оставаться принудительно тёмной и не показывать недоступный switcher; dark lock остаётся обязательным rollback-путём.
 
 ### 3.2 Theme initialization
 

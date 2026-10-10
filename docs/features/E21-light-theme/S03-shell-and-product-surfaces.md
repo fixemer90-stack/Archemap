@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** 🟡 Реализовано, browser matrix в S06
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -37,15 +37,16 @@ Header, sidebar и крупные продуктовые страницы фор
 - [x] Активный пункт меню различим через фон, border и icon treatment, а не только цвет.
 - [x] Homepage/dashboard/settings/billing/subscriptions/products переведены на semantic tokens.
 - [x] Empty/loading/error/locked states в этих поверхностях покрыты semantic tokens.
-- [ ] На 390, 820 и 1440 px нет горизонтального overflow — закрывается browser matrix S06.
+- [x] На 390, 820 и 1440 px нет горизонтального overflow по browser matrix S06.
 - [x] Product accents используют отдельные contrast-safe light/dark tokens.
-- [x] Root lock остаётся тёмным; пользовательский switcher ещё не возвращён.
+- [x] Dark root lock сохранялся до S05; selector включён только после green локального completeness gate.
 
 ## Evidence
 
 - RED: `node scripts/check-theme-contract.mjs` — `src/components/layout/header.tsx` содержал dark-only literals.
 - GREEN: shell/account/product source contract проходит; inert bell и decorative avatar удалены.
 - Checks: `node scripts/check-dashboard-shell-ux.mjs`, `node scripts/check-product-surface-redesign.mjs`, `node scripts/check-billing-ux.mjs`, `node scripts/check-birth-data-settings-ux.mjs`, ESLint и TypeScript.
+- Browser evidence: `npx playwright test tests/e2e/theme-visual.spec.ts` и `theme-accessibility.spec.ts` — по `6 passed`; shell/account/product surfaces проверены в light/dark на 390/820/1440 без overflow.
 
 ## Проверка
 

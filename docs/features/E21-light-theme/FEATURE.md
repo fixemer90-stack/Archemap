@@ -4,9 +4,9 @@
 
 ## Статус
 
-⬜ Запланировано
+🟡 Реализовано локально; CI и staging rollout ожидаются
 
-Текущий безопасный baseline: интерфейс принудительно закреплён в тёмной теме коммитом `a48fe5e`, а переключатель скрыт. Светлая тема не должна возвращаться в пользовательский интерфейс до выполнения всех Stories и rollout-gate из S06.
+В текущей локальной ветке semantic migration, selector и browser gates завершены. Публичный staging baseline пока остаётся на прежнем dark-lock release; E21 не считается выпущенной до green CI, authenticated staging smoke и rollback drill из S06.
 
 ## Проблема
 
@@ -84,16 +84,16 @@ E21 не должна «инвертировать» текущий дизайн
 
 ## Критерии приёмки
 
-- [ ] Светлая тема не содержит плоского белого canvas и сохраняет визуальную идентичность Astrotype.
-- [ ] Все строки матрицы покрытия проверены; нет смешения тёмных и светлых участков.
-- [ ] Theme-sensitive стили выражены через семантические токены или документированные product-accent tokens.
-- [ ] В активных поверхностях нет необоснованных жёстких `bg-[#...]`, `text-[#...]`, `border-white/...` и dark-only rgba.
-- [ ] Обычный текст и интерактивные элементы соответствуют WCAG 2.1 AA; focus ring видим в обеих темах.
-- [ ] Charts и инфографика различимы не только по цвету и читаемы в обеих темах.
-- [ ] `light`, `dark` и `system` корректно сохраняются и применяются до hydration без вспышки другой темы.
-- [ ] Theme switcher имеет понятные русские labels, keyboard support и отражает текущий режим.
-- [ ] Скриншотные сценарии пройдены на 390, 820 и 1440 px в обеих темах.
-- [ ] На каждой проверяемой ширине отсутствует горизонтальный overflow.
+- [x] Светлая тема не содержит плоского белого canvas и сохраняет визуальную идентичность Astrotype.
+- [x] Все строки матрицы покрытия проверены; нет смешения тёмных и светлых участков.
+- [x] Theme-sensitive стили выражены через семантические токены или документированные product-accent tokens.
+- [x] В активных поверхностях нет необоснованных жёстких `bg-[#...]`, `text-[#...]`, `border-white/...` и dark-only rgba.
+- [x] Обычный текст и интерактивные элементы соответствуют WCAG 2.1 AA; focus ring видим в обеих темах.
+- [x] Charts и инфографика различимы не только по цвету и читаемы в обеих темах.
+- [x] `light`, `dark` и `system` корректно сохраняются и применяются до hydration без вспышки другой темы.
+- [x] Theme switcher имеет понятные русские labels, keyboard support и отражает текущий режим.
+- [x] Скриншотные сценарии пройдены на 390, 820 и 1440 px в обеих темах.
+- [x] На каждой проверяемой ширине отсутствует горизонтальный overflow.
 - [ ] Frontend tests, ESLint, Prettier, TypeScript и production build проходят.
 - [ ] Staging smoke выполнен в обеих темах по ключевым маршрутам.
 - [ ] Переключатель включён только после полноты покрытия; rollback возвращает принудительную тёмную тему без отката данных.
@@ -102,12 +102,12 @@ E21 не должна «инвертировать» текущий дизайн
 
 | ID  | Story                                                                                             | Статус       |
 | --- | ------------------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Определить семантические токены и контрастный контракт](./S01-theme-foundation.md)               | ⬜ Не начато |
-| S02 | [Перевести UI primitives на семантические токены](./S02-component-token-migration.md)             | ⬜ Не начато |
-| S03 | [Перевести shell и продуктовые поверхности](./S03-shell-and-product-surfaces.md)                  | ⬜ Не начато |
-| S04 | [Перевести auth, отчёты, charts и граничные состояния](./S04-reports-charts-auth.md)              | ⬜ Не начато |
-| S05 | [Вернуть выбор light/dark/system без hydration flash](./S05-theme-preference-and-switcher.md)     | ⬜ Не начато |
-| S06 | [Добавить visual/accessibility gates и безопасный rollout](./S06-visual-accessibility-rollout.md) | ⬜ Не начато |
+| S01 | [Определить семантические токены и контрастный контракт](./S01-theme-foundation.md)               | ✅ Завершено |
+| S02 | [Перевести UI primitives на семантические токены](./S02-component-token-migration.md)             | ✅ Завершено |
+| S03 | [Перевести shell и продуктовые поверхности](./S03-shell-and-product-surfaces.md)                  | ✅ Завершено |
+| S04 | [Перевести auth, отчёты, charts и граничные состояния](./S04-reports-charts-auth.md)              | ✅ Завершено |
+| S05 | [Вернуть выбор light/dark/system без hydration flash](./S05-theme-preference-and-switcher.md)     | ✅ Завершено |
+| S06 | [Добавить visual/accessibility gates и безопасный rollout](./S06-visual-accessibility-rollout.md) | 🟡 Rollout   |
 
 ## Порядок реализации
 
@@ -142,12 +142,13 @@ npx tsc --noEmit --pretty false
 npm run build
 ```
 
-Планируемые browser gates:
+Browser gates:
 
 ```bash
 cd frontend
 npx playwright test tests/e2e/theme.spec.ts
 npx playwright test tests/e2e/theme-visual.spec.ts
+npx playwright test tests/e2e/theme-accessibility.spec.ts
 ```
 
 ## Rollback

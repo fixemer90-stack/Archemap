@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 Локальные gates завершены, staging rollout ожидается
 
 ## Контекст
 
@@ -46,15 +46,28 @@
 
 ## Критерии приёмки
 
-- [ ] Все visual matrix cells пройдены.
-- [ ] Нет критических axe violations.
-- [ ] Contrast exceptions отсутствуют либо явно обоснованы для non-text decorative content.
-- [ ] Нет horizontal overflow на обязательных viewport.
+- [x] Все visual matrix cells пройдены.
+- [x] Нет serious/critical axe violations.
+- [x] Contrast exceptions отсутствуют; semantic contrast pairs закреплены source contract.
+- [x] Нет horizontal overflow на обязательных viewport.
 - [ ] CI блокирует theme regressions.
 - [ ] Staging smoke выполнен в authenticated session.
-- [ ] Switcher включён только после green completeness gate.
+- [x] Switcher включён только после green локального completeness gate.
 - [ ] Rollback к dark lock проверен.
-- [ ] Feature/story/SRS статусы и evidence синхронизированы.
+- [x] Feature/story/SRS статусы и evidence синхронизированы с локальным состоянием; rollout gaps оставлены открытыми.
+
+## Локальное evidence
+
+- Commit: `2a24bd1 test(e21): add visual accessibility matrix`.
+- Viewports: Playwright projects `390×844`, `820×1180`, `1440×1100`.
+- Themes: `light`, `dark`; preference behavior отдельно покрыт `theme.spec.ts`.
+- Visual baselines: 66 screenshots — 11 surfaces/states × 2 themes × 3 viewport classes.
+- States: homepage, login, dashboard shell, settings, billing, Career product, V2 ready/loading/error, Career reader, keyboard tooltip.
+- `npx playwright test tests/e2e/theme-visual.spec.ts` — `6 passed`.
+- `npx playwright test tests/e2e/theme-accessibility.spec.ts` — `6 passed`; serious/critical axe violations отсутствуют, overflow assertions прошли на каждой route/theme/viewport комбинации.
+- Ручная contact-sheet проверка выполнена для desktop/mobile в обеих темах; mixed-theme islands, clipping и незапланированные error states не обнаружены.
+- V2 generation copy дополнительно очищен от raw status values; loading и error baselines используют пользовательские формулировки.
+- CI evidence, staging authenticated smoke и rollback drill будут записаны после push/rollout.
 
 ## Проверка
 

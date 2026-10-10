@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** 🟡 Реализовано, browser matrix в S06
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -36,14 +36,15 @@
 - [x] Chart grid, labels, series и tooltip используют отдельные chart tokens.
 - [x] Статусы charts имеют текстовые/структурные labels и не зависят только от цвета.
 - [x] Loading/locked/error/retry/not-found states не содержат theme-sensitive literals.
-- [ ] Длинные отчёты не дают разрывов и неверных sticky/overlay backgrounds — browser matrix S06.
-- [x] Root lock остаётся тёмным до S06.
+- [x] Длинные отчёты не дают разрывов и неверных sticky/overlay backgrounds по browser matrix S06.
+- [x] Dark root lock сохранялся до завершения theme completeness gate.
 
 ## Evidence
 
 - RED: расширенный `node scripts/check-theme-contract.mjs` упал на `billing-checkout-button.tsx` и report/chart/auth literals.
 - GREEN: все active auth/report/chart/glossary/loading/error surfaces переведены на semantic/chart/state tokens; raw HEX/RGBA в active TSX запрещены.
 - Checks: `node scripts/check-auth-ux.mjs`, `node scripts/check-report-ux.mjs`, `node scripts/check-career-report-reader.mjs`, `npm test`, ESLint и TypeScript.
+- Browser evidence: V2 ready/loading/error, Career reader и tooltip сохранены в `theme-visual.spec.ts-snapshots` для light/dark и 390/820/1440; visual и accessibility specs — по `6 passed`.
 
 ## Проверка
 

@@ -589,16 +589,18 @@ function SummaryItem({
 }) {
   return (
     <div className="min-w-0 border-l border-border-default pl-4">
-      <div className="mb-2 flex items-center gap-2 text-accent-gold [&_svg]:h-4 [&_svg]:w-4">
-        {icon}
-        <dt className="text-sm font-medium uppercase tracking-[0.08em]">
-          {label}
-        </dt>
-      </div>
+      <dt className="mb-2 flex items-center gap-2 text-sm font-medium uppercase tracking-[0.08em] text-accent-gold [&_svg]:h-4 [&_svg]:w-4">
+        <span aria-hidden="true">{icon}</span>
+        <span>{label}</span>
+      </dt>
       <dd className="break-words text-base font-medium leading-7 text-text-primary">
-        {value}
+        <span>{value}</span>
+        {note && (
+          <span className="mt-1 block text-sm font-normal leading-5 text-text-muted">
+            {note}
+          </span>
+        )}
       </dd>
-      {note && <p className="mt-1 text-sm leading-5 text-text-muted">{note}</p>}
     </div>
   );
 }

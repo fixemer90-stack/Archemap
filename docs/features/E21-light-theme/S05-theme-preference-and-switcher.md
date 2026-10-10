@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** ⬜ Не начато
+**Статус:** ✅ Завершено
 
 ## Контекст
 
@@ -39,14 +39,21 @@
 
 ## Критерии приёмки
 
-- [ ] Switcher недоступен, если coverage gate не проходит.
-- [ ] Три режима имеют явные русские labels и current-state indication.
-- [ ] Выбор сохраняется после reload и перехода между маршрутами.
-- [ ] System mode следует OS preference.
-- [ ] До hydration нет вспышки неверной темы.
-- [ ] Нет hydration warnings.
-- [ ] Control доступен с клавиатуры и screen reader.
-- [ ] Theme change не сбрасывает форму, query state или navigation state.
+- [x] Switcher недоступен, если coverage gate не проходит.
+- [x] Три режима имеют явные русские labels и current-state indication.
+- [x] Выбор сохраняется после reload и перехода между маршрутами.
+- [x] System mode следует OS preference.
+- [x] До hydration нет вспышки неверной темы.
+- [x] Нет hydration warnings.
+- [x] Control доступен с клавиатуры и screen reader.
+- [x] Theme change не сбрасывает форму, query state или navigation state.
+
+## Evidence
+
+- Coverage gate: `check-theme-contract.mjs`, `check-dashboard-shell-ux.mjs` и `check-product-surface-redesign.mjs` проходят до включения selector.
+- Root provider использует `defaultTheme="system"`, `storageKey="astrotype-theme"`, `enableSystem` и `enableColorScheme` без `forcedTheme`.
+- `tests/e2e/theme.spec.ts` проверяет сохранение `light/dark/system`, реакцию на `prefers-color-scheme`, применение класса к `domcontentloaded`, отсутствие hydration errors, keyboard activation, сохранение query/form state и axe serious/critical violations.
+- Selector расположен в `/settings`, использует явные русские labels и `aria-pressed`.
 
 ## Проверка
 

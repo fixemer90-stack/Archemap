@@ -80,6 +80,7 @@ const contrastPairs = [
   ["#f6f1e8", "#0d0f16", 4.5, "dark primary/canvas"],
   ["#d8dce8", "#151925", 4.5, "dark secondary/surface"],
   ["#ffffff", "#5b3fd6", 4.5, "primary control label"],
+  ["#fffaf2", "#735bea", 4.5, "dark control label"],
 ];
 
 function luminance(hex) {

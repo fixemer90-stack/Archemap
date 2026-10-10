@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { BirthDataSettings } from "@/components/settings/BirthDataSettings";
+import { ThemeSelector } from "@/components/theme/theme-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
@@ -117,6 +118,8 @@ export default function SettingsPage() {
       </header>
 
       {birthDataRefinementEnabled && <BirthDataSettings />}
+
+      <ThemeSelector />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-[24px] border border-border-default bg-surface/85 p-5 sm:p-7">

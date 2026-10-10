@@ -59,10 +59,10 @@ assert.equal(
 );
 
 assertMarkers("supported theme", rootLayout, [
-  'className="dark"',
-  'defaultTheme="dark"',
-  'forcedTheme="dark"',
-  "enableSystem={false}",
+  'defaultTheme="system"',
+  'storageKey="astrotype-theme"',
+  "enableSystem",
+  "enableColorScheme",
 ]);
 for (const forbidden of [
   "activeTheme",

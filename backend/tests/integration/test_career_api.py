@@ -580,9 +580,7 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
     assert {response.status_code for response in free_responses} == {402}
     preserved_generation = (
         await db_session.execute(
-            select(models.CareerGeneration).where(
-                models.CareerGeneration.generation_id == generation_id
-            )
+            select(models.CareerGeneration).where(models.CareerGeneration.generation_id == generation_id)
         )
     ).scalar_one_or_none()
     assert preserved_generation is not None

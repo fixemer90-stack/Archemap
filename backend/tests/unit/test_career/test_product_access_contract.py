@@ -17,29 +17,28 @@ async def test_career_access_requires_backend_plus_or_grandfathered_entitlement(
 
     user_id = uuid4()
     entitlements = AsyncMock()
-    entitlements.has_active_product_access.side_effect = [False, False]
+    entitlements.has_active_plus_access.side_effect = [False]
+    entitlements.has_active_product_access.side_effect = [False]
 
     denied = await CareerAccessPolicy(entitlements).check(user_id)
 
     assert denied.allowed is False
     assert denied.reason == "missing_career_access"
+    entitlements.has_active_plus_access.assert_awaited_once_with(user_id=user_id)
     assert entitlements.has_active_product_access.await_args_list[0].kwargs == {
-        "user_id": user_id,
-        "product": "self",
-    }
-    assert entitlements.has_active_product_access.await_args_list[1].kwargs == {
         "user_id": user_id,
         "product": "career",
     }
 
     entitlements.reset_mock()
-    entitlements.has_active_product_access.side_effect = [True]
+    entitlements.has_active_plus_access.side_effect = [True]
     plus = await CareerAccessPolicy(entitlements).check(user_id)
     assert plus.allowed is True
     assert plus.source == "plus"
 
     entitlements.reset_mock()
-    entitlements.has_active_product_access.side_effect = [False, True]
+    entitlements.has_active_plus_access.side_effect = [False]
+    entitlements.has_active_product_access.side_effect = [True]
     grandfathered = await CareerAccessPolicy(entitlements).check(user_id)
     assert grandfathered.allowed is True
     assert grandfathered.source == "legacy_career"
@@ -48,9 +47,10 @@ async def test_career_access_requires_backend_plus_or_grandfathered_entitlement(
 def test_career_product_contract_is_canonical_and_legacy_sku_is_not_purchasable() -> None:
     from app.modules.career.contracts import CAREER_ACCESS_CLASS, CAREER_REPORT_TYPE, LEGACY_CAREER_SKU
 
-    assert CAREER_REPORT_TYPE == "career"
-    assert CAREER_ACCESS_CLASS == "plus_only"
-    assert LEGACY_CAREER_SKU == "career_full"
+    report = CatalogService().get_report(CAREER_REPORT_TYPE)
+    assert CAREER_REPORT_TYPE == report.report_type == "career"
+    assert CAREER_ACCESS_CLASS == report.access_class == "plus_only"
+    assert LEGACY_CAREER_SKU in report.commercial_skus
     assert PRODUCT_CATALOG[LEGACY_CAREER_SKU].purchasable is False
 
     with pytest.raises(ValidationError, match="retired"):

@@ -29,6 +29,12 @@ class _ScalarResult:
     def __init__(self, value: object) -> None:
         self.value = value
 
+    def scalars(self) -> _ScalarResult:
+        return self
+
+    def all(self) -> list[object]:
+        return [] if self.value is None else [self.value]
+
     def scalar_one_or_none(self) -> object:
         return self.value
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.authorization.models import Entitlement
-from app.modules.subscriptions.models import Subscription
+from app.modules.subscriptions.models import Subscription, SubscriptionPlan
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -47,8 +47,7 @@ class EntitlementsService:
         self.db = db
         self._now = now or (lambda: datetime.now(UTC))
 
-    async def has_active_product_access(self, user_id: UUID, product: str) -> bool:
-        """Return whether the user has an active, unexpired entitlement for a product."""
+    async def _active_entitlements(self, user_id: UUID, product: str) -> list[Entitlement]:
         result = await self.db.execute(
             select(Entitlement).where(
                 Entitlement.user_id == user_id,
@@ -56,34 +55,78 @@ class EntitlementsService:
                 Entitlement.status == "active",
             )
         )
-        entitlement = result.scalar_one_or_none()
-        if entitlement is None or entitlement.product != product or entitlement.status != "active":
-            return False
+        return list(result.scalars().all())
 
+    def _entitlement_is_current(self, entitlement: Entitlement) -> bool:
         expires_at = entitlement.expires_at
-        now = self._now()
-        if expires_at is not None and expires_at <= now:
-            return False
+        return expires_at is None or expires_at > self._now()
 
+    async def _subscription_for_entitlement(self, entitlement: Entitlement) -> Subscription | None:
         subscription_id = (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id")
         if not subscription_id:
-            return True
-        result = await self.db.execute(select(Subscription).where(Subscription.id == UUID(str(subscription_id))))
-        subscription = cast(Subscription | None, result.scalar_one_or_none())
-        if subscription is None:
-            return False
-        normal_period = (
-            subscription.status in {"active", "cancel_scheduled"}
-            and subscription.current_period_start is not None
-            and subscription.current_period_end is not None
-            and subscription.current_period_start <= now < subscription.current_period_end
-        )
-        grace_access = (
-            subscription.status == "past_due"
-            and subscription.grace_until is not None
-            and subscription.grace_until > now
-        )
-        return normal_period or grace_access
+            return None
+        try:
+            parsed_id = UUID(str(subscription_id))
+        except ValueError:
+            return None
+        result = await self.db.execute(select(Subscription).where(Subscription.id == parsed_id))
+        return result.scalar_one_or_none()
+
+    async def has_active_product_access(self, user_id: UUID, product: str) -> bool:
+        """Return whether any current grant authorizes the requested product."""
+        now = self._now()
+        for entitlement in await self._active_entitlements(user_id, product):
+            if entitlement.product != product or entitlement.status != "active":
+                continue
+            if not self._entitlement_is_current(entitlement):
+                continue
+
+            subscription_id = (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id")
+            if not subscription_id:
+                return True
+            subscription = await self._subscription_for_entitlement(entitlement)
+            if subscription is None:
+                continue
+            normal_period = (
+                subscription.status in {"active", "cancel_scheduled"}
+                and subscription.current_period_start is not None
+                and subscription.current_period_end is not None
+                and subscription.current_period_start <= now < subscription.current_period_end
+            )
+            grace_access = (
+                subscription.status == "past_due"
+                and subscription.grace_until is not None
+                and subscription.grace_until > now
+            )
+            if normal_period or grace_access:
+                return True
+        return False
+
+    async def has_active_plus_access(self, user_id: UUID) -> bool:
+        """Require an active Astrotype monthly Plus subscription, not display tier."""
+        now = self._now()
+        for entitlement in await self._active_entitlements(user_id, "self"):
+            if not self._entitlement_is_current(entitlement):
+                continue
+            if not (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id"):
+                continue
+            subscription = await self._subscription_for_entitlement(entitlement)
+            if subscription is None or subscription.plan_id is None:
+                continue
+            plan_result = await self.db.execute(
+                select(SubscriptionPlan).where(SubscriptionPlan.id == subscription.plan_id)
+            )
+            plan = plan_result.scalar_one_or_none()
+            if plan is None or plan.plan_code != "astrotype_plus_monthly":
+                continue
+            if (
+                subscription.status in {"active", "cancel_scheduled"}
+                and subscription.current_period_start is not None
+                and subscription.current_period_end is not None
+                and subscription.current_period_start <= now < subscription.current_period_end
+            ):
+                return True
+        return False
 
     async def build_product_access_state(self, user_id: UUID, product: str) -> dict[str, Any]:
         """Return safe product access state for API gates and clients."""

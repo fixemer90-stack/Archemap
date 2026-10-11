@@ -6,11 +6,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
-CAREER_REPORT_TYPE = "career"
-CAREER_ACCESS_CLASS = "plus_only"
+from app.modules.catalog.service import CatalogService
+
+_CAREER_REPORT = CatalogService().get_report("career")
+CAREER_REPORT_TYPE = _CAREER_REPORT.report_type
+CAREER_ACCESS_CLASS = _CAREER_REPORT.access_class.value
 PLUS_ENTITLEMENT_PRODUCT = "self"
-LEGACY_CAREER_ENTITLEMENT_PRODUCT = "career"
-LEGACY_CAREER_SKU = "career_full"
+LEGACY_CAREER_ENTITLEMENT_PRODUCT = _CAREER_REPORT.entitlement_product or "career"
+LEGACY_CAREER_SKU = _CAREER_REPORT.commercial_skus[0]
 LEGACY_PAYLOAD_FALLBACK_ALLOWED = False
 
 

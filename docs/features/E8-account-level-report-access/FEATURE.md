@@ -2,7 +2,7 @@
 
 ## Status
 
-⬜ Не начато — target contract documented
+🟡 В процессе — S01/S02 реализованы и проверены; операции, frontend и rollout остаются открыты
 
 ## Goal
 
@@ -51,13 +51,13 @@ Documentation defines the target; no E8 story is complete until code and tests p
 
 ## Acceptance criteria
 
-- [ ] Exactly one canonical report type is classified as `basic`.
-- [ ] Every other current and future report type defaults to `plus_only`.
+- [x] Exactly one canonical report type is classified as `basic`.
+- [x] Every other current and future report type defaults to `plus_only`.
 - [ ] Free and Plus accounts can create, generate, read, regenerate and export the basic report.
 - [ ] Free accounts cannot access Plus-only report payloads through direct API/artifact routes.
 - [ ] Active Plus accounts can use every enabled Plus-only report.
 - [ ] Expired/inactive Plus accounts retain basic-report access and lose Plus-only access without data deletion.
-- [ ] `account_tier='plus'` alone cannot bypass active-access checks.
+- [x] `account_tier='plus'` alone cannot bypass active-access checks.
 - [ ] Frontend labels the basic report as available to every account and other reports as Plus-only.
 - [ ] Web, Android/PWA and optional desktop clients consume the same backend policy result.
 - [ ] Existing report rows, profiles and generated artifacts survive catalog/migration changes.
@@ -67,8 +67,8 @@ Documentation defines the target; no E8 story is complete until code and tests p
 
 | ID  | Story                                                                                            | Status       |
 | --- | ------------------------------------------------------------------------------------------------ | ------------ |
-| S01 | [Define report catalog and access classes](./S01-report-catalog-access-classes.md)               | ⬜ Не начато |
-| S02 | [Implement backend report access policy](./S02-backend-report-access-policy.md)                  | ⬜ Не начато |
+| S01 | [Define report catalog and access classes](./S01-report-catalog-access-classes.md)               | ✅ Готово    |
+| S02 | [Implement backend report access policy](./S02-backend-report-access-policy.md)                  | ✅ Готово    |
 | S03 | [Apply policy to every report operation and artifact](./S03-report-operation-policy-coverage.md) | ⬜ Не начато |
 | S04 | [Implement account-level report UX](./S04-frontend-account-level-report-ux.md)                   | ⬜ Не начато |
 | S05 | [Add regression, migration and rollout proof](./S05-regression-migration-rollout.md)             | ⬜ Не начато |

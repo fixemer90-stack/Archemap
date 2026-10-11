@@ -1,6 +1,6 @@
 # Story E8.S01: Report catalog and access classes
 
-Status: ⬜ Не начато
+Status: ✅ Готово
 Feature: [E8 Account-level report access](./FEATURE.md)
 Architecture: [Account levels and report access policy](../../architecture/account-levels-report-access-policy.md)
 
@@ -18,11 +18,18 @@ The current catalog uses payment/product identifiers such as `self_full`, while 
 
 ## Acceptance criteria
 
-- [ ] Exactly one report type is `basic`.
-- [ ] Career, Love, Child and every other enabled non-basic report are `plus_only`.
-- [ ] Unknown report types are rejected or treated as Plus-only, never free.
-- [ ] Payment product identifiers and report type identifiers have one documented mapping.
-- [ ] Existing report/profile/artifact identifiers remain retrievable after migration.
+- [x] Exactly one report type is `basic`.
+- [x] Career, Love, Child and every other enabled non-basic report are `plus_only`.
+- [x] Unknown report types are rejected or treated as Plus-only, never free.
+- [x] Payment product identifiers and report type identifiers have one documented mapping.
+- [x] Existing report/profile/artifact identifiers remain retrievable after migration.
+
+## Implementation evidence
+
+- `CatalogService` owns canonical `ReportDefinition` records for `basic_natal`, `career`, `love` and `child`.
+- Legacy `self`, `self_full` and `career_full` identifiers resolve through lookup aliases only; persisted rows and UUIDs are not rewritten.
+- Career constants derive their report type, access class, entitlement product and retired SKU from the canonical catalog.
+- Verification: `tests/unit/test_report_catalog.py` and `tests/unit/test_career/test_product_access_contract.py`.
 
 ## Verification target
 

@@ -103,8 +103,14 @@ assertMarkers("dashboard", dashboard, [
   "Аккаунт Plus",
   "Plus активен",
   "Plus не активен",
-  "Где это видно",
 ]);
+for (const removedCopy of ["Где это видно", "Статус Plus теперь вынесен"]) {
+  assert.equal(
+    dashboard.includes(removedCopy),
+    false,
+    `dashboard: removed explanatory block must not contain ${removedCopy}`,
+  );
+}
 assert.equal(
   dashboard.includes("href={`/report/v2/${primaryProfile.id}`}"),
   true,

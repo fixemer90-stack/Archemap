@@ -282,10 +282,7 @@ export default function DashboardPage() {
         </SurfaceActionRow>
       </ProductSurfaceHero>
 
-      <section
-        className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"
-        aria-label="Статус Plus"
-      >
+      <section aria-label="Статус Plus">
         <ProductSurfaceCard className="border-accent-gold bg-[var(--hero-background)]">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-4">
@@ -306,15 +303,6 @@ export default function DashboardPage() {
               <Link href={accessStatus.href}>{accessStatus.cta}</Link>
             </Button>
           </div>
-        </ProductSurfaceCard>
-
-        <ProductSurfaceCard className="space-y-3 text-sm leading-6 text-text-secondary">
-          <SurfaceEyebrow>Где это видно</SurfaceEyebrow>
-          <p>
-            Статус Plus теперь вынесен в кабинет, левую панель и страницу
-            оплаты, чтобы не приходилось искать подтверждение доступа внутри
-            отчёта.
-          </p>
         </ProductSurfaceCard>
       </section>
 

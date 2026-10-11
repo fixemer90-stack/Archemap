@@ -81,6 +81,12 @@ export async function apiFetch(
   return fetchWithAuthRetry(endpoint, options);
 }
 
+function extractApiErrorMessage(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") return fallback;
+  const detail = (data as { detail?: unknown }).detail;
+  return typeof detail === "string" ? detail : fallback;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestOptions = {},
@@ -96,7 +102,7 @@ export async function apiClient<T>(
     }
     throw new ApiError(
       response.status,
-      (data as { detail?: string })?.detail || response.statusText,
+      extractApiErrorMessage(data, response.statusText),
       data,
     );
   }

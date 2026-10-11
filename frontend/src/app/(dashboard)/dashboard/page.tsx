@@ -40,6 +40,7 @@ const products = [
       "Главный личный отчёт: карта рождения, внутренний ритм, сильные опоры и зоны роста.",
     icon: User,
     color: "var(--chart-series-2)",
+    accessClass: "basic",
     status: "available",
     href: "/products/self",
   },
@@ -50,6 +51,7 @@ const products = [
       "Будущее направление про близость, притяжение, границы и повторяющиеся сценарии в паре.",
     icon: Heart,
     color: "var(--product-love)",
+    accessClass: "plus_only",
     status: "coming_soon",
     href: "/products/love",
   },
@@ -60,6 +62,7 @@ const products = [
       "Будущее направление для родителя: темперамент ребёнка, поддержка и бережная среда развития.",
     icon: Baby,
     color: "var(--chart-series-3)",
+    accessClass: "plus_only",
     status: "coming_soon",
     href: "/products/child",
   },
@@ -70,6 +73,7 @@ const products = [
       "Рабочие сценарии: где легче проявляться, какой темп подходит и какие роли не забирают ресурс.",
     icon: Briefcase,
     color: "var(--product-career)",
+    accessClass: "plus_only",
     status: "available",
     href: "/products/career",
   },
@@ -118,7 +122,7 @@ function getAccessStatusCopy({
     return {
       eyebrow: "Аккаунт Plus",
       title: activeUntil ? `Plus активен до ${activeUntil}` : "Plus активен",
-      text: "Полный личный отчёт открыт и привязан к этому аккаунту.",
+      text: "Специализированные отчёты доступны до конца оплаченного периода. Базовый отчёт остаётся доступен всегда.",
       cta: "Управлять доступом",
       href: "/billing",
     };
@@ -128,8 +132,8 @@ function getAccessStatusCopy({
     eyebrow: accessError ? "Статус недоступен" : "Базовый аккаунт",
     title: accessError ? "Не удалось проверить Plus" : "Plus не активен",
     text: accessError
-      ? "Откройте оплату, чтобы повторить проверку статуса."
-      : "Полный личный отчёт откроется после подтверждения оплаты.",
+      ? "Базовый отчёт доступен. Откройте оплату, чтобы повторить проверку статуса Plus."
+      : "Базовый отчёт доступен на любом уровне аккаунта. Plus открывает специализированные направления.",
     cta: "Открыть Plus",
     href: "/billing",
   };
@@ -385,48 +389,69 @@ export default function DashboardPage() {
           </h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductSurfaceCard
-              key={product.id}
-              className={product.status === "coming_soon" ? "opacity-62" : ""}
-            >
-              <div className="space-y-5">
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl"
-                  style={{ background: `${product.color}22` }}
-                >
-                  <product.icon
-                    className="h-5 w-5"
-                    style={{ color: product.color }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
-                      {product.title}
-                    </h3>
-                    {product.status === "coming_soon" ? (
-                      <span className="rounded-full border border-border-default px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                        позже
-                      </span>
-                    ) : null}
+          {products.map((product) => {
+            const isPlusLocked =
+              product.accessClass === "plus_only" && !isPlusActive;
+            return (
+              <ProductSurfaceCard
+                key={product.id}
+                className={product.status === "coming_soon" ? "opacity-62" : ""}
+              >
+                <div className="space-y-5">
+                  <div
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                    style={{ background: `${product.color}22` }}
+                  >
+                    <product.icon
+                      className="h-5 w-5"
+                      style={{ color: product.color }}
+                    />
                   </div>
-                  <p className="text-sm leading-6 text-text-secondary">
-                    {product.description}
-                  </p>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-[family-name:var(--font-cormorant)] text-2xl font-semibold text-text-primary">
+                        {product.title}
+                      </h3>
+                      {product.accessClass === "basic" ? (
+                        <span className="rounded-full border border-success bg-success/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-success">
+                          Доступно на любом уровне аккаунта
+                        </span>
+                      ) : isPlusLocked ? (
+                        <span className="rounded-full border border-accent-gold bg-accent-gold-soft px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-text-primary">
+                          Доступно с Plus
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-success bg-success/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-success">
+                          Plus открыт
+                        </span>
+                      )}
+                      {product.status === "coming_soon" ? (
+                        <span className="rounded-full border border-border-default px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-text-muted">
+                          позже
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm leading-6 text-text-secondary">
+                      {product.description}
+                    </p>
+                  </div>
+                  {product.status !== "available" ? (
+                    <Button variant="outline" size="sm" disabled>
+                      В планах
+                    </Button>
+                  ) : isPlusLocked ? (
+                    <Button asChild size="sm">
+                      <Link href="/billing">Открыть Plus</Link>
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={product.href}>Открыть</Link>
+                    </Button>
+                  )}
                 </div>
-                {product.status === "available" ? (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={product.href}>Открыть</Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" disabled>
-                    В планах
-                  </Button>
-                )}
-              </div>
-            </ProductSurfaceCard>
-          ))}
+              </ProductSurfaceCard>
+            );
+          })}
         </div>
       </section>
     </div>

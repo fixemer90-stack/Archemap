@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 В процессе — S01–S03 реализованы и проверены; frontend и rollout остаются открыты
+🟡 В процессе — S01–S04 реализованы и проверены; regression/migration proof и staging rollout остаются открыты
 
 ## Goal
 
@@ -27,7 +27,7 @@ The backend, not frontend visibility, owns this decision. `account_tier` may be 
 
 ## Implementation frontier
 
-The backend catalog, shared account-level policy and operation/artifact coverage are implemented. Canonical basic-report routes bypass paid entitlement checks after authentication; Plus-only Career routes require active monthly Plus or the explicit grandfathered Career grant and load protected payloads only after ownership and access checks. Frontend UX and rollout/migration proof remain open.
+The backend catalog, shared account-level policy and operation/artifact coverage are implemented. Canonical basic-report routes bypass paid entitlement checks after authentication; Plus-only Career routes require active monthly Plus or the explicit grandfathered Career grant and load protected payloads only after ownership and access checks. The responsive frontend now renders the backend-owned Free/Plus matrix consistently and keeps the basic report outside the paid lock. Regression/migration proof and staging rollout remain open.
 
 ## Scope
 
@@ -56,8 +56,8 @@ The backend catalog, shared account-level policy and operation/artifact coverage
 - [x] Active Plus accounts can use every enabled Plus-only report.
 - [ ] Expired/inactive Plus accounts retain basic-report access and lose Plus-only access without data deletion.
 - [x] `account_tier='plus'` alone cannot bypass active-access checks.
-- [ ] Frontend labels the basic report as available to every account and other reports as Plus-only.
-- [ ] Web, Android/PWA and optional desktop clients consume the same backend policy result.
+- [x] Frontend labels the basic report as available to every account and other reports as Plus-only.
+- [x] Web/PWA responsive surfaces consume the same backend policy result; no separate desktop entitlement logic exists.
 - [ ] Existing report rows, profiles and generated artifacts survive catalog/migration changes.
 - [ ] Read-after-expiry behavior for previously generated Plus-only reports is explicitly decided before rollout.
 
@@ -68,7 +68,7 @@ The backend catalog, shared account-level policy and operation/artifact coverage
 | S01 | [Define report catalog and access classes](./S01-report-catalog-access-classes.md)               | ✅ Готово    |
 | S02 | [Implement backend report access policy](./S02-backend-report-access-policy.md)                  | ✅ Готово    |
 | S03 | [Apply policy to every report operation and artifact](./S03-report-operation-policy-coverage.md) | ✅ Готово    |
-| S04 | [Implement account-level report UX](./S04-frontend-account-level-report-ux.md)                   | ⬜ Не начато |
+| S04 | [Implement account-level report UX](./S04-frontend-account-level-report-ux.md)                   | ✅ Готово    |
 | S05 | [Add regression, migration and rollout proof](./S05-regression-migration-rollout.md)             | ⬜ Не начато |
 
 ## Implementation order

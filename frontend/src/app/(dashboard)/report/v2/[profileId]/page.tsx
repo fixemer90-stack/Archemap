@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import {
   downloadAstrotypeV2ReportPdf,
   type AstrotypeV2FullReportResponse,
-  type AstrotypeV2LockedReportResponse,
 } from "@/lib/api/astrotype-v2";
 import { buildV2ReportReaderViewModel } from "@/lib/astrotype-v2/report-view-model";
 import { useV2ReportGeneration } from "@/lib/astrotype-v2/use-v2-report-generation";
@@ -59,30 +58,6 @@ function ReportReady({ report }: { report: AstrotypeV2FullReportResponse }) {
   );
 }
 
-function LockedReportAccess({
-  locked,
-}: {
-  locked: AstrotypeV2LockedReportResponse;
-}) {
-  return (
-    <div className="mx-auto max-w-3xl space-y-6 py-6">
-      <ReportReturnAction />
-      <Card className="border-border-default bg-surface-subtle">
-        <CardHeader>
-          <CardDescription>Доступ к отчёту</CardDescription>
-          <CardTitle>{locked.upgrade.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-text-secondary">
-          <p>{locked.upgrade.description}</p>
-          <Button asChild>
-            <Link href={locked.upgrade.href}>Открыть оплату</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 export default function AstrotypeV2ReportPage() {
   const params = useParams();
   const profileId = params.profileId as string;
@@ -90,10 +65,6 @@ export default function AstrotypeV2ReportPage() {
 
   if (generation.report) {
     return <ReportReady report={generation.report} />;
-  }
-
-  if (generation.lockedAccess) {
-    return <LockedReportAccess locked={generation.lockedAccess} />;
   }
 
   return (

@@ -169,8 +169,10 @@ export default function CareerProductPage() {
       setAnswers(draft.answers ?? {});
       setSaved(true);
     } catch (loadError) {
-      if (loadError instanceof ApiError && loadError.status === 402)
+      if (loadError instanceof ApiError && loadError.status === 402) {
         setLocked(true);
+        return;
+      }
       setError(questionnaireErrorCopy(loadError));
     }
   }, []);

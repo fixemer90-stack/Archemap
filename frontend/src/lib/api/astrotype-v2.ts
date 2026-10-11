@@ -66,17 +66,6 @@ export interface AstrotypeV2ProgressResponse {
   }>;
 }
 
-export interface AstrotypeV2LockedReportResponse {
-  access_state: "locked";
-  required_product: string;
-  reason: string;
-  upgrade: {
-    title: string;
-    description: string;
-    href: string;
-  };
-}
-
 export interface AstrotypeV2FullReportResponse {
   contract_version: "astrotype_v2_report_api_v1";
   profile: {
@@ -116,15 +105,6 @@ export interface AstrotypeV2FullReportResponse {
   }>;
 }
 
-export type AstrotypeV2ReportResponse =
-  AstrotypeV2FullReportResponse | AstrotypeV2LockedReportResponse;
-
-export function isLockedAstrotypeV2Report(
-  response: AstrotypeV2ReportResponse,
-): response is AstrotypeV2LockedReportResponse {
-  return "access_state" in response && response.access_state === "locked";
-}
-
 export function generateAstrotypeV2Report(
   profileId: string,
   force = false,
@@ -140,8 +120,8 @@ export function generateAstrotypeV2Report(
 
 export function fetchAstrotypeV2Report(
   reportId: string,
-): Promise<AstrotypeV2ReportResponse> {
-  return api.get<AstrotypeV2ReportResponse>(
+): Promise<AstrotypeV2FullReportResponse> {
+  return api.get<AstrotypeV2FullReportResponse>(
     `/api/v1/astrotype-v2/reports/${reportId}`,
   );
 }

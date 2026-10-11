@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -201,6 +201,24 @@ class AstrotypeV2Repository:
         """Return one v2 report artifact by id."""
         result = await self.session.execute(select(models.NatalReport).where(models.NatalReport.id == report_id))
         return result.scalar_one_or_none()
+
+    async def get_owned_report_chart_id(self, *, report_id: uuid.UUID, user_id: uuid.UUID) -> uuid.UUID | None:
+        """Resolve ownership using metadata only, before loading report payload JSON."""
+        return cast(
+            uuid.UUID | None,
+            await self.session.scalar(
+                select(models.NatalReport.chart_id)
+                .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
+                .where(models.NatalReport.id == report_id, models.NatalChart.user_id == user_id)
+            ),
+        )
+
+    async def profile_is_owned(self, *, profile_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Return whether the generation target belongs to the authenticated user."""
+        owned_id = await self.session.scalar(
+            select(PersonProfile.id).where(PersonProfile.id == profile_id, PersonProfile.user_id == user_id)
+        )
+        return owned_id is not None
 
     async def get_report_for_user(self, *, report_id: uuid.UUID, user_id: uuid.UUID) -> models.NatalReport | None:
         """Return one report only when its v2 chart belongs to the user."""

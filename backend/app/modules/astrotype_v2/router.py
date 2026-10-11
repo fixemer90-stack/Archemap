@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.modules.astrotype_v2 import models
+from app.modules.astrotype_v2.access import BASIC_REPORT_TYPE, report_access_operation
 from app.modules.astrotype_v2.api_runtime import (
     EnqueuedGenerationResponse,
     build_generation_accepted_response,
@@ -24,12 +25,11 @@ from app.modules.astrotype_v2.fact_view import build_fact_evidence_payload
 from app.modules.astrotype_v2.infographic_data import build_infographic_api_payload_v2
 from app.modules.astrotype_v2.pdf import generate_v2_report_pdf
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
-from app.modules.authorization.service import EntitlementsService, build_locked_product_response
-from app.modules.payments.service import PaymentsService
+from app.modules.authorization.report_access import ReportAccessPolicy
+from app.modules.authorization.service import EntitlementsService
 from app.modules.profiles.models import PersonProfile
 
 router = APIRouter(prefix="/astrotype-v2", tags=["astrotype-v2"])
-SELF_REPORT_PRODUCT = "self"
 
 
 class GenerateV2ReportRequest(BaseModel):
@@ -42,6 +42,7 @@ class RegenerateV2ReportRequest(BaseModel):
 
 
 @router.post("/reports", status_code=status.HTTP_202_ACCEPTED)
+@report_access_operation("create")
 async def generate_v2_report(
     body: GenerateV2ReportRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -50,6 +51,9 @@ async def generate_v2_report(
     """Queue v2 report generation for a profile owned by the current user."""
 
     repository = AstrotypeV2Repository(db)
+    if not await repository.profile_is_owned(profile_id=body.profile_id, user_id=current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    await _require_basic_report_access(db=db, user_id=current_user)
     latest_report = await repository.get_latest_report_for_profile(profile_id=body.profile_id, user_id=current_user)
     if latest_report is not None and not body.force:
         return JSONResponse(
@@ -77,6 +81,7 @@ async def generate_v2_report(
 
 
 @router.get("/reports/generations/{generation_id}")
+@report_access_operation("status")
 async def get_v2_generation_status(
     generation_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -84,6 +89,7 @@ async def get_v2_generation_status(
 ) -> dict[str, Any]:
     """Return persisted status for an accepted generation id."""
 
+    await _require_basic_report_access(db=db, user_id=current_user)
     repository = AstrotypeV2Repository(db)
     generation = await repository.get_generation_for_user(generation_id=generation_id, user_id=current_user)
     if generation is None:
@@ -95,6 +101,7 @@ async def get_v2_generation_status(
 
 
 @router.get("/reports/{report_id}")
+@report_access_operation("read")
 async def get_v2_report(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -103,14 +110,12 @@ async def get_v2_report(
     """Return the full v2 report payload for its owner."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await PaymentsService(db).reconcile_latest_pending_provider_payment(current_user)
-    has_access = await EntitlementsService(db).has_active_product_access(
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
         user_id=current_user,
-        product=SELF_REPORT_PRODUCT,
     )
-    if not has_access:
-        return build_locked_product_response(product=SELF_REPORT_PRODUCT, reason="missing_entitlement")
     outline = await repository.get_outline_for_chart(report.chart_id)
     chart = await repository.get_chart(report.chart_id)
     profile = await _load_profile(db=db, chart=chart, user_id=current_user)
@@ -129,6 +134,7 @@ async def get_v2_report(
 
 
 @router.get("/reports/{report_id}/pdf")
+@report_access_operation("export")
 async def get_v2_report_pdf(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -137,8 +143,12 @@ async def get_v2_report_pdf(
     """Download a generated v2 report as a PDF file."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await _require_self_report_access(db=db, user_id=current_user)
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
+        user_id=current_user,
+    )
     chart = await repository.get_chart(report.chart_id)
     profile = await _load_profile(db=db, chart=chart, user_id=current_user)
     pdf_bytes = generate_v2_report_pdf(
@@ -158,6 +168,7 @@ async def get_v2_report_pdf(
 
 
 @router.get("/reports/{report_id}/progress")
+@report_access_operation("status")
 async def get_v2_report_progress(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -166,14 +177,19 @@ async def get_v2_report_progress(
     """Return segment-level generation progress for polling clients."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await _require_self_report_access(db=db, user_id=current_user)
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
+        user_id=current_user,
+    )
     outline = await repository.get_outline_for_chart(report.chart_id)
     segments = await repository.list_segments_for_outline(outline.id) if outline is not None else []
     return build_report_progress_v2(report=report, outline=outline, segments=segments)
 
 
 @router.get("/reports/{report_id}/facts")
+@report_access_operation("calculation")
 async def get_v2_report_facts(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -182,14 +198,19 @@ async def get_v2_report_facts(
     """Return deterministic v2 facts and evidence for a report."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await _require_self_report_access(db=db, user_id=current_user)
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
+        user_id=current_user,
+    )
     facts = await repository.list_facts_for_chart(report.chart_id)
     evidence = [row for fact in facts for row in await repository.list_fact_evidence(fact.id)]
     return build_fact_evidence_payload(facts=facts, evidence=evidence)
 
 
 @router.get("/reports/{report_id}/infographic")
+@report_access_operation("calculation")
 async def get_v2_report_infographic(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -198,8 +219,12 @@ async def get_v2_report_infographic(
     """Return reusable deterministic infographic payload for a report."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await _require_self_report_access(db=db, user_id=current_user)
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
+        user_id=current_user,
+    )
     infographic = await repository.get_infographic_data_for_chart(report.chart_id)
     if infographic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Infographic data is not ready")
@@ -214,6 +239,7 @@ async def get_v2_report_infographic(
 
 
 @router.get("/reports/{report_id}/segments")
+@report_access_operation("segments")
 async def get_v2_report_segments(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -222,8 +248,12 @@ async def get_v2_report_segments(
     """Return segment generation artifacts for a report."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await _require_self_report_access(db=db, user_id=current_user)
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
+        user_id=current_user,
+    )
     outline = await repository.get_outline_for_chart(report.chart_id)
     if outline is None:
         return []
@@ -235,6 +265,7 @@ async def get_v2_report_segments(
 
 
 @router.post("/reports/{report_id}/regenerate", status_code=status.HTTP_202_ACCEPTED)
+@report_access_operation("regenerate")
 async def regenerate_v2_report(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -244,8 +275,12 @@ async def regenerate_v2_report(
     """Queue safe v2 regeneration for an existing report owner."""
 
     repository = AstrotypeV2Repository(db)
-    report = await _load_report_for_user(repository=repository, report_id=report_id, user_id=current_user)
-    await _require_self_report_access(db=db, user_id=current_user)
+    report = await _load_basic_report_for_user(
+        repository=repository,
+        db=db,
+        report_id=report_id,
+        user_id=current_user,
+    )
     chart = await repository.get_chart(report.chart_id)
     if chart is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chart is not available")
@@ -304,30 +339,29 @@ async def _enqueue_persisted_v2_generation(
     return EnqueuedGenerationResponse(payload=payload)
 
 
-async def _load_report_for_user(
+async def _load_basic_report_for_user(
     *,
     repository: AstrotypeV2Repository,
+    db: AsyncSession,
     report_id: UUID,
     user_id: UUID,
 ) -> models.NatalReport:
-    report = await repository.get_report_for_user(report_id=report_id, user_id=user_id)
+    chart_id = await repository.get_owned_report_chart_id(report_id=report_id, user_id=user_id)
+    if chart_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+
+    await _require_basic_report_access(db=db, user_id=user_id)
+    report = await repository.get_report(report_id)
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return report
 
 
-async def _require_self_report_access(*, db: AsyncSession, user_id: UUID) -> None:
-    await PaymentsService(db).reconcile_latest_pending_provider_payment(user_id)
-    has_access = await EntitlementsService(db).has_active_product_access(
-        user_id=user_id,
-        product=SELF_REPORT_PRODUCT,
-    )
-    if has_access:
+async def _require_basic_report_access(*, db: AsyncSession, user_id: UUID) -> None:
+    decision = await ReportAccessPolicy(EntitlementsService(db)).check(user_id, BASIC_REPORT_TYPE)
+    if decision.allowed:
         return
-    raise HTTPException(
-        status_code=status.HTTP_402_PAYMENT_REQUIRED,
-        detail=build_locked_product_response(product=SELF_REPORT_PRODUCT, reason="missing_entitlement"),
-    )
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=decision.to_payload())
 
 
 async def _load_profile(

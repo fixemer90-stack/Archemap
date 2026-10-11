@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from sqlalchemy import delete, func, select, update
@@ -273,6 +273,21 @@ class CareerRepository:
             select(models.CareerReport).where(models.CareerReport.generation_id == generation_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_report(self, report_id: UUID) -> models.CareerReport | None:
+        result = await self.session.execute(select(models.CareerReport).where(models.CareerReport.id == report_id))
+        return result.scalar_one_or_none()
+
+    async def get_owned_report_id(self, *, report_id: UUID, user_id: UUID) -> UUID | None:
+        """Resolve report ownership without loading protected report payload columns."""
+        return cast(
+            UUID | None,
+            await self.session.scalar(
+                select(models.CareerReport.id)
+                .join(models.CareerProfile, models.CareerReport.career_profile_id == models.CareerProfile.id)
+                .where(models.CareerReport.id == report_id, models.CareerProfile.user_id == user_id)
+            ),
+        )
 
     async def get_report_for_user(self, report_id: UUID, user_id: UUID) -> models.CareerReport | None:
         result = await self.session.execute(

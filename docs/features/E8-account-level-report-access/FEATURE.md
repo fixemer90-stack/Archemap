@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 В процессе — S01/S02 реализованы и проверены; операции, frontend и rollout остаются открыты
+🟡 В процессе — S01–S03 реализованы и проверены; frontend и rollout остаются открыты
 
 ## Goal
 
@@ -25,11 +25,9 @@ The backend, not frontend visibility, owns this decision. `account_tier` may be 
 - Billing/subscription feature: `../E6-billing-subscriptions/FEATURE.md`
 - Monthly Plus contract: `../../architecture/monthly-plus-subscription-contract.md`
 
-## Current implementation gap
+## Implementation frontier
 
-Current v2 report routes check the `self` entitlement and can lock the Self report for Free accounts. The target policy requires the canonical basic report to bypass paid entitlement checks after authentication, while retaining backend checks for every Plus-only report operation.
-
-Documentation defines the target; no E8 story is complete until code and tests prove it.
+The backend catalog, shared account-level policy and operation/artifact coverage are implemented. Canonical basic-report routes bypass paid entitlement checks after authentication; Plus-only Career routes require active monthly Plus or the explicit grandfathered Career grant and load protected payloads only after ownership and access checks. Frontend UX and rollout/migration proof remain open.
 
 ## Scope
 
@@ -53,9 +51,9 @@ Documentation defines the target; no E8 story is complete until code and tests p
 
 - [x] Exactly one canonical report type is classified as `basic`.
 - [x] Every other current and future report type defaults to `plus_only`.
-- [ ] Free and Plus accounts can create, generate, read, regenerate and export the basic report.
-- [ ] Free accounts cannot access Plus-only report payloads through direct API/artifact routes.
-- [ ] Active Plus accounts can use every enabled Plus-only report.
+- [x] Free and Plus accounts can create, generate, read, regenerate and export the basic report.
+- [x] Free accounts cannot access Plus-only report payloads through direct API/artifact routes.
+- [x] Active Plus accounts can use every enabled Plus-only report.
 - [ ] Expired/inactive Plus accounts retain basic-report access and lose Plus-only access without data deletion.
 - [x] `account_tier='plus'` alone cannot bypass active-access checks.
 - [ ] Frontend labels the basic report as available to every account and other reports as Plus-only.
@@ -69,7 +67,7 @@ Documentation defines the target; no E8 story is complete until code and tests p
 | --- | ------------------------------------------------------------------------------------------------ | ------------ |
 | S01 | [Define report catalog and access classes](./S01-report-catalog-access-classes.md)               | ✅ Готово    |
 | S02 | [Implement backend report access policy](./S02-backend-report-access-policy.md)                  | ✅ Готово    |
-| S03 | [Apply policy to every report operation and artifact](./S03-report-operation-policy-coverage.md) | ⬜ Не начато |
+| S03 | [Apply policy to every report operation and artifact](./S03-report-operation-policy-coverage.md) | ✅ Готово    |
 | S04 | [Implement account-level report UX](./S04-frontend-account-level-report-ux.md)                   | ⬜ Не начато |
 | S05 | [Add regression, migration and rollout proof](./S05-regression-migration-rollout.md)             | ⬜ Не начато |
 

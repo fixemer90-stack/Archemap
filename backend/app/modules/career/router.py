@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
@@ -88,13 +89,16 @@ async def get_current_questionnaire(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     _require_feature_enabled()
-    await _require_career_access(db=db, user_id=current_user)
     repository = CareerRepository(db)
     profile = await repository.get_profile_for_person(profile_id=profile_id, user_id=current_user)
+    chart = None
     if profile is None:
         chart = await repository.get_latest_chart_for_person(profile_id=profile_id, user_id=current_user)
         if chart is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile or v2 chart not found")
+    await _require_career_access(db=db, user_id=current_user)
+    if profile is None:
+        assert chart is not None
         profile = models.CareerProfile(
             user_id=current_user,
             profile_id=profile_id,
@@ -158,9 +162,9 @@ async def put_questionnaire_answers(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     _require_feature_enabled()
-    await _require_career_access(db=db, user_id=current_user)
     repository = CareerRepository(db)
     questionnaire = await _load_owned_questionnaire(repository, session_id=session_id, user_id=current_user)
+    await _require_career_access(db=db, user_id=current_user)
     if questionnaire.status == "completed":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Questionnaire is already completed")
     rows = build_answer_rows(
@@ -187,9 +191,9 @@ async def complete_questionnaire(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     _require_feature_enabled()
-    await _require_career_access(db=db, user_id=current_user)
     repository = CareerRepository(db)
     questionnaire = await _load_owned_questionnaire(repository, session_id=session_id, user_id=current_user)
+    await _require_career_access(db=db, user_id=current_user)
     answer_rows = await repository.list_questionnaire_answers(questionnaire.id)
     draft = _draft_from_rows(answer_rows)
     try:
@@ -222,11 +226,11 @@ async def create_career_report(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> JSONResponse:
     _require_feature_enabled()
-    await _require_career_access(db=db, user_id=current_user)
     repository = CareerRepository(db)
     profile = await repository.get_profile_for_person(profile_id=body.profile_id, user_id=current_user)
     if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Career profile not found")
+    await _require_career_access(db=db, user_id=current_user)
     questionnaire = await repository.get_questionnaire_session(
         career_profile_id=profile.id,
         questionnaire_version=QUESTIONNAIRE_VERSION,
@@ -281,8 +285,12 @@ async def get_career_report(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     repository = CareerRepository(db)
-    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
-    await _require_career_access(db=db, user_id=current_user)
+    report = await _load_authorized_career_report(
+        repository,
+        report_id=report_id,
+        user_id=current_user,
+        require_access=lambda: _require_career_access(db=db, user_id=current_user),
+    )
     segments = await repository.list_segments_for_generation(report.generation_id)
     return build_progressive_report_payload(report=report, segments=segments)
 
@@ -295,8 +303,12 @@ async def get_career_report_sections(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     repository = CareerRepository(db)
-    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
-    await _require_career_access(db=db, user_id=current_user)
+    report = await _load_authorized_career_report(
+        repository,
+        report_id=report_id,
+        user_id=current_user,
+        require_access=lambda: _require_career_access(db=db, user_id=current_user),
+    )
     segments = await repository.list_segments_for_generation(report.generation_id)
     return build_sections_payload(segments=segments)
 
@@ -313,8 +325,12 @@ async def get_career_report_versions(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> dict[str, Any]:
     repository = CareerRepository(db)
-    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
-    await _require_career_access(db=db, user_id=current_user)
+    report = await _load_authorized_career_report(
+        repository,
+        report_id=report_id,
+        user_id=current_user,
+        require_access=lambda: _require_career_access(db=db, user_id=current_user),
+    )
     reports = await repository.list_report_history_for_user(report.career_profile_id, current_user)
     return build_report_history_payload(requested_report=report, reports=reports)
 
@@ -335,8 +351,12 @@ async def regenerate_career_report(
 ) -> JSONResponse:
     _require_feature_enabled()
     repository = CareerRepository(db)
-    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
-    await _require_career_access(db=db, user_id=current_user)
+    report = await _load_authorized_career_report(
+        repository,
+        report_id=report_id,
+        user_id=current_user,
+        require_access=lambda: _require_career_access(db=db, user_id=current_user),
+    )
     try:
         result = await repository.create_generation_idempotently(
             generation_id=uuid4(),
@@ -364,8 +384,12 @@ async def get_career_report_pdf(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> Response:
     repository = CareerRepository(db)
-    report = await _load_owned_report(repository, report_id=report_id, user_id=current_user)
-    await _require_career_access(db=db, user_id=current_user)
+    report = await _load_authorized_career_report(
+        repository,
+        report_id=report_id,
+        user_id=current_user,
+        require_access=lambda: _require_career_access(db=db, user_id=current_user),
+    )
     segments = await repository.list_segments_for_generation(report.generation_id)
     payload = build_progressive_report_payload(report=report, segments=segments)
     career_profile = await repository.get_profile_for_user(report.career_profile_id, current_user)
@@ -413,6 +437,24 @@ async def _load_owned_questionnaire(
     if questionnaire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Questionnaire not found")
     return questionnaire
+
+
+async def _load_authorized_career_report(
+    repository: CareerRepository,
+    *,
+    report_id: UUID,
+    user_id: UUID,
+    require_access: Callable[[], Awaitable[None]],
+) -> models.CareerReport:
+    owned_report_id = await repository.get_owned_report_id(report_id=report_id, user_id=user_id)
+    if owned_report_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+
+    await require_access()
+    report = await repository.get_report(report_id)
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    return report
 
 
 async def _load_owned_report(

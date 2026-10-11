@@ -195,13 +195,14 @@ def test_locked_product_response_contains_safe_upgrade_metadata_without_paid_pay
     assert "assembled_payload" not in payload
 
 
-def test_v2_report_routes_use_backend_entitlement_gate_for_paid_payloads() -> None:
+def test_v2_basic_report_routes_use_shared_policy_without_paid_product_gate() -> None:
     router_source = (ROOT / "app" / "modules" / "astrotype_v2" / "router.py").read_text()
 
-    assert 'SELF_REPORT_PRODUCT = "self"' in router_source
-    assert "EntitlementsService(db).has_active_product_access" in router_source
-    assert "build_locked_product_response(product=SELF_REPORT_PRODUCT" in router_source
-    assert "_require_self_report_access" in router_source
+    assert "ReportAccessPolicy(EntitlementsService(db)).check" in router_source
+    assert "BASIC_REPORT_TYPE" in router_source
+    assert 'SELF_REPORT_PRODUCT = "self"' not in router_source
+    assert "_require_self_report_access" not in router_source
+    assert "build_locked_product_response(product=SELF_REPORT_PRODUCT" not in router_source
 
 
 async def test_billing_access_state_is_free_without_payments_or_entitlements() -> None:

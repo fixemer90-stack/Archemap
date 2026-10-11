@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.routing import APIRoute
@@ -99,6 +100,66 @@ def test_every_runtime_career_route_has_an_explicit_access_operation_contract() 
         ("GET", "/v1/career/reports/{report_id}/pdf"): "pdf",
     }
     assert runtime_routes == {(route.method, route.path): route.operation for route in CAREER_ROUTE_ACCESS_CONTRACT}
+
+
+@pytest.mark.asyncio
+async def test_career_report_payload_is_loaded_only_after_ownership_and_access() -> None:
+    from app.modules.career.router import _load_authorized_career_report
+
+    report_id = uuid4()
+    user_id = uuid4()
+    report = SimpleNamespace(id=report_id)
+    repository = AsyncMock()
+    events: list[str] = []
+
+    async def get_owned_report_id(*, report_id: UUID, user_id: UUID) -> UUID:
+        events.append("ownership")
+        return report_id
+
+    async def require_access() -> None:
+        events.append("access")
+
+    async def get_report(report_id: UUID) -> object:
+        events.append("payload")
+        return report
+
+    repository.get_owned_report_id.side_effect = get_owned_report_id
+    repository.get_report.side_effect = get_report
+
+    loaded = await _load_authorized_career_report(
+        repository,
+        report_id=report_id,
+        user_id=user_id,
+        require_access=require_access,
+    )
+
+    assert loaded.id == report_id
+    repository.get_owned_report_id.assert_awaited_once_with(report_id=report_id, user_id=user_id)
+    repository.get_report.assert_awaited_once_with(report_id)
+    assert events == ["ownership", "access", "payload"]
+
+
+@pytest.mark.asyncio
+async def test_foreign_career_report_is_404_without_access_or_payload_read() -> None:
+    from fastapi import HTTPException
+
+    from app.modules.career.router import _load_authorized_career_report
+
+    repository = AsyncMock()
+    repository.get_owned_report_id.return_value = None
+    require_access = AsyncMock()
+
+    with pytest.raises(HTTPException) as missing:
+        await _load_authorized_career_report(
+            repository,
+            report_id=uuid4(),
+            user_id=uuid4(),
+            require_access=require_access,
+        )
+
+    assert missing.value.status_code == 404
+    require_access.assert_not_awaited()
+    repository.get_report.assert_not_awaited()
 
 
 def test_career_rollout_flag_is_off_by_default() -> None:

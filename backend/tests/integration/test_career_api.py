@@ -20,6 +20,7 @@ from app.modules.career.repository import CareerGenerationTargetMismatchError, C
 from app.modules.payments.models import Payment
 from app.modules.profiles.models import PersonProfile
 from app.modules.reports.models import Report
+from app.modules.subscriptions.models import Subscription, SubscriptionPlan
 from app.modules.users.models import User
 from tests.conftest import test_session_factory as session_factory
 
@@ -453,6 +454,19 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
         ]
     )
 
+    plus_plan = SubscriptionPlan(
+        plan_code="astrotype_plus_monthly",
+        display_name="Astrotype Plus",
+        amount=1.0,
+        currency="RUB",
+        billing_interval="month",
+        interval_count=1,
+        is_active=True,
+        features_json={},
+    )
+    db_session.add(plus_plan)
+    await db_session.flush()
+
     owner_payment = Payment(
         user_id=owner_id,
         provider="test",
@@ -471,6 +485,28 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
     )
     db_session.add_all([owner_payment, foreign_payment])
     await db_session.flush()
+    owner_subscription = Subscription(
+        user_id=owner_id,
+        plan_id=plus_plan.id,
+        provider="test",
+        status="active",
+        current_period_start=now - timedelta(days=1),
+        current_period_end=now + timedelta(days=30),
+        latest_payment_id=owner_payment.id,
+        metadata_json={},
+    )
+    foreign_subscription = Subscription(
+        user_id=foreign_user_id,
+        plan_id=plus_plan.id,
+        provider="test",
+        status="active",
+        current_period_start=now - timedelta(days=1),
+        current_period_end=now + timedelta(days=30),
+        latest_payment_id=foreign_payment.id,
+        metadata_json={},
+    )
+    db_session.add_all([owner_subscription, foreign_subscription])
+    await db_session.flush()
     owner_entitlement = Entitlement(
         user_id=owner_id,
         product="self",
@@ -478,6 +514,7 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
         source_payment_id=owner_payment.id,
         starts_at=now - timedelta(days=1),
         expires_at=now + timedelta(days=30),
+        metadata_json={"subscription_id": str(owner_subscription.id)},
     )
     db_session.add_all(
         [
@@ -489,6 +526,7 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
                 source_payment_id=foreign_payment.id,
                 starts_at=now - timedelta(days=1),
                 expires_at=now + timedelta(days=30),
+                metadata_json={"subscription_id": str(foreign_subscription.id)},
             ),
         ]
     )

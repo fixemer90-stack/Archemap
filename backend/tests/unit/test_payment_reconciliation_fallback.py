@@ -124,17 +124,17 @@ async def test_billing_access_reconciles_pending_yookassa_success_when_webhook_i
     assert payment.status == "succeeded"
     assert payment.paid_at is not None
     assert payment.payment_method_type == "yoo_money"
-    assert state.access_state == "plus_active"
-    assert state.account_tier == "plus"
+    assert state.access_state == "product_access"
+    assert state.account_tier == "free"
+    assert state.accessible_products == ["self"]
 
 
-def test_v2_report_access_gate_reconciles_pending_payment_before_locking() -> None:
+def test_v2_basic_report_access_never_reconciles_or_reads_paid_entitlements() -> None:
     router_source = "app/modules/astrotype_v2/router.py"
     from pathlib import Path
 
     source = Path(router_source).read_text()
 
-    assert "PaymentsService(db).reconcile_latest_pending_provider_payment" in source
-    assert source.index("reconcile_latest_pending_provider_payment") < source.index(
-        "EntitlementsService(db).has_active_product_access"
-    )
+    assert "ReportAccessPolicy(EntitlementsService(db)).check" in source
+    assert "PaymentsService(db).reconcile_latest_pending_provider_payment" not in source
+    assert "has_active_product_access" not in source

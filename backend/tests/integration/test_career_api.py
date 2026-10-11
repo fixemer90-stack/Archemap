@@ -578,6 +578,26 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
         report_id=report_id,
     )
     assert {response.status_code for response in free_responses} == {402}
+    preserved_generation = (
+        await db_session.execute(
+            select(models.CareerGeneration).where(
+                models.CareerGeneration.generation_id == generation_id
+            )
+        )
+    ).scalar_one_or_none()
+    assert preserved_generation is not None
+    assert preserved_generation.generation_id == generation_id
+    preserved_rows = [
+        await db_session.get(models.CareerProfile, career_profile_id),
+        await db_session.get(models.CareerQuestionnaireSession, questionnaire_id),
+        await db_session.get(models.CareerReport, report_id),
+    ]
+    assert all(row is not None for row in preserved_rows)
+    assert [row.id for row in preserved_rows if row is not None] == [
+        career_profile_id,
+        questionnaire_id,
+        report_id,
+    ]
 
     legacy_payment = Payment(
         user_id=owner_id,

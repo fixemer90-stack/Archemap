@@ -16,6 +16,7 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import configure_mappers
 from starlette.requests import Request
 
+from app.core.exceptions import ValidationError
 from app.modules.authorization.service import EntitlementsService, build_locked_product_response
 from app.modules.billing.router import get_billing_access
 from app.modules.payments.router import yookassa_webhook
@@ -232,16 +233,49 @@ async def test_billing_access_state_reports_checkout_pending_from_latest_payment
     assert state.latest_payment.status == "pending"
 
 
-async def test_billing_access_state_reports_plus_active_from_active_entitlement() -> None:
+async def test_billing_access_state_keeps_legacy_entitlement_product_scoped() -> None:
     service = PaymentsService(
         _BillingStateDb([_payment_attempt("succeeded")], [_entitlement()])  # type: ignore[arg-type]
     )
 
     state = await service.get_billing_access_state(user_id=uuid4())
 
+    assert state.access_state == "product_access"
+    assert state.account_tier == "free"
+    assert state.accessible_products == ["self"]
+    assert state.entitlements[0].product == "self"
+
+
+async def test_billing_access_state_exposes_only_grandfathered_career_product() -> None:
+    service = PaymentsService(
+        _BillingStateDb([], [_entitlement(product="career")])  # type: ignore[arg-type]
+    )
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
+    assert state.access_state == "product_access"
+    assert state.account_tier == "free"
+    assert state.accessible_products == ["career"]
+
+
+async def test_billing_access_state_exposes_all_products_for_canonical_active_plus() -> None:
+    now = datetime.now(UTC)
+    subscription = SimpleNamespace(
+        id=uuid4(),
+        status="active",
+        current_period_start=now - timedelta(days=1),
+        current_period_end=now + timedelta(days=29),
+        cancel_at_period_end=False,
+        grace_until=None,
+        metadata_json={"plan_code": "astrotype_plus_monthly"},
+    )
+    service = PaymentsService(_BillingStateDb([], [], [subscription]))  # type: ignore[arg-type]
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
     assert state.access_state == "plus_active"
     assert state.account_tier == "plus"
-    assert state.entitlements[0].product == "self"
+    assert state.accessible_products == ["career", "child", "love", "self"]
 
 
 async def test_billing_access_state_reports_payment_failed_from_latest_failed_payment() -> None:
@@ -300,34 +334,16 @@ def test_create_payment_request_public_contract_is_product_only() -> None:
     assert CreatePaymentRequest.model_config.get("extra") == "forbid"
 
 
-async def test_create_payment_for_product_uses_server_catalog_price() -> None:
+async def test_retired_self_full_cannot_create_a_new_direct_payment() -> None:
     db = _FakeDb()
     service = PaymentsService(db)  # type: ignore[arg-type]
 
-    with patch.object(
-        service,
-        "_create_yookassa_payment",
-        new=AsyncMock(
-            return_value={
-                "id": "provider-payment-id",
-                "status": "pending",
-                "confirmation": {"type": "redirect", "confirmation_url": "https://pay.example"},
-            }
-        ),
-    ) as create_provider_payment:
-        payment = await service.create_payment_for_product(
+    with pytest.raises(ValidationError, match="retired"):
+        await service.create_payment_for_product(
             user_id=uuid4(),
             product_id="self_full",
             return_url="https://app.example/thanks",
         )
-
-    assert payment.amount == 999.0
-    assert payment.currency == "RUB"
-    assert payment.description == "Astrotype Plus — полный доступ"
-    assert payment.metadata_json is not None
-    assert payment.metadata_json["product_id"] == "self_full"
-    assert payment.metadata_json["product"] == "self"
-    create_provider_payment.assert_awaited_once()
 
 
 async def test_billing_access_endpoint_returns_backend_owned_state() -> None:

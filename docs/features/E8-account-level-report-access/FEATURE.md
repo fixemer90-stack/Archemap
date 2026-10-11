@@ -54,12 +54,12 @@ The backend catalog, shared account-level policy and operation/artifact coverage
 - [x] Free and Plus accounts can create, generate, read, regenerate and export the basic report.
 - [x] Free accounts cannot access Plus-only report payloads through direct API/artifact routes.
 - [x] Active Plus accounts can use every enabled Plus-only report.
-- [ ] Expired/inactive Plus accounts retain basic-report access and lose Plus-only access without data deletion.
+- [x] Expired/inactive Plus accounts retain basic-report access and lose Plus-only access without data deletion.
 - [x] `account_tier='plus'` alone cannot bypass active-access checks.
 - [x] Frontend labels the basic report as available to every account and other reports as Plus-only.
 - [x] Web/PWA responsive surfaces consume the same backend policy result; no separate desktop entitlement logic exists.
 - [ ] Existing report rows, profiles and generated artifacts survive catalog/migration changes.
-- [ ] Read-after-expiry behavior for previously generated Plus-only reports is explicitly decided before rollout.
+- [x] Read-after-expiry behavior for previously generated Plus-only reports is explicitly decided before rollout.
 
 ## Stories
 

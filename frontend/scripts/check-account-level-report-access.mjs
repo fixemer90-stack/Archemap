@@ -10,6 +10,8 @@ const generation = read("src/lib/astrotype-v2/use-v2-report-generation.ts");
 const reportPage = read("src/app/(dashboard)/report/v2/[profileId]/page.tsx");
 const apiClient = read("src/lib/api-client.ts");
 const careerPage = read("src/app/(dashboard)/products/career/page.tsx");
+const paymentsApi = read("src/lib/api/payments.ts");
+const billingAccessHook = read("src/hooks/use-billing-access.ts");
 
 for (const marker of [
   'accessClass: "basic"',
@@ -89,6 +91,26 @@ for (const marker of [
       `Career must render the Plus lock without leaking error payloads: ${marker}`,
     );
   }
+}
+
+for (const [source, marker] of [
+  [paymentsApi, "accessible_products: string[]"],
+  [billingAccessHook, "hasProductAccess"],
+  [dashboard, "hasProductAccess(product.id)"],
+]) {
+  if (!source.includes(marker)) {
+    throw new Error(
+      `Product-specific grandfathered access must stay scoped: ${marker}`,
+    );
+  }
+}
+
+if (
+  dashboard.includes('product.accessClass === "plus_only" && !isPlusActive')
+) {
+  throw new Error(
+    "Dashboard must not treat a product-specific entitlement as account-wide Plus",
+  );
 }
 
 console.log("Account-level report access UX check passed");

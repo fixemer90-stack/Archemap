@@ -60,6 +60,7 @@ PRODUCT_CATALOG: dict[str, ProductPrice] = {
         amount=999.0,
         currency="RUB",
         description="Astrotype Plus — полный доступ",
+        purchasable=False,
     ),
     "career_full": ProductPrice(
         product_id="career_full",

@@ -191,28 +191,37 @@ class PaymentsService:
             if entitlement.status == "active" and (entitlement.expires_at is None or entitlement.expires_at > now)
         ]
 
+        subscription_plan_code = (
+            str((subscription.metadata_json or {}).get("plan_code")) if subscription is not None else None
+        )
+        subscription_is_canonical_plus = subscription_plan_code == "astrotype_plus_monthly"
         subscription_active = (
             subscription is not None
+            and subscription_is_canonical_plus
             and subscription.status in {"active", "cancel_scheduled"}
             and subscription.current_period_start is not None
             and subscription.current_period_end is not None
             and subscription.current_period_start <= now < subscription.current_period_end
         )
+        accessible_products = {entitlement.product for entitlement in active_entitlements}
+        if subscription_active:
+            accessible_products.update(CatalogService().get_subscription_plan("astrotype_plus_monthly").products)
+
         if subscription is not None and subscription_active:
             access_state = "cancel_scheduled" if subscription.cancel_at_period_end else "plus_active"
             account_tier = "plus"
-        elif subscription and subscription.status == "past_due":
+        elif subscription and subscription_is_canonical_plus and subscription.status == "past_due":
             access_state = "past_due"
             account_tier = "free"
-        elif subscription and subscription.status == "suspended":
+        elif subscription and subscription_is_canonical_plus and subscription.status == "suspended":
             access_state = "plus_suspended"
             account_tier = "free"
-        elif subscription and subscription.status in {"expired", "cancelled"}:
+        elif subscription and subscription_is_canonical_plus and subscription.status in {"expired", "cancelled"}:
             access_state = "plus_expired"
             account_tier = "free"
         elif active_entitlements:
-            access_state = "plus_active"
-            account_tier = "plus"
+            access_state = "product_access"
+            account_tier = "free"
         elif payment and payment.status in {"pending", "processing"}:
             access_state = "checkout_pending"
             account_tier = "free"
@@ -229,10 +238,11 @@ class PaymentsService:
         return BillingAccessResponse(
             account_tier=account_tier,
             access_state=access_state,
+            accessible_products=sorted(accessible_products),
             subscription=(
                 BillingSubscriptionSummary(
                     id=str(subscription.id),
-                    plan_code=str((subscription.metadata_json or {}).get("plan_code") or "astrotype_plus_monthly"),
+                    plan_code=subscription_plan_code or "unknown",
                     status=subscription.status,
                     current_period_start=subscription.current_period_start,
                     current_period_end=subscription.current_period_end,

@@ -24,6 +24,7 @@ export type BillingAccessState =
   | "cancel_scheduled"
   | "past_due"
   | "payment_failed"
+  | "product_access"
   | "plus_inactive"
   | "plus_expired"
   | "plus_suspended";
@@ -58,6 +59,7 @@ export type BillingSubscriptionSummary = {
 export type BillingAccessResponse = {
   account_tier: "free" | "plus" | string;
   access_state: BillingAccessState;
+  accessible_products: string[];
   subscription: BillingSubscriptionSummary | null;
   entitlements: BillingEntitlementSummary[];
   latest_payment: BillingPaymentSummary | null;

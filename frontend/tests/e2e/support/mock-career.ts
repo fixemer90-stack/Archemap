@@ -57,6 +57,7 @@ export async function mockCareerApi(
       return json(route, {
         account_tier: "plus",
         access_state: "plus_active",
+        accessible_products: ["self", "career", "love", "child"],
         entitlements: [],
         latest_payment: null,
       });

@@ -1,6 +1,6 @@
 # Account levels and report access policy
 
-Status: target product/access contract; implementation pending
+Status: implemented contract; staging rollout pending
 Feature contract: `docs/features/E8-account-level-report-access/FEATURE.md`
 SRS: `docs/SRS/SRS-E8-account-level-report-access.md`
 Related account-tier foundation: `docs/architecture/account-tier-role-foundation.md`
@@ -20,7 +20,7 @@ basic report -> available to every authenticated account, Free or Plus
 any other report -> available only while Plus access is active
 ```
 
-This contract changes the target access model. The current implementation still gates the Astrotype v2 Self report with a `self` entitlement; that behavior must not be described as already compliant until E8 is implemented and verified.
+This contract is implemented by E8.S01–S04. The Astrotype v2 Self report resolves to the canonical basic report and no longer requires a paid `self` entitlement; E8.S05 rollout evidence remains pending.
 
 ## What “basic report” means
 
@@ -40,6 +40,8 @@ The exact internal report code must be defined once in the backend report catalo
 Authentication remains required. “Available to every account level” does not mean anonymous public access.
 
 `account_tier` is a display/cache field, not sufficient authorization proof. For monthly SaaS, Plus is active only inside a valid paid subscription period. Historical non-expiring purchases may be honored only through an explicit migration/grandfather policy.
+
+Billing/client metadata follows the same scope: canonical active monthly Plus returns every plan product in `accessible_products`; a grandfathered product-specific entitlement returns only its own product and does not set account-wide Plus active.
 
 ## Report access matrix
 
@@ -151,8 +153,8 @@ Avoid “полный личный отчёт закрыт” when referring to 
 ## Existing reports and expiry
 
 - A report already generated as the basic report remains available after Plus expires.
-- Plus-only reports require active Plus on each protected read/download/regenerate operation unless a separate retention policy explicitly grants read-only history.
-- Before implementation, product must choose whether an expired user may read previously generated Plus-only reports. Until that decision is documented, the safe default is locked access after expiry without deleting report data.
+- Plus-only reports require active Plus on each protected read/download/regenerate operation, including reports generated during an earlier paid period.
+- Read-after-expiry decision: an expired account cannot read, download, regenerate or otherwise retrieve a previously generated Plus-only report. The stored report and its identifiers remain intact and become accessible again after Plus renewal or through an applicable grandfathered product-specific grant.
 - Expiry or downgrade must never delete generated reports or profile data.
 
 ## Security and consistency rules
@@ -178,6 +180,6 @@ E8 cannot be marked complete until tests and live smoke prove:
 - frontend cards and CTAs match backend decisions;
 - report rows and generated artifacts are not deleted during upgrade, expiry or migration.
 
-## Open product decision
+## Read-after-expiry decision
 
-Define read-after-expiry behavior for already generated Plus-only reports before E8.S05 rollout. This does not affect the invariant that the basic report is always available to an authenticated account.
+Previously generated Plus-only reports are locked after expiry on every protected operation. They are retained without identifier or payload rewrites and become accessible again when valid access is restored. The canonical basic report remains available to every authenticated account regardless of Plus state.

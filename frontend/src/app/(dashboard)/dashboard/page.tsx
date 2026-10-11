@@ -142,8 +142,13 @@ function getAccessStatusCopy({
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const { access, isPlusActive, isLoadingAccess, accessError } =
-    useBillingAccess();
+  const {
+    access,
+    isPlusActive,
+    isLoadingAccess,
+    accessError,
+    hasProductAccess,
+  } = useBillingAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -391,7 +396,8 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {products.map((product) => {
             const isPlusLocked =
-              product.accessClass === "plus_only" && !isPlusActive;
+              product.accessClass === "plus_only" &&
+              !hasProductAccess(product.id);
             return (
               <ProductSurfaceCard
                 key={product.id}

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.exceptions import ValidationError
-from app.modules.catalog.service import REPORT_CATALOG, AccessClass, CatalogService
+from app.modules.catalog.service import PRODUCT_CATALOG, REPORT_CATALOG, AccessClass, CatalogService
 
 
 def test_report_catalog_has_exactly_one_basic_report() -> None:
@@ -42,3 +42,7 @@ def test_commercial_and_storage_identifiers_have_one_mapping() -> None:
     assert career.storage_identifiers == ("career",)
     assert career.commercial_skus == ("career_full",)
     assert career.entitlement_product == "career"
+    assert PRODUCT_CATALOG["self_full"].purchasable is False
+
+    with pytest.raises(ValidationError, match="retired"):
+        catalog.get_product("self_full")

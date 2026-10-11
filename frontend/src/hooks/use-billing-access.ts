@@ -59,6 +59,8 @@ export function useBillingAccess() {
     isPlusActive:
       access?.access_state === "plus_active" ||
       access?.access_state === "cancel_scheduled",
+    hasProductAccess: (product: string) =>
+      access?.accessible_products?.includes(product) ?? false,
     refreshAccess,
   };
 }

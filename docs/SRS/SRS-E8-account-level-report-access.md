@@ -1,6 +1,6 @@
 # SRS-E8: Account-level report access
 
-Status: target requirements; implementation pending
+Status: implementation complete; staging rollout pending
 Feature: `docs/features/E8-account-level-report-access/FEATURE.md`
 Architecture: `docs/architecture/account-levels-report-access-policy.md`
 
@@ -86,7 +86,7 @@ A Free request for the basic report shall not return payment-required solely due
 
 - Upgrade, downgrade, expiry and identifier migration shall not delete profiles, reports or generated artifacts.
 - Existing `self` / `self_full` identifiers shall be mapped to the canonical basic-report code without breaking persisted references.
-- Read-after-expiry behavior for previously generated Plus-only reports shall be explicitly decided before rollout.
+- Previously generated Plus-only reports shall be locked on read/download/regenerate after expiry, retained without deletion or identifier rewrite, and become accessible again when valid Plus or an applicable grandfathered grant is restored.
 
 ## 4. Non-functional requirements
 
@@ -153,6 +153,6 @@ E8 requires automated tests and live smoke proving:
 - Backend report/product catalog.
 - Dashboard, billing and report-reader clients.
 
-## 9. Current implementation discrepancy
+## 9. Implementation status
 
-At documentation time, current Astrotype v2 Self routes use a paid `self` entitlement gate. Therefore the target basic-report requirement is not yet implemented. E8 Stories must remove that gate only for the canonical basic report and preserve Plus-only protection elsewhere.
+E8.S01–S04 implement the canonical catalog, backend-owned access policy, operation/artifact coverage and responsive frontend matrix. E8.S05 regression, data-preservation and live staging evidence must pass before this SRS is marked fully rolled out.

@@ -36,19 +36,24 @@ for (const token of ["Открыть меню", "toggleMobileSidebar", "md:hidde
   }
 }
 
-for (const forbidden of [
-  "Bell",
-  "Уведомления",
-  'aria-hidden="true"',
+for (const forbidden of ["Bell", "Уведомления"]) {
+  if (header.includes(forbidden)) {
+    throw new Error(`dashboard header exposes inactive control ${forbidden}`);
+  }
+}
+
+for (const token of [
   "useTheme",
+  "resolvedTheme",
+  "setTheme(nextTheme)",
   "Включить светлую тему",
+  "Включить тёмную тему",
   "Moon",
   "Sun",
+  'data-theme-toggle="quick"',
 ]) {
-  if (header.includes(forbidden)) {
-    throw new Error(
-      `dashboard header still exposes incomplete light theme via ${forbidden}`,
-    );
+  if (!header.includes(token)) {
+    throw new Error(`dashboard quick theme switch misses ${token}`);
   }
 }
 

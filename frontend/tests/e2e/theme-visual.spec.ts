@@ -4,9 +4,24 @@ import { expect, test } from "./support/test";
 const surfaces = [
   { key: "homepage", path: "/", ready: "body" },
   { key: "auth-login", path: "/login", ready: "body" },
-  { key: "dashboard-shell", path: "/dashboard", ready: "main" },
-  { key: "settings", path: "/settings", ready: "main" },
-  { key: "billing", path: "/billing", ready: "main" },
+  {
+    key: "dashboard-shell",
+    path: "/dashboard",
+    ready: "main",
+    quickThemeSwitch: true,
+  },
+  {
+    key: "settings",
+    path: "/settings",
+    ready: "main",
+    quickThemeSwitch: true,
+  },
+  {
+    key: "billing",
+    path: "/billing",
+    ready: "main",
+    quickThemeSwitch: true,
+  },
   {
     key: "career-product",
     path: "/products/career?profileId=profile-1",
@@ -43,6 +58,11 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(surface.path, { waitUntil: "domcontentloaded" });
       await expect(page.locator("html")).toHaveClass(new RegExp(theme));
       await expect(page.locator(surface.ready).first()).toBeVisible();
+      if ("quickThemeSwitch" in surface && surface.quickThemeSwitch) {
+        const quickThemeSwitch = page.locator('[data-theme-toggle="quick"]');
+        await expect(quickThemeSwitch).toBeVisible();
+        await expect(quickThemeSwitch).toBeEnabled();
+      }
       await expect(page.getByText(/Unhandled mock route/)).toHaveCount(0);
       await expect(page).toHaveScreenshot(`${surface.key}-${theme}.png`, {
         animations: "disabled",

@@ -64,19 +64,14 @@ assertMarkers("supported theme", rootLayout, [
   "enableSystem",
   "enableColorScheme",
 ]);
-for (const forbidden of [
-  "activeTheme",
+assertMarkers("quick theme switch", header, [
+  "useTheme",
   "resolvedTheme",
   "setTheme(nextTheme)",
   "Включить светлую тему",
   "Включить тёмную тему",
-]) {
-  assert.equal(
-    header.includes(forbidden),
-    false,
-    `supported theme: header must not expose ${forbidden}`,
-  );
-}
+  'data-theme-toggle="quick"',
+]);
 
 assertMarkers("homepage", homepage, [
   'data-product-surface-preview="illustrative"',

@@ -82,3 +82,34 @@ test("light, dark, and system preferences persist without resetting settings sta
     ),
   ).toEqual([]);
 });
+
+test("quick header switch toggles the resolved theme and persists the explicit choice", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.addInitScript(() => {
+    localStorage.setItem("astrotype-theme", "system");
+  });
+  await mockSettingsApi(page);
+
+  await page.goto("/settings", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("html")).toHaveClass(/dark/);
+
+  const quickToggle = page.getByRole("button", {
+    name: "Включить светлую тему",
+  });
+  await expect(quickToggle).toBeVisible();
+  await quickToggle.click();
+
+  await expect(page.locator("html")).toHaveClass(/light/);
+  await expect(
+    page.getByRole("button", { name: "Включить тёмную тему" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem("astrotype-theme")),
+  ).toBe("light");
+  await expect(themeButton(page, "Светлая")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});

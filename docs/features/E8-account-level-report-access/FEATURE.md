@@ -2,7 +2,7 @@
 
 ## Status
 
-🟡 В процессе — S01–S04 реализованы и проверены; regression/migration proof и staging rollout остаются открыты
+🟡 В процессе — S01–S04 и локальная часть S05 реализованы; staging rollout proof остаётся открытым
 
 ## Goal
 
@@ -27,7 +27,7 @@ The backend, not frontend visibility, owns this decision. `account_tier` may be 
 
 ## Implementation frontier
 
-The backend catalog, shared account-level policy and operation/artifact coverage are implemented. Canonical basic-report routes bypass paid entitlement checks after authentication; Plus-only Career routes require active monthly Plus or the explicit grandfathered Career grant and load protected payloads only after ownership and access checks. The responsive frontend now renders the backend-owned Free/Plus matrix consistently and keeps the basic report outside the paid lock. Regression/migration proof and staging rollout remain open.
+The backend catalog, shared account-level policy and operation/artifact coverage are implemented across Astrotype v2, Career and the mounted legacy `/reports` API. Canonical basic-report routes bypass paid entitlement checks after authentication; Plus-only routes require active monthly Plus or an explicit current direct product grant and load protected payloads only after ownership and access checks. The responsive frontend now renders the backend-owned Free/Plus matrix consistently and keeps the basic report outside the paid lock. Local regression/migration proof is implemented; staging rollout evidence remains open.
 
 ## Scope
 
@@ -63,13 +63,13 @@ The backend catalog, shared account-level policy and operation/artifact coverage
 
 ## Stories
 
-| ID  | Story                                                                                            | Status       |
-| --- | ------------------------------------------------------------------------------------------------ | ------------ |
-| S01 | [Define report catalog and access classes](./S01-report-catalog-access-classes.md)               | ✅ Готово    |
-| S02 | [Implement backend report access policy](./S02-backend-report-access-policy.md)                  | ✅ Готово    |
-| S03 | [Apply policy to every report operation and artifact](./S03-report-operation-policy-coverage.md) | ✅ Готово    |
-| S04 | [Implement account-level report UX](./S04-frontend-account-level-report-ux.md)                   | ✅ Готово    |
-| S05 | [Add regression, migration and rollout proof](./S05-regression-migration-rollout.md)             | ⬜ Не начато |
+| ID  | Story                                                                                            | Status        |
+| --- | ------------------------------------------------------------------------------------------------ | ------------- |
+| S01 | [Define report catalog and access classes](./S01-report-catalog-access-classes.md)               | ✅ Готово     |
+| S02 | [Implement backend report access policy](./S02-backend-report-access-policy.md)                  | ✅ Готово     |
+| S03 | [Apply policy to every report operation and artifact](./S03-report-operation-policy-coverage.md) | ✅ Готово     |
+| S04 | [Implement account-level report UX](./S04-frontend-account-level-report-ux.md)                   | ✅ Готово     |
+| S05 | [Add regression, migration and rollout proof](./S05-regression-migration-rollout.md)             | 🟡 В процессе |
 
 ## Implementation order
 

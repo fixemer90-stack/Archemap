@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -22,11 +23,41 @@ from app.modules.rules.resolver import render_full_report
 logger = structlog.get_logger()
 
 
+@dataclass(frozen=True)
+class ReportAccessMetadata:
+    id: UUID
+    product: str
+
+
 class ReportService:
     """Service for generating and managing reports."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+
+    async def assert_profile_owned(self, profile_id: UUID, user_id: UUID) -> None:
+        """Resolve profile ownership without loading profile payload fields."""
+        result = await self.db.execute(
+            select(PersonProfile.id).where(
+                PersonProfile.id == profile_id,
+                PersonProfile.user_id == user_id,
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            raise NotFoundError("Profile not found")
+
+    async def get_report_access_metadata(self, report_id: UUID, user_id: UUID) -> ReportAccessMetadata:
+        """Resolve ownership and report type before protected payload deserialization."""
+        result = await self.db.execute(
+            select(Report.id, Report.product).where(
+                Report.id == report_id,
+                Report.user_id == user_id,
+            )
+        )
+        row = result.one_or_none()
+        if row is None:
+            raise NotFoundError("Report not found")
+        return ReportAccessMetadata(id=row.id, product=row.product)
 
     async def generate_report(
         self,
@@ -157,10 +188,15 @@ class ReportService:
         product: str | None = None,
         limit: int = 10,
         offset: int = 0,
+        allowed_products: set[str] | None = None,
     ) -> tuple[list[Report], int]:
         """List reports for a user with optional product filter."""
         query = select(Report).where(Report.user_id == user_id)
         count_query = select(func.count()).select_from(Report).where(Report.user_id == user_id)
+
+        if allowed_products is not None:
+            query = query.where(Report.product.in_(allowed_products))
+            count_query = count_query.where(Report.product.in_(allowed_products))
 
         if product:
             query = query.where(Report.product == product)

@@ -13,7 +13,11 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
+from app.modules.authorization.report_access import ReportAccessPolicy
+from app.modules.authorization.service import EntitlementsService
+from app.modules.catalog.service import CatalogService
 from app.modules.report_narratives.service import get_latest_narrative_for_report
+from app.modules.reports.access import legacy_report_access_operation
 from app.modules.reports.models import Report
 from app.modules.reports.pdf import generate_report_pdf
 from app.modules.reports.schemas import (
@@ -28,6 +32,55 @@ from app.modules.reports.service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 logger = structlog.get_logger()
+
+_catalog = CatalogService()
+_basic_report = _catalog.get_report("basic_natal")
+_BASIC_REPORT_IDENTIFIERS = {
+    _basic_report.report_type,
+    *_basic_report.storage_identifiers,
+    *_basic_report.commercial_skus,
+}
+_PLUS_REPORTS = tuple(_catalog.get_report(report_type) for report_type in ("career", "love", "child"))
+_LEGACY_REPORT_IDENTIFIERS_BY_PRODUCT = {
+    report.entitlement_product: {
+        report.report_type,
+        *report.storage_identifiers,
+        *report.commercial_skus,
+    }
+    for report in _PLUS_REPORTS
+    if report.entitlement_product is not None
+}
+_LEGACY_REPORT_PRODUCTS = _BASIC_REPORT_IDENTIFIERS | set().union(*_LEGACY_REPORT_IDENTIFIERS_BY_PRODUCT.values())
+
+
+async def _require_legacy_report_access(*, db: AsyncSession, user_id: UUID, product: str) -> None:
+    entitlements = EntitlementsService(db)
+    decision = await ReportAccessPolicy(entitlements).check(user_id, product)
+    if decision.allowed:
+        return
+    raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=decision.to_payload())
+
+
+async def _require_owned_legacy_report_access(
+    *,
+    db: AsyncSession,
+    user_id: UUID,
+    report_id: UUID,
+) -> str:
+    metadata = await ReportService(db).get_report_access_metadata(report_id, user_id)
+    await _require_legacy_report_access(db=db, user_id=user_id, product=metadata.product)
+    return metadata.product
+
+
+async def _accessible_legacy_report_products(*, db: AsyncSession, user_id: UUID) -> set[str]:
+    entitlements = EntitlementsService(db)
+    if await entitlements.has_active_plus_access(user_id):
+        return set(_LEGACY_REPORT_PRODUCTS)
+    products = set(_BASIC_REPORT_IDENTIFIERS)
+    for entitlement_product, report_identifiers in _LEGACY_REPORT_IDENTIFIERS_BY_PRODUCT.items():
+        if await entitlements.has_active_direct_product_access(user_id, entitlement_product):
+            products.update(report_identifiers)
+    return products
 
 
 class NarrativeRegenerateRequest(BaseModel):
@@ -97,6 +150,7 @@ async def _ensure_self_narrative_generation(
 
 
 @router.post("/generate", response_model=ReportResponse)
+@legacy_report_access_operation("create")
 async def generate_report(
     body: GenerateReportRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -109,8 +163,11 @@ async def generate_report(
     Also triggers async PDF generation.
     """
     service = ReportService(db)
+    profile_id = UUID(body.profile_id)
+    await service.assert_profile_owned(profile_id, current_user)
+    await _require_legacy_report_access(db=db, user_id=current_user, product=body.product)
     report = await service.generate_report(
-        profile_id=UUID(body.profile_id),
+        profile_id=profile_id,
         user_id=current_user,
         product=body.product,
         mode=body.mode,
@@ -143,6 +200,7 @@ async def generate_report(
 
 
 @router.get("", response_model=ReportListResponse)
+@legacy_report_access_operation("list")
 async def list_reports(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
@@ -152,11 +210,17 @@ async def list_reports(
 ) -> ReportListResponse:
     """List reports for the current user."""
     service = ReportService(db)
+    if product is not None:
+        await _require_legacy_report_access(db=db, user_id=current_user, product=product)
+        allowed_products = {product}
+    else:
+        allowed_products = await _accessible_legacy_report_products(db=db, user_id=current_user)
     reports, total = await service.list_reports(
         user_id=current_user,
         product=product,
         limit=limit,
         offset=offset,
+        allowed_products=allowed_products,
     )
     items: list[ReportResponse] = []
     for report in reports:
@@ -166,12 +230,14 @@ async def list_reports(
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
+@legacy_report_access_operation("read")
 async def get_report(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> ReportResponse:
     """Get a report by ID."""
+    await _require_owned_legacy_report_access(db=db, user_id=current_user, report_id=report_id)
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
     narrative = await _ensure_self_narrative_generation(db, report)
@@ -179,6 +245,7 @@ async def get_report(
 
 
 @router.post("/{report_id}/narrative/regenerate", response_model=ReportResponse)
+@legacy_report_access_operation("regenerate")
 async def regenerate_report_narrative(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -186,6 +253,7 @@ async def regenerate_report_narrative(
     body: Annotated[NarrativeRegenerateRequest | None, Body()] = None,
 ) -> ReportResponse:
     """Enqueue a fresh LLM narrative attempt without recomputing deterministic report data."""
+    await _require_owned_legacy_report_access(db=db, user_id=current_user, report_id=report_id)
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
     if report.product != "self":
@@ -224,6 +292,7 @@ async def _get_report_pdf_headers(
     db: AsyncSession,
     current_user: UUID,
 ) -> dict[str, str]:
+    await _require_owned_legacy_report_access(db=db, user_id=current_user, report_id=report_id)
     service = ReportService(db)
     report = await service.get_report(report_id, current_user)
 
@@ -238,6 +307,7 @@ async def _get_report_pdf_headers(
 
 
 @router.head("/{report_id}/pdf")
+@legacy_report_access_operation("export")
 async def head_report_pdf(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -277,6 +347,7 @@ async def _render_report_pdf(
 
 
 @router.get("/{report_id}/pdf")
+@legacy_report_access_operation("export")
 async def get_report_pdf(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -287,6 +358,7 @@ async def get_report_pdf(
 
 
 @router.post("/{report_id}/pdf")
+@legacy_report_access_operation("export")
 async def post_report_pdf(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -297,18 +369,21 @@ async def post_report_pdf(
 
 
 @router.get("/{report_id}/versions", response_model=ReportVersionListResponse)
+@legacy_report_access_operation("versions")
 async def get_report_versions(
     report_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> ReportVersionListResponse:
     """Get version history for a report."""
+    await _require_owned_legacy_report_access(db=db, user_id=current_user, report_id=report_id)
     service = ReportService(db)
     versions = await service.get_versions(report_id, current_user)
     return ReportVersionListResponse(items=[ReportVersionResponse.model_validate(v) for v in versions])
 
 
 @router.get("/{report_id}/versions/{version}", response_model=ReportVersionResponse)
+@legacy_report_access_operation("versions")
 async def get_report_version(
     report_id: UUID,
     version: int,
@@ -316,6 +391,7 @@ async def get_report_version(
     current_user: Annotated[UUID, Depends(get_current_user)],
 ) -> ReportVersionResponse:
     """Get a specific version of a report."""
+    await _require_owned_legacy_report_access(db=db, user_id=current_user, report_id=report_id)
     service = ReportService(db)
     rv = await service.get_version(report_id, version, current_user)
     return ReportVersionResponse.model_validate(rv)

@@ -96,6 +96,47 @@ async def test_historical_direct_purchase_remains_valid_without_subscription_met
     assert await service.has_active_product_access(uuid4(), "self") is True
 
 
+async def test_future_direct_entitlement_is_not_active_before_starts_at() -> None:
+    entitlement = SimpleNamespace(
+        product="career",
+        status="active",
+        starts_at=NOW + timedelta(seconds=1),
+        expires_at=None,
+        metadata_json={},
+    )
+
+    class _DirectDb:
+        async def execute(self, _query: object) -> _ScalarResult:
+            return _ScalarResult(entitlement)
+
+    service = EntitlementsService(_DirectDb(), now=lambda: NOW)  # type: ignore[arg-type]
+
+    assert await service.has_active_product_access(uuid4(), "career") is False
+    assert await service.has_active_direct_product_access(uuid4(), "career") is False
+
+
+async def test_past_due_subscription_entitlement_is_not_grandfathered_product_access() -> None:
+    subscription_id = uuid4()
+    entitlement = SimpleNamespace(
+        product="career",
+        status="active",
+        starts_at=NOW - timedelta(days=1),
+        expires_at=NOW + timedelta(days=10),
+        metadata_json={"subscription_id": str(subscription_id)},
+    )
+    subscription = _subscription(
+        id=subscription_id,
+        status="past_due",
+        grace_until=NOW + timedelta(days=3),
+    )
+    service = EntitlementsService(
+        _EntitlementDb(entitlement, subscription),  # type: ignore[arg-type]
+        now=lambda: NOW,
+    )
+
+    assert await service.has_active_product_access(uuid4(), "career") is False
+
+
 class _RowsResult:
     def __init__(self, values: list[object]) -> None:
         self.values = values

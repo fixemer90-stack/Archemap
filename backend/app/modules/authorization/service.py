@@ -58,8 +58,21 @@ class EntitlementsService:
         return list(result.scalars().all())
 
     def _entitlement_is_current(self, entitlement: Entitlement) -> bool:
+        now = self._now()
+        starts_at = getattr(entitlement, "starts_at", None)
         expires_at = entitlement.expires_at
-        return expires_at is None or expires_at > self._now()
+        return (starts_at is None or starts_at <= now) and (expires_at is None or expires_at > now)
+
+    async def has_active_direct_product_access(self, user_id: UUID, product: str) -> bool:
+        """Authorize an explicit historical grant that is not subscription-backed."""
+        for entitlement in await self._active_entitlements(user_id, product):
+            if entitlement.product != product or entitlement.status != "active":
+                continue
+            if not self._entitlement_is_current(entitlement):
+                continue
+            if not (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id"):
+                return True
+        return False
 
     async def _subscription_for_entitlement(self, entitlement: Entitlement) -> Subscription | None:
         subscription_id = (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id")
@@ -93,12 +106,7 @@ class EntitlementsService:
                 and subscription.current_period_end is not None
                 and subscription.current_period_start <= now < subscription.current_period_end
             )
-            grace_access = (
-                subscription.status == "past_due"
-                and subscription.grace_until is not None
-                and subscription.grace_until > now
-            )
-            if normal_period or grace_access:
+            if normal_period:
                 return True
         return False
 

@@ -36,6 +36,19 @@ from tests.unit.test_report_narratives.test_schemas import make_self_narrative_p
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def _allow_legacy_report_access_for_existing_route_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def profile_owned(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    async def report_access(*_args: Any, **_kwargs: Any) -> str:
+        return "self"
+
+    monkeypatch.setattr(ReportService, "assert_profile_owned", profile_owned)
+    monkeypatch.setattr(reports_router, "_require_legacy_report_access", profile_owned)
+    monkeypatch.setattr(reports_router, "_require_owned_legacy_report_access", report_access)
+
+
 def make_chart_data() -> dict[str, Any]:
     """Create sample chart data."""
     return {

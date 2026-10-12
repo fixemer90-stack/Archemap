@@ -27,11 +27,15 @@ Protecting only the main report endpoint leaves bypasses through generation, seg
 ## Implementation evidence
 
 - Every Astrotype v2 report route declares an explicit operation contract covering create, generation status, read, progress, facts, infographic, segments, regeneration and PDF export.
+- The mounted legacy `/reports` API now has its own executable inventory covering create, list, read, narrative regeneration, GET/POST/HEAD PDF and version routes; it no longer bypasses E8 for `career`, `love` or `child` payloads.
 - Basic-report routes use `ReportAccessPolicy` and never consult or reconcile a paid entitlement.
 - Owned report identifiers are resolved with metadata-only queries before report JSON/payload columns are loaded.
+- Legacy report listing filters at SQL level to identifiers the account may access, so locked payload rows are not deserialized and then discarded.
 - Career report reads, sections, versions, regeneration and PDF resolve ownership, then active Plus or grandfathered Career access, then load protected payloads.
 - Career questionnaire/create operations preserve ownership-first 404 behavior before the Plus gate.
-- Verification: 270 Astrotype v2/Career/payment unit tests passed; the PostgreSQL-backed Career route matrix passed all three integration tests against a disposable PostgreSQL 16 database.
+- Subscription-backed entitlements require `active`/`cancel_scheduled` inside the paid period. `past_due` grace does not become product grandfathering; only a current direct historical product grant can use that exception.
+- A current direct grandfathered grant is evaluated against the report catalog's own entitlement product, so scoped Career, Love or Child access unlocks only that report and never account-wide Plus.
+- Verification: the full backend unit suite passes with the executable Astrotype v2, Career and legacy-report inventories; PostgreSQL-backed Career and legacy-report matrices run against disposable PostgreSQL 16.
 
 ## Verification target
 

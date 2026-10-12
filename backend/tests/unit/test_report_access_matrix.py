@@ -17,6 +17,9 @@ class _PlusReader:
         self.calls.append(user_id)
         return self.active
 
+    async def has_active_direct_product_access(self, user_id: UUID, product: str) -> bool:
+        return False
+
 
 @pytest.mark.parametrize("report_identifier", ["basic_natal", "self", "self_full"])
 async def test_free_and_plus_accounts_keep_basic_report_access(report_identifier: str) -> None:

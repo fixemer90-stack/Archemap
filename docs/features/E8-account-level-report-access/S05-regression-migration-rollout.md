@@ -45,24 +45,28 @@ E8 uses catalog aliases rather than a destructive data migration:
 ## Local regression evidence
 
 - `test_report_access_matrix.py` covers Free and active Plus decisions for every current catalog report, legacy basic aliases, the legacy Career SKU and safe locked metadata.
-- Astrotype v2 and Career executable route inventories cover create/generate/status/read/calculation/segments/regenerate/versions/PDF operations.
+- Astrotype v2, Career and mounted legacy `/reports` executable route inventories cover create/generate/list/status/read/calculation/segments/regenerate/versions/PDF operations.
 - Subscription boundary tests and the consolidated report matrix prove exact-expiry and tier-only denial.
+- Direct grandfathered grants require `starts_at <= now < expires_at` when bounded; subscription-backed grants do not receive direct-purchase grandfathering or `past_due` grace.
 - Billing access now returns backend-computed `accessible_products`: canonical active monthly Plus exposes all plan products, while a grandfathered product grant exposes only that product and never masquerades as account-wide Plus.
 - The PostgreSQL Career route matrix proves active Plus success, Free/expired `402`, foreign-owner `404`, grandfathered Career success, and preservation of the same profile/questionnaire/generation/report identifiers after access transitions.
+- The PostgreSQL legacy-report matrix proves Free can read/list basic `self` data while a persisted `love` payload is denied with safe `402` metadata and omitted from list results.
 
 ## Verification evidence
 
 ```text
 backend unit suite
-  -> 699 passed
+  -> 709 passed
 backend PostgreSQL integration suite
-  -> 23 passed
+  -> 24 passed
 focused PostgreSQL Career access/preservation matrix after final assertions
   -> 1 passed
+focused PostgreSQL legacy /reports access matrix
+  -> 1 passed
 ruff check / ruff format --check
-  -> passed; 374 files formatted
+  -> passed; 377 files formatted
 mypy .
-  -> success across 373 source files
+  -> success across 376 source files
 frontend npm test
   -> all 15 contract scripts passed
 frontend Playwright visual matrix

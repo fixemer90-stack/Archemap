@@ -188,7 +188,9 @@ class PaymentsService:
         active_entitlements = [
             entitlement
             for entitlement in entitlements
-            if entitlement.status == "active" and (entitlement.expires_at is None or entitlement.expires_at > now)
+            if entitlement.status == "active"
+            and (entitlement.starts_at is None or entitlement.starts_at <= now)
+            and (entitlement.expires_at is None or entitlement.expires_at > now)
         ]
 
         subscription_plan_code = (
@@ -203,7 +205,11 @@ class PaymentsService:
             and subscription.current_period_end is not None
             and subscription.current_period_start <= now < subscription.current_period_end
         )
-        accessible_products = {entitlement.product for entitlement in active_entitlements}
+        accessible_products = {
+            entitlement.product
+            for entitlement in active_entitlements
+            if not (getattr(entitlement, "metadata_json", None) or {}).get("subscription_id")
+        }
         if subscription_active:
             accessible_products.update(CatalogService().get_subscription_plan("astrotype_plus_monthly").products)
 

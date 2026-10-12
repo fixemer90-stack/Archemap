@@ -46,6 +46,7 @@ All other reports: active Plus only
 - A new or unknown report type shall not default to free access.
 - Career, Love, Child and any future specialized/expanded report shall require active Plus.
 - Free/expired/inactive accounts shall receive safe locked metadata, not protected content.
+- An applicable grandfathered product grant shall be direct, active, started and unexpired; subscription-backed `past_due` grace shall not be reclassified as direct grandfathering.
 
 ### FR-E8.4 Active Plus proof
 
@@ -68,6 +69,8 @@ The same report policy shall be applied to:
 - narrative segments and calculation layer;
 - regenerate;
 - PDF/export/share/download artifacts.
+
+Coverage includes canonical Astrotype v2/Career routes and the mounted legacy `/v1/reports` create, list, read, narrative regeneration, PDF and version routes.
 
 ### FR-E8.6 API response
 
@@ -155,4 +158,4 @@ E8 requires automated tests and live smoke proving:
 
 ## 9. Implementation status
 
-E8.S01–S04 implement the canonical catalog, backend-owned access policy, operation/artifact coverage and responsive frontend matrix. E8.S05 regression, data-preservation and live staging evidence must pass before this SRS is marked fully rolled out.
+E8.S01–S04 implement the canonical catalog, backend-owned access policy, operation/artifact coverage across canonical and mounted legacy routes, and responsive frontend matrix. E8.S05 local regression and data-preservation proof are complete; live staging evidence must pass before this SRS is marked fully rolled out.

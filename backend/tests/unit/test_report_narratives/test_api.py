@@ -17,7 +17,7 @@ from app.main import app
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.service import _is_legacy_fallback_narrative
 from app.modules.reports.models import Report
-from app.modules.reports.service import ReportService
+from app.modules.reports.service import ReportAccessMetadata, ReportService
 
 
 class _DummyPipeline:
@@ -70,6 +70,20 @@ def current_user_id() -> UUID:
 def override_current_user(current_user_id: UUID, monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     app.dependency_overrides[get_current_user] = lambda: current_user_id
     monkeypatch.setattr("app.api.middleware.get_redis_client", lambda: _DummyRedis())
+
+    async def profile_owned(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    async def report_metadata(
+        service: ReportService,
+        report_id: UUID,
+        user_id: UUID,
+    ) -> ReportAccessMetadata:
+        report = await service.get_report(report_id, user_id)
+        return ReportAccessMetadata(id=report.id, product=report.product)
+
+    monkeypatch.setattr(ReportService, "assert_profile_owned", profile_owned)
+    monkeypatch.setattr(ReportService, "get_report_access_metadata", report_metadata)
     yield
     app.dependency_overrides.pop(get_current_user, None)
 

@@ -19,14 +19,14 @@ async def test_career_access_requires_backend_plus_or_grandfathered_entitlement(
     user_id = uuid4()
     entitlements = AsyncMock()
     entitlements.has_active_plus_access.side_effect = [False]
-    entitlements.has_active_product_access.side_effect = [False]
+    entitlements.has_active_direct_product_access.side_effect = [False]
 
     denied = await CareerAccessPolicy(entitlements).check(user_id)
 
     assert denied.allowed is False
     assert denied.reason == "missing_career_access"
     entitlements.has_active_plus_access.assert_awaited_once_with(user_id=user_id)
-    assert entitlements.has_active_product_access.await_args_list[0].kwargs == {
+    assert entitlements.has_active_direct_product_access.await_args_list[0].kwargs == {
         "user_id": user_id,
         "product": "career",
     }
@@ -39,7 +39,7 @@ async def test_career_access_requires_backend_plus_or_grandfathered_entitlement(
 
     entitlements.reset_mock()
     entitlements.has_active_plus_access.side_effect = [False]
-    entitlements.has_active_product_access.side_effect = [True]
+    entitlements.has_active_direct_product_access.side_effect = [True]
     grandfathered = await CareerAccessPolicy(entitlements).check(user_id)
     assert grandfathered.allowed is True
     assert grandfathered.source == "legacy_career"

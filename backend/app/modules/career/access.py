@@ -12,7 +12,7 @@ from app.modules.career.contracts import LEGACY_CAREER_ENTITLEMENT_PRODUCT
 class _EntitlementReader(Protocol):
     async def has_active_plus_access(self, user_id: UUID) -> bool: ...
 
-    async def has_active_product_access(self, user_id: UUID, product: str) -> bool: ...
+    async def has_active_direct_product_access(self, user_id: UUID, product: str) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ class CareerAccessPolicy:
         if await self.entitlements.has_active_plus_access(user_id=user_id):
             return CareerAccessDecision(allowed=True, source="plus")
 
-        if await self.entitlements.has_active_product_access(
+        if await self.entitlements.has_active_direct_product_access(
             user_id=user_id,
             product=LEGACY_CAREER_ENTITLEMENT_PRODUCT,
         ):

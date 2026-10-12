@@ -41,6 +41,10 @@ Authentication remains required. “Available to every account level” does not
 
 `account_tier` is a display/cache field, not sufficient authorization proof. For monthly SaaS, Plus is active only inside a valid paid subscription period. Historical non-expiring purchases may be honored only through an explicit migration/grandfather policy.
 
+A grandfathered product grant must be a current direct entitlement: its start boundary has been reached, its optional expiry has not been reached, and it has no subscription linkage. A `past_due`, suspended or otherwise inactive subscription cannot be reclassified as a grandfathered direct purchase.
+
+The grant is resolved through the canonical report catalog's `entitlement_product`; it opens only the matching specialized report, including retained Career, Love or Child artifacts, and never promotes the account to Plus.
+
 Billing/client metadata follows the same scope: canonical active monthly Plus returns every plan product in `accessible_products`; a grandfathered product-specific entitlement returns only its own product and does not set account-wide Plus active.
 
 ## Report access matrix
@@ -161,6 +165,7 @@ Avoid “полный личный отчёт закрыт” when referring to 
 
 - Backend is the source of truth for report access.
 - Direct API and artifact URLs must not bypass policy checks.
+- This includes both canonical Astrotype v2/Career routes and the still-mounted legacy `/reports` create/list/read/regenerate/PDF/version surface.
 - Locked responses contain no protected payload.
 - All clients—web, Android/PWA and optional desktop—use the same policy result.
 - Unknown report types fail closed as `plus_only` or unsupported.

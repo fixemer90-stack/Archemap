@@ -138,12 +138,19 @@ def _payment_attempt(status: str, *, product: str = "self") -> SimpleNamespace:
     return payment
 
 
-def _entitlement(status: str = "active", *, product: str = "self") -> SimpleNamespace:
+def _entitlement(
+    status: str = "active",
+    *,
+    product: str = "self",
+    starts_at: datetime | None = None,
+    metadata_json: dict[str, str] | None = None,
+) -> SimpleNamespace:
     return SimpleNamespace(
         product=product,
         status=status,
-        starts_at=None,
+        starts_at=starts_at,
         expires_at=None,
+        metadata_json=metadata_json or {},
     )
 
 
@@ -256,6 +263,34 @@ async def test_billing_access_state_exposes_only_grandfathered_career_product() 
     assert state.access_state == "product_access"
     assert state.account_tier == "free"
     assert state.accessible_products == ["career"]
+
+
+async def test_billing_access_state_does_not_expose_future_or_subscription_backed_inactive_grants() -> None:
+    now = datetime.now(UTC)
+    subscription = SimpleNamespace(
+        id=uuid4(),
+        status="suspended",
+        current_period_start=now - timedelta(days=1),
+        current_period_end=now + timedelta(days=29),
+        cancel_at_period_end=False,
+        grace_until=None,
+        metadata_json={"plan_code": "astrotype_plus_monthly"},
+    )
+    entitlements = [
+        _entitlement(product="love", starts_at=now + timedelta(days=1)),
+        _entitlement(
+            product="career",
+            starts_at=now - timedelta(days=1),
+            metadata_json={"subscription_id": str(subscription.id)},
+        ),
+    ]
+    service = PaymentsService(_BillingStateDb([], entitlements, [subscription]))  # type: ignore[arg-type]
+
+    state = await service.get_billing_access_state(user_id=uuid4())
+
+    assert state.access_state == "plus_suspended"
+    assert state.account_tier == "free"
+    assert state.accessible_products == []
 
 
 async def test_billing_access_state_exposes_all_products_for_canonical_active_plus() -> None:

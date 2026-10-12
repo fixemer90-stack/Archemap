@@ -13,6 +13,8 @@ from app.modules.catalog.service import AccessClass, CatalogService
 class PlusAccessReader(Protocol):
     async def has_active_plus_access(self, user_id: UUID) -> bool: ...
 
+    async def has_active_direct_product_access(self, user_id: UUID, product: str) -> bool: ...
+
 
 @dataclass(frozen=True)
 class ReportAccessDecision:
@@ -63,6 +65,16 @@ class ReportAccessPolicy:
             )
 
         if await self.plus_access.has_active_plus_access(user_id):
+            return ReportAccessDecision(
+                allowed=True,
+                report_type=report.report_type,
+                access_state="active",
+            )
+
+        if report.entitlement_product is not None and await self.plus_access.has_active_direct_product_access(
+            user_id,
+            report.entitlement_product,
+        ):
             return ReportAccessDecision(
                 allowed=True,
                 report_type=report.report_type,

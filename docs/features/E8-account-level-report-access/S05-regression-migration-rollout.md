@@ -1,6 +1,6 @@
 # Story E8.S05: Regression, migration and rollout proof
 
-Status: 🟡 В процессе
+Status: ✅ Готово
 Feature: [E8 Account-level report access](./FEATURE.md)
 Architecture: [Account levels and report access policy](../../architecture/account-levels-report-access-policy.md)
 
@@ -20,13 +20,13 @@ Changing the basic report from paid-gated to account-wide access touches commerc
 ## Acceptance criteria
 
 - [x] Matrix tests cover every current report type and operation.
-- [ ] Free basic report succeeds end-to-end.
+- [x] Free basic report succeeds end-to-end.
 - [x] Free Plus-only direct access is denied without payload leakage.
 - [x] Active Plus Plus-only flow succeeds end-to-end.
 - [x] Expiry keeps basic access and removes Plus-only access at the boundary.
-- [ ] Existing report/profile/artifact counts and identifiers are preserved.
+- [x] Existing report/profile/artifact counts and identifiers are preserved.
 - [x] Read-after-expiry policy is no longer open.
-- [ ] Live smoke results and deployed revision are recorded before closing E8.
+- [x] Live smoke results and deployed revision are recorded before closing E8.
 
 ## Read-after-expiry decision
 
@@ -76,6 +76,19 @@ frontend lint
 frontend production build
   -> compiled; TypeScript passed; 17/17 static pages generated
 ```
+
+## Staging rollout evidence — 2026-10-12
+
+- Exact green code revision: `67e439b8ac6d69cce1cb7f8171b2c4df5656d316`; GitHub Actions CI run `38280767131` completed successfully across all seven jobs.
+- Staging deploy marker was written and read back as `67e439b8ac6d69cce1cb7f8171b2c4df5656d316` with scope `release:main-full`; production marker remained `7160dffc3217e041d6a9afa5af294c84601c8d66`.
+- PostgreSQL revision remained `f1a2b3c4d5e6`; no E8 migration was introduced.
+- A non-empty pre-rollout PostgreSQL dump was created and checksum-verified before extraction.
+- Pre/post snapshots matched byte-for-byte: users `7`, profiles `7`, legacy reports `0`, Career reports `13`, entitlements `8`; identifier-set hashes were unchanged for every table.
+- Authenticated backend smoke returned `200` for a Free-owned basic Astrotype v2 report, Free legacy report listing, a direct-grandfathered Career report, an active-Plus Career report and both billing-access reads.
+- Direct-grandfathered billing remained `account_tier=free` and exposed only `career`; active canonical Plus exposed `self`, `career`, `love` and `child`.
+- The live OpenAPI document contained the canonical Astrotype v2/Career routes and mounted legacy `/api/v1/reports` create/list/read/PDF/version routes.
+- Public boundary smoke: staging without Basic Auth `401`, authenticated staging health `200`, app-protected billing without app session `401`, production health/root `200`, and staging `noindex` header present.
+- Backend health, worker ping, logs and service readiness passed; temporary build swap and uploaded rollout scripts/archive were removed after acceptance.
 
 ## Verification target
 

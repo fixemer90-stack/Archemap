@@ -1,6 +1,6 @@
 # SRS-E8: Account-level report access
 
-Status: implementation complete; staging rollout pending
+Status: implemented and verified on staging
 Feature: `docs/features/E8-account-level-report-access/FEATURE.md`
 Architecture: `docs/architecture/account-levels-report-access-policy.md`
 
@@ -158,4 +158,4 @@ E8 requires automated tests and live smoke proving:
 
 ## 9. Implementation status
 
-E8.S01–S04 implement the canonical catalog, backend-owned access policy, operation/artifact coverage across canonical and mounted legacy routes, and responsive frontend matrix. E8.S05 local regression and data-preservation proof are complete; live staging evidence must pass before this SRS is marked fully rolled out.
+E8.S01–S05 implement the canonical catalog, backend-owned access policy, operation/artifact coverage across canonical and mounted legacy routes, responsive frontend matrix, non-destructive regression proof and exact-SHA staging rollout. Production was not changed during E8 rollout.

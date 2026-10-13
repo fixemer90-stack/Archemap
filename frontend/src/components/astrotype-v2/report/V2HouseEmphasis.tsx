@@ -68,7 +68,7 @@ export function V2HouseEmphasis({ houseEmphasis }: V2HouseEmphasisProps) {
   return (
     <section
       data-v2-calculation-block="house_emphasis"
-      className="h-full min-h-[600px] rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated max-[1100px]:min-h-0"
+      className="w-full rounded-[22px] border border-border-default [background:var(--hero-background)] p-5 shadow-elevated"
     >
       <h3 className="mb-[14px] text-[21px] font-semibold leading-tight text-text-primary">
         Акцент домов
@@ -79,23 +79,36 @@ export function V2HouseEmphasis({ houseEmphasis }: V2HouseEmphasisProps) {
         сравниваются с ним.
       </p>
 
-      <div className="mt-[14px] flex h-[220px] items-end gap-[10px] border-b border-border-default">
+      <div className="mt-[14px] flex h-[220px] items-end gap-[7px] border-b border-border-default pb-2 sm:gap-[10px]">
         {houseEmphasis.bars.map((bar) => {
           const value = (bar.accentWeight / max) * 100;
           return (
             <div
               key={bar.houseNumber}
-              className="relative flex h-[190px] min-w-0 flex-1 items-end overflow-hidden rounded-t-[10px] bg-surface-subtle"
+              className="flex min-w-0 flex-1 flex-col items-stretch self-stretch"
               title={`${bar.houseNumber} дом: ${Math.round(value)}%`}
             >
-              <span
-                className="block min-h-[28px] w-full bg-[var(--hero-background)]"
-                style={{ height: percentWidth(value) }}
-              />
-              <b className="absolute inset-x-0 bottom-[7px] z-20 text-center text-[12px] font-extrabold text-text-primary [text-shadow:0_1px_3px_var(--scrim)]">
+              <div
+                className="relative min-h-0 flex-1 overflow-hidden rounded-t-[10px]"
+                style={{ background: "var(--chart-fill-track)" }}
+              >
+                <span
+                  data-house-fill={bar.houseNumber}
+                  data-chart-fill="house"
+                  className="absolute inset-x-0 bottom-0 block rounded-t-[10px]"
+                  style={{
+                    height: percentWidth(value),
+                    backgroundImage:
+                      "linear-gradient(180deg, var(--chart-fill-bar-start), var(--chart-fill-bar-end))",
+                  }}
+                />
+              </div>
+              <b
+                data-house-label={bar.houseNumber}
+                className="mt-2 text-center text-[12px] font-extrabold text-text-primary"
+              >
                 {bar.houseNumber}
               </b>
-              <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[30px] bg-[var(--hero-background)]" />
             </div>
           );
         })}

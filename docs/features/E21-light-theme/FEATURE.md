@@ -108,7 +108,7 @@ E21 не должна «инвертировать» текущий дизайн
 | S04 | [Перевести auth, отчёты, charts и граничные состояния](./S04-reports-charts-auth.md)              | ✅ Завершено |
 | S05 | [Вернуть выбор light/dark/system без hydration flash](./S05-theme-preference-and-switcher.md)     | ✅ Завершено |
 | S06 | [Добавить visual/accessibility gates и безопасный rollout](./S06-visual-accessibility-rollout.md) | 🟡 Rollout   |
-| S07 | [Исправить графики расчётного слоя отчёта](./S07-report-chart-rendering-remediation.md)           | ⬜ Не начато |
+| S07 | [Исправить графики расчётного слоя отчёта](./S07-report-chart-rendering-remediation.md)           | 🟡 Rollout   |
 
 ## Порядок реализации
 

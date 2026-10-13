@@ -19,6 +19,15 @@ const calculation = read(
 const calculationMatrix = read(
   "src/components/astrotype-v2/report/V2CalculationMatrix.tsx",
 );
+const globals = read("src/app/globals.css");
+const format = read("src/components/astrotype-v2/report/format.ts");
+const balance = read("src/components/astrotype-v2/report/V2BalanceBars.tsx");
+const houseEmphasis = read(
+  "src/components/astrotype-v2/report/V2HouseEmphasis.tsx",
+);
+const aspectTable = read(
+  "src/components/astrotype-v2/report/V2KeyAspectsTable.tsx",
+);
 const componentSources = [
   reader,
   hero,
@@ -149,7 +158,10 @@ for (const marker of [
   "asp-resource",
   "<line",
   "<g",
-  "network.nodes.slice",
+  "data-aspect-legend",
+  "data-aspect-edge",
+  "tabIndex={0}",
+  "<title>",
 ]) {
   assert.match(
     aspectNetwork,
@@ -157,6 +169,38 @@ for (const marker of [
     `missing aspect SVG marker: ${marker}`,
   );
 }
+
+for (const token of [
+  "--chart-fill-track",
+  "--chart-fill-bar-start",
+  "--chart-fill-bar-end",
+  "--chart-fill-node",
+  "--chart-fill-resource",
+  "--chart-fill-tension",
+]) {
+  assert.match(globals, new RegExp(token), `missing chart token: ${token}`);
+}
+
+assert.match(format, /export function normalizePercent/);
+assert.match(format, /export function formatPercent/);
+assert.match(balance, /formatPercent\(row\.value\)/);
+assert.match(balance, /backgroundImage.*chart-fill-bar-start/s);
+assert.equal(balance.includes("formatValue(row.value)"), false);
+assert.equal(houseEmphasis.includes("min-h-[28px]"), false);
+assert.equal(houseEmphasis.includes("min-h-[600px]"), false);
+assert.match(houseEmphasis, /data-house-fill/);
+assert.match(houseEmphasis, /data-house-label/);
+assert.equal(aspectNetwork.includes("network.nodes.slice"), false);
+assert.equal(aspectNetwork.includes("min-h-[600px]"), false);
+assert.equal(aspectNetwork.includes("min-h-[500px]"), false);
+assert.match(aspectTable, /<details/);
+assert.match(aspectTable, /<summary/);
+assert.match(aspectTable, /remainingAspects/);
+assert.match(calculation, /selectedAspects=\{layer\.selectedAspects\}/);
+assert.match(calculation, /remainingAspects=\{layer\.remainingAspects\}/);
+assert.equal(calculation.includes("items-stretch"), false);
+assert.equal(calculation.includes('className="flex'), false);
+assert.equal(calculationMatrix.includes("orb{"), false);
 
 for (const forbidden of [
   "socionics",

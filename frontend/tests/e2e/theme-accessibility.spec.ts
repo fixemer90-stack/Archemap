@@ -46,6 +46,23 @@ for (const theme of ["light", "dark"] as const) {
       }
     }
 
+    await page.goto("/report/v2/profile-1", {
+      waitUntil: "domcontentloaded",
+    });
+    const aspectNode = page.locator("svg g.node[tabindex='0']").first();
+    await aspectNode.focus();
+    await expect(aspectNode).toBeFocused();
+    await expect(aspectNode).toHaveAttribute("aria-label", /[А-Яа-яЁё]/);
+    await expect(aspectNode).not.toHaveAttribute(
+      "aria-label",
+      /Aquarius|Sagittarius|North Node/,
+    );
+    const aspectDisclosure = page.locator(
+      '[data-v2-calculation-block="key_aspects"] summary',
+    );
+    await aspectDisclosure.focus();
+    await expect(aspectDisclosure).toBeFocused();
+
     await page.goto("/settings", { waitUntil: "domcontentloaded" });
     const selector = page.getByRole("button", { name: "Как в системе" });
     await selector.focus();

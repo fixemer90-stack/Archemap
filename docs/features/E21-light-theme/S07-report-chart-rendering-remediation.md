@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** ⬜ Не начато
+**Статус:** 🟡 Реализовано и проверено локально; staging/production rollout не выполнен
 
 ## Контекст
 
@@ -53,17 +53,17 @@ S04 зафиксировала миграцию report/chart компонент�
 
 ## Критерии приёмки
 
-- [ ] Ни одна chart fill не имеет вычисленное прозрачное значение при ненулевых данных в light и dark themes.
-- [ ] Значение, визуальная длина полосы и подпись используют одну нормализацию (`0.5` → `50%`).
-- [ ] Нулевой акцент дома имеет нулевую высоту; номер дома остаётся читаемым независимо от столбца.
-- [ ] Balance, house emphasis и aspect network не содержат искусственного пустого пространства из-за соседней таблицы.
-- [ ] Aspect network и компактная таблица строятся из одной детерминированной выборки.
-- [ ] Цвет, толщина и тип связи имеют текстовую/структурную альтернативу; добавлена понятная легенда.
-- [ ] По умолчанию не выводится необработанная таблица всех аспектов; полный список доступен через progressive disclosure.
-- [ ] В расчётном слое нет пользовательских подписей `Aquarius`, `Sagittarius`, `North Node`, `orb` и других необъяснённых английских терминов.
-- [ ] Ready fixture содержит непустые balance, house, network и matrix данные; тест падает на прозрачной заливке и неправильных процентах.
-- [ ] Visual matrix пройдена без snapshot update, после отдельного осознанного обновления baseline.
-- [ ] Light/dark screenshots проверены на 390, 820 и 1440 px; нет clipping и horizontal overflow.
+- [x] Ни одна chart fill не имеет вычисленное прозрачное значение при ненулевых данных в light и dark themes.
+- [x] Значение, визуальная длина полосы и подпись используют одну нормализацию (`0.5` → `50%`).
+- [x] Нулевой акцент дома имеет нулевую высоту; номер дома остаётся читаемым независимо от столбца.
+- [x] Balance, house emphasis и aspect network не содержат искусственного пустого пространства из-за соседней таблицы.
+- [x] Aspect network и компактная таблица строятся из одной детерминированной выборки.
+- [x] Цвет, толщина и тип связи имеют текстовую/структурную альтернативу; добавлена понятная легенда.
+- [x] По умолчанию не выводится необработанная таблица всех аспектов; полный список доступен через progressive disclosure.
+- [x] В расчётном слое нет пользовательских подписей `Aquarius`, `Sagittarius`, `North Node`, `orb` и других необъяснённых английских терминов.
+- [x] Ready fixture содержит непустые balance, house, network и matrix данные; тест падает на прозрачной заливке и неправильных процентах.
+- [x] Visual matrix пройдена без snapshot update, после отдельного осознанного обновления baseline.
+- [x] Light/dark screenshots проверены на 390, 820 и 1440 px; нет clipping и horizontal overflow.
 - [ ] Исправление выложено сначала на staging и проверено на контрольном профиле без изменения persisted report/chart rows.
 - [ ] Production rollout выполнен exact green SHA; backup/rollback frontend image и marker проверены.
 
@@ -100,3 +100,13 @@ npx playwright test tests/e2e/theme-accessibility.spec.ts
 ```
 
 После генерации новых visual baselines тот же `theme-visual.spec.ts` обязательно запускается повторно без `--update-snapshots`.
+
+## Evidence реализации
+
+- RED зафиксирован source-contract проверками: до реализации `check-v2-report-view-model.mjs` падал на отсутствии общей presentation selection, а `check-v2-report-reader-dom.mjs` — на отсутствии chart tokens, legend и accessibility markers.
+- Добавлены light/dark semantic tokens `--chart-fill-*`; bar/column fills используют валидный `background-image`, SVG network — отдельные node/resource/tension tokens.
+- Ready fixture содержит дробные balance-значения, нулевой дом, resource/tension network, десять аспектов и непустую calculation matrix. Browser assertions проверяют computed fill, геометрию `0.5 → 50%`, нулевую высоту, общую выборку network/table, закрытый disclosure и локализацию.
+- Visual baselines осознанно обновлены для V2 report в light/dark на 390, 820 и 1440 px; повторный запуск без `--update-snapshots`: `6 passed`.
+- Финальная browser matrix: `theme.spec.ts` + `theme-visual.spec.ts` + `theme-accessibility.spec.ts` — `18 passed`; accessibility matrix отдельно проверяет keyboard focus узлов и отсутствие page-level horizontal overflow.
+- `npm test`, `npx eslint .`, `npx prettier --check .`, `npx tsc --noEmit --pretty false` и `npm run build` прошли. ESLint сохранил две существующие warning в auth-страницах, ошибок нет.
+- Persisted report/chart rows и backend deterministic payload не изменялись. Staging и production evidence отсутствуют, поэтому два rollout-критерия остаются открытыми.

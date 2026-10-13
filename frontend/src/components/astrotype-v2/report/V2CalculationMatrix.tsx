@@ -2,7 +2,13 @@ import type {
   V2AspectViewModel,
   V2CalculationLayerViewModel,
 } from "@/lib/astrotype-v2/report-view-model";
-import { formatValue } from "./format";
+import {
+  formatPercent,
+  formatValue,
+  localizeAspectLabel,
+  localizeAstroLabel,
+  percentWidth,
+} from "./format";
 import { V2GlossaryTerm } from "./V2GlossaryText";
 
 interface V2CalculationMatrixProps {
@@ -54,7 +60,7 @@ export function V2CalculationMatrix({
   return (
     <section
       data-v2-calculation-block="calculation_matrix"
-      className="w-full rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated md:p-6"
+      className="w-full rounded-[22px] border border-border-default [background:var(--hero-background)] p-5 shadow-elevated md:p-6"
     >
       <h3 className="text-[21px] font-semibold text-text-primary">
         Расчётные акценты карты
@@ -145,10 +151,11 @@ export function V2CalculationMatrix({
                 className="rounded-[12px] border border-border-default bg-surface-subtle px-[10px] py-[9px]"
               >
                 <b className="block text-text-primary">
-                  {bodyLabel(aspect.bodyA)} — {bodyLabel(aspect.bodyB)}
+                  {localizeAstroLabel(aspect.bodyA)} —{" "}
+                  {localizeAstroLabel(aspect.bodyB)}
                 </b>
                 <span className="block text-[12px] text-text-muted">
-                  {aspectLabel(aspect.aspectCode)}, orb{" "}
+                  {localizeAspectLabel(aspect.aspectCode)}, орб{" "}
                   {formatValue(aspect.orbDegrees)}°
                 </span>
               </li>
@@ -192,13 +199,23 @@ function BarRow({
       }
     >
       <div className="text-[15px] text-text-secondary">{label}</div>
-      <div className="h-4 overflow-hidden rounded-[99px] border border-border-default bg-surface-subtle">
+      <div
+        className="h-4 overflow-hidden rounded-[99px] border border-border-default"
+        style={{ background: "var(--chart-fill-track)" }}
+      >
         <span
-          className="block h-full bg-[var(--hero-background)]"
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+          data-chart-fill="matrix"
+          className="block h-full rounded-[99px]"
+          style={{
+            width: percentWidth(value),
+            backgroundImage:
+              "linear-gradient(90deg, var(--chart-fill-bar-start), var(--chart-fill-bar-end))",
+          }}
         />
       </div>
-      <div className="text-right text-[15px] text-text-secondary">{value}%</div>
+      <div className="text-right text-[15px] text-text-secondary">
+        {formatPercent(value)}
+      </div>
     </div>
   );
 }
@@ -277,34 +294,4 @@ function CountCard({ value, label }: { value: number; label: string }) {
 
 function numericValue(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function aspectLabel(aspectCode: string): string {
-  return (
-    {
-      conjunction: "соединение",
-      opposition: "оппозиция",
-      trine: "трин",
-      square: "квадрат",
-      sextile: "секстиль",
-      quincunx: "квинконс",
-    }[aspectCode] ?? aspectCode
-  );
-}
-
-function bodyLabel(body: string): string {
-  return (
-    {
-      Sun: "Солнце",
-      Moon: "Луна",
-      Mercury: "Меркурий",
-      Venus: "Венера",
-      Mars: "Марс",
-      Jupiter: "Юпитер",
-      Saturn: "Сатурн",
-      Uranus: "Уран",
-      Neptune: "Нептун",
-      Pluto: "Плутон",
-    }[body] ?? body
-  );
 }

@@ -17,7 +17,7 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
       data-v2-reader-block="calculation_layer"
       className="space-y-[18px] text-text-primary"
     >
-      <header className="rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated md:p-6">
+      <header className="rounded-[22px] border border-border-default [background:var(--hero-background)] p-5 shadow-elevated md:p-6">
         <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-accent-gold">
           Расчётная основа
         </div>
@@ -26,23 +26,26 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
         </h2>
         <V2KeyIndicators indicators={layer.keyIndicators} />
       </header>
-      <div className="grid gap-[18px] xl:grid-cols-12">
-        <div className="flex xl:col-span-8">
+      <div className="grid items-start gap-[18px] xl:grid-cols-12">
+        <div className="xl:col-span-8">
           <V2PlanetPositionsTable positions={layer.planetPositions} />
         </div>
-        <div className="flex xl:col-span-4">
+        <div className="xl:col-span-4">
           <V2BalanceBars balanceBars={layer.balanceBars} />
         </div>
       </div>
-      <div className="grid items-stretch gap-[18px] xl:grid-cols-12">
-        <div className="flex w-full xl:col-span-6">
+      <div className="grid items-start gap-[18px] xl:grid-cols-12">
+        <div className="w-full xl:col-span-6">
           <V2HouseEmphasis houseEmphasis={layer.houseEmphasis} />
         </div>
-        <div className="flex w-full xl:col-span-6">
+        <div className="w-full xl:col-span-6">
           <V2AspectNetwork network={layer.aspectNetwork} />
         </div>
       </div>
-      <V2KeyAspectsTable aspects={layer.keyAspects} />
+      <V2KeyAspectsTable
+        selectedAspects={layer.selectedAspects}
+        remainingAspects={layer.remainingAspects}
+      />
       <V2CalculationMatrix
         matrix={layer.calculationMatrix}
         aspects={layer.keyAspects}

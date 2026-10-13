@@ -31,6 +31,9 @@ for (const marker of [
   "houseEmphasis",
   "aspectNetwork",
   "keyAspects",
+  "selectedAspects",
+  "remainingAspects",
+  "selectPresentationAspects",
   "calculationMatrix",
   "sampledAspects",
   "houseMode",
@@ -63,8 +66,12 @@ for (let index = 1; index < order.length; index += 1) {
 
 assert.match(source, /const bodyText = stringValue\(section\.body\)/);
 assert.match(source, /paragraphCount: sectionParagraphs\.length/);
+const narrativeSectionSource = source.slice(
+  source.indexOf("function toNarrativeSection"),
+  source.indexOf("function toCalculationLayer"),
+);
 assert.equal(
-  source.includes("slice(0"),
+  narrativeSectionSource.includes("slice(0"),
   false,
   "view model must not truncate narrative body text",
 );

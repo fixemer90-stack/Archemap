@@ -41,6 +41,12 @@
   --chart-series-2: #9a6a12;
   --chart-series-3: #287a8b;
   --chart-highlight: #b84a6b;
+  --chart-fill-track: rgba(55, 44, 78, 0.1);
+  --chart-fill-bar-start: #5b3fd6;
+  --chart-fill-bar-end: #9a6a12;
+  --chart-fill-node: #35218f;
+  --chart-fill-resource: #287246;
+  --chart-fill-tension: #b93636;
   --accent-gold: #9a6a12;
   --accent-gold-soft: rgba(154, 106, 18, 0.12);
   --accent-violet-soft: rgba(91, 63, 214, 0.1);
@@ -121,6 +127,12 @@
   --chart-series-2: #d8b45a;
   --chart-series-3: #6bafbd;
   --chart-highlight: #e57a7a;
+  --chart-fill-track: rgba(216, 220, 232, 0.12);
+  --chart-fill-bar-start: #8da8ff;
+  --chart-fill-bar-end: #d8b45a;
+  --chart-fill-node: #242c42;
+  --chart-fill-resource: #7cf29a;
+  --chart-fill-tension: #ff9f92;
   --accent-gold: #d8b45a;
   --accent-gold-soft: rgba(216, 180, 90, 0.14);
   --accent-violet-soft: rgba(91, 63, 214, 0.24);

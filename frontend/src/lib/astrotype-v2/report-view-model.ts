@@ -116,6 +116,8 @@ export interface V2CalculationLayerViewModel {
     edges: V2AspectEdgeViewModel[];
   };
   keyAspects: V2AspectViewModel[];
+  selectedAspects: V2AspectViewModel[];
+  remainingAspects: V2AspectViewModel[];
   calculationMatrix: Record<string, unknown>;
 }
 
@@ -267,6 +269,14 @@ function toCalculationLayer(
   const keyIndicators = asRecord(layer.key_indicators);
   const houseEmphasis = asRecord(layer.house_emphasis);
   const aspectNetwork = asRecord(layer.aspect_network);
+  const allAspects = recordArray(layer.key_aspects).map(toAspect);
+  const { selectedAspects, remainingAspects } =
+    selectPresentationAspects(allAspects);
+  const presentationNetwork = toPresentationAspectNetwork(
+    recordArray(aspectNetwork.nodes).map(toAspectNode),
+    recordArray(aspectNetwork.edges).map(toAspectEdge),
+    selectedAspects,
+  );
   return {
     readerBlocks: stringArray(layer.reader_blocks),
     keyIndicators: {
@@ -282,13 +292,118 @@ function toCalculationLayer(
       bars: recordArray(houseEmphasis.bars).map(toHouseEmphasisBar),
       topHouses: recordArray(houseEmphasis.top_houses).map(toHouseEmphasisBar),
     },
-    aspectNetwork: {
-      nodes: recordArray(aspectNetwork.nodes).map(toAspectNode),
-      edges: recordArray(aspectNetwork.edges).map(toAspectEdge),
-    },
-    keyAspects: recordArray(layer.key_aspects).map(toAspect),
+    aspectNetwork: presentationNetwork,
+    keyAspects: allAspects,
+    selectedAspects,
+    remainingAspects,
     calculationMatrix: toCalculationMatrix(layer.calculation_matrix),
   };
+}
+
+const ASPECT_EDGE_LIMIT = 8;
+const ASPECT_NODE_LIMIT = 10;
+
+export function selectPresentationAspects(aspects: V2AspectViewModel[]): {
+  selectedAspects: V2AspectViewModel[];
+  remainingAspects: V2AspectViewModel[];
+} {
+  const sorted = [...aspects].sort(compareAspects);
+  const selectedAspects: V2AspectViewModel[] = [];
+  const selectedKeys = new Set<string>();
+  const nodeLabels = new Set<string>();
+
+  for (const aspect of sorted) {
+    if (selectedAspects.length >= ASPECT_EDGE_LIMIT) break;
+    const nextLabels = new Set(nodeLabels);
+    nextLabels.add(aspect.bodyA);
+    nextLabels.add(aspect.bodyB);
+    if (nextLabels.size > ASPECT_NODE_LIMIT) continue;
+    selectedAspects.push(aspect);
+    selectedKeys.add(aspectKey(aspect));
+    nodeLabels.add(aspect.bodyA);
+    nodeLabels.add(aspect.bodyB);
+  }
+
+  return {
+    selectedAspects,
+    remainingAspects: sorted.filter(
+      (aspect) => !selectedKeys.has(aspectKey(aspect)),
+    ),
+  };
+}
+
+function toPresentationAspectNetwork(
+  nodes: V2AspectNodeViewModel[],
+  edges: V2AspectEdgeViewModel[],
+  aspects: V2AspectViewModel[],
+): V2CalculationLayerViewModel["aspectNetwork"] {
+  const nodeByLabel = new Map<string, V2AspectNodeViewModel>();
+  for (const node of nodes) {
+    nodeByLabel.set(localizedAstroLabel(node.id).toLowerCase(), node);
+    nodeByLabel.set(node.label.toLowerCase(), node);
+  }
+  const edgeByKey = new Map(
+    edges.map((edge) => [
+      aspectPairKey(
+        localizedAstroLabel(edge.source),
+        localizedAstroLabel(edge.target),
+        edge.aspectCode,
+      ),
+      edge,
+    ]),
+  );
+  const presentationEdges = aspects.map((aspect) => {
+    const source = aspect.bodyA;
+    const target = aspect.bodyB;
+    const sourceEdge = edgeByKey.get(
+      aspectPairKey(source, target, aspect.aspectCode),
+    );
+    return {
+      source,
+      target,
+      aspectCode: aspect.aspectCode,
+      strength: sourceEdge?.strength ?? aspect.strength ?? null,
+      orbDegrees: sourceEdge?.orbDegrees ?? aspect.orbDegrees,
+      applying: sourceEdge?.applying ?? aspect.applying ?? null,
+    };
+  });
+  const selectedLabels = new Set(
+    presentationEdges.flatMap((edge) => [edge.source, edge.target]),
+  );
+  const presentationNodes = [...selectedLabels].map((label) => {
+    const source = nodeByLabel.get(label.toLowerCase());
+    return {
+      id: label,
+      label,
+      sign: source?.sign,
+      houseNumber: source?.houseNumber,
+    };
+  });
+  return { nodes: presentationNodes, edges: presentationEdges };
+}
+
+function compareAspects(
+  left: V2AspectViewModel,
+  right: V2AspectViewModel,
+): number {
+  return (
+    (right.strength ?? 0) - (left.strength ?? 0) ||
+    (left.orbDegrees ?? Number.POSITIVE_INFINITY) -
+      (right.orbDegrees ?? Number.POSITIVE_INFINITY) ||
+    aspectKey(left).localeCompare(aspectKey(right), "ru")
+  );
+}
+
+function aspectKey(aspect: V2AspectViewModel): string {
+  return `${aspectPairKey(aspect.bodyA, aspect.bodyB, aspect.aspectCode)}:${aspect.orbDegrees ?? ""}`;
+}
+
+function aspectPairKey(
+  bodyA: string,
+  bodyB: string,
+  aspectCode: string,
+): string {
+  return `${[bodyA, bodyB].sort((left, right) => left.localeCompare(right, "ru")).join("|")}|${aspectCode}`.toLowerCase();
 }
 
 function toCalculationMatrix(value: unknown): Record<string, unknown> {
@@ -319,7 +434,7 @@ function toPlanetPosition(
   record: Record<string, unknown>,
 ): V2PlanetPositionViewModel {
   return {
-    body: stringValue(record.body),
+    body: localizedAstroLabel(stringValue(record.body)),
     sign: localizedAstroLabel(stringValue(record.sign)),
     houseNumber: optionalNumber(record.house_number),
     signDegree: optionalNumber(record.sign_degree),
@@ -450,8 +565,8 @@ function toAspectEdge(record: Record<string, unknown>): V2AspectEdgeViewModel {
 
 function toAspect(record: Record<string, unknown>): V2AspectViewModel {
   return {
-    bodyA: stringValue(record.body_a),
-    bodyB: stringValue(record.body_b),
+    bodyA: localizedAstroLabel(stringValue(record.body_a)),
+    bodyB: localizedAstroLabel(stringValue(record.body_b)),
     aspectCode: stringValue(record.aspect_code),
     orbDegrees: optionalNumber(record.orb_degrees),
     angleDegrees: optionalNumber(record.angle_degrees),

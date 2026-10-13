@@ -1,5 +1,5 @@
 import type { V2BalanceBarViewModel } from "@/lib/astrotype-v2/report-view-model";
-import { formatValue, percentWidth } from "./format";
+import { formatPercent, percentWidth } from "./format";
 import { V2GlossaryTerm } from "./V2GlossaryText";
 
 interface V2BalanceBarsProps {
@@ -26,8 +26,8 @@ export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
   });
 
   return (
-    <section data-v2-calculation-block="balance_bars" className="h-full w-full">
-      <div className="h-full rounded-[22px] border border-border-default bg-[var(--hero-background)] p-5 shadow-elevated">
+    <section data-v2-calculation-block="balance_bars" className="w-full">
+      <div className="rounded-[22px] border border-border-default [background:var(--hero-background)] p-5 shadow-elevated">
         {entries.map(([category, rows], index) => (
           <div key={category}>
             <h3
@@ -60,19 +60,33 @@ export function V2BalanceBars({ balanceBars }: V2BalanceBarsProps) {
               {orderedBalanceRows(category, rows).map((row) => {
                 const description = modalityDescription(row);
                 return (
-                  <div key={`${row.category}:${row.key}`}>
+                  <div
+                    key={`${row.category}:${row.key}`}
+                    data-balance-key={`${row.category}:${row.key}`}
+                  >
                     <div className="grid grid-cols-[128px_minmax(0,1fr)_46px] items-center gap-3">
                       <span className="text-[15px] text-text-secondary">
                         {row.label}
                       </span>
-                      <div className="h-4 overflow-hidden rounded-[99px] border border-border-default bg-surface-subtle">
+                      <div
+                        className="h-4 overflow-hidden rounded-[99px] border border-border-default"
+                        style={{ background: "var(--chart-fill-track)" }}
+                      >
                         <div
-                          className="h-full bg-[var(--hero-background)]"
-                          style={{ width: percentWidth(row.value) }}
+                          data-chart-fill="balance"
+                          className="h-full rounded-[99px]"
+                          style={{
+                            width: percentWidth(row.value),
+                            backgroundImage:
+                              "linear-gradient(90deg, var(--chart-fill-bar-start), var(--chart-fill-bar-end))",
+                          }}
                         />
                       </div>
-                      <span className="text-right text-[15px] text-text-secondary">
-                        {formatValue(row.value)}%
+                      <span
+                        data-balance-value={row.key}
+                        className="text-right text-[15px] text-text-secondary"
+                      >
+                        {formatPercent(row.value)}
                       </span>
                     </div>
                     {description && (

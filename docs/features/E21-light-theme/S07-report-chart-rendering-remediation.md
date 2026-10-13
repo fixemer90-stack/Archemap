@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** 🟡 Реализовано и проверено локально; staging/production rollout не выполнен
+**Статус:** 🟡 Production deployed; staging был явно пропущен для этого frontend-only hotfix
 
 ## Контекст
 
@@ -65,7 +65,7 @@ S04 зафиксировала миграцию report/chart компонент�
 - [x] Visual matrix пройдена без snapshot update, после отдельного осознанного обновления baseline.
 - [x] Light/dark screenshots проверены на 390, 820 и 1440 px; нет clipping и horizontal overflow.
 - [ ] Исправление выложено сначала на staging и проверено на контрольном профиле без изменения persisted report/chart rows.
-- [ ] Production rollout выполнен exact green SHA; backup/rollback frontend image и marker проверены.
+- [x] Production rollout выполнен exact green SHA; backup/rollback frontend image и marker проверены.
 
 ## Не входит в Story
 
@@ -109,4 +109,16 @@ npx playwright test tests/e2e/theme-accessibility.spec.ts
 - Visual baselines осознанно обновлены для V2 report в light/dark на 390, 820 и 1440 px; повторный запуск без `--update-snapshots`: `6 passed`.
 - Финальная browser matrix: `theme.spec.ts` + `theme-visual.spec.ts` + `theme-accessibility.spec.ts` — `18 passed`; accessibility matrix отдельно проверяет keyboard focus узлов и отсутствие page-level horizontal overflow.
 - `npm test`, `npx eslint .`, `npx prettier --check .`, `npx tsc --noEmit --pretty false` и `npm run build` прошли. ESLint сохранил две существующие warning в auth-страницах, ошибок нет.
-- Persisted report/chart rows и backend deterministic payload не изменялись. Staging и production evidence отсутствуют, поэтому два rollout-критерия остаются открытыми.
+- Persisted report/chart rows и backend deterministic payload не изменялись.
+
+## Production rollout — 13 октября 2026 года
+
+- По явному решению владельца frontend-only hotfix продвинут напрямую в production без staging. Поэтому staging-first критерий остаётся открытым как зафиксированное отклонение от обычного rollout-порядка.
+- Runtime SHA и production marker: `9a7ca747fdd5acd26aab19de9e8a5bd83324a727`; CI run `38458157649` и Build & Push Images run `38458157683` завершились успешно до rollout.
+- Scope выведен из production marker `5da4407ee8334a784c7a1cbfa0da648595ebb0b0`: между marker и target были только S07 frontend/tests/docs изменения, без backend-кода и миграций. Пересобран и пересоздан только `frontend`.
+- Rollback anchor: image `sha256:8df5c9c5966d461dceedd0da2c950db89eec6c59054dd6565b595e1e0d2ed132`, tag `astrotype-frontend:rollback-5da4407`; предыдущий frontend source archive сохранён с SHA-256 `d686782257d2d39ffd9a98397ace060242f149b44e0eec6ebf3688bbc59225b9`.
+- Новый frontend image: `sha256:23355095454cb7c1263b58993a9fe0c53baa161118875c25789b6dfabaa03be8`; compiled bundle содержит `chart-fill-bar-start` и `Показать все аспекты`.
+- Production `health`, `/` и контрольный `/report/v2/548049cd-99d3-4186-ae5b-fc53a64b05e7` вернули HTTP `200`; все Compose services находятся в running state, frontend logs после rollout не содержат error/fatal/exception.
+- До/после rollout совпали counts и ID hashes: natal charts `14|e56db3cf0d5516b70d96fae9bdb75608`, natal reports `16|68c40f9905d41a1b1efec10b3f29d609`.
+- Evidence: `/opt/astrotype/backups/production/deploy-9a7ca747fdd5acd26aab19de9e8a5bd83324a727-20261013T204507Z`.
+- Из-за ограниченной RAM сборка потребовала временный swap `4 GiB`; после успешного rollout swap удалён, health и frontend image повторно прочитаны.

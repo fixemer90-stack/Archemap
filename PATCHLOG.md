@@ -44,6 +44,38 @@ Append-only журнал изменений, фактически доставл
 
 ---
 
+## 2026-10-13 · `9a7ca74` · Графики расчётного слоя V2-отчёта
+
+- **Статус:** deployed
+- **Окно:** `2026-10-13T20:45:07Z` → `2026-10-13T20:55:43Z`
+- **Runtime SHA:** `9a7ca747fdd5acd26aab19de9e8a5bd83324a727`
+- **Предыдущий SHA:** `5da4407ee8334a784c7a1cbfa0da648595ebb0b0`
+- **База:** без миграций; revision осталась `f1a2b3c4d5e6`
+- **Feature flags:** без изменений
+- **Backup:** rollback image `sha256:8df5c9c5966d461dceedd0da2c950db89eec6c59054dd6565b595e1e0d2ed132` (`astrotype-frontend:rollback-5da4407`) и frontend source archive SHA-256 `d686782257d2d39ffd9a98397ace060242f149b44e0eec6ebf3688bbc59225b9`
+
+### Изменено / исправлено
+
+- Исправлены прозрачные chart fills, единая нормализация процентов и нулевая высота пустых house bars.
+- Aspect network и компактная таблица переведены на общую детерминированную выборку; добавлены legend, accessibility alternatives и progressive disclosure.
+- Убрано принудительное растягивание расчётных карточек; пользовательские astro labels локализованы.
+
+### Проверено
+
+- Exact-SHA CI run `38458157649` и Build & Push Images run `38458157683` завершились успешно.
+- Production marker прочитан как runtime SHA; scope — `release:frontend-only`.
+- Новый frontend image `sha256:23355095454cb7c1263b58993a9fe0c53baa161118875c25789b6dfabaa03be8` запущен; compiled bundle содержит chart/disclosure markers.
+- `health`, `/` и контрольный V2 report route вернули HTTP `200`; все Compose services работают, новых frontend errors нет.
+- V2 natal chart/report counts и ID hashes до/после совпали; backend и PostgreSQL не пересоздавались.
+- Временный deploy swap удалён после сборки; post-cleanup health остался green.
+
+### Rollback
+
+- Перетегировать `astrotype-frontend:rollback-5da4407` как `astrotype-frontend:latest`, восстановить предыдущий frontend source archive и пересоздать только service `frontend`.
+- Evidence: `/opt/astrotype/backups/production/deploy-9a7ca747fdd5acd26aab19de9e8a5bd83324a727-20261013T204507Z`.
+
+---
+
 ## 2026-10-10 · `f958e0d` · Billing, birth-data refinement и responsive navigation
 
 - **Статус:** deployed

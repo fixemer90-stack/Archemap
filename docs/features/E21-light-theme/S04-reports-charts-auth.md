@@ -46,6 +46,12 @@
 - Checks: `node scripts/check-auth-ux.mjs`, `node scripts/check-report-ux.mjs`, `node scripts/check-career-report-reader.mjs`, `npm test`, ESLint и TypeScript.
 - Browser evidence: V2 ready/loading/error, Career reader и tooltip сохранены в `theme-visual.spec.ts-snapshots` для light/dark и 390/820/1440; visual и accessibility specs — по `6 passed`.
 
+## Post-rollout defect
+
+Production-проверка после rollout выявила, что S04 доказала token migration, но не доказала вычисленную видимость chart fills и содержательную согласованность графиков. Gradient token `--hero-background` был использован через utility, который компилируется в `background-color`; браузер отклоняет gradient как значение этого свойства, поэтому ненулевые полосы становятся прозрачными. Дополнительно обнаружены разные шкалы ширины и percent label, искусственная высота cards и независимое усечение aspect nodes/edges.
+
+Реализация и новые browser contracts вынесены в [S07](./S07-report-chart-rendering-remediation.md). Исторический объём S04 — перевод поверхностей на semantic tokens — остаётся завершённым; пользовательская читаемость расчётных графиков не считается закрытой до S07.
+
 ## Проверка
 
 ```bash

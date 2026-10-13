@@ -4,9 +4,9 @@
 
 ## Статус
 
-🟡 Реализовано локально; CI и staging rollout ожидаются
+🟡 Выпущено; remediation расчётных графиков открыта в S07
 
-В текущей локальной ветке semantic migration, selector и browser gates завершены. Публичный staging baseline пока остаётся на прежнем dark-lock release; E21 не считается выпущенной до green CI, authenticated staging smoke и rollback drill из S06.
+Semantic migration, selector, browser gates и rollout выполнены на staging и production в SHA `5da4407ee8334a784c7a1cbfa0da648595ebb0b0`. После production-проверки конкретного V2-отчёта обнаружено, что chart fills с gradient token компилируются как недопустимый `background-color`, проценты подписываются в другой шкале, а layout/network contracts не обеспечивают читаемую композицию. Дефект зафиксирован отдельной Story S07; E21 остаётся открытой до её реализации и rollback drill из S06.
 
 ## Проблема
 
@@ -89,13 +89,13 @@ E21 не должна «инвертировать» текущий дизайн
 - [x] Theme-sensitive стили выражены через семантические токены или документированные product-accent tokens.
 - [x] В активных поверхностях нет необоснованных жёстких `bg-[#...]`, `text-[#...]`, `border-white/...` и dark-only rgba.
 - [x] Обычный текст и интерактивные элементы соответствуют WCAG 2.1 AA; focus ring видим в обеих темах.
-- [x] Charts и инфографика различимы не только по цвету и читаемы в обеих темах.
+- [ ] Charts и инфографика различимы не только по цвету и читаемы в обеих темах. Production-дефект расчётного слоя зафиксирован в S07.
 - [x] `light`, `dark` и `system` корректно сохраняются и применяются до hydration без вспышки другой темы.
 - [x] Theme switcher имеет понятные русские labels, keyboard support и отражает текущий режим.
 - [x] Скриншотные сценарии пройдены на 390, 820 и 1440 px в обеих темах.
 - [x] На каждой проверяемой ширине отсутствует горизонтальный overflow.
-- [ ] Frontend tests, ESLint, Prettier, TypeScript и production build проходят.
-- [ ] Staging smoke выполнен в обеих темах по ключевым маршрутам.
+- [x] Frontend tests, ESLint, Prettier, TypeScript и production build проходят.
+- [x] Staging smoke выполнен в обеих темах по ключевым маршрутам.
 - [ ] Переключатель включён только после полноты покрытия; rollback возвращает принудительную тёмную тему без отката данных.
 
 ## Stories
@@ -108,6 +108,7 @@ E21 не должна «инвертировать» текущий дизайн
 | S04 | [Перевести auth, отчёты, charts и граничные состояния](./S04-reports-charts-auth.md)              | ✅ Завершено |
 | S05 | [Вернуть выбор light/dark/system без hydration flash](./S05-theme-preference-and-switcher.md)     | ✅ Завершено |
 | S06 | [Добавить visual/accessibility gates и безопасный rollout](./S06-visual-accessibility-rollout.md) | 🟡 Rollout   |
+| S07 | [Исправить графики расчётного слоя отчёта](./S07-report-chart-rendering-remediation.md)           | ⬜ Не начато |
 
 ## Порядок реализации
 
@@ -119,6 +120,8 @@ flowchart LR
   S03 --> S05[S05 preference and switcher]
   S04 --> S05
   S05 --> S06[S06 QA and rollout]
+  S04 --> S07[S07 report chart remediation]
+  S06 --> S07
 ```
 
 ## Стратегия тестирования

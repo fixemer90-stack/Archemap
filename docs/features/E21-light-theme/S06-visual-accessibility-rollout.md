@@ -2,7 +2,7 @@
 
 **Feature:** [E21 Цельная светлая тема Astrotype](./FEATURE.md)
 
-**Статус:** 🟡 Локальные gates завершены, staging rollout ожидается
+**Статус:** 🟡 Rollout завершён; rollback drill и chart remediation остаются открыты
 
 ## Контекст
 
@@ -50,8 +50,8 @@
 - [x] Нет serious/critical axe violations.
 - [x] Contrast exceptions отсутствуют; semantic contrast pairs закреплены source contract.
 - [x] Нет horizontal overflow на обязательных viewport.
-- [ ] CI блокирует theme regressions.
-- [ ] Staging smoke выполнен в authenticated session.
+- [x] CI блокирует theme regressions.
+- [x] Staging smoke выполнен в authenticated session.
 - [x] Switcher включён только после green локального completeness gate.
 - [ ] Rollback к dark lock проверен.
 - [x] Feature/story/SRS статусы и evidence синхронизированы с локальным состоянием; rollout gaps оставлены открытыми.
@@ -67,7 +67,10 @@
 - `npx playwright test tests/e2e/theme-accessibility.spec.ts` — `6 passed`; serious/critical axe violations отсутствуют, overflow assertions прошли на каждой route/theme/viewport комбинации.
 - Ручная contact-sheet проверка выполнена для desktop/mobile в обеих темах; mixed-theme islands, clipping и незапланированные error states не обнаружены.
 - V2 generation copy дополнительно очищен от raw status values; loading и error baselines используют пользовательские формулировки.
-- CI evidence, staging authenticated smoke и rollback drill будут записаны после push/rollout.
+- Exact-SHA CI и staging authenticated smoke выполнены для `5da4407ee8334a784c7a1cbfa0da648595ebb0b0`; GitHub Actions run `38310219473` завершён успешно, все семь jobs прошли.
+- Staging marker и production marker прочитаны как `5da4407ee8334a784c7a1cbfa0da648595ebb0b0`; production health, worker ping и сохранность данных подтверждены.
+- Rollback drill остаётся открытым.
+- Post-rollout проверка реального V2-отчёта обнаружила пробел visual fixtures: screenshots не содержали непустой расчётный payload и поэтому не ловили прозрачные chart fills. Исправление и расширение gates вынесены в [S07](./S07-report-chart-rendering-remediation.md).
 
 ## Проверка
 

@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено — backend-owned product/access, privacy/deletion и child-safety boundaries закреплены исполняемыми контрактами
 
 ## Контекст
 
@@ -27,18 +27,45 @@
 
 ## Критерии приёмки
 
-- [ ] Один target identifier используется backend и clients.
-- [ ] Frontend не является источником доступа.
-- [ ] Foreign/locked response contract не раскрывает child data.
-- [ ] Удаление child data не удаляет parent account/billing/other children.
-- [ ] Feature flag выключен по умолчанию; rollback non-destructive.
-- [ ] Негативный safety contract утверждён до prompt/LLM реализации.
+- [x] Один target identifier используется backend и clients.
+- [x] Frontend не является источником доступа.
+- [x] Foreign/locked response contract не раскрывает child data.
+- [x] Удаление child data не удаляет parent account/billing/other children.
+- [x] Feature flag выключен по умолчанию; rollback non-destructive.
+- [x] Негативный safety contract утверждён до prompt/LLM реализации.
+
+## Зафиксированные решения
+
+- Канонический target identifier: `child`; отдельный `child_v2` alias не вводится.
+- Access class: `plus_only`. Разрешён активный account-wide Plus или текущий прямой product-scoped grant `child`; direct grant не повышает весь аккаунт до Plus.
+- Read-after-expiry: protected Child artifacts блокируются без удаления и снова открываются после восстановления валидного доступа.
+- Legacy/placeholder payload не может быть target fallback: `LEGACY_PAYLOAD_FALLBACK_ALLOWED=False`.
+- Locked metadata ограничено безопасным allowlist; имя, birth data, answers, scores, facts, narrative и artifact URL являются protected.
+- Удаление может каскадировать только внутри root `child_profile`; user, parent profile, billing, entitlements и другие children запрещены как cascade targets.
+- Обычное скрытие использует `archived`; hard delete выполняет `purge_child_domain` от внешних/leaf artifacts к root: provider payloads → PDF → age guidance/reports/segments → Guidance Facts/context/answers/sessions → interaction/synastry/need/parent scores → age snapshots → chart versions → child profile.
+- Retention: artifacts хранятся до явного owner hard-delete; privacy-safe audit event сохраняет только event/owner/child ID/time/result и запрещает имя, birth data, answers и narrative.
+- Owner export включает archived records, все 14 child-domain persisted entity groups и PDF artifacts; export содержит персональные данные только после owner authorization и требует encrypted delivery, при этом provider credentials исключаются.
+- Foreign resource contract возвращает неразличимый `404 Child resource not found` до загрузки protected payload.
+- Feature flag `CHILD_REPORT_ENABLED=False` по умолчанию; выключение не удаляет persisted artifacts.
+- Rollback contract запрещает новые writes при flag-off, сохраняет существующие artifacts и оставляет read path доступным для уже созданных объектов при валидном access.
+- Негативный safety contract запрещает диагнозы, attachment labels, fatal/adult-outcome predictions, ability ranking, fixed traits, blame, medical/legal advice, unsafe discipline, age-inappropriate и unsupported recommendations.
+
+## Evidence
+
+- `backend/app/modules/child/contracts.py`
+- `backend/app/modules/child/access.py`
+- `backend/app/config.py`
+- `backend/tests/unit/test_child/test_product_access_privacy_contract.py`
+- RED: `uv run pytest tests/unit/test_child/test_product_access_privacy_contract.py -q` → `5 failed` (`app.modules.child` отсутствовал).
+- Review RED: после независимого spec review добавлены исполняемые foreign-resource, retention/delete-order/audit и rollback contracts; targeted suite показал `3 failed, 3 passed` до реализации.
+- Second review RED: complete delete ordering и owner export scope → `2 failed, 5 passed` до реализации.
+- GREEN: `uv run pytest tests/unit/test_child/test_product_access_privacy_contract.py -q` → `7 passed`.
 
 ## Verification
 
-- Добавить targeted unit/integration/frontend tests из критериев Story.
-- Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.
-- Записать фактические команды, результаты и runtime evidence в эту Story при реализации.
+- Targeted unit contract suite выполнен.
+- Repo-native lint/type и соседняя authorization/catalog regression выполняются перед commit.
+- Runtime routes появятся в S12; S01 фиксирует fail-closed operation matrix до создания handlers.
 
 ## Зависимости
 

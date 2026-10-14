@@ -96,6 +96,10 @@ class Settings(BaseSettings):
     CAREER_MONITOR_WINDOW_MINUTES: int = 15
     CAREER_LLM_INPUT_COST_PER_MILLION: float = 0.0
     CAREER_LLM_OUTPUT_COST_PER_MILLION: float = 0.0
+
+    # ── Child report rollout ───────────────────────────────────────────
+    CHILD_REPORT_ENABLED: bool = False
+
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: str = ""
     OTEL_SERVICE_NAME: str = "archemap-api"
 

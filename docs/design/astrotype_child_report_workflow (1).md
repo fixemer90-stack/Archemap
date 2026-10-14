@@ -1,5 +1,9 @@
 # Astrotype — Child Report & Workflow
 
+> Implementation contract: [`../features/E22-child-report/FEATURE.md`](../features/E22-child-report/FEATURE.md) · [`../SRS/SRS-E22-child-report.md`](../SRS/SRS-E22-child-report.md) · [`../features/E22-child-report/WORKFLOW.md`](../features/E22-child-report/WORKFLOW.md) · [`../features/E22-child-report/API.md`](../features/E22-child-report/API.md)
+
+> Статус: design source сохранён как продуктовый первоисточник; атомарная реализация и проверяемые критерии вынесены в E22. При реализации birth-time uncertainty входит в MVP, а core relationship report и возрастные snapshots хранятся раздельно.
+
 ## 1. Цель фичи
 
 **Child Report** — персональный вспомогательный отчёт для родителя, который помогает лучше понимать ребёнка и выстраивать с ним взаимодействие.

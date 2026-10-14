@@ -1,0 +1,366 @@
+# SRS-E22: Astrotype Child Report
+
+Статус: целевой контракт готов; реализация не начата
+
+Feature: `docs/features/E22-child-report/FEATURE.md`
+
+Design source: `docs/design/astrotype_child_report_workflow (1).md`
+
+Workflow: `docs/features/E22-child-report/WORKFLOW.md`
+
+API: `docs/features/E22-child-report/API.md`
+
+## 1. Назначение
+
+Child Report должен помогать взрослому владельцу аккаунта выстраивать взаимодействие с конкретным ребёнком. Система объединяет существующую натальную карту взрослого, ограниченную по качеству времени карту ребёнка, pair synastry, текущий возраст, versioned ответы и семейный контекст. Результат описывает механизмы взаимодействия и действия взрослого, а не фиксированные качества или будущее ребёнка.
+
+## 2. Принципы
+
+1. Анализируется `parent/caregiver ↔ child`, а не ребёнок отдельно.
+2. Один астрологический фактор не создаёт вывод.
+3. Score, confidence и evidence являются разными сущностями.
+4. Пол не используется в core scoring; caregiver role хранится отдельно.
+5. Неизвестные данные не заменяются догадками.
+6. Возраст вычисляется системой и привязан к `as_of_date`.
+7. Ответы уточняют контекст, но не переписывают chart-derived signals.
+8. Guidance Facts формируются до LLM и являются единственным content input narrative pipeline.
+9. Core report immutable; возрастные обновления versioned отдельно.
+10. Формулировки направлены на поддержку взрослого без labels, blame, diagnosis и fatalism.
+
+## 3. Scope
+
+### 3.1 MVP
+
+- несколько child records на одного владельца;
+- exact/approximate/unknown birth-time confidence;
+- семь age stages: `0-1`, `1-3`, `3-6`, `6-9`, `9-12`, `12-15`, `15-18`;
+- Parent Style, Child Needs и восемь MVP Interaction Dimensions;
+- versioned age-filtered questionnaire;
+- deterministic Guidance Facts;
+- modular LLM narrative;
+- async lifecycle с `deterministic_ready`;
+- responsive reader и PDF;
+- Plus access, ownership, privacy, export/delete и rollout controls.
+
+### 3.2 Не входит
+
+- co-parenting, sibling/family reports;
+- transits и forecasting;
+- medical/psychological diagnosis;
+- compatibility percentage;
+- child account/shared adult access;
+- profession/ability/academic predictions;
+- full adaptive questionnaire.
+
+## 4. FR-E22.1 — Child identity и owner relation
+
+Child record принадлежит одному account owner и содержит:
+
+- `id`, `owner_user_id`;
+- `display_name` или псевдоним;
+- `relationship_type`;
+- optional `child_gender`;
+- birth data и confidence;
+- caregiver context;
+- lifecycle state: active/archived/deletion-pending/deleted;
+- created/updated timestamps.
+
+Требования:
+
+- child record не создаёт user/login/profile account;
+- `relationship_type` не выдаёт доступ другому взрослому;
+- имя допускает псевдоним;
+- gender не влияет на scoring;
+- owner может иметь несколько child records без cross-child contamination.
+
+## 5. FR-E22.2 — Birth-time confidence
+
+Enum:
+
+```text
+exact | approximate | unknown
+```
+
+| Confidence    | Contract                                                        |
+| ------------- | --------------------------------------------------------------- |
+| `exact`       | Полный расчёт при валидном времени/месте                        |
+| `approximate` | Только факты, устойчивые в versioned временном окне             |
+| `unknown`     | Без houses, angles, house overlays и time-sensitive conclusions |
+
+Каждый chart artifact содержит `allowed_fact_families`, `excluded_fact_families`, uncertainty reason и engine version. Нельзя сохранять synthetic noon chart как будто это точное время.
+
+Birth-time uncertainty входит в MVP: design допускает `unknown` уже во входе первой версии, поэтому её нельзя откладывать без нарушения safety contract.
+
+## 6. FR-E22.3 — Age Resolver
+
+Age snapshot:
+
+```json
+{
+  "as_of_date": "2026-10-14",
+  "age_years": 5,
+  "age_months": 5,
+  "age_days": 2,
+  "age_stage": "3-6",
+  "age_rules_version": "child-age-mvp-1"
+}
+```
+
+Требования:
+
+- календарно корректный расчёт с leap-day и timezone boundary tests;
+- future DOB отклоняется;
+- возраст не вводится вручную;
+- stage boundaries versioned;
+- core report не мутирует;
+- age update создаёт новый immutable snapshot;
+- PDF и web фиксируют один `age_snapshot_id`.
+
+## 7. FR-E22.4 — Parent Style Profile
+
+MVP dimensions:
+
+- emotional_responsiveness;
+- structure;
+- control_tendency;
+- flexibility;
+- communication_style;
+- protection;
+- autonomy_support;
+- consistency.
+
+Каждый score имеет диапазон `0..100`, confidence `0..1`, evidence, counter-evidence, scoring version и chart lineage. Engine переиспользует persisted v2 facts, но не mutable prose Self report.
+
+## 8. FR-E22.5 — Child Needs Profile
+
+MVP dimensions:
+
+- reassurance;
+- predictability;
+- autonomy;
+- verbal_explanation;
+- exploration;
+- recognition;
+- personal_space;
+- transition_time.
+
+Эти значения описывают условия, в которых взаимодействие может быть легче. API и narrative не называют их personality traits, diagnoses или fixed capacities.
+
+## 9. FR-E22.6 — Synastry и Interaction Profile
+
+MVP dimensions:
+
+- emotional_attunement;
+- boundary_fit;
+- autonomy_balance;
+- communication_fit;
+- tempo_fit;
+- conflict_pattern;
+- soothing_compatibility;
+- learning_interaction.
+
+Контракт:
+
+```json
+{
+  "dimension": "autonomy_balance",
+  "score": 64,
+  "confidence": 0.78,
+  "pattern": "moderate_tension",
+  "scoring_version": "child-interaction-mvp-1",
+  "evidence": []
+}
+```
+
+Запрещены общий compatibility percentage, binary labels, single-factor conclusion, correlated evidence double-counting и gender weights.
+
+## 10. FR-E22.7 — Questionnaire и Context Resolver
+
+MVP использует 8–12 versioned вопросов, фильтруемых backend по age stage. Отдельно хранятся:
+
+- caregiver role/context;
+- observed behavior;
+- parent preference/style;
+- family constraints;
+- question/answer version;
+- completion timestamp.
+
+Resolver формирует:
+
+- `natural_strengths`;
+- `potential_friction`;
+- `compensation_areas`;
+- `age_relevant_guidance`;
+- `confirmations`;
+- `contradictions`;
+- `unresolved_ambiguities`.
+
+Ответы не изменяют исходные chart scores. Они уточняют применение и приоритет guidance.
+
+## 11. FR-E22.8 — Guidance Facts
+
+`ChildGuidanceFacts` является единственным content input LLM:
+
+```json
+{
+  "contract_version": "child-guidance-facts-v1",
+  "parent_profile_id": "uuid",
+  "child_id": "uuid",
+  "core_report_version": 1,
+  "age_snapshot_id": "uuid",
+  "strong_matches": [],
+  "friction_points": [],
+  "parent_strengths": [],
+  "compensation_areas": [],
+  "recommended_actions": [],
+  "avoid_patterns": [],
+  "confidence_markers": [],
+  "evidence_registry": {}
+}
+```
+
+Raw chart, unrestricted answers, unnecessary names и provider secrets не входят в prompt payload.
+
+## 12. FR-E22.9 — Child-safety policy
+
+До и после LLM обязательны validators:
+
+- no diagnosis/attachment labels;
+- no prediction of violence, depression, failure or adult outcome;
+- no intellectual or academic ranking;
+- no fixed personality labels;
+- no blame toward child or caregiver;
+- no medical/legal intervention based on astrology;
+- no unsafe discipline advice;
+- no age-inappropriate recommendation;
+- no unsupported recommendation;
+- conditional language for low confidence;
+- adult-action framing;
+- no direct planet-to-child-trait sentence.
+
+Safety failure не публикует section. Retry использует исправленный bounded input/prompt; deterministic facts сохраняются.
+
+## 13. FR-E22.10 — Report composition
+
+Core sections идут в порядке из FEATURE. Каждая section contract содержит owned/reference/forbidden facts, required safety markers, minimum evidence и confidence behavior.
+
+`Guidance for Current Age` является отдельным artifact, связанным с core report и age snapshot. Presentation manifest задаёт единый порядок для web и PDF.
+
+## 14. FR-E22.11 — Lifecycle
+
+```text
+questionnaire_draft
+→ questionnaire_completed
+→ queued
+→ calculating_pair
+→ deterministic_ready
+→ generating_sections
+→ ready | narrative_failed | failed
+```
+
+Age lifecycle:
+
+```text
+age_snapshot_current
+→ age_snapshot_stale
+→ age_update_queued
+→ age_update_ready | age_update_failed
+```
+
+- retry narrative не пересчитывает deterministic foundation;
+- age update не мутирует core report;
+- provider failure сохраняет deterministic result;
+- status transitions durable и auditable.
+
+## 15. FR-E22.12 — API, ownership и access
+
+API surface определена в `docs/features/E22-child-report/API.md`.
+
+Требования:
+
+- active backend entitlement по E8;
+- ownership на каждом child/questionnaire/generation/report/versions/PDF endpoint;
+- foreign resource → indistinguishable `404`;
+- locked response без protected content;
+- idempotency для create/complete/regenerate/age update;
+- child/report/session IDs cross-validated;
+- no frontend-only access decisions.
+
+## 16. Data model
+
+Минимальные сущности:
+
+- `child_profiles`;
+- `child_chart_versions`;
+- `child_age_snapshots`;
+- `child_parent_style_scores`;
+- `child_need_scores`;
+- `child_synastry_evidence`;
+- `child_interaction_scores`;
+- `child_questionnaire_sessions`;
+- `child_answers`;
+- `child_context_resolutions`;
+- `child_guidance_facts`;
+- `child_segment_generations`;
+- `child_reports`;
+- `child_report_age_guidance`.
+
+Root lineage, answers, scores/evidence, generation statuses, core versions и age snapshots должны быть independently queryable. Малые вложенные структуры могут использовать JSONB при сохранении schema/version validation.
+
+## 17. Non-functional requirements
+
+| ID         | Требование                                                                 |
+| ---------- | -------------------------------------------------------------------------- |
+| NFR-E22.1  | Deterministic engines воспроизводимы без LLM/network.                      |
+| NFR-E22.2  | PostgreSQL — durable source of truth; Redis не хранит единственную копию.  |
+| NFR-E22.3  | Data minimization для данных несовершеннолетнего.                          |
+| NFR-E22.4  | Имя, DOB, answers и report prose не попадают в logs/metric labels.         |
+| NFR-E22.5  | Миграции additive; parent/profile/report/payment data не удаляются.        |
+| NFR-E22.6  | Generation idempotent, retry-safe и concurrency-safe.                      |
+| NFR-E22.7  | Core history и age snapshots immutable/auditable.                          |
+| NFR-E22.8  | Scoring/reference/questionnaire/prompt/model versions доступны для аудита. |
+| NFR-E22.9  | Provider failure не блокирует deterministic report.                        |
+| NFR-E22.10 | Reader mobile-first, accessible и пригоден для print/PDF.                  |
+| NFR-E22.11 | Export/delete/retention policy исполняется и тестируется.                  |
+| NFR-E22.12 | Latency/cost budgets измеряются на staging до rollout.                     |
+
+## 18. Verification
+
+1. Unit и property tests deterministic builders.
+2. Golden fixtures exact/approximate/unknown birth time.
+3. Age boundary, leap-day и future-DOB tests.
+4. Correlated evidence и confidence tests.
+5. Questionnaire/resolver contradiction fixtures.
+6. Negative child-safety corpus до и после LLM.
+7. PostgreSQL migration/repository/idempotency/concurrency tests.
+8. Route-level ownership/access/leakage matrix.
+9. Multiple-child isolation tests.
+10. Mock и real-provider section/schema tests.
+11. Frontend create/edit/questionnaire/polling/reader/accessibility tests.
+12. Web/PDF presentation и pinned-age parity tests.
+13. Backup/restore, export/delete и rollback rehearsal.
+14. Staging E2E на exact и unknown time profiles.
+15. Production canary только после safety/ownership gates.
+
+## 19. Data safety и rollout
+
+- backup/snapshot до migration на real-user storage;
+- additive migrations и reversible schema changes;
+- row counts/checksums parent profiles, natal charts, reports, payments и entitlements до/после;
+- feature flag off по умолчанию;
+- no mutable backfill старых placeholder `child` artifacts;
+- no deletion cascade из child domain в parent account/billing;
+- rollback прекращает новые generation, сохраняя artifacts;
+- rollout запрещён без negative safety fixtures, foreign-owner tests и exact/unknown-time staging smoke.
+
+## 20. Риски
+
+- стигматизация ребёнка из-за слишком прямых формулировок;
+- скрытое использование ненадёжного времени рождения;
+- drift между core report и возрастным блоком;
+- cross-child data mixing;
+- утечка данных несовершеннолетнего через logs, locked payload или PDF URL;
+- provider-generated diagnosis/labels;
+- ложная точность scores/confidence;
+- незаметная мутация исторического отчёта;
+- неявное предоставление доступа второму взрослому через relationship field.

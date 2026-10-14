@@ -82,6 +82,7 @@ Product report features:
 
 - `E19` — [Astrotype Career Report](./E19-career-report/FEATURE.md) ([design](../design/astrotype_career_report.md), [UI sample](../design/astrotype-career-report-sample.html), [SRS](../SRS/SRS-E19-career-report.md))
 - `E20` — [Safe retirement of legacy Career v1](./E20-legacy-career-retirement/FEATURE.md) ([workflow](./E20-legacy-career-retirement/WORKFLOW.md), [SRS](../SRS/SRS-E20-legacy-career-retirement.md))
+- `E22` — [Astrotype Child Report](./E22-child-report/FEATURE.md) ([design](../design/astrotype_child_report_workflow%20%281%29.md), [workflow](./E22-child-report/WORKFLOW.md), [API](./E22-child-report/API.md), [SRS](../SRS/SRS-E22-child-report.md))
 
 Cross-cutting frontend features:
 
@@ -106,6 +107,8 @@ Birth data refinement SRS: `docs/SRS/SRS-E10-birth-data-refinement.md`
 Career Report design: `docs/design/astrotype_career_report.md`
 Career Report SRS: `docs/SRS/SRS-E19-career-report.md`
 Legacy Career retirement SRS: `docs/SRS/SRS-E20-legacy-career-retirement.md`
+Child Report feature contract: `docs/features/E22-child-report/FEATURE.md`
+Child Report SRS: `docs/SRS/SRS-E22-child-report.md`
 Light theme feature contract: `docs/features/E21-light-theme/FEATURE.md`
 Light theme SRS: `docs/SRS/SRS-E21-light-theme.md`
 Product surface redesign samples: `docs/design/astrotype-v2-homepage-sample.html`, `docs/design/astrotype-v2-dashboard-sample.html`, `docs/design/astrotype-v2-billing-sample.html`

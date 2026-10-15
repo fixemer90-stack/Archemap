@@ -32,6 +32,7 @@ from app.modules.authorization.models import *
 from app.modules.billing.models import *
 from app.modules.career.models import *
 from app.modules.catalog.models import *
+from app.modules.child.models import *
 from app.modules.notifications.models import *
 from app.modules.payments.models import *
 from app.modules.reconciliation.models import *

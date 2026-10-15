@@ -202,6 +202,30 @@ def test_unknown_time_excludes_moon_sign_when_local_day_crosses_a_sign_boundary(
     assert "planet_sign:Moon" in payload["exclusions"]
 
 
+def test_unknown_time_fail_closed_excludes_moon_even_when_discrete_samples_agree() -> None:
+    from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
+
+    result = build_child_chart(
+        ChildChartInput(
+            birth_date=date(2021, 5, 12),
+            birth_time=None,
+            birth_time_confidence="unknown",
+            latitude=55.7558,
+            longitude=37.6173,
+            timezone="UTC",
+        ),
+        engine_version="child-chart-test-1",
+        chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime, moon_sign="Cancer"),
+    )
+
+    payload = result.calculation_payload
+    assert payload["stability_evidence"]["facts"]["planet_sign:Moon"]["stable"] is False
+    assert payload["stability_evidence"]["facts"]["planet_sign:Moon"]["reason"] == "unknown_time_moon"
+    assert {point["body"] for point in payload["planet_positions"]} == {"Sun"}
+    assert payload["aspects"] == []
+    assert "planet_sign:Moon" in payload["exclusions"]
+
+
 async def test_chart_version_persistence_allocates_next_immutable_lineage_idempotently() -> None:
     from app.modules.child.chart_adapter import ChildChartBuild
     from app.modules.child.models import ChildProfile

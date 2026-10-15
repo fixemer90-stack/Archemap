@@ -107,6 +107,12 @@ def _build_unknown_chart(
             continue
         values = [points[point.name].sign for points in sample_by_body if point.name in points]
         evidence = _stability_evidence(values, len(samples))
+        if point.name == "Moon":
+            evidence = {
+                **evidence,
+                "stable": False,
+                "reason": "unknown_time_moon",
+            }
         fact_key = f"planet_sign:{point.name}"
         facts[fact_key] = evidence
         if evidence["stable"]:

@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S02 завершены; S03–S16 не начаты
+🟡 В работе — S01–S03 завершены; S04–S16 не начаты
 
 ## Цель
 
@@ -126,8 +126,8 @@ Child Report помогает взрослому понять:
 
 ## Критерии приёмки Feature
 
-- [ ] У `unknown` birth time не используются houses, ASC, MC, house overlays и time-sensitive факты без доказанной устойчивости.
-- [ ] `approximate` time использует только факты, устойчивые в документированном временном окне.
+- [x] У `unknown` birth time не используются houses, ASC, MC, house overlays и time-sensitive факты без доказанной устойчивости.
+- [x] `approximate` time использует только факты, устойчивые в документированном временном окне.
 - [ ] Каждый Parent Style, Child Needs и Interaction score имеет confidence, evidence и version lineage.
 - [ ] Ни один вывод не строится из одного астрологического фактора и не маркирует ребёнка бинарным trait.
 - [ ] Age Resolver календарно корректен, не принимает будущую DOB и создаёт versioned snapshots с `as_of_date`.
@@ -148,7 +148,7 @@ Child Report помогает взрослому понять:
 | --- | --------------------------------------------------------------------------------------------- | ------------ |
 | S01 | [Product, access, privacy и safety contract](./S01-product-access-privacy-safety-contract.md) | ✅ Завершено |
 | S02 | [Storage, lineage и multiple children](./S02-storage-lineage-multiple-children.md)            | ✅ Завершено |
-| S03 | [Child chart и birth-time confidence](./S03-child-chart-birth-time-confidence.md)             | ⬜ Не начато |
+| S03 | [Child chart и birth-time confidence](./S03-child-chart-birth-time-confidence.md)             | ✅ Завершено |
 | S04 | [Age Resolver и age snapshots](./S04-age-resolver-age-snapshots.md)                           | ⬜ Не начато |
 | S05 | [Parent Style engine](./S05-parent-style-engine.md)                                           | ⬜ Не начато |
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ⬜ Не начато |
@@ -207,4 +207,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence. Deterministic engines, API routes, frontend, runtime и rollout остаются в S03–S16.
+Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence; S03 закрыта versioned exact/approximate/unknown chart policy, stability/exclusion evidence, Moon-boundary golden fixtures и immutable correction lineage. Остальные deterministic engines, API routes, frontend, runtime и rollout остаются в S04–S16.

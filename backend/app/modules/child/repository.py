@@ -9,7 +9,7 @@ from datetime import date, datetime, time
 from typing import Any, TypeVar, cast
 from uuid import UUID
 
-from sqlalchemy import delete, select, text, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from app.core.audit import AuditLog
 from app.core.models import BaseModel
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child import models
+from app.modules.child.chart_adapter import ChildChartBuild
 from app.modules.profiles.models import PersonProfile
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
@@ -33,6 +34,12 @@ class ChildLineageMismatchError(ValueError):
 @dataclass(frozen=True)
 class ChildProfileCreateResult:
     child: models.ChildProfile
+    created: bool
+
+
+@dataclass(frozen=True)
+class ChildChartVersionCreateResult:
+    chart: models.ChildChartVersion
     created: bool
 
 
@@ -295,6 +302,124 @@ class ChildRepository:
         if target != expected:
             raise ChildIdempotencyTargetMismatchError("Generation idempotency key was reused for another target")
         return ChildGenerationCreateResult(generation=existing, created=False)
+
+    async def create_chart_version_idempotently(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        chart: ChildChartBuild,
+    ) -> ChildChartVersionCreateResult:
+        """Append one chart lineage row, serializing version allocation per child."""
+        await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": str(child_profile_id)},
+        )
+        existing = await self.session.scalar(
+            select(models.ChildChartVersion).where(
+                models.ChildChartVersion.child_profile_id == child_profile_id,
+                models.ChildChartVersion.engine_version == chart.engine_version,
+                models.ChildChartVersion.input_hash == chart.input_hash,
+            )
+        )
+        if existing is not None:
+            return ChildChartVersionCreateResult(chart=existing, created=False)
+
+        latest_version = await self.session.scalar(
+            select(func.max(models.ChildChartVersion.version)).where(
+                models.ChildChartVersion.child_profile_id == child_profile_id
+            )
+        )
+        statement = (
+            pg_insert(models.ChildChartVersion)
+            .values(
+                id=uuid.uuid4(),
+                child_profile_id=child_profile_id,
+                version=(latest_version or 0) + 1,
+                engine_version=chart.engine_version,
+                input_hash=chart.input_hash,
+                birth_time_confidence=chart.birth_time_confidence,
+                allowed_fact_families=list(chart.allowed_fact_families),
+                excluded_fact_families=list(chart.excluded_fact_families),
+                uncertainty_reason=chart.uncertainty_reason,
+                calculation_payload=chart.calculation_payload,
+            )
+            .on_conflict_do_nothing(constraint="uq_child_chart_versions_profile_engine_input")
+            .returning(models.ChildChartVersion)
+        )
+        inserted = (await self.session.execute(statement)).scalar_one_or_none()
+        if inserted is not None:
+            return ChildChartVersionCreateResult(chart=inserted, created=True)
+
+        existing = await self.session.scalar(
+            select(models.ChildChartVersion).where(
+                models.ChildChartVersion.child_profile_id == child_profile_id,
+                models.ChildChartVersion.engine_version == chart.engine_version,
+                models.ChildChartVersion.input_hash == chart.input_hash,
+            )
+        )
+        if existing is None:
+            raise RuntimeError("Child chart conflict could not be read back")
+        return ChildChartVersionCreateResult(chart=existing, created=False)
+
+    async def correct_birth_data_and_create_chart(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        birth_date: date,
+        birth_time: time | None,
+        birth_time_confidence: str,
+        birth_place: str,
+        latitude: float,
+        longitude: float,
+        timezone: str,
+        birth_data_hash: str,
+        chart: ChildChartBuild,
+    ) -> ChildChartVersionCreateResult:
+        """Atomically update current birth data and append, never overwrite, chart lineage."""
+        if chart.birth_time_confidence != birth_time_confidence:
+            raise ChildLineageMismatchError("Chart confidence does not match corrected birth data")
+        if birth_time_confidence == "unknown" and birth_time is not None:
+            raise ValueError("Unknown birth time must be omitted")
+        if birth_time_confidence != "unknown" and birth_time is None:
+            raise ValueError("Exact or approximate birth time is required")
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": str(child_profile_id)},
+        )
+        child = await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        birth_data_changed = child.birth_data_hash != birth_data_hash
+        if birth_data_changed:
+            child.birth_date = birth_date
+            child.birth_time = birth_time
+            child.birth_time_confidence = birth_time_confidence
+            child.birth_place = birth_place
+            child.latitude = latitude
+            child.longitude = longitude
+            child.timezone = timezone
+            child.birth_data_hash = birth_data_hash
+            child.version += 1
+            await self.session.flush()
+
+        result = await self.create_chart_version_idempotently(
+            owner_user_id=owner_user_id,
+            child_profile_id=child_profile_id,
+            chart=chart,
+        )
+        if birth_data_changed and not result.created:
+            raise ChildIdempotencyTargetMismatchError(
+                "Corrected birth data must create a new child chart input lineage"
+            )
+        return result
 
     async def complete_questionnaire_idempotently(
         self,

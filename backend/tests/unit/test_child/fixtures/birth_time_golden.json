@@ -1,0 +1,29 @@
+[
+  {
+    "name": "exact_full_chart",
+    "birth_date": "2021-01-03",
+    "birth_time": "12:00:00",
+    "confidence": "exact",
+    "expected_moon_included": true,
+    "expected_moon_sign": "Virgo",
+    "expected_houses": true
+  },
+  {
+    "name": "approximate_moon_boundary",
+    "birth_date": "2021-01-03",
+    "birth_time": "02:00:00",
+    "confidence": "approximate",
+    "expected_moon_included": false,
+    "expected_moon_sign": null,
+    "expected_houses": false
+  },
+  {
+    "name": "unknown_moon_boundary",
+    "birth_date": "2021-01-03",
+    "birth_time": null,
+    "confidence": "unknown",
+    "expected_moon_included": false,
+    "expected_moon_sign": null,
+    "expected_houses": false
+  }
+]

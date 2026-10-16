@@ -17,6 +17,7 @@ from app.core.audit import AuditLog
 from app.core.models import BaseModel
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child import models
+from app.modules.child.age_resolver import AGE_RULES_VERSION, ChildAgeResolution, resolve_child_age
 from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
 from app.modules.profiles.models import PersonProfile
@@ -66,6 +67,31 @@ class ChildReportCreateResult:
 class ChildAgeGuidanceCreateResult:
     guidance: models.ChildReportAgeGuidance
     created: bool
+
+
+@dataclass(frozen=True)
+class ChildAgeSnapshotCreateResult:
+    snapshot: models.ChildAgeSnapshot
+    created: bool
+
+
+@dataclass(frozen=True)
+class ChildAgeUpdateResult:
+    snapshot: models.ChildAgeSnapshot
+    guidance: models.ChildReportAgeGuidance
+    snapshot_created: bool
+    guidance_created: bool
+
+
+@dataclass(frozen=True)
+class PinnedChildAgeGuidance:
+    report: models.ChildReport
+    age_snapshot: models.ChildAgeSnapshot
+    guidance: models.ChildReportAgeGuidance
+
+    @property
+    def core_report_version(self) -> int:
+        return self.report.version
 
 
 @dataclass(frozen=True)
@@ -367,6 +393,82 @@ class ChildRepository:
             raise RuntimeError("Child chart conflict could not be read back")
         return ChildChartVersionCreateResult(chart=existing, created=False)
 
+    async def create_age_snapshot_idempotently(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        as_of: date | datetime,
+        age_rules_version: str = AGE_RULES_VERSION,
+    ) -> ChildAgeSnapshotCreateResult:
+        """Derive and append one immutable age snapshot from server-owned DOB."""
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-age:{child_profile_id}"},
+        )
+        child = await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        resolved = resolve_child_age(
+            birth_date=child.birth_date,
+            as_of=as_of,
+            timezone_name=child.timezone,
+            age_rules_version=age_rules_version,
+        )
+        existing = await self._get_age_snapshot_by_resolution(
+            child_profile_id=child_profile_id,
+            resolved=resolved,
+        )
+        if existing is not None:
+            return ChildAgeSnapshotCreateResult(snapshot=existing, created=False)
+
+        statement = (
+            pg_insert(models.ChildAgeSnapshot)
+            .values(
+                id=uuid.uuid4(),
+                child_profile_id=child_profile_id,
+                as_of_date=resolved.as_of_date,
+                age_years=resolved.age_years,
+                age_months=resolved.age_months,
+                age_days=resolved.age_days,
+                age_stage=resolved.age_stage,
+                age_rules_version=resolved.age_rules_version,
+                input_hash=resolved.input_hash,
+            )
+            .on_conflict_do_nothing(constraint="uq_child_age_snapshots_profile_date_rules_input")
+            .returning(models.ChildAgeSnapshot)
+        )
+        inserted = (await self.session.execute(statement)).scalar_one_or_none()
+        if inserted is not None:
+            return ChildAgeSnapshotCreateResult(snapshot=inserted, created=True)
+        existing = await self._get_age_snapshot_by_resolution(
+            child_profile_id=child_profile_id,
+            resolved=resolved,
+        )
+        if existing is None:
+            raise RuntimeError("Child age snapshot conflict could not be read back")
+        return ChildAgeSnapshotCreateResult(snapshot=existing, created=False)
+
+    async def _get_age_snapshot_by_resolution(
+        self,
+        *,
+        child_profile_id: UUID,
+        resolved: ChildAgeResolution,
+    ) -> models.ChildAgeSnapshot | None:
+        return cast(
+            models.ChildAgeSnapshot | None,
+            await self.session.scalar(
+                select(models.ChildAgeSnapshot).where(
+                    models.ChildAgeSnapshot.child_profile_id == child_profile_id,
+                    models.ChildAgeSnapshot.as_of_date == resolved.as_of_date,
+                    models.ChildAgeSnapshot.age_rules_version == resolved.age_rules_version,
+                    models.ChildAgeSnapshot.input_hash == resolved.input_hash,
+                )
+            ),
+        )
+
     async def correct_birth_data_and_create_chart(
         self,
         *,
@@ -641,13 +743,109 @@ class ChildRepository:
         )
         if existing is None:
             raise RuntimeError("Age guidance conflict could not be read back")
-        if (existing.report_id, existing.age_snapshot_id, existing.version) != (
+        if (
+            existing.report_id,
+            existing.age_snapshot_id,
+            existing.version,
+            existing.status,
+            existing.rules_version,
+            existing.payload,
+        ) != (
             report_id,
             age_snapshot_id,
             version,
+            status,
+            rules_version,
+            payload,
         ):
             raise ChildIdempotencyTargetMismatchError("Age guidance key was reused for another target")
         return ChildAgeGuidanceCreateResult(guidance=existing, created=False)
+
+    async def create_age_update_idempotently(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        report_id: UUID,
+        as_of: date | datetime,
+        idempotency_key: str,
+        guidance_rules_version: str,
+        payload: dict[str, Any],
+        age_rules_version: str = AGE_RULES_VERSION,
+    ) -> ChildAgeUpdateResult:
+        """Append age snapshot/guidance lineage without touching the core report."""
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-age-update:{report_id}"},
+        )
+        await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        report = await self.session.scalar(
+            select(models.ChildReport).where(
+                models.ChildReport.id == report_id,
+                models.ChildReport.child_profile_id == child_profile_id,
+            )
+        )
+        if report is None:
+            raise ChildLineageMismatchError("Age update report does not belong to the child")
+
+        snapshot_result = await self.create_age_snapshot_idempotently(
+            owner_user_id=owner_user_id,
+            child_profile_id=child_profile_id,
+            as_of=as_of,
+            age_rules_version=age_rules_version,
+        )
+        existing = await self.session.scalar(
+            select(models.ChildReportAgeGuidance).where(
+                models.ChildReportAgeGuidance.child_profile_id == child_profile_id,
+                models.ChildReportAgeGuidance.idempotency_key == idempotency_key,
+            )
+        )
+        if existing is not None:
+            if (
+                existing.report_id,
+                existing.age_snapshot_id,
+                existing.rules_version,
+                existing.payload,
+            ) != (
+                report_id,
+                snapshot_result.snapshot.id,
+                guidance_rules_version,
+                payload,
+            ):
+                raise ChildIdempotencyTargetMismatchError("Age update key was reused for another target")
+            return ChildAgeUpdateResult(
+                snapshot=snapshot_result.snapshot,
+                guidance=existing,
+                snapshot_created=snapshot_result.created,
+                guidance_created=False,
+            )
+
+        latest_version = await self.session.scalar(
+            select(func.max(models.ChildReportAgeGuidance.version)).where(
+                models.ChildReportAgeGuidance.report_id == report_id
+            )
+        )
+        guidance_result = await self.create_age_guidance_idempotently(
+            owner_user_id=owner_user_id,
+            child_profile_id=child_profile_id,
+            report_id=report_id,
+            age_snapshot_id=snapshot_result.snapshot.id,
+            version=(latest_version or 0) + 1,
+            idempotency_key=idempotency_key,
+            status="age_update_ready",
+            rules_version=guidance_rules_version,
+            payload=payload,
+        )
+        return ChildAgeUpdateResult(
+            snapshot=snapshot_result.snapshot,
+            guidance=guidance_result.guidance,
+            snapshot_created=snapshot_result.created,
+            guidance_created=guidance_result.created,
+        )
 
     async def archive_child(
         self,
@@ -871,6 +1069,108 @@ class ChildRepository:
             statement = statement.where(models.ChildProfile.status != "archived")
         result = await self.session.execute(statement.order_by(models.ChildProfile.created_at))
         return list(result.scalars().all())
+
+    async def list_age_snapshots_for_owner(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+    ) -> list[models.ChildAgeSnapshot]:
+        result = await self.session.execute(
+            select(models.ChildAgeSnapshot)
+            .join(models.ChildProfile, models.ChildAgeSnapshot.child_profile_id == models.ChildProfile.id)
+            .where(
+                models.ChildAgeSnapshot.child_profile_id == child_profile_id,
+                models.ChildProfile.owner_user_id == owner_user_id,
+            )
+            .order_by(models.ChildAgeSnapshot.as_of_date, models.ChildAgeSnapshot.created_at)
+        )
+        return list(result.scalars().all())
+
+    async def get_age_snapshot_for_owner(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        age_snapshot_id: UUID,
+    ) -> models.ChildAgeSnapshot | None:
+        return cast(
+            models.ChildAgeSnapshot | None,
+            await self.session.scalar(
+                select(models.ChildAgeSnapshot)
+                .join(models.ChildProfile, models.ChildAgeSnapshot.child_profile_id == models.ChildProfile.id)
+                .where(
+                    models.ChildAgeSnapshot.id == age_snapshot_id,
+                    models.ChildAgeSnapshot.child_profile_id == child_profile_id,
+                    models.ChildProfile.owner_user_id == owner_user_id,
+                )
+            ),
+        )
+
+    async def get_pinned_age_guidance_for_owner(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        report_id: UUID,
+        age_snapshot_id: UUID | None = None,
+    ) -> PinnedChildAgeGuidance:
+        """Shared persisted selector for web/PDF age-guidance parity."""
+
+        await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        report = await self.session.scalar(
+            select(models.ChildReport).where(
+                models.ChildReport.id == report_id,
+                models.ChildReport.child_profile_id == child_profile_id,
+            )
+        )
+        if report is None:
+            raise ChildLineageMismatchError("Pinned report does not belong to the child")
+
+        if age_snapshot_id is not None:
+            snapshot = await self.session.scalar(
+                select(models.ChildAgeSnapshot).where(models.ChildAgeSnapshot.id == age_snapshot_id)
+            )
+            if snapshot is None or snapshot.child_profile_id != child_profile_id:
+                raise ChildLineageMismatchError("Pinned age snapshot does not belong to the child")
+            guidance = await self.session.scalar(
+                select(models.ChildReportAgeGuidance)
+                .where(
+                    models.ChildReportAgeGuidance.child_profile_id == child_profile_id,
+                    models.ChildReportAgeGuidance.report_id == report_id,
+                    models.ChildReportAgeGuidance.age_snapshot_id == age_snapshot_id,
+                )
+                .order_by(models.ChildReportAgeGuidance.version.desc())
+                .limit(1)
+            )
+        else:
+            guidance = await self.session.scalar(
+                select(models.ChildReportAgeGuidance)
+                .join(
+                    models.ChildAgeSnapshot,
+                    models.ChildReportAgeGuidance.age_snapshot_id == models.ChildAgeSnapshot.id,
+                )
+                .where(
+                    models.ChildReportAgeGuidance.child_profile_id == child_profile_id,
+                    models.ChildReportAgeGuidance.report_id == report_id,
+                )
+                .order_by(
+                    models.ChildAgeSnapshot.as_of_date.desc(),
+                    models.ChildReportAgeGuidance.version.desc(),
+                )
+                .limit(1)
+            )
+            snapshot = (
+                await self.session.get(models.ChildAgeSnapshot, guidance.age_snapshot_id)
+                if guidance is not None
+                else None
+            )
+        if guidance is None or snapshot is None:
+            raise ChildLineageMismatchError("Pinned age snapshot has no guidance for the report")
+        return PinnedChildAgeGuidance(report=report, age_snapshot=snapshot, guidance=guidance)
 
     async def get_latest_chart_version(self, child_profile_id: UUID) -> models.ChildChartVersion | None:
         result = await self.session.execute(

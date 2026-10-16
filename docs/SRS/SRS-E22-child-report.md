@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S03 завершены, S04–S16 не начаты
+Статус: целевой контракт готов; S01–S04 завершены, S05–S16 не начаты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 
@@ -110,11 +110,15 @@ Age snapshot:
 
 - календарно корректный расчёт с leap-day и timezone boundary tests;
 - future DOB отклоняется;
+- возраст `>=18` отклоняется fail-closed;
 - возраст не вводится вручную;
 - stage boundaries versioned;
+- canonical input hash включает DOB, `as_of_date` и rules version;
 - core report не мутирует;
 - age update создаёт новый immutable snapshot;
 - PDF и web фиксируют один `age_snapshot_id`.
+
+Реализация S04: `child-age-mvp-1`, stages `[0,1)`, `[1,3)`, `[3,6)`, `[6,9)`, `[9,12)`, `[12,15)`, `[15,18)`; repository owner-scoped, concurrency-safe и выводит DOB/timezone только из persisted child profile. Отдельная reversible migration `b3c4d5e6f7a8` расширяет snapshot identity полем `input_hash`, поэтому correction DOB в тот же `as_of_date` не переиспользует старый artifact.
 
 ## 7. FR-E22.4 — Parent Style Profile
 

@@ -30,6 +30,7 @@ EXPECTED_TABLES = {
 }
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION = ROOT / "alembic" / "versions" / "a2b3c4d5e6f7_add_child_report_foundation.py"
+AGE_SNAPSHOT_MIGRATION = ROOT / "alembic" / "versions" / "b3c4d5e6f7a8_include_age_snapshot_input_hash.py"
 
 
 def test_child_domain_schemas_enforce_birth_time_score_and_lineage_contracts() -> None:
@@ -152,6 +153,14 @@ def test_orm_declares_isolated_child_entities_and_complete_lineage() -> None:
     age_guidance = cast(Table, models.ChildReportAgeGuidance.__table__)
     assert {"report_id", "age_snapshot_id", "version", "payload"} <= set(age_guidance.columns.keys())
 
+    age_snapshot = cast(Table, models.ChildAgeSnapshot.__table__)
+    assert any(
+        {column.name for column in constraint.columns}
+        == {"child_profile_id", "as_of_date", "age_rules_version", "input_hash"}
+        for constraint in age_snapshot.constraints
+        if isinstance(constraint, UniqueConstraint)
+    )
+
 
 def test_child_foundation_migration_is_additive_reversible_and_legacy_safe() -> None:
     source = MIGRATION.read_text(encoding="utf-8")
@@ -177,6 +186,14 @@ def test_child_foundation_migration_is_additive_reversible_and_legacy_safe() -> 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.down_revision == "f1a2b3c4d5e6"
+
+
+def test_age_snapshot_constraint_fix_is_a_separate_reversible_migration() -> None:
+    source = AGE_SNAPSHOT_MIGRATION.read_text(encoding="utf-8")
+    assert 'down_revision: str | None = "a2b3c4d5e6f7"' in source
+    assert "uq_child_age_snapshots_profile_date_rules_input" in source
+    assert '["child_profile_id", "as_of_date", "age_rules_version", "input_hash"]' in source
+    assert "def downgrade()" in source
 
 
 @pytest.mark.asyncio

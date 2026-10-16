@@ -130,7 +130,7 @@ Child Report помогает взрослому понять:
 - [x] `approximate` time использует только факты, устойчивые в документированном временном окне.
 - [ ] Каждый Parent Style, Child Needs и Interaction score имеет confidence, evidence и version lineage.
 - [ ] Ни один вывод не строится из одного астрологического фактора и не маркирует ребёнка бинарным trait.
-- [x] Age Resolver календарно корректен, не принимает будущую DOB/возраст `>=18` и создаёт versioned snapshots с `as_of_date`.
+- [x] Age Resolver календарно корректен, не принимает будущую DOB/возраст `>=18` и создаёт versioned snapshots с server-derived local `as_of_date`.
 - [x] Core report не мутирует при взрослении ребёнка; age update создаёт отдельную snapshot/guidance lineage.
 - [ ] Guidance Facts являются единственным content input LLM и не содержат unrestricted raw chart/answers.
 - [ ] Child-safety validators запрещают диагнозы, фатальные прогнозы, fixed labels, blame, unsafe discipline и unsupported advice.
@@ -207,4 +207,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence; S03 закрыта versioned exact/approximate/unknown chart policy, stability/exclusion evidence, Moon-boundary golden fixtures и immutable correction lineage; S04 закрыта calendar-correct under-18 resolver, immutable input-hashed snapshots, owner-scoped age update lineage и shared pinned web/PDF read contract. Остальные deterministic engines, API routes, frontend, runtime и rollout остаются в S05–S16.
+Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence; S03 закрыта versioned exact/approximate/unknown chart policy, stability/exclusion evidence, Moon-boundary golden fixtures и immutable correction lineage; S04 закрыта calendar-correct under-18 resolver, server-owned local effective date, immutable input-hashed snapshots, shared correction/snapshot lock, fail-safe conditional downgrade, owner-scoped age update lineage и shared pinned web/PDF read contract. Остальные deterministic engines, API routes, frontend, runtime и rollout остаются в S05–S16.

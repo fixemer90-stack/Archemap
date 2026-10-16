@@ -141,10 +141,11 @@ age_snapshot_current
 
 ```json
 {
-  "as_of_date": "2026-10-14",
   "expected_core_report_version": 1
 }
 ```
+
+Клиент не передаёт `as_of_date`, дату или timestamp для расчёта возраста. Backend берёт текущий timezone-aware UTC instant из серверных часов, переводит его в persisted timezone ребёнка и сохраняет полученную local `as_of_date`. Явная clock injection допустима только во внутреннем repository/test interface как `now: datetime | None` и отклоняет naive datetime.
 
 Backend создаёт immutable snapshot:
 

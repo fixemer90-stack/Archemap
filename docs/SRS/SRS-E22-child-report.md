@@ -112,13 +112,14 @@ Age snapshot:
 - future DOB отклоняется;
 - возраст `>=18` отклоняется fail-closed;
 - возраст не вводится вручную;
+- effective instant принадлежит серверу; repository default использует timezone-aware UTC clock, а local `as_of_date` выводится из persisted timezone ребёнка;
 - stage boundaries versioned;
 - canonical input hash включает DOB, `as_of_date` и rules version;
 - core report не мутирует;
 - age update создаёт новый immutable snapshot;
 - PDF и web фиксируют один `age_snapshot_id`.
 
-Реализация S04: `child-age-mvp-1`, stages `[0,1)`, `[1,3)`, `[3,6)`, `[6,9)`, `[9,12)`, `[12,15)`, `[15,18)`; repository owner-scoped, concurrency-safe и выводит DOB/timezone только из persisted child profile. Отдельная reversible migration `b3c4d5e6f7a8` расширяет snapshot identity полем `input_hash`, поэтому correction DOB в тот же `as_of_date` не переиспользует старый artifact.
+Реализация S04: `child-age-mvp-1`, stages `[0,1)`, `[1,3)`, `[3,6)`, `[6,9)`, `[9,12)`, `[12,15)`, `[15,18)`; repository owner-scoped, concurrency-safe, использует server-owned UTC clock и выводит DOB/timezone только из persisted child profile. Birth correction и snapshot creation сериализуются одним child advisory-lock key. Migration `b3c4d5e6f7a8` additive расширяет snapshot identity полем `input_hash`, поэтому correction DOB в тот же local `as_of_date` не переиспользует старый artifact. Schema downgrade условно обратим: при данных, совместимых со старой уникальностью, он проходит; при нескольких valid immutable rows для одной `(child, date, rules)` группы fail-safe отказывает до DDL, не удаляя и не объединяя history.
 
 ## 7. FR-E22.4 — Parent Style Profile
 
@@ -349,7 +350,7 @@ Root lineage, answers, scores/evidence, generation statuses, core versions и ag
 ## 19. Data safety и rollout
 
 - backup/snapshot до migration на real-user storage;
-- additive migrations и reversible schema changes;
+- additive migrations; schema downgrade только когда он lossless, иначе fail-safe refusal без удаления/merge history;
 - row counts/checksums parent profiles, natal charts, reports, payments и entitlements до/после;
 - feature flag off по умолчанию;
 - no mutable backfill старых placeholder `child` artifacts;

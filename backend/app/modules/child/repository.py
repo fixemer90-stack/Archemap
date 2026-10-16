@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from typing import Any, TypeVar, cast
 from uuid import UUID
 
@@ -23,6 +23,13 @@ from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, ch
 from app.modules.profiles.models import PersonProfile
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
+
+
+def _server_now(now: datetime | None) -> datetime:
+    effective_now = datetime.now(UTC) if now is None else now
+    if not isinstance(effective_now, datetime) or effective_now.tzinfo is None or effective_now.utcoffset() is None:
+        raise ValueError("now must be a timezone-aware datetime")
+    return effective_now
 
 
 class ChildIdempotencyTargetMismatchError(ValueError):
@@ -116,6 +123,14 @@ class ChildReportGraph:
 class ChildRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def _lock_child_lineage(self, child_profile_id: UUID) -> None:
+        """Serialize mutable child inputs and derived immutable lineage on one key."""
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-lineage:{child_profile_id}"},
+        )
 
     async def add(self, instance: _ChildModel) -> _ChildModel:
         self.session.add(instance)
@@ -342,10 +357,7 @@ class ChildRepository:
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
         )
-        await self.session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
-            {"lock_key": str(child_profile_id)},
-        )
+        await self._lock_child_lineage(child_profile_id)
         existing = await self.session.scalar(
             select(models.ChildChartVersion).where(
                 models.ChildChartVersion.child_profile_id == child_profile_id,
@@ -398,22 +410,20 @@ class ChildRepository:
         *,
         owner_user_id: UUID,
         child_profile_id: UUID,
-        as_of: date | datetime,
+        now: datetime | None = None,
         age_rules_version: str = AGE_RULES_VERSION,
     ) -> ChildAgeSnapshotCreateResult:
-        """Derive and append one immutable age snapshot from server-owned DOB."""
+        """Derive and append one immutable age snapshot from server-owned DOB and clock."""
 
-        await self.session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
-            {"lock_key": f"child-age:{child_profile_id}"},
-        )
+        effective_now = _server_now(now)
+        await self._lock_child_lineage(child_profile_id)
         child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
         )
         resolved = resolve_child_age(
             birth_date=child.birth_date,
-            as_of=as_of,
+            as_of=effective_now,
             timezone_name=child.timezone,
             age_rules_version=age_rules_version,
         )
@@ -521,10 +531,7 @@ class ChildRepository:
         if birth_data_hash != expected_birth_data_hash:
             raise ChildLineageMismatchError("Supplied birth-data hash does not match corrected birth data")
 
-        await self.session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
-            {"lock_key": str(child_profile_id)},
-        )
+        await self._lock_child_lineage(child_profile_id)
         child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
@@ -767,10 +774,10 @@ class ChildRepository:
         owner_user_id: UUID,
         child_profile_id: UUID,
         report_id: UUID,
-        as_of: date | datetime,
         idempotency_key: str,
         guidance_rules_version: str,
         payload: dict[str, Any],
+        now: datetime | None = None,
         age_rules_version: str = AGE_RULES_VERSION,
     ) -> ChildAgeUpdateResult:
         """Append age snapshot/guidance lineage without touching the core report."""
@@ -795,7 +802,7 @@ class ChildRepository:
         snapshot_result = await self.create_age_snapshot_idempotently(
             owner_user_id=owner_user_id,
             child_profile_id=child_profile_id,
-            as_of=as_of,
+            now=now,
             age_rules_version=age_rules_version,
         )
         existing = await self.session.scalar(

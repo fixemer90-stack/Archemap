@@ -7,6 +7,7 @@ Create Date: 2026-10-16 00:00:00.000000
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
 
 revision: str = "b3c4d5e6f7a8"
@@ -28,6 +29,24 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    duplicate_groups = op.get_bind().scalar(
+        sa.text(
+            """
+            SELECT count(*)
+            FROM (
+                SELECT 1
+                FROM child_age_snapshots
+                GROUP BY child_profile_id, as_of_date, age_rules_version
+                HAVING count(*) > 1
+            ) AS duplicate_lineages
+            """
+        )
+    )
+    if duplicate_groups:
+        raise RuntimeError(
+            "Refusing lossy downgrade: child_age_snapshots contains "
+            f"{duplicate_groups} duplicate (child_profile_id, as_of_date, age_rules_version) lineage group(s)"
+        )
     op.drop_constraint(_NEW_CONSTRAINT, "child_age_snapshots", type_="unique")
     op.create_unique_constraint(
         _OLD_CONSTRAINT,

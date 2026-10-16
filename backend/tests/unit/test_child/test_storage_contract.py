@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
-from datetime import date
+import inspect
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock
@@ -188,12 +189,42 @@ def test_child_foundation_migration_is_additive_reversible_and_legacy_safe() -> 
     assert module.down_revision == "f1a2b3c4d5e6"
 
 
-def test_age_snapshot_constraint_fix_is_a_separate_reversible_migration() -> None:
+def test_age_snapshot_constraint_fix_is_additive_and_refuses_lossy_downgrade() -> None:
     source = AGE_SNAPSHOT_MIGRATION.read_text(encoding="utf-8")
     assert 'down_revision: str | None = "a2b3c4d5e6f7"' in source
     assert "uq_child_age_snapshots_profile_date_rules_input" in source
     assert '["child_profile_id", "as_of_date", "age_rules_version", "input_hash"]' in source
-    assert "def downgrade()" in source
+    upgrade = source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
+    downgrade = source.split("def downgrade()", 1)[1]
+    assert "delete" not in upgrade.lower()
+    assert "update" not in upgrade.lower()
+    assert "GROUP BY child_profile_id, as_of_date, age_rules_version" in downgrade
+    assert "HAVING count(*) > 1" in downgrade
+    assert "Refusing lossy downgrade" in downgrade
+    assert downgrade.index("HAVING count(*) > 1") < downgrade.index("op.drop_constraint(_NEW_CONSTRAINT")
+
+
+def test_age_snapshot_repository_clock_is_server_owned_with_explicit_test_injection() -> None:
+    from app.modules.child.repository import ChildRepository, _server_now
+
+    snapshot_parameters = inspect.signature(ChildRepository.create_age_snapshot_idempotently).parameters
+    update_parameters = inspect.signature(ChildRepository.create_age_update_idempotently).parameters
+
+    assert "as_of" not in snapshot_parameters
+    assert "as_of" not in update_parameters
+    assert snapshot_parameters["now"].default is None
+    assert update_parameters["now"].default is None
+
+    source = (ROOT / "app" / "modules" / "child" / "repository.py").read_text(encoding="utf-8")
+    assert "datetime.now(UTC)" in source
+    assert source.count("_lock_child_lineage(") >= 3
+
+    injected = datetime(2026, 10, 16, 12, tzinfo=UTC)
+    assert _server_now(injected) is injected
+    with pytest.raises(ValueError, match="timezone-aware"):
+        _server_now(datetime(2026, 10, 16, 12))
+    with pytest.raises(ValueError, match="timezone-aware"):
+        _server_now(date(2026, 10, 16))  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio

@@ -42,18 +42,19 @@
 - Для каждого sampled fact сохраняются observed values, sample count и детерминированный confidence. Fail-closed Moon и аспекты с нестабильным телом дополнительно сохраняют machine-readable причину exclusion.
 - `ChildChartInput` намеренно не содержит gender/caregiver role, поэтому эти поля не могут попасть в chart/scoring input.
 - `ChildChartBuild` несёт typed `source_input` и versioned `input_hash`. Persistence-only builders могут не задавать source metadata, но birth-data correction требует её и до любых mutation/persistence сверяет date, time, confidence, coordinates, timezone, house system и hash.
+- `child_birth_data_hash` канонизирует полный persisted correction snapshot (`birth_date`, `birth_time`, `birth_time_confidence`, `birth_place`, `latitude`, `longitude`, `timezone`) как ASCII JSON с отсортированными ключами и compact separators, затем вычисляет SHA-256. Correction до chart persistence требует точного совпадения caller hash с этим canonical digest, а change detection независимо пересчитывает digest из текущих persisted полей и новых corrected fields.
 - Repository append-only создаёт `ChildChartVersion` под PostgreSQL advisory lock, повторный/concurrent одинаковый input возвращает одну строку, а разные birth-data inputs получают последовательные immutable versions.
 - Birth-data correction сначала разрешает все domain mismatch/idempotency ошибки и только после успешного создания новой chart lineage меняет текущий child profile. Поэтому caller может поймать reused-chart mismatch и commit без скрытого изменения профиля; существующий report продолжает ссылаться на старый chart lineage.
 
 ## Verification
 
-- RED remediation: focused child policy suite → `8 failed, 4 passed` на отсутствующих v3 metadata/source binding, DST gap/fold и offset-aware validations; focused PostgreSQL correction test → ожидаемый `TypeError` на отсутствующем `house_system` correction contract.
-- `uv run pytest tests/unit/test_child -q` → `25 passed`.
+- RED remediation: focused child policy suite → `8 failed, 4 passed` на отсутствующих v3 metadata/source binding, DST gap/fold и offset-aware validations; focused PostgreSQL correction test → ожидаемый `TypeError` на отсутствующем `house_system` correction contract; stale/existing `birth_data_hash` regression → ожидаемый `Failed: DID NOT RAISE ChildLineageMismatchError` до canonical hash validation.
+- `uv run pytest tests/unit/test_child -q` → `26 passed`.
 - `uv run pytest tests/unit/test_astrotype_v2/test_chart_adapter.py tests/unit/test_astrotype_v2/test_chart_persistence.py tests/unit/test_astrotype_v2/test_chart_contract.py tests/chart/test_chart_engine.py -q` → `29 passed`.
-- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_storage.py tests/integration/test_child_storage_review.py tests/integration/test_child_chart_persistence.py -q` → `8 passed`, включая separate-transaction concurrency, correction lineage и старый report FK.
+- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_storage.py tests/integration/test_child_storage_review.py tests/integration/test_child_chart_persistence.py -q` → `8 passed`, включая separate-transaction concurrency, correction lineage, stale-hash atomic rejection + caught-error commit без profile/chart mutation и старый report FK.
 - `uv run ruff check ...` → `All checks passed!`; `uv run ruff format --check ...` → все затронутые Python files отформатированы.
-- `uv run mypy app/modules/child/birth_time_policy.py app/modules/child/chart_adapter.py app/modules/child/repository.py tests/unit/test_child/test_birth_time_confidence.py tests/integration/test_child_chart_persistence.py` → `Success: no issues found in 5 source files`.
-- Golden JSON fixtures запускают real chart engine для exact, approximate Moon boundary и unknown Moon boundary; regression tests доказывают fail-closed unknown-time Moon, v3 lineage hash, strict `America/New_York` DST handling, source-input/hash binding и отсутствие profile mutation после caught reused-chart mismatch + commit.
+- `uv run mypy ...` для child birth-data/chart/repository и затронутых tests → `Success: no issues found`.
+- Golden JSON fixtures запускают real chart engine для exact, approximate Moon boundary и unknown Moon boundary; regression tests доказывают fail-closed unknown-time Moon, v3 lineage hash, strict `America/New_York` DST handling, source-input/hash binding, canonical persisted birth-data hashing и отсутствие profile/chart mutation после caught stale-hash или reused-chart mismatch + commit.
 
 ## Зависимости
 

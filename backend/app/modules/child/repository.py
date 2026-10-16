@@ -17,6 +17,7 @@ from app.core.audit import AuditLog
 from app.core.models import BaseModel
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child import models
+from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
 from app.modules.profiles.models import PersonProfile
 
@@ -406,6 +407,17 @@ class ChildRepository:
         expected_input_hash = child_chart_input_hash(chart.source_input, engine_version=chart.engine_version)
         if chart.input_hash != expected_input_hash:
             raise ChildLineageMismatchError("Chart input hash does not match its source input")
+        expected_birth_data_hash = child_birth_data_hash(
+            birth_date=birth_date,
+            birth_time=birth_time,
+            birth_time_confidence=birth_time_confidence,
+            birth_place=birth_place,
+            latitude=latitude,
+            longitude=longitude,
+            timezone=timezone,
+        )
+        if birth_data_hash != expected_birth_data_hash:
+            raise ChildLineageMismatchError("Supplied birth-data hash does not match corrected birth data")
 
         await self.session.execute(
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
@@ -415,7 +427,16 @@ class ChildRepository:
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
         )
-        birth_data_changed = child.birth_data_hash != birth_data_hash
+        current_birth_data_hash = child_birth_data_hash(
+            birth_date=child.birth_date,
+            birth_time=child.birth_time,
+            birth_time_confidence=child.birth_time_confidence,
+            birth_place=child.birth_place,
+            latitude=child.latitude,
+            longitude=child.longitude,
+            timezone=child.timezone,
+        )
+        birth_data_changed = current_birth_data_hash != expected_birth_data_hash
         result = await self.create_chart_version_idempotently(
             owner_user_id=owner_user_id,
             child_profile_id=child_profile_id,
@@ -434,7 +455,7 @@ class ChildRepository:
             child.latitude = latitude
             child.longitude = longitude
             child.timezone = timezone
-            child.birth_data_hash = birth_data_hash
+            child.birth_data_hash = expected_birth_data_hash
             child.version += 1
             await self.session.flush()
         return result

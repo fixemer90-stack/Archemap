@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.modules.astrotype_v2.models import NatalChart
+from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
 from app.modules.child.models import ChildChartVersion, ChildProfile, ChildReport
 from app.modules.child.repository import (
@@ -92,6 +93,15 @@ async def test_chart_persistence_is_concurrent_idempotent_and_correction_preserv
     )
     db_session.add(parent_chart)
     await db_session.flush()
+    original_birth_data_hash = child_birth_data_hash(
+        birth_date=date(2021, 1, 3),
+        birth_time=None,
+        birth_time_confidence="unknown",
+        birth_place="Moscow",
+        latitude=55.7558,
+        longitude=37.6173,
+        timezone="Europe/Moscow",
+    )
     child_result = await ChildRepository(db_session).create_child_idempotently(
         owner_user_id=owner.id,
         parent_profile_id=parent_profile.id,
@@ -106,7 +116,7 @@ async def test_chart_persistence_is_concurrent_idempotent_and_correction_preserv
         longitude=37.6173,
         timezone="Europe/Moscow",
         caregiver_context={},
-        birth_data_hash="a" * 64,
+        birth_data_hash=original_birth_data_hash,
         idempotency_key="child-chart-profile",
     )
     await db_session.commit()
@@ -167,6 +177,48 @@ async def test_chart_persistence_is_concurrent_idempotent_and_correction_preserv
         house_system="P",
     )
     corrected_build = _chart_build_for_input(corrected_input)
+    with pytest.raises(ChildLineageMismatchError, match="birth-data hash"):
+        await repository.correct_birth_data_and_create_chart(
+            owner_user_id=owner.id,
+            child_profile_id=child_result.child.id,
+            birth_date=corrected_input.birth_date,
+            birth_time=corrected_input.birth_time,
+            birth_time_confidence=corrected_input.birth_time_confidence,
+            birth_place="Moscow",
+            latitude=corrected_input.latitude,
+            longitude=corrected_input.longitude,
+            timezone=corrected_input.timezone,
+            house_system=corrected_input.house_system,
+            birth_data_hash=original_birth_data_hash,
+            chart=corrected_build,
+        )
+    await db_session.commit()
+
+    unchanged_after_stale_hash = await db_session.get(ChildProfile, child_result.child.id)
+    chart_count_after_stale_hash = len(
+        (
+            await db_session.execute(
+                select(ChildChartVersion).where(ChildChartVersion.child_profile_id == child_result.child.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert unchanged_after_stale_hash is not None
+    assert unchanged_after_stale_hash.birth_time is None
+    assert unchanged_after_stale_hash.birth_time_confidence == "unknown"
+    assert unchanged_after_stale_hash.version == 1
+    assert chart_count_after_stale_hash == 1
+
+    corrected_birth_data_hash = child_birth_data_hash(
+        birth_date=corrected_input.birth_date,
+        birth_time=corrected_input.birth_time,
+        birth_time_confidence=corrected_input.birth_time_confidence,
+        birth_place="Moscow",
+        latitude=corrected_input.latitude,
+        longitude=corrected_input.longitude,
+        timezone=corrected_input.timezone,
+    )
     corrected = await repository.correct_birth_data_and_create_chart(
         owner_user_id=owner.id,
         child_profile_id=child_result.child.id,
@@ -178,7 +230,7 @@ async def test_chart_persistence_is_concurrent_idempotent_and_correction_preserv
         longitude=corrected_input.longitude,
         timezone=corrected_input.timezone,
         house_system=corrected_input.house_system,
-        birth_data_hash="c" * 64,
+        birth_data_hash=corrected_birth_data_hash,
         chart=corrected_build,
     )
     await db_session.commit()
@@ -269,6 +321,15 @@ async def test_chart_persistence_is_concurrent_idempotent_and_correction_preserv
         )
     await db_session.commit()
 
+    changed_place_birth_data_hash = child_birth_data_hash(
+        birth_date=corrected_input.birth_date,
+        birth_time=corrected_input.birth_time,
+        birth_time_confidence=corrected_input.birth_time_confidence,
+        birth_place="Kazan",
+        latitude=corrected_input.latitude,
+        longitude=corrected_input.longitude,
+        timezone=corrected_input.timezone,
+    )
     with pytest.raises(ChildIdempotencyTargetMismatchError):
         await repository.correct_birth_data_and_create_chart(
             owner_user_id=owner.id,
@@ -276,12 +337,12 @@ async def test_chart_persistence_is_concurrent_idempotent_and_correction_preserv
             birth_date=corrected_input.birth_date,
             birth_time=corrected_input.birth_time,
             birth_time_confidence=corrected_input.birth_time_confidence,
-            birth_place="Moscow",
+            birth_place="Kazan",
             latitude=corrected_input.latitude,
             longitude=corrected_input.longitude,
             timezone=corrected_input.timezone,
             house_system=corrected_input.house_system,
-            birth_data_hash="h" * 64,
+            birth_data_hash=changed_place_birth_data_hash,
             chart=corrected_build,
         )
     await db_session.commit()

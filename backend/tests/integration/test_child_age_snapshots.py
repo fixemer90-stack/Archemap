@@ -4,21 +4,29 @@ import asyncio
 import importlib.util
 from datetime import UTC, date, datetime, time
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import Connection, select, text
+from sqlalchemy import Connection, func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child.age_resolver import AGE_RULES_VERSION, age_snapshot_input_hash
 from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
-from app.modules.child.models import ChildAgeSnapshot, ChildChartVersion, ChildProfile, ChildReport
+from app.modules.child.models import (
+    ChildAgeSnapshot,
+    ChildChartVersion,
+    ChildProfile,
+    ChildReport,
+    ChildReportAgeGuidance,
+)
 from app.modules.child.repository import (
     ChildAgeUpdateResult,
+    ChildIdempotencyTargetMismatchError,
     ChildLineageMismatchError,
     ChildRepository,
 )
@@ -320,6 +328,75 @@ async def test_age_update_appends_guidance_and_shared_pin_without_mutating_core_
 
 
 @pytest.mark.asyncio
+async def test_age_update_replay_on_later_local_date_returns_original_pin_without_side_effects(
+    db_session: AsyncSession,
+) -> None:
+    owner, child, report = await _seed_report(db_session)
+    repository = ChildRepository(db_session)
+    payload = {"status": "pinned_only", "age_stage": "3-6"}
+
+    original = await repository.create_age_update_idempotently(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        report_id=report.id,
+        now=datetime(2026, 10, 16, 12, tzinfo=UTC),
+        idempotency_key="age-update-across-days",
+        guidance_rules_version="age-guidance-v1",
+        payload=payload,
+    )
+    await db_session.commit()
+
+    replay = await repository.create_age_update_idempotently(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        report_id=report.id,
+        now=datetime(2026, 10, 17, 12, tzinfo=UTC),
+        idempotency_key="age-update-across-days",
+        guidance_rules_version="age-guidance-v1",
+        payload=payload,
+    )
+    await db_session.commit()
+
+    assert replay.snapshot.id == original.snapshot.id
+    assert replay.snapshot.as_of_date == date(2026, 10, 16)
+    assert replay.guidance.id == original.guidance.id
+    assert replay.snapshot_created is False
+    assert replay.guidance_created is False
+
+    async def persisted_counts() -> tuple[int, int]:
+        snapshot_count = await db_session.scalar(
+            select(func.count()).select_from(ChildAgeSnapshot).where(ChildAgeSnapshot.child_profile_id == child.id)
+        )
+        guidance_count = await db_session.scalar(
+            select(func.count())
+            .select_from(ChildReportAgeGuidance)
+            .where(ChildReportAgeGuidance.child_profile_id == child.id)
+        )
+        return int(snapshot_count or 0), int(guidance_count or 0)
+
+    assert await persisted_counts() == (1, 1)
+
+    mismatches: list[tuple[UUID, str, dict[str, Any]]] = [
+        (uuid4(), "age-guidance-v1", payload),
+        (report.id, "age-guidance-v2", payload),
+        (report.id, "age-guidance-v1", {"status": "different"}),
+    ]
+    for mismatched_report_id, mismatched_rules_version, mismatched_payload in mismatches:
+        with pytest.raises(ChildIdempotencyTargetMismatchError, match="Age update key"):
+            await repository.create_age_update_idempotently(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                report_id=mismatched_report_id,
+                now=datetime(2026, 10, 18, 12, tzinfo=UTC),
+                idempotency_key="age-update-across-days",
+                guidance_rules_version=mismatched_rules_version,
+                payload=mismatched_payload,
+            )
+        await db_session.commit()
+        assert await persisted_counts() == (1, 1)
+
+
+@pytest.mark.asyncio
 async def test_birth_correction_serializes_with_snapshot_creation_on_the_same_child_lock(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
@@ -393,6 +470,9 @@ async def test_birth_correction_serializes_with_snapshot_creation_on_the_same_ch
 
     async def create_snapshot() -> ChildAgeSnapshot:
         async with sessions() as session:
+            preloaded_child = await session.get(ChildProfile, child.id)
+            assert preloaded_child is not None
+            assert preloaded_child.birth_date == child.birth_date
             result = await ChildRepository(session).create_age_snapshot_idempotently(
                 owner_user_id=owner.id,
                 child_profile_id=child.id,

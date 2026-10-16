@@ -143,13 +143,20 @@ class ChildRepository:
     async def flush(self) -> None:
         await self.session.flush()
 
-    async def _require_owned_child(self, *, child_profile_id: UUID, owner_user_id: UUID) -> models.ChildProfile:
-        child = await self.session.scalar(
-            select(models.ChildProfile).where(
-                models.ChildProfile.id == child_profile_id,
-                models.ChildProfile.owner_user_id == owner_user_id,
-            )
+    async def _require_owned_child(
+        self,
+        *,
+        child_profile_id: UUID,
+        owner_user_id: UUID,
+        fresh: bool = False,
+    ) -> models.ChildProfile:
+        statement = select(models.ChildProfile).where(
+            models.ChildProfile.id == child_profile_id,
+            models.ChildProfile.owner_user_id == owner_user_id,
         )
+        if fresh:
+            statement = statement.execution_options(populate_existing=True)
+        child = await self.session.scalar(statement)
         if child is None:
             raise ChildLineageMismatchError("Child profile is not owned by the requested owner")
         return child
@@ -353,11 +360,12 @@ class ChildRepository:
         chart: ChildChartBuild,
     ) -> ChildChartVersionCreateResult:
         """Append one chart lineage row, serializing version allocation per child."""
+        await self._lock_child_lineage(child_profile_id)
         await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
+            fresh=True,
         )
-        await self._lock_child_lineage(child_profile_id)
         existing = await self.session.scalar(
             select(models.ChildChartVersion).where(
                 models.ChildChartVersion.child_profile_id == child_profile_id,
@@ -420,6 +428,7 @@ class ChildRepository:
         child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
+            fresh=True,
         )
         resolved = resolve_child_age(
             birth_date=child.birth_date,
@@ -535,6 +544,7 @@ class ChildRepository:
         child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
+            fresh=True,
         )
         current_birth_data_hash = child_birth_data_hash(
             birth_date=child.birth_date,
@@ -784,12 +794,48 @@ class ChildRepository:
 
         await self.session.execute(
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-age-update-idempotency:{child_profile_id}:{idempotency_key}"},
+        )
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {"lock_key": f"child-age-update:{report_id}"},
         )
         await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
         )
+        existing = await self.session.scalar(
+            select(models.ChildReportAgeGuidance).where(
+                models.ChildReportAgeGuidance.child_profile_id == child_profile_id,
+                models.ChildReportAgeGuidance.idempotency_key == idempotency_key,
+            )
+        )
+        if existing is not None:
+            if (
+                existing.report_id,
+                existing.rules_version,
+                existing.payload,
+            ) != (
+                report_id,
+                guidance_rules_version,
+                payload,
+            ):
+                raise ChildIdempotencyTargetMismatchError("Age update key was reused for another target")
+            existing_snapshot = await self.session.scalar(
+                select(models.ChildAgeSnapshot).where(
+                    models.ChildAgeSnapshot.id == existing.age_snapshot_id,
+                    models.ChildAgeSnapshot.child_profile_id == child_profile_id,
+                )
+            )
+            if existing_snapshot is None:
+                raise ChildLineageMismatchError("Persisted age update snapshot does not belong to the child")
+            return ChildAgeUpdateResult(
+                snapshot=existing_snapshot,
+                guidance=existing,
+                snapshot_created=False,
+                guidance_created=False,
+            )
+
         report = await self.session.scalar(
             select(models.ChildReport).where(
                 models.ChildReport.id == report_id,
@@ -805,32 +851,6 @@ class ChildRepository:
             now=now,
             age_rules_version=age_rules_version,
         )
-        existing = await self.session.scalar(
-            select(models.ChildReportAgeGuidance).where(
-                models.ChildReportAgeGuidance.child_profile_id == child_profile_id,
-                models.ChildReportAgeGuidance.idempotency_key == idempotency_key,
-            )
-        )
-        if existing is not None:
-            if (
-                existing.report_id,
-                existing.age_snapshot_id,
-                existing.rules_version,
-                existing.payload,
-            ) != (
-                report_id,
-                snapshot_result.snapshot.id,
-                guidance_rules_version,
-                payload,
-            ):
-                raise ChildIdempotencyTargetMismatchError("Age update key was reused for another target")
-            return ChildAgeUpdateResult(
-                snapshot=snapshot_result.snapshot,
-                guidance=existing,
-                snapshot_created=snapshot_result.created,
-                guidance_created=False,
-            )
-
         latest_version = await self.session.scalar(
             select(func.max(models.ChildReportAgeGuidance.version)).where(
                 models.ChildReportAgeGuidance.report_id == report_id

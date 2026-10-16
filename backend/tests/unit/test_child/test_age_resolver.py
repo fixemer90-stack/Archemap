@@ -153,3 +153,9 @@ def test_snapshot_is_current_only_for_exact_local_date_rules_and_input_hash() ->
         snapshot_input_hash=resolved.input_hash,
         current=resolved,
     )
+    assert not age_snapshot_is_current(
+        snapshot_as_of_date=resolved.as_of_date,
+        snapshot_rules_version=resolved.age_rules_version,
+        snapshot_input_hash="0" * 64,
+        current=resolved,
+    )

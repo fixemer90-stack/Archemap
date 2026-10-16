@@ -27,7 +27,7 @@ def _chart_build(input_hash: str, *, confidence: str) -> ChildChartBuild:
         excluded_fact_families=() if confidence == "exact" else ("houses",),
         uncertainty_reason=None if confidence == "exact" else "unknown time",
         calculation_payload={
-            "contract_version": "child-birth-time-policy-v1",
+            "contract_version": "child-birth-time-policy-v2",
             "technical_reference": {"synthetic_noon": confidence == "unknown"},
         },
     )

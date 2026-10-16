@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import fields
 from datetime import UTC, date, datetime
@@ -203,17 +204,19 @@ def test_unknown_time_excludes_moon_sign_when_local_day_crosses_a_sign_boundary(
 
 
 def test_unknown_time_fail_closed_excludes_moon_even_when_discrete_samples_agree() -> None:
+    from app.modules.child.birth_time_policy import BIRTH_TIME_POLICY_VERSION
     from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
 
+    chart_input = ChildChartInput(
+        birth_date=date(2021, 5, 12),
+        birth_time=None,
+        birth_time_confidence="unknown",
+        latitude=55.7558,
+        longitude=37.6173,
+        timezone="UTC",
+    )
     result = build_child_chart(
-        ChildChartInput(
-            birth_date=date(2021, 5, 12),
-            birth_time=None,
-            birth_time_confidence="unknown",
-            latitude=55.7558,
-            longitude=37.6173,
-            timezone="UTC",
-        ),
+        chart_input,
         engine_version="child-chart-test-1",
         chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime, moon_sign="Cancer"),
     )
@@ -224,6 +227,23 @@ def test_unknown_time_fail_closed_excludes_moon_even_when_discrete_samples_agree
     assert {point["body"] for point in payload["planet_positions"]} == {"Sun"}
     assert payload["aspects"] == []
     assert "planet_sign:Moon" in payload["exclusions"]
+    assert "stable_moon_sign" not in result.allowed_fact_families
+    assert BIRTH_TIME_POLICY_VERSION == "child-birth-time-policy-v2"
+
+    legacy_hash_payload = {
+        "birth_date": chart_input.birth_date.isoformat(),
+        "birth_time": None,
+        "birth_time_confidence": chart_input.birth_time_confidence,
+        "latitude": chart_input.latitude,
+        "longitude": chart_input.longitude,
+        "timezone": chart_input.timezone,
+        "house_system": chart_input.house_system,
+        "engine_version": "child-chart-test-1",
+        "policy_version": "child-birth-time-policy-v1",
+    }
+    legacy_canonical = json.dumps(legacy_hash_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    legacy_hash = hashlib.sha256(legacy_canonical.encode()).hexdigest()
+    assert result.input_hash != legacy_hash
 
 
 async def test_chart_version_persistence_allocates_next_immutable_lineage_idempotently() -> None:
@@ -258,7 +278,7 @@ async def test_chart_version_persistence_allocates_next_immutable_lineage_idempo
         allowed_fact_families=("planet_signs",),
         excluded_fact_families=("houses",),
         uncertainty_reason="unknown time",
-        calculation_payload={"contract_version": "child-birth-time-policy-v1"},
+        calculation_payload={"contract_version": "child-birth-time-policy-v2"},
     )
     inserted = MagicMock(version=3, child_profile_id=child.id, input_hash=build.input_hash)
     session = MagicMock()

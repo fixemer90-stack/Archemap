@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-BIRTH_TIME_POLICY_VERSION = "child-birth-time-policy-v1"
+BIRTH_TIME_POLICY_VERSION = "child-birth-time-policy-v2"
 APPROXIMATE_WINDOW_MINUTES = 60
 APPROXIMATE_SAMPLE_OFFSETS_MINUTES = (-60, -30, 0, 30, 60)
 
@@ -60,7 +60,7 @@ def resolve_birth_time_policy(confidence: str) -> BirthTimePolicy:
     if confidence == "unknown":
         return BirthTimePolicy(
             confidence=confidence,
-            allowed_fact_families=("planet_positions", "planet_signs", "aspects", "stable_moon_sign"),
+            allowed_fact_families=("planet_positions", "planet_signs", "aspects"),
             excluded_fact_families=_UNKNOWN_EXCLUSIONS,
             uncertainty_reason=(
                 "Birth time is unknown; a synthetic noon chart is technical only and time-sensitive facts are excluded."

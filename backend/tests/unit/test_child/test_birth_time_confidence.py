@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import fields
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -71,6 +71,8 @@ def test_unknown_time_uses_technical_noon_but_excludes_houses_angles_and_overlay
     assert all(point["house_number"] is None for point in payload["planet_positions"])
     assert all(point["longitude"] is None for point in payload["planet_positions"])
     assert {"houses", "angles", "house_assignments", "house_overlays"} <= set(result.excluded_fact_families)
+    assert result.allowed_fact_families == ("stable_planet_signs", "stable_aspects")
+    assert "planet_positions" not in result.allowed_fact_families
     assert "house_overlays" not in result.allowed_fact_families
     assert calls
     assert all(call.tzinfo is UTC for call in calls)
@@ -167,7 +169,108 @@ def test_exact_time_retains_full_chart_and_gender_is_not_a_chart_input() -> None
     }
     assert result.excluded_fact_families == ()
     assert result.uncertainty_reason is None
+    assert result.source_input == chart_input
     assert "child_gender" not in {field.name for field in fields(ChildChartInput)}
+
+
+def test_exact_time_rejects_nonexistent_dst_wall_time() -> None:
+    import pytest
+
+    from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
+
+    with pytest.raises(ValueError, match="nonexistent"):
+        build_child_chart(
+            ChildChartInput(
+                birth_date=date(2021, 3, 14),
+                birth_time=time(2, 30),
+                birth_time_confidence="exact",
+                latitude=40.7128,
+                longitude=-74.006,
+                timezone="America/New_York",
+            ),
+            engine_version="child-chart-test-1",
+            chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime),
+        )
+
+
+def test_exact_time_rejects_ambiguous_dst_wall_time() -> None:
+    import pytest
+
+    from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        build_child_chart(
+            ChildChartInput(
+                birth_date=date(2021, 11, 7),
+                birth_time=time(1, 30),
+                birth_time_confidence="exact",
+                latitude=40.7128,
+                longitude=-74.006,
+                timezone="America/New_York",
+            ),
+            engine_version="child-chart-test-1",
+            chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime),
+        )
+
+
+def test_approximate_time_rejects_window_crossing_dst_gap() -> None:
+    import pytest
+
+    from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
+
+    with pytest.raises(ValueError, match="nonexistent"):
+        build_child_chart(
+            ChildChartInput(
+                birth_date=date(2021, 3, 14),
+                birth_time=time(3, 30),
+                birth_time_confidence="approximate",
+                latitude=40.7128,
+                longitude=-74.006,
+                timezone="America/New_York",
+            ),
+            engine_version="child-chart-test-1",
+            chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime),
+        )
+
+
+def test_approximate_time_rejects_window_crossing_dst_fold() -> None:
+    import pytest
+
+    from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        build_child_chart(
+            ChildChartInput(
+                birth_date=date(2021, 11, 7),
+                birth_time=time(2, 0),
+                birth_time_confidence="approximate",
+                latitude=40.7128,
+                longitude=-74.006,
+                timezone="America/New_York",
+            ),
+            engine_version="child-chart-test-1",
+            chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime),
+        )
+
+
+def test_offset_aware_birth_time_is_rejected() -> None:
+    import pytest
+
+    from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
+
+    with pytest.raises(ValueError, match="offset-aware"):
+        build_child_chart(
+            ChildChartInput(
+                birth_date=date(2021, 5, 12),
+                birth_time=time(10, 0, tzinfo=timezone(timedelta(hours=3))),
+                birth_time_confidence="exact",
+                latitude=55.7558,
+                longitude=37.6173,
+                timezone="Europe/Moscow",
+            ),
+            engine_version="child-chart-test-1",
+            chart_builder=lambda birth_datetime, *_: _chart_at(birth_datetime),
+        )
 
 
 def test_unknown_time_excludes_moon_sign_when_local_day_crosses_a_sign_boundary() -> None:
@@ -228,7 +331,7 @@ def test_unknown_time_fail_closed_excludes_moon_even_when_discrete_samples_agree
     assert payload["aspects"] == []
     assert "planet_sign:Moon" in payload["exclusions"]
     assert "stable_moon_sign" not in result.allowed_fact_families
-    assert BIRTH_TIME_POLICY_VERSION == "child-birth-time-policy-v2"
+    assert BIRTH_TIME_POLICY_VERSION == "child-birth-time-policy-v3"
 
     legacy_hash_payload = {
         "birth_date": chart_input.birth_date.isoformat(),
@@ -239,7 +342,7 @@ def test_unknown_time_fail_closed_excludes_moon_even_when_discrete_samples_agree
         "timezone": chart_input.timezone,
         "house_system": chart_input.house_system,
         "engine_version": "child-chart-test-1",
-        "policy_version": "child-birth-time-policy-v1",
+        "policy_version": "child-birth-time-policy-v2",
     }
     legacy_canonical = json.dumps(legacy_hash_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     legacy_hash = hashlib.sha256(legacy_canonical.encode()).hexdigest()
@@ -278,7 +381,7 @@ async def test_chart_version_persistence_allocates_next_immutable_lineage_idempo
         allowed_fact_families=("planet_signs",),
         excluded_fact_families=("houses",),
         uncertainty_reason="unknown time",
-        calculation_payload={"contract_version": "child-birth-time-policy-v2"},
+        calculation_payload={"contract_version": "child-birth-time-policy-v3"},
     )
     inserted = MagicMock(version=3, child_profile_id=child.id, input_hash=build.input_hash)
     session = MagicMock()

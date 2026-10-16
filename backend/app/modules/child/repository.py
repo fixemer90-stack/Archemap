@@ -17,7 +17,7 @@ from app.core.audit import AuditLog
 from app.core.models import BaseModel
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child import models
-from app.modules.child.chart_adapter import ChildChartBuild
+from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
 from app.modules.profiles.models import PersonProfile
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
@@ -378,6 +378,7 @@ class ChildRepository:
         latitude: float,
         longitude: float,
         timezone: str,
+        house_system: str,
         birth_data_hash: str,
         chart: ChildChartBuild,
     ) -> ChildChartVersionCreateResult:
@@ -389,6 +390,23 @@ class ChildRepository:
         if birth_time_confidence != "unknown" and birth_time is None:
             raise ValueError("Exact or approximate birth time is required")
 
+        expected_source_input = ChildChartInput(
+            birth_date=birth_date,
+            birth_time=birth_time,
+            birth_time_confidence=birth_time_confidence,
+            latitude=latitude,
+            longitude=longitude,
+            timezone=timezone,
+            house_system=house_system,
+        )
+        if chart.source_input is None:
+            raise ChildLineageMismatchError("Chart correction requires the exact source input")
+        if chart.source_input != expected_source_input:
+            raise ChildLineageMismatchError("Chart source input does not match corrected birth data")
+        expected_input_hash = child_chart_input_hash(chart.source_input, engine_version=chart.engine_version)
+        if chart.input_hash != expected_input_hash:
+            raise ChildLineageMismatchError("Chart input hash does not match its source input")
+
         await self.session.execute(
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {"lock_key": str(child_profile_id)},
@@ -398,6 +416,16 @@ class ChildRepository:
             owner_user_id=owner_user_id,
         )
         birth_data_changed = child.birth_data_hash != birth_data_hash
+        result = await self.create_chart_version_idempotently(
+            owner_user_id=owner_user_id,
+            child_profile_id=child_profile_id,
+            chart=chart,
+        )
+        if birth_data_changed and not result.created:
+            raise ChildIdempotencyTargetMismatchError(
+                "Corrected birth data must create a new child chart input lineage"
+            )
+
         if birth_data_changed:
             child.birth_date = birth_date
             child.birth_time = birth_time
@@ -409,16 +437,6 @@ class ChildRepository:
             child.birth_data_hash = birth_data_hash
             child.version += 1
             await self.session.flush()
-
-        result = await self.create_chart_version_idempotently(
-            owner_user_id=owner_user_id,
-            child_profile_id=child_profile_id,
-            chart=chart,
-        )
-        if birth_data_changed and not result.created:
-            raise ChildIdempotencyTargetMismatchError(
-                "Corrected birth data must create a new child chart input lineage"
-            )
         return result
 
     async def complete_questionnaire_idempotently(

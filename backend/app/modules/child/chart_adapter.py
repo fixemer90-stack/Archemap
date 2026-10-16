@@ -42,6 +42,7 @@ class ChildChartBuild:
     excluded_fact_families: tuple[str, ...]
     uncertainty_reason: str | None
     calculation_payload: dict[str, Any]
+    source_input: ChildChartInput | None = None
 
 
 def build_child_chart(
@@ -51,6 +52,8 @@ def build_child_chart(
     chart_builder: ChartBuilder = build_chart,
 ) -> ChildChartBuild:
     """Calculate and filter a child chart according to birth-time confidence."""
+    if chart_input.birth_time is not None and chart_input.birth_time.tzinfo is not None:
+        raise ValueError("Birth time must be offset-naive, not offset-aware")
     resolve_birth_time_policy(chart_input.birth_time_confidence)
     if chart_input.birth_time_confidence == "approximate":
         return _build_approximate_chart(
@@ -194,6 +197,7 @@ def _build_unknown_chart(
         excluded_fact_families=tuple(sorted(set(exclusions))),
         uncertainty_reason=policy.uncertainty_reason,
         calculation_payload=payload,
+        source_input=chart_input,
     )
 
 
@@ -206,11 +210,10 @@ def _build_exact_chart(
     if chart_input.birth_time is None:
         raise ValueError("Exact birth time requires a user-supplied time")
     policy = resolve_birth_time_policy("exact")
-    birth_datetime_utc = datetime.combine(
-        chart_input.birth_date,
-        chart_input.birth_time,
-        tzinfo=ZoneInfo(chart_input.timezone),
-    ).astimezone(UTC)
+    birth_datetime_utc = _local_wall_time_to_utc(
+        datetime.combine(chart_input.birth_date, chart_input.birth_time),
+        timezone_name=chart_input.timezone,
+    )
     chart = chart_builder(
         birth_datetime_utc,
         chart_input.latitude,
@@ -272,6 +275,7 @@ def _build_exact_chart(
         excluded_fact_families=policy.excluded_fact_families,
         uncertainty_reason=policy.uncertainty_reason,
         calculation_payload=payload,
+        source_input=chart_input,
     )
 
 
@@ -284,11 +288,16 @@ def _build_approximate_chart(
     if chart_input.birth_time is None:
         raise ValueError("Approximate birth time requires a user-supplied time")
     policy = resolve_birth_time_policy("approximate")
-    local_tz = ZoneInfo(chart_input.timezone)
-    center_local = datetime.combine(chart_input.birth_date, chart_input.birth_time, tzinfo=local_tz)
+    center_local = datetime.combine(chart_input.birth_date, chart_input.birth_time)
     sample_datetimes = [
-        (center_local + timedelta(minutes=offset)).astimezone(UTC) for offset in APPROXIMATE_SAMPLE_OFFSETS_MINUTES
+        _local_wall_time_to_utc(
+            center_local + timedelta(minutes=offset),
+            timezone_name=chart_input.timezone,
+        )
+        for offset in APPROXIMATE_SAMPLE_OFFSETS_MINUTES
     ]
+    if len(set(sample_datetimes)) != len(sample_datetimes):
+        raise ValueError("Approximate birth-time samples must resolve to distinct instants")
     samples = [
         chart_builder(
             sample_datetime,
@@ -388,6 +397,7 @@ def _build_approximate_chart(
         excluded_fact_families=tuple(sorted(set(exclusions))),
         uncertainty_reason=policy.uncertainty_reason,
         calculation_payload=payload,
+        source_input=chart_input,
     )
 
 
@@ -402,7 +412,10 @@ def _stability_evidence(values: list[Any], sample_count: int) -> dict[str, Any]:
     }
 
 
-def _input_hash(chart_input: ChildChartInput, *, engine_version: str) -> str:
+def child_chart_input_hash(chart_input: ChildChartInput, *, engine_version: str) -> str:
+    """Return the versioned persistence hash for one validated child chart input."""
+    if chart_input.birth_time is not None and chart_input.birth_time.tzinfo is not None:
+        raise ValueError("Birth time must be offset-naive, not offset-aware")
     return _stable_hash(
         {
             "birth_date": chart_input.birth_date.isoformat(),
@@ -416,6 +429,26 @@ def _input_hash(chart_input: ChildChartInput, *, engine_version: str) -> str:
             "policy_version": BIRTH_TIME_POLICY_VERSION,
         }
     )
+
+
+def _input_hash(chart_input: ChildChartInput, *, engine_version: str) -> str:
+    return child_chart_input_hash(chart_input, engine_version=engine_version)
+
+
+def _local_wall_time_to_utc(local_datetime: datetime, *, timezone_name: str) -> datetime:
+    local_tz = ZoneInfo(timezone_name)
+    candidates: set[datetime] = set()
+    for fold in (0, 1):
+        candidate = local_datetime.replace(tzinfo=local_tz, fold=fold)
+        candidate_utc = candidate.astimezone(UTC)
+        round_trip = candidate_utc.astimezone(local_tz)
+        if round_trip.replace(tzinfo=None) == local_datetime and round_trip.fold == fold:
+            candidates.add(candidate_utc)
+    if not candidates:
+        raise ValueError(f"Birth time is nonexistent in timezone {timezone_name}")
+    if len(candidates) > 1:
+        raise ValueError(f"Birth time is ambiguous in timezone {timezone_name}")
+    return candidates.pop()
 
 
 def _stable_hash(payload: dict[str, Any]) -> str:

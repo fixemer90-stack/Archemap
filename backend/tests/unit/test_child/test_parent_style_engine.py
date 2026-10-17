@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import uuid
 from datetime import UTC, datetime
@@ -8,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
+from app.modules.child.models import ChildParentStyleScore
 
 FIXTURE = Path(__file__).parent / "fixtures" / "parent_style_golden.json"
 
@@ -103,6 +105,26 @@ def _golden_facts() -> list[NatalFact]:
         _fact("balance:modality:fixed", fact_type="balance", weight=0.6),
         _fact("balance:modality:mutable", fact_type="balance", weight=0.7),
     ]
+
+
+def _parent_style_rows_for_validation() -> list[ChildParentStyleScore]:
+    from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
+
+    facts = _golden_facts()
+    return list(
+        build_parent_style_rows(
+            child_profile_id=uuid.uuid4(),
+            generation_id=uuid.uuid4(),
+            parent_chart_id=_chart().id,
+            results=score_parent_style(chart=_chart(), facts=facts, evidence=_evidence(facts)),
+        )
+    )
+
+
+def _validate_parent_style_rows(rows: list[ChildParentStyleScore]) -> None:
+    from app.modules.child.repository import ChildRepository
+
+    ChildRepository._validate_parent_style_profile(rows, parent_chart_id=_chart().id)
 
 
 def test_parent_style_returns_exactly_eight_canonical_dimensions_with_golden_output() -> None:
@@ -678,3 +700,119 @@ def test_parent_style_row_builder_rejects_incomplete_reordered_or_wrong_version_
     )
     with pytest.raises(ValueError, match="unsupported scoring version"):
         build_parent_style_rows(**identifiers, results=(wrong_version, *results[1:]))
+
+
+def test_parent_style_profile_validator_rejects_current_contract_and_policy_corruption() -> None:
+    from app.modules.child.repository import ChildLineageMismatchError
+
+    _validate_parent_style_rows(_parent_style_rows_for_validation())
+
+    corruptions: list[tuple[str, object]] = [
+        ("reference_version", "arbitrary-reference"),
+        ("scale", {"zero": "copied", "hundred": "copied", "neutral": "copied"}),
+        ("required_family_count", 1),
+        ("required_lineage_count", 1),
+        ("expected_family_count", 99),
+    ]
+    for key, value in corruptions:
+        rows = copy.deepcopy(_parent_style_rows_for_validation())
+        rows[0].breakdown[key] = value
+        with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+            _validate_parent_style_rows(rows)
+
+
+def test_parent_style_profile_validator_rejects_noncanonical_evidence_and_lineage_refs() -> None:
+    from app.modules.child.repository import ChildLineageMismatchError
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["supports"][0]["evidence_refs"] = []
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["supports"][0]["lineage_refs"] = []
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    first_ref = rows[0].breakdown["supports"][0]["lineage_refs"][0]
+    rows[0].breakdown["supports"][0]["lineage_refs"].append(first_ref)
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].evidence_refs = []
+    with pytest.raises(ChildLineageMismatchError, match="evidence refs"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["independent_lineage_refs"] = ["arbitrary:lineage"] * rows[0].breakdown[
+        "independent_lineage_count"
+    ]
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+
+def test_parent_style_profile_validator_rejects_incoherent_family_totals_and_missing_families() -> None:
+    from app.modules.child.repository import ChildLineageMismatchError
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["independent_family_count"] += 1
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["correlation_family_totals"][0]["contribution"] += 0.1
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["correlation_family_totals"].append(
+        copy.deepcopy(rows[0].breakdown["correlation_family_totals"][0])
+    )
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["missing_families"] = []
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["raw_delta"] += 0.1
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)
+
+
+def test_parent_style_profile_validator_rejects_incoherent_score_and_confidence() -> None:
+    from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
+    from app.modules.child.repository import ChildLineageMismatchError
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].score += 0.001
+    with pytest.raises(ChildLineageMismatchError, match="score"):
+        _validate_parent_style_rows(rows)
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].confidence = 0.0
+    with pytest.raises(ChildLineageMismatchError, match="confidence"):
+        _validate_parent_style_rows(rows)
+
+    facts = [_fact("placement:moon:cancer:no_house")]
+    low_evidence_rows = list(
+        build_parent_style_rows(
+            child_profile_id=uuid.uuid4(),
+            generation_id=uuid.uuid4(),
+            parent_chart_id=_chart().id,
+            results=score_parent_style(chart=_chart(), facts=facts, evidence=_evidence(facts)),
+        )
+    )
+    low_evidence_rows[0].score = 51.0
+    with pytest.raises(ChildLineageMismatchError, match="score"):
+        _validate_parent_style_rows(low_evidence_rows)
+
+    low_evidence_rows = copy.deepcopy(low_evidence_rows)
+    low_evidence_rows[0].score = 50.0
+    low_evidence_rows[0].confidence = 0.1
+    with pytest.raises(ChildLineageMismatchError, match="confidence"):
+        _validate_parent_style_rows(low_evidence_rows)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
@@ -24,7 +25,13 @@ from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, ch
 from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
 from app.modules.child.scoring.types import ParentStyleDimension
 from app.modules.profiles.models import PersonProfile
-from app.reference_data.child.parent_style_v1 import PARENT_STYLE_REFERENCE_VERSION, PARENT_STYLE_SCORING_VERSION
+from app.reference_data.child.parent_style_v1 import (
+    PARENT_STYLE_POLICY,
+    PARENT_STYLE_REFERENCE_VERSION,
+    PARENT_STYLE_RULES,
+    PARENT_STYLE_SCALES,
+    PARENT_STYLE_SCORING_VERSION,
+)
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
 
@@ -55,8 +62,20 @@ def _is_nonnegative_int(value: object) -> bool:
     return not isinstance(value, bool) and isinstance(value, int) and value >= 0
 
 
-def _is_string_list(value: object) -> bool:
-    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+def _is_unique_string_list(value: object, *, allow_empty: bool) -> bool:
+    return (
+        isinstance(value, list)
+        and (allow_empty or bool(value))
+        and all(isinstance(item, str) and item for item in value)
+        and len(value) == len(set(value))
+    )
+
+
+def _numbers_close(value: object, expected: float, *, tolerance: float) -> bool:
+    return (
+        _is_finite_number(value, minimum=-1.0, maximum=100.0)
+        and abs(float(cast(int | float, value)) - expected) <= tolerance
+    )
 
 
 def _valid_parent_style_evidence(value: object, *, direction: str) -> bool:
@@ -68,7 +87,9 @@ def _valid_parent_style_evidence(value: object, *, direction: str) -> bool:
         UUID(value["fact_id"])
     except (TypeError, ValueError, AttributeError):
         return False
-    if not _is_string_list(value["evidence_refs"]) or not _is_string_list(value["lineage_refs"]):
+    if not _is_unique_string_list(value["evidence_refs"], allow_empty=False) or not _is_unique_string_list(
+        value["lineage_refs"], allow_empty=False
+    ):
         return False
     if not _is_finite_number(value["factor_value"], minimum=0.0, maximum=1.0):
         return False
@@ -82,9 +103,20 @@ def _valid_parent_style_evidence(value: object, *, direction: str) -> bool:
     return value["direction"] == direction and (contribution >= 0 if direction == "supports" else contribution < 0)
 
 
-def _valid_parent_style_breakdown(breakdown: object) -> bool:
+@dataclass(frozen=True, slots=True)
+class _ParentStyleBreakdownSemantics:
+    evidence_refs: tuple[str, ...]
+    score: float
+    confidence: float
+
+
+def _validated_parent_style_breakdown(
+    breakdown: object,
+    *,
+    dimension: ParentStyleDimension,
+) -> _ParentStyleBreakdownSemantics | None:
     if not isinstance(breakdown, dict):
-        return False
+        return None
     required_keys = {
         "reference_version",
         "scale",
@@ -103,37 +135,39 @@ def _valid_parent_style_breakdown(breakdown: object) -> bool:
         "excluded_time_sensitive_refs",
     }
     if not required_keys <= breakdown.keys() or breakdown["reference_version"] != PARENT_STYLE_REFERENCE_VERSION:
-        return False
-    scale = breakdown["scale"]
-    if not isinstance(scale, dict) or not all(
-        isinstance(scale.get(key), str) and scale[key] for key in ("zero", "hundred", "neutral")
-    ):
-        return False
+        return None
+    expected_scale = PARENT_STYLE_SCALES[dimension]
+    if breakdown["scale"] != {
+        "zero": expected_scale.zero,
+        "hundred": expected_scale.hundred,
+        "neutral": expected_scale.neutral,
+    }:
+        return None
     supports = breakdown["supports"]
     counters = breakdown["counters"]
     if not isinstance(supports, list) or not all(
         _valid_parent_style_evidence(item, direction="supports") for item in supports
     ):
-        return False
+        return None
     if not isinstance(counters, list) or not all(
         _valid_parent_style_evidence(item, direction="counters") for item in counters
     ):
-        return False
+        return None
     for key in (
         "missing_families",
         "independent_lineage_refs",
         "excluded_time_sensitive_refs",
     ):
-        if not _is_string_list(breakdown[key]):
-            return False
+        if not _is_unique_string_list(breakdown[key], allow_empty=True):
+            return None
     confidence_components = breakdown["confidence_components"]
     if not isinstance(confidence_components, dict) or not all(
         _is_finite_number(confidence_components.get(key), minimum=0.0, maximum=1.0)
         for key in ("coverage", "agreement", "source_quality")
     ):
-        return False
+        return None
     if not _is_finite_number(breakdown["raw_delta"], minimum=-1.0, maximum=1.0):
-        return False
+        return None
     count_keys = (
         "independent_family_count",
         "required_family_count",
@@ -142,11 +176,27 @@ def _valid_parent_style_breakdown(breakdown: object) -> bool:
         "expected_family_count",
     )
     if not all(_is_nonnegative_int(breakdown[key]) for key in count_keys):
-        return False
+        return None
+    if (
+        breakdown["required_family_count"] != PARENT_STYLE_POLICY.minimum_independent_families
+        or breakdown["required_lineage_count"] != PARENT_STYLE_POLICY.minimum_independent_families
+        or breakdown["expected_family_count"] != PARENT_STYLE_POLICY.expected_independent_families
+    ):
+        return None
+
+    evidence_items = cast(list[dict[str, Any]], [*supports, *counters])
+    evidence_refs = tuple(sorted({ref for item in evidence_items for ref in cast(list[str], item["evidence_refs"])}))
+    active_items = [item for item in evidence_items if float(item["contribution"]) != 0.0]
+    active_families = {cast(str, item["correlation_family"]) for item in active_items}
+    active_lineage_refs = tuple(sorted({ref for item in active_items for ref in cast(list[str], item["lineage_refs"])}))
+    family_contributions: dict[str, float] = defaultdict(float)
+    for item in active_items:
+        family_contributions[cast(str, item["correlation_family"])] += float(item["contribution"])
+
     totals = breakdown["correlation_family_totals"]
     if not isinstance(totals, list):
-        return False
-    families: list[str] = []
+        return None
+    persisted_family_totals: dict[str, float] = {}
     for total in totals:
         if (
             not isinstance(total, dict)
@@ -154,14 +204,73 @@ def _valid_parent_style_breakdown(breakdown: object) -> bool:
             or not total["family"]
             or not _is_finite_number(total.get("contribution"), minimum=-1.0, maximum=1.0)
         ):
-            return False
-        families.append(total["family"])
+            return None
+        family = cast(str, total["family"])
+        if family in persisted_family_totals:
+            return None
+        persisted_family_totals[family] = float(total["contribution"])
+
     independent_family_count = cast(int, breakdown["independent_family_count"])
     independent_lineage_count = cast(int, breakdown["independent_lineage_count"])
     independent_lineage_refs = cast(list[str], breakdown["independent_lineage_refs"])
-    return (
-        len(families) == len(set(families)) == independent_family_count
-        and len(independent_lineage_refs) == independent_lineage_count
+    if (
+        independent_family_count != len(active_families)
+        or independent_lineage_count != len(active_lineage_refs)
+        or independent_lineage_refs != list(active_lineage_refs)
+        or set(persisted_family_totals) != active_families
+        or any(
+            not _numbers_close(
+                persisted_family_totals[family],
+                round(contribution, 6),
+                tolerance=1e-6,
+            )
+            for family, contribution in family_contributions.items()
+        )
+    ):
+        return None
+
+    expected_families = {rule.signal_family for rule in PARENT_STYLE_RULES if rule.dimension is dimension}
+    if breakdown["missing_families"] != sorted(expected_families - active_families):
+        return None
+
+    contribution_sum = sum(float(item["contribution"]) for item in evidence_items)
+    raw_delta = round(max(-1.0, min(1.0, contribution_sum)), 6)
+    if not _numbers_close(breakdown["raw_delta"], raw_delta, tolerance=1e-6):
+        return None
+
+    positive = sum(float(item["contribution"]) for item in evidence_items if float(item["contribution"]) > 0)
+    negative = abs(sum(float(item["contribution"]) for item in evidence_items if float(item["contribution"]) < 0))
+    total = positive + negative
+    coverage = round(min(1.0, independent_family_count / PARENT_STYLE_POLICY.expected_independent_families), 4)
+    if total == 0:
+        agreement = 0.0
+        source_quality = 0.0
+    else:
+        agreement = round(max(positive, negative) / total, 4)
+        source_quality = round(
+            sum(abs(float(item["contribution"])) * float(item["source_quality"]) for item in evidence_items) / total,
+            4,
+        )
+    if any(
+        not _numbers_close(confidence_components[key], expected, tolerance=1e-4)
+        for key, expected in (
+            ("coverage", coverage),
+            ("agreement", agreement),
+            ("source_quality", source_quality),
+        )
+    ):
+        return None
+
+    enough_evidence = (
+        independent_family_count >= PARENT_STYLE_POLICY.minimum_independent_families
+        and independent_lineage_count >= PARENT_STYLE_POLICY.minimum_independent_families
+    )
+    score = round(50.0 + raw_delta * 50.0, 2) if enough_evidence else 50.0
+    confidence = round(max(0.0, min(1.0, coverage * agreement * source_quality)), 4) if enough_evidence else 0.0
+    return _ParentStyleBreakdownSemantics(
+        evidence_refs=evidence_refs,
+        score=score,
+        confidence=confidence,
     )
 
 
@@ -675,10 +784,20 @@ class ChildRepository:
                 raise ChildLineageMismatchError("Parent Style profile contains an invalid score")
             if not isfinite(row.confidence) or not 0.0 <= row.confidence <= 1.0:
                 raise ChildLineageMismatchError("Parent Style profile contains invalid confidence")
-            if not isinstance(row.evidence_refs, list) or any(not isinstance(ref, str) for ref in row.evidence_refs):
+            if not _is_unique_string_list(row.evidence_refs, allow_empty=True):
                 raise ChildLineageMismatchError("Parent Style profile contains malformed evidence refs")
-            if not _valid_parent_style_breakdown(row.breakdown):
+            semantics = _validated_parent_style_breakdown(
+                row.breakdown,
+                dimension=ParentStyleDimension(row.dimension),
+            )
+            if semantics is None:
                 raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown")
+            if row.evidence_refs != list(semantics.evidence_refs):
+                raise ChildLineageMismatchError("Parent Style profile contains incoherent evidence refs")
+            if not _numbers_close(row.score, semantics.score, tolerance=1e-6):
+                raise ChildLineageMismatchError("Parent Style profile contains an incoherent score")
+            if not _numbers_close(row.confidence, semantics.confidence, tolerance=1e-4):
+                raise ChildLineageMismatchError("Parent Style profile contains incoherent confidence")
 
     async def create_chart_version_idempotently(
         self,

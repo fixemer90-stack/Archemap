@@ -434,7 +434,23 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
     bad_confidence_component["confidence_components"]["coverage"] = 1.1
     malformed_nested_refs = cast(dict[str, Any], copy.deepcopy(original_breakdown))
     malformed_nested_refs["independent_lineage_refs"] = ["source:one", 7]
-    corruptions = (supports_string, bad_confidence_component, malformed_nested_refs)
+    arbitrary_scale = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    arbitrary_scale["scale"] = {"zero": "copied", "hundred": "copied", "neutral": "copied"}
+    contradictory_count = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    contradictory_count["required_family_count"] = 1
+    duplicate_lineage_ref = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    duplicate_lineage_ref["independent_lineage_refs"].append(duplicate_lineage_ref["independent_lineage_refs"][0])
+    empty_nested_refs = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    empty_nested_refs["supports"][0]["evidence_refs"] = []
+    corruptions = (
+        supports_string,
+        bad_confidence_component,
+        malformed_nested_refs,
+        arbitrary_scale,
+        contradictory_count,
+        duplicate_lineage_ref,
+        empty_nested_refs,
+    )
     for malformed in corruptions:
         async with session_factory() as corrupt_session:
             await corrupt_session.execute(

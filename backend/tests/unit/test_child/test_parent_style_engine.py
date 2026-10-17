@@ -5,6 +5,8 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
 
 FIXTURE = Path(__file__).parent / "fixtures" / "parent_style_golden.json"
@@ -65,6 +67,25 @@ def _evidence(facts: list[NatalFact]) -> list[NatalFactEvidence]:
         )
         for fact in facts
     ]
+
+
+def _evidence_row(
+    fact: NatalFact,
+    *,
+    source_id: uuid.UUID | None,
+    source_key: str | None = None,
+    source_quality: float = 1.0,
+    row_key: str = "default",
+) -> NatalFactEvidence:
+    return NatalFactEvidence(
+        id=uuid.uuid5(uuid.NAMESPACE_OID, f"{fact.fact_key}:{row_key}"),
+        fact_id=fact.id,
+        chart_id=fact.chart_id,
+        source_table=f"astrotype_v2_{fact.fact_type}",
+        source_id=source_id,
+        source_key=source_key,
+        payload={"source_quality": source_quality},
+    )
 
 
 def _golden_facts() -> list[NatalFact]:
@@ -157,6 +178,81 @@ def test_one_saturn_house_fact_cannot_satisfy_two_family_threshold() -> None:
     assert result.breakdown.required_lineage_count == 2
     assert result.score == 50
     assert result.confidence == 0
+
+
+def test_two_facts_from_the_same_persisted_source_lineage_stay_neutral() -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    moon = _fact("placement:moon:cancer:no_house")
+    venus = _fact("placement:venus:libra:no_house")
+    shared_source_id = uuid.uuid4()
+    result = next(
+        item
+        for item in score_parent_style(
+            chart=_chart(),
+            facts=[moon, venus],
+            evidence=[
+                _evidence_row(moon, source_id=shared_source_id),
+                _evidence_row(venus, source_id=shared_source_id),
+            ],
+        )
+        if item.dimension is ParentStyleDimension.EMOTIONAL_RESPONSIVENESS
+    )
+
+    assert result.breakdown.independent_family_count == 1
+    assert result.breakdown.independent_lineage_count == 1
+    assert result.breakdown.independent_lineage_refs == (f"astrotype_v2_placement:id:{shared_source_id}",)
+    assert result.score == 50
+    assert result.confidence == 0
+
+
+def test_duplicate_and_unidentified_evidence_do_not_inflate_quality_or_independence() -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    moon = _fact("placement:moon:cancer:no_house")
+    venus = _fact("placement:venus:libra:no_house")
+    moon_source_id = uuid.uuid4()
+    evidence = [
+        _evidence_row(moon, source_id=moon_source_id, source_quality=0.4, row_key="one"),
+        _evidence_row(moon, source_id=moon_source_id, source_quality=1.0, row_key="duplicate"),
+        _evidence_row(venus, source_id=None, source_key=None, source_quality=1.0),
+    ]
+    result = next(
+        item
+        for item in score_parent_style(chart=_chart(), facts=[moon, venus], evidence=evidence)
+        if item.dimension is ParentStyleDimension.EMOTIONAL_RESPONSIVENESS
+    )
+
+    assert result.breakdown.independent_lineage_count == 1
+    assert result.breakdown.source_quality == 0.4
+    assert result.score == 50
+    assert result.confidence == 0
+
+
+def test_distinct_source_lineages_satisfy_independence_threshold() -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    moon = _fact("placement:moon:cancer:no_house")
+    venus = _fact("placement:venus:libra:no_house")
+    result = next(
+        item
+        for item in score_parent_style(
+            chart=_chart(),
+            facts=[moon, venus],
+            evidence=[
+                _evidence_row(moon, source_id=uuid.uuid4()),
+                _evidence_row(venus, source_id=None, source_key="venus-row"),
+            ],
+        )
+        if item.dimension is ParentStyleDimension.EMOTIONAL_RESPONSIVENESS
+    )
+
+    assert result.breakdown.independent_lineage_count == 2
+    assert result.score > 50
+    assert result.confidence > 0
 
 
 def test_opposite_sign_charts_do_not_produce_identical_parent_style_profiles() -> None:
@@ -355,6 +451,73 @@ def test_timing_proof_fails_closed_when_any_recognized_block_contradicts_exact_t
     assert result.breakdown.excluded_time_sensitive_refs
 
 
+@pytest.mark.parametrize("malformed", [None, "exact", [], 1])
+def test_timing_proof_fails_closed_when_a_recognized_block_is_malformed(malformed: object) -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    chart = _chart(exact_timing_proof=True)
+    chart.calculation_payload = {
+        "birth_time_proof": malformed,
+        "technical_reference": {
+            "synthetic_noon": False,
+            "user_supplied_time": True,
+            "birth_time_confidence": "exact",
+        },
+    }
+    facts = [
+        _fact("placement:saturn:capricorn:house_10"),
+        _fact("balance:element:earth", fact_type="balance"),
+    ]
+    result = next(
+        item
+        for item in score_parent_style(chart=chart, facts=facts, evidence=_evidence(facts))
+        if item.dimension is ParentStyleDimension.STRUCTURE
+    )
+
+    assert "house:10" in result.missing_families
+    assert result.breakdown.excluded_time_sensitive_refs
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("weight", -0.01),
+        ("weight", 1.01),
+        ("weight", float("nan")),
+        ("weight", float("inf")),
+        ("confidence", -0.01),
+        ("confidence", 1.01),
+        ("confidence", float("nan")),
+        ("confidence", float("inf")),
+    ],
+)
+def test_invalid_fact_numbers_are_rejected_before_scoring(field: str, value: float) -> None:
+    from app.modules.child.parent_style import score_parent_style
+
+    fact = _fact(
+        "placement:moon:cancer:no_house",
+        weight=value if field == "weight" else 1.0,
+        confidence=value if field == "confidence" else 1.0,
+    )
+
+    with pytest.raises(ValueError, match=field):
+        score_parent_style(chart=_chart(), facts=[fact], evidence=_evidence([fact]))
+
+
+@pytest.mark.parametrize("value", [-0.01, 1.01, float("nan"), float("inf")])
+def test_invalid_evidence_source_quality_is_rejected_before_scoring(value: float) -> None:
+    from app.modules.child.parent_style import score_parent_style
+
+    fact = _fact("placement:moon:cancer:no_house")
+    with pytest.raises(ValueError, match="source_quality"):
+        score_parent_style(
+            chart=_chart(),
+            facts=[fact],
+            evidence=[_evidence_row(fact, source_id=uuid.uuid4(), source_quality=value)],
+        )
+
+
 def test_unpersisted_or_cross_chart_evidence_is_rejected_and_unlinked_facts_are_ignored() -> None:
     import pytest
 
@@ -445,6 +608,7 @@ def test_parent_style_results_build_complete_orm_rows_with_stable_breakdown() ->
             "correlation_family_totals",
             "excluded_time_sensitive_refs",
             "independent_lineage_count",
+            "independent_lineage_refs",
             "required_lineage_count",
         }
         <= set(row.breakdown)

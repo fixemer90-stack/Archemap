@@ -54,6 +54,7 @@ class DimensionEvidence:
     factor_key: str
     fact_id: UUID
     evidence_refs: tuple[str, ...]
+    lineage_refs: tuple[str, ...]
     correlation_family: str
     factor_value: float
     source_quality: float
@@ -68,6 +69,7 @@ class DimensionBreakdown:
     independent_family_count: int
     required_family_count: int
     independent_lineage_count: int
+    independent_lineage_refs: tuple[str, ...]
     required_lineage_count: int
     expected_family_count: int
     coverage: float

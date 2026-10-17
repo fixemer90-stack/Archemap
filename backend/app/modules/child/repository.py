@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from math import isfinite
 from typing import Any, TypeVar, cast
 from uuid import UUID
 
@@ -504,15 +505,19 @@ class ChildRepository:
                     select(models.ChildParentStyleScore).where(
                         models.ChildParentStyleScore.child_profile_id == child_profile_id,
                         models.ChildParentStyleScore.generation_id == generation_id,
+                        models.ChildParentStyleScore.scoring_version == PARENT_STYLE_SCORING_VERSION,
                     )
                 )
             )
             .scalars()
             .all()
         )
-        by_dimension = {row.dimension: row for row in persisted}
+        canonical_rank = {dimension.value: index for index, dimension in enumerate(ParentStyleDimension)}
         return tuple(
-            by_dimension[dimension.value] for dimension in ParentStyleDimension if dimension.value in by_dimension
+            sorted(
+                persisted,
+                key=lambda row: (canonical_rank.get(row.dimension, len(canonical_rank)), row.dimension, str(row.id)),
+            )
         )
 
     @staticmethod
@@ -529,6 +534,49 @@ class ChildRepository:
             raise ChildLineageMismatchError("Parent Style profile references another parent chart")
         if any(row.scoring_version != PARENT_STYLE_SCORING_VERSION for row in rows):
             raise ChildLineageMismatchError("Parent Style profile uses another scoring version")
+        required_breakdown_keys = {
+            "reference_version",
+            "scale",
+            "supports",
+            "counters",
+            "missing_families",
+            "confidence_components",
+            "raw_delta",
+            "independent_family_count",
+            "required_family_count",
+            "independent_lineage_count",
+            "independent_lineage_refs",
+            "required_lineage_count",
+            "expected_family_count",
+            "correlation_family_totals",
+            "excluded_time_sensitive_refs",
+        }
+        for row in rows:
+            if not isfinite(row.score) or not 0.0 <= row.score <= 100.0:
+                raise ChildLineageMismatchError("Parent Style profile contains an invalid score")
+            if not isfinite(row.confidence) or not 0.0 <= row.confidence <= 1.0:
+                raise ChildLineageMismatchError("Parent Style profile contains invalid confidence")
+            if not isinstance(row.evidence_refs, list) or any(not isinstance(ref, str) for ref in row.evidence_refs):
+                raise ChildLineageMismatchError("Parent Style profile contains malformed evidence refs")
+            breakdown = row.breakdown
+            if not isinstance(breakdown, dict) or not required_breakdown_keys <= breakdown.keys():
+                raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown")
+            if not isinstance(breakdown["scale"], dict) or not all(
+                isinstance(breakdown["scale"].get(key), str) for key in ("zero", "hundred", "neutral")
+            ):
+                raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown scale")
+            for key in (
+                "supports",
+                "counters",
+                "missing_families",
+                "independent_lineage_refs",
+                "correlation_family_totals",
+                "excluded_time_sensitive_refs",
+            ):
+                if not isinstance(breakdown[key], list):
+                    raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown")
+            if not isinstance(breakdown["confidence_components"], dict):
+                raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown confidence")
 
     async def create_chart_version_idempotently(
         self,

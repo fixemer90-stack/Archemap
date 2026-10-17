@@ -97,6 +97,7 @@ def build_parent_style_rows(
                     "independent_family_count": result.breakdown.independent_family_count,
                     "required_family_count": result.breakdown.required_family_count,
                     "independent_lineage_count": result.breakdown.independent_lineage_count,
+                    "independent_lineage_refs": list(result.breakdown.independent_lineage_refs),
                     "required_lineage_count": result.breakdown.required_lineage_count,
                     "expected_family_count": result.breakdown.expected_family_count,
                     "correlation_family_totals": [
@@ -119,6 +120,7 @@ def _evidence_payload(item: object) -> dict[str, object]:
         "factor_key": item.factor_key,
         "fact_id": str(item.fact_id),
         "evidence_refs": list(item.evidence_refs),
+        "lineage_refs": list(item.lineage_refs),
         "correlation_family": item.correlation_family,
         "factor_value": item.factor_value,
         "source_quality": item.source_quality,
@@ -130,9 +132,11 @@ def _evidence_payload(item: object) -> dict[str, object]:
 
 def _has_exact_timing_proof(chart: NatalChart) -> bool:
     payload = chart.calculation_payload if isinstance(chart.calculation_payload, dict) else {}
-    proofs = [
-        block for key in ("birth_time_proof", "technical_reference") if isinstance((block := payload.get(key)), dict)
-    ]
+    recognized_keys = ("birth_time_proof", "technical_reference")
+    present_blocks = [payload[key] for key in recognized_keys if key in payload]
+    if any(not isinstance(block, dict) for block in present_blocks):
+        return False
+    proofs = [block for block in present_blocks if isinstance(block, dict)]
     if not proofs:
         return False
     return all(

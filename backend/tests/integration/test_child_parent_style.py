@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
@@ -272,6 +272,88 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
     assert _score_snapshot(loaded.scores) == first[2] == second[2]
     assert loaded.parent_chart_id == parent_chart.id
     assert loaded.generation_id == generation_id
+
+    invalid_generation_id = uuid4()
+    async with session_factory() as invalid_session:
+        invalid_session.add(
+            ChildGeneration(
+                child_profile_id=child.id,
+                owner_user_id=owner.id,
+                parent_chart_id=parent_chart.id,
+                child_chart_version_id=child_chart.id,
+                generation_id=invalid_generation_id,
+                operation="create",
+                idempotency_key="parent-style-invalid-numeric-generation",
+                status="deterministic_pending",
+                diagnostics={},
+            )
+        )
+        invalid_evidence = (
+            await invalid_session.execute(
+                select(NatalFactEvidence).where(NatalFactEvidence.chart_id == parent_chart.id).limit(1)
+            )
+        ).scalar_one()
+        invalid_evidence.payload = {"source_quality": -0.1}
+        await invalid_session.flush()
+        with pytest.raises(ValueError, match="source_quality"):
+            await ChildRepository(invalid_session).create_parent_style_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=invalid_generation_id,
+            )
+        await invalid_session.commit()
+        assert (
+            await invalid_session.scalar(
+                select(func.count())
+                .select_from(ChildParentStyleScore)
+                .where(ChildParentStyleScore.generation_id == invalid_generation_id)
+            )
+            == 0
+        )
+        invalid_evidence.payload = {"source_quality": 1.0}
+        await invalid_session.commit()
+
+    async with session_factory() as corrupt_session:
+        first_score_id, original_dimension = (
+            await corrupt_session.execute(
+                select(ChildParentStyleScore.id, ChildParentStyleScore.dimension)
+                .where(ChildParentStyleScore.generation_id == generation_id)
+                .order_by(ChildParentStyleScore.dimension)
+                .limit(1)
+            )
+        ).one()
+        await corrupt_session.execute(
+            text("UPDATE child_parent_style_scores SET dimension = :dimension WHERE id = :row_id"),
+            {"dimension": "unexpected_current_dimension", "row_id": first_score_id},
+        )
+        await corrupt_session.commit()
+
+    async with session_factory() as corrupt_load_session:
+        with pytest.raises(ChildLineageMismatchError, match="incomplete or not canonically ordered"):
+            await ChildRepository(corrupt_load_session).load_parent_style_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation_id,
+            )
+
+    async with session_factory() as corrupt_session:
+        await corrupt_session.execute(
+            text("UPDATE child_parent_style_scores SET dimension = :dimension WHERE id = :row_id"),
+            {"dimension": original_dimension, "row_id": first_score_id},
+        )
+        await corrupt_session.execute(
+            text("UPDATE child_parent_style_scores SET breakdown = '[]'::jsonb WHERE id = :row_id"),
+            {"row_id": first_score_id},
+        )
+        await corrupt_session.commit()
+
+    async with session_factory() as corrupt_load_session:
+        with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+            await ChildRepository(corrupt_load_session).load_parent_style_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation_id,
+            )
 
     async with session_factory() as foreign_session:
         with pytest.raises(ChildLineageMismatchError, match="not owned"):

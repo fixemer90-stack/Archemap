@@ -51,7 +51,7 @@ from app.modules.profiles.observability import birth_data_refinement_telemetry
 from workers.celery_app import app
 
 _SOURCE_VERSION = "v2.0"
-_ENGINE_VERSION = "0.1.5"
+_ENGINE_VERSION = "0.1.6"
 _DETERMINISTIC_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
 _DETERMINISTIC_PROVIDER = "deterministic"
 _DETERMINISTIC_MODEL = "v2-local-runtime"

@@ -270,3 +270,82 @@ async def test_worker_persists_canonical_timing_proof_from_profile_accuracy(
     )
 
     assert chart.calculation_payload["birth_time_proof"] == expected_proof
+
+
+@pytest.mark.asyncio
+async def test_worker_does_not_reuse_legacy_pre_provenance_chart_for_same_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.chart_engine.types import ChartData
+    from workers.tasks import astrotype_v2
+
+    profile = SimpleNamespace(
+        id=uuid.uuid4(),
+        birth_date=date(1990, 1, 1),
+        birth_time=time(8, 45),
+        birth_time_accuracy="exact",
+        birth_place="Moscow",
+        latitude=55.7558,
+        longitude=37.6173,
+        timezone="Europe/Moscow",
+    )
+    legacy_chart = models.NatalChart(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        profile_id=profile.id,
+        engine_version="0.1.5",
+        input_hash="legacy-input",
+        birth_datetime_utc=datetime(1990, 1, 1, 5, 45, tzinfo=UTC),
+        timezone=profile.timezone,
+        latitude=profile.latitude,
+        longitude=profile.longitude,
+        house_system="P",
+        calculation_payload={},
+    )
+
+    class _ChartRepository:
+        def __init__(self) -> None:
+            self.requested_versions: list[str] = []
+
+        async def get_chart_by_profile_engine_input(self, **kwargs: object) -> models.NatalChart | None:
+            engine_version = cast(str, kwargs["engine_version"])
+            self.requested_versions.append(engine_version)
+            return legacy_chart if engine_version == legacy_chart.engine_version else None
+
+    chart_data = ChartData(
+        birth_datetime=datetime(1990, 1, 1, 5, 45, tzinfo=UTC),
+        latitude=profile.latitude,
+        longitude=profile.longitude,
+        timezone=profile.timezone,
+        planets=[],
+        houses=[],
+        aspects=[],
+        house_system="P",
+        ayanamsa=0.0,
+    )
+    monkeypatch.setattr(astrotype_v2, "build_chart", lambda **_: chart_data)
+    persisted: list[models.NatalChart] = []
+
+    async def fake_persist(_: object, rows: object) -> None:
+        persisted.append(cast(Any, rows).chart)
+
+    monkeypatch.setattr(astrotype_v2, "persist_natal_chart_rows", fake_persist)
+    repository = _ChartRepository()
+
+    chart = await astrotype_v2._get_or_create_chart(
+        repository=cast(Any, repository),
+        profile=cast(Any, profile),
+        user_id=legacy_chart.user_id,
+    )
+
+    assert repository.requested_versions == ["0.1.6"]
+    assert chart is persisted[0]
+    assert chart.id != legacy_chart.id
+    assert chart.engine_version == "0.1.6"
+    assert chart.calculation_payload["birth_time_proof"] == {
+        "contract_version": "natal-timing-proof-v1",
+        "birth_time_confidence": "exact",
+        "user_supplied_time": True,
+        "synthetic_noon": False,
+    }
+    assert legacy_chart.calculation_payload == {}

@@ -1,0 +1,462 @@
+from __future__ import annotations
+
+import copy
+import json
+import math
+import random
+import uuid
+from collections.abc import Callable
+from pathlib import Path
+
+import pytest
+
+from app.modules.child.child_needs import ChildNeedResult
+from app.modules.child.models import ChildChartVersion, ChildNeedScore
+
+FIXTURE = Path(__file__).parent / "fixtures" / "child_needs_golden.json"
+
+
+def _chart(
+    confidence: str = "exact",
+    *,
+    allowed: list[str] | None = None,
+    payload: dict[str, object] | None = None,
+) -> ChildChartVersion:
+    if allowed is None:
+        allowed = {
+            "exact": [
+                "planet_positions",
+                "planet_signs",
+                "moon_sign",
+                "aspects",
+                "houses",
+                "angles",
+                "house_assignments",
+                "house_overlays",
+            ],
+            "approximate": ["stable_planet_signs", "stable_aspects", "stable_moon_sign"],
+            "unknown": ["stable_planet_signs", "stable_aspects"],
+        }[confidence]
+    if payload is None:
+        payload = _payload(confidence)
+    return ChildChartVersion(
+        id=uuid.UUID(int=101),
+        child_profile_id=uuid.UUID(int=102),
+        version=3,
+        engine_version="0.1.6",
+        input_hash="c" * 64,
+        birth_time_confidence=confidence,
+        allowed_fact_families=allowed,
+        excluded_fact_families=[] if confidence == "exact" else ["houses", "angles", "house_assignments"],
+        uncertainty_reason=None if confidence == "exact" else "limited timing",
+        calculation_payload=payload,
+    )
+
+
+def _payload(confidence: str = "exact") -> dict[str, object]:
+    exact = confidence == "exact"
+    positions = [
+        ("Sun", "Leo", 5),
+        ("Moon", "Cancer", 4),
+        ("Mercury", "Gemini", 3),
+        ("Venus", "Libra", 7),
+        ("Mars", "Aries", 1),
+        ("Jupiter", "Sagittarius", 9),
+        ("Saturn", "Capricorn", 10),
+        ("Uranus", "Aquarius", 11),
+        ("Neptune", "Pisces", 12),
+        ("Pluto", "Scorpio", 8),
+    ]
+    facts = {
+        **{f"planet_sign:{body}": {"stable": True, "confidence": 1.0} for body, _, _ in positions},
+        "aspect:Moon:Venus:trine": {"stable": True, "confidence": 1.0},
+        "aspect:Mercury:Saturn:trine": {"stable": True, "confidence": 1.0},
+    }
+    technical_reference: dict[str, object] = {
+        "synthetic_noon": confidence == "unknown",
+        "user_supplied_time": confidence != "unknown",
+        "birth_time_confidence": confidence,
+    }
+    return {
+        "contract_version": "child-birth-time-policy-v3",
+        "technical_reference": technical_reference,
+        "planet_positions": [
+            {
+                "body": body,
+                "sign": sign,
+                "house_number": house if exact else None,
+                "longitude": 1.0 if exact else None,
+                "latitude": 0.0 if exact else None,
+                "speed": 1.0 if exact else None,
+                "sign_degree": 1.0 if exact else None,
+                "retrograde": False if exact else None,
+            }
+            for body, sign, house in positions
+        ],
+        "houses": (
+            [{"house_number": n, "longitude": float(n), "sign": "Aries"} for n in range(1, 13)] if exact else []
+        ),
+        "aspects": [
+            {
+                "body_a": "Moon",
+                "body_b": "Venus",
+                "aspect_code": "trine",
+                "angle_degrees": 120.0 if exact else None,
+                "orb_degrees": 1.0 if exact else None,
+                "applying": True if exact else None,
+            },
+            {
+                "body_a": "Mercury",
+                "body_b": "Saturn",
+                "aspect_code": "trine",
+                "angle_degrees": 120.0 if exact else None,
+                "orb_degrees": 2.0 if exact else None,
+                "applying": False if exact else None,
+            },
+        ],
+        "stability_evidence": {
+            "policy_version": "child-birth-time-policy-v3",
+            "exact_input": True,
+            "confidence": 1.0,
+        }
+        if exact
+        else (
+            {
+                "policy_version": "child-birth-time-policy-v3",
+                "window_minutes": 60,
+                "sample_offsets_minutes": [-60, -30, 0, 30, 60],
+                "sample_datetimes_utc": [
+                    "2021-05-12T06:00:00+00:00",
+                    "2021-05-12T06:30:00+00:00",
+                    "2021-05-12T07:00:00+00:00",
+                    "2021-05-12T07:30:00+00:00",
+                    "2021-05-12T08:00:00+00:00",
+                ],
+                "facts": {
+                    key: {
+                        **value,
+                        "observed_values": [key] * 5,
+                        "sample_count": 5,
+                    }
+                    for key, value in facts.items()
+                },
+            }
+            if confidence == "approximate"
+            else {
+                "policy_version": "child-birth-time-policy-v3",
+                "window": "local_birth_date",
+                "sample_datetimes_utc": [
+                    "2021-05-11T21:00:00+00:00",
+                    "2021-05-12T09:00:00+00:00",
+                    "2021-05-12T20:59:59+00:00",
+                ],
+                "facts": {
+                    key: {
+                        **value,
+                        "observed_values": [key] * 3,
+                        "sample_count": 3,
+                    }
+                    for key, value in facts.items()
+                },
+            }
+        ),
+        "exclusions": [] if exact else ["houses", "angles", "house_assignments"],
+    }
+
+
+def _score(chart: ChildChartVersion) -> tuple[ChildNeedResult, ...]:
+    from app.modules.child.child_needs import score_child_needs
+
+    return score_child_needs(chart=chart)
+
+
+def _rows() -> list[ChildNeedScore]:
+    from app.modules.child.child_needs import build_child_need_rows
+
+    chart = _chart()
+    return list(
+        build_child_need_rows(
+            child_profile_id=chart.child_profile_id,
+            generation_id=uuid.UUID(int=103),
+            child_chart_version_id=chart.id,
+            results=_score(chart),
+        )
+    )
+
+
+def test_child_needs_returns_exactly_ten_canonical_dimensions_with_golden_output() -> None:
+    from app.modules.child.scoring.types import ChildNeedDimension
+
+    first = _score(_chart())
+    shuffled = copy.deepcopy(_chart())
+    random.Random(20261017).shuffle(shuffled.calculation_payload["planet_positions"])  # noqa: S311
+    random.Random(20261018).shuffle(shuffled.calculation_payload["aspects"])  # noqa: S311
+    second = _score(shuffled)
+
+    assert first == second
+    assert tuple(result.dimension for result in first) == tuple(ChildNeedDimension)
+    assert len(first) == 10
+    assert all(result.scoring_version == "child-needs-mvp-1" for result in first)
+    assert all(0 <= result.score <= 100 and 0 <= result.confidence <= 1 for result in first)
+    actual = {
+        result.dimension.value: {
+            "score": result.score,
+            "confidence": result.confidence,
+            "supports": [item.factor_key for item in result.supports],
+            "counters": [item.factor_key for item in result.counters],
+            "missing_families": list(result.missing_families),
+        }
+        for result in first
+    }
+    assert actual == json.loads(FIXTURE.read_text(encoding="utf-8"))
+
+
+def test_unknown_time_excludes_all_time_sensitive_facts() -> None:
+    results = _score(_chart("unknown"))
+
+    assert any(result.supports or result.counters for result in results)
+    assert all(
+        "house:" in missing for result in results for missing in result.missing_families if missing.startswith("house:")
+    )
+    assert all(
+        not any("house_" in item.factor_key for item in (*result.supports, *result.counters)) for result in results
+    )
+
+
+def test_approximate_time_does_not_infer_house_from_fact_keys_or_payload() -> None:
+    chart = _chart("approximate")
+    chart.calculation_payload["planet_positions"][0]["house_number"] = 5
+    chart.calculation_payload["planet_positions"][0]["body"] = "Sun:house_5"
+
+    results = _score(chart)
+
+    assert all(
+        not any("house_" in item.factor_key for item in (*result.supports, *result.counters)) for result in results
+    )
+
+
+def test_approximate_uses_only_stable_facts_present_in_pinned_policy() -> None:
+    chart = _chart("approximate")
+    chart.calculation_payload["stability_evidence"]["facts"]["planet_sign:Moon"]["stable"] = False
+    chart.calculation_payload["stability_evidence"]["facts"]["planet_sign:Moon"]["confidence"] = 0.4
+
+    results = _score(chart)
+
+    assert all(
+        not any(item.factor_key.startswith("placement:moon:") for item in (*result.supports, *result.counters))
+        for result in results
+    )
+
+
+def test_approximate_requires_complete_consistent_stability_proof() -> None:
+    chart = _chart("approximate")
+    chart.calculation_payload["stability_evidence"].pop("sample_offsets_minutes")
+
+    results = _score(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in results)
+    assert all(not result.supports and not result.counters for result in results)
+
+
+def test_house_rules_match_exact_house_token_not_house_number_prefix() -> None:
+    chart = _chart()
+    chart.calculation_payload["planet_positions"] = [
+        row for row in chart.calculation_payload["planet_positions"] if row["house_number"] in {10, 11, 12}
+    ]
+    chart.calculation_payload["aspects"] = []
+
+    autonomy = next(result for result in _score(chart) if result.dimension.value == "autonomy")
+
+    assert not any(item.correlation_family == "house:1" for item in (*autonomy.supports, *autonomy.counters))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda chart: setattr(chart, "birth_time_confidence", "approximate"),
+        lambda chart: chart.calculation_payload.pop("technical_reference"),
+        lambda chart: chart.calculation_payload.__setitem__("technical_reference", "bad"),
+        lambda chart: chart.calculation_payload["technical_reference"].__setitem__("synthetic_noon", True),
+        lambda chart: chart.calculation_payload["stability_evidence"].__setitem__("policy_version", "stale"),
+    ],
+)
+def test_missing_malformed_or_contradictory_confidence_provenance_fails_closed(
+    mutation: Callable[[ChildChartVersion], object],
+) -> None:
+    chart = _chart()
+    mutation(chart)
+
+    results = _score(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in results)
+    assert all(not result.supports and not result.counters for result in results)
+
+
+def test_one_fact_matching_multiple_families_stays_neutral() -> None:
+    chart = _chart()
+    chart.calculation_payload["planet_positions"] = [
+        next(row for row in chart.calculation_payload["planet_positions"] if row["body"] == "Saturn")
+    ]
+    chart.calculation_payload["aspects"] = []
+
+    results = _score(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in results)
+
+
+def test_shared_source_lineage_and_duplicate_evidence_do_not_create_independence() -> None:
+    from app.modules.child.scoring.engine import score_dimensions
+    from app.modules.child.scoring.types import ChildNeedDimension, ScoringEvidence, ScoringFact
+    from app.reference_data.child.child_needs_v1 import (
+        CHILD_NEEDS_POLICY,
+        CHILD_NEEDS_SCALES,
+        CHILD_NEEDS_SCORING_VERSION,
+    )
+
+    fact_one = ScoringFact(uuid.UUID(int=1), "placement:moon:cancer:no_house", "placement", 1.0, 1.0)
+    fact_two = ScoringFact(uuid.UUID(int=2), "balance:element:water", "balance", 1.0, 1.0)
+    shared = "child_chart_versions:key:shared"
+    result = score_dimensions(
+        dimensions=(ChildNeedDimension.REASSURANCE,),
+        facts=(fact_one, fact_two),
+        evidence=(
+            ScoringEvidence(
+                uuid.UUID(int=11),
+                fact_one.id,
+                uuid.UUID(int=9),
+                "child_chart_versions",
+                uuid.UUID(int=9),
+                "shared",
+                1.0,
+            ),
+            ScoringEvidence(
+                uuid.UUID(int=12), fact_two.id, uuid.UUID(int=9), "child_chart_versions", None, "shared", 1.0
+            ),
+            ScoringEvidence(
+                uuid.UUID(int=13),
+                fact_one.id,
+                uuid.UUID(int=9),
+                "child_chart_versions",
+                uuid.UUID(int=9),
+                "shared",
+                0.5,
+            ),
+        ),
+        rules=tuple(
+            rule
+            for rule in __import__(
+                "app.reference_data.child.child_needs_v1", fromlist=["CHILD_NEEDS_RULES"]
+            ).CHILD_NEEDS_RULES
+            if rule.dimension is ChildNeedDimension.REASSURANCE
+        ),
+        scale_semantics=CHILD_NEEDS_SCALES,
+        scoring_version=CHILD_NEEDS_SCORING_VERSION,
+        policy=CHILD_NEEDS_POLICY,
+        allow_time_sensitive=False,
+    )[0]
+
+    assert result.breakdown.independent_lineage_refs == (shared,)
+    assert result.score == 50
+    assert result.confidence == 0
+
+
+@pytest.mark.parametrize("value", [-0.1, 1.1, float("nan"), float("inf")])
+def test_invalid_numeric_chart_evidence_is_rejected(value: float) -> None:
+    chart = _chart("approximate")
+    chart.calculation_payload["stability_evidence"]["facts"]["planet_sign:Moon"]["confidence"] = value
+
+    with pytest.raises(ValueError, match="finite"):
+        _score(chart)
+
+
+def test_opposite_sign_inputs_change_at_least_one_need_dimension() -> None:
+    first = _chart()
+    second = _chart()
+    opposites = {
+        "Cancer": "Capricorn",
+        "Libra": "Aries",
+        "Gemini": "Sagittarius",
+        "Aquarius": "Taurus",
+        "Pisces": "Virgo",
+        "Leo": "Aquarius",
+        "Aries": "Libra",
+        "Capricorn": "Cancer",
+        "Sagittarius": "Gemini",
+        "Scorpio": "Taurus",
+    }
+    for row in second.calculation_payload["planet_positions"]:
+        row["sign"] = opposites[row["sign"]]
+
+    assert tuple(item.score for item in _score(first)) != tuple(item.score for item in _score(second))
+
+
+def test_child_needs_engine_source_has_no_forbidden_context_or_runtime_dependency() -> None:
+    root = Path(__file__).resolve().parents[3] / "app"
+    source = "\n".join(
+        (root / path).read_text(encoding="utf-8")
+        for path in (
+            "modules/child/child_needs.py",
+            "modules/child/scoring/engine.py",
+            "reference_data/child/child_needs_v1.py",
+        )
+    ).lower()
+    for forbidden in (
+        "child_gender",
+        "caregiver_context",
+        "questionnaire",
+        "parent_style",
+        "narrative",
+        "report_payload",
+        "modules.llm",
+        "httpx",
+        "requests",
+        "openai",
+    ):
+        assert forbidden not in source
+
+
+def test_child_need_rows_are_complete_versioned_and_semantically_valid() -> None:
+    from app.modules.child.repository import ChildRepository
+    from app.modules.child.scoring.types import ChildNeedDimension
+
+    rows = _rows()
+    chart = _chart()
+    ChildRepository._validate_child_need_profile(rows, child_chart_version_id=chart.id)
+
+    assert [row.dimension for row in rows] == [dimension.value for dimension in ChildNeedDimension]
+    assert len(rows) == 10
+    assert all(row.scoring_version == "child-needs-mvp-1" for row in rows)
+    assert all(row.breakdown["reference_version"] == "child-needs-reference-1" for row in rows)
+    assert all(row.child_chart_version_id == chart.id for row in rows)
+
+
+def test_child_need_validator_rejects_corrupt_json_numbers_refs_and_dimensions() -> None:
+    from app.modules.child.repository import ChildLineageMismatchError, ChildRepository
+
+    chart = _chart()
+    corruptions = []
+    rows = _rows()
+    rows[0].dimension = "unknown"
+    corruptions.append(rows)
+    rows = _rows()
+    rows[0].breakdown["confidence_components"]["coverage"] = math.nan
+    corruptions.append(rows)
+    rows = _rows()
+    rows[0].breakdown["supports"][0]["lineage_refs"] = []
+    corruptions.append(rows)
+    rows = _rows()
+    rows[0].score += 0.01
+    corruptions.append(rows)
+    rows = _rows()
+    rows[0].evidence_refs.append(rows[0].evidence_refs[0])
+    corruptions.append(rows)
+    rows = _rows()
+    rows[0].breakdown["supports"][0]["correlation_family"] = "invented:family"
+    corruptions.append(rows)
+    rows = _rows()
+    rows[0].breakdown["supports"][0]["weight"] = 0.99
+    corruptions.append(rows)
+
+    for malformed in corruptions:
+        with pytest.raises(ChildLineageMismatchError):
+            ChildRepository._validate_child_need_profile(malformed, child_chart_version_id=chart.id)

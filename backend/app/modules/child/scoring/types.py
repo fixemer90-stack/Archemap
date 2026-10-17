@@ -23,6 +23,19 @@ class ParentStyleDimension(StrEnum):
     CONSISTENCY = "consistency"
 
 
+class ChildNeedDimension(StrEnum):
+    REASSURANCE = "reassurance"
+    PREDICTABILITY = "predictability"
+    AUTONOMY = "autonomy"
+    VERBAL_EXPLANATION = "verbal_explanation"
+    PHYSICAL_SENSORY_CALM = "physical_sensory_calm"
+    EXPLORATION = "exploration"
+    RECOGNITION = "recognition"
+    PERSONAL_SPACE = "personal_space"
+    TRANSITION_TIME = "transition_time"
+    VARIETY = "variety"
+
+
 @dataclass(frozen=True, slots=True)
 class ScaleSemantics:
     zero: str
@@ -31,15 +44,18 @@ class ScaleSemantics:
 
 
 @dataclass(frozen=True, slots=True)
-class ScoringRule:
-    dimension: ParentStyleDimension
+class ScoringRule[DimensionT: StrEnum]:
+    dimension: DimensionT
     contains: tuple[str, ...]
     signal_family: str
     weight: float
     time_sensitive: bool = False
 
     def matches(self, factor_key: str) -> bool:
-        return all(token in factor_key for token in self.contains)
+        return all(
+            factor_key.rsplit(":", 1)[-1] == token if token.startswith("house_") else token in factor_key
+            for token in self.contains
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +63,26 @@ class ScoringPolicy:
     correlation_family_cap: float
     minimum_independent_families: int
     expected_independent_families: int
+
+
+@dataclass(frozen=True, slots=True)
+class ScoringFact:
+    id: UUID
+    fact_key: str
+    fact_type: str
+    weight: float
+    confidence: float
+
+
+@dataclass(frozen=True, slots=True)
+class ScoringEvidence:
+    id: UUID
+    fact_id: UUID
+    chart_id: UUID
+    source_table: str
+    source_id: UUID | None
+    source_key: str | None
+    source_quality: float
 
 
 @dataclass(frozen=True, slots=True)

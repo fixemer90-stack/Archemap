@@ -647,6 +647,7 @@ def test_parent_style_results_build_complete_orm_rows_with_stable_breakdown() ->
     assert all(row.parent_chart_id == _chart().id for row in rows)
     assert all(row.scoring_version == "parent-style-mvp-2" for row in rows)
     assert all(row.evidence_refs == sorted(set(row.evidence_refs)) for row in rows)
+    assert all(ref.startswith("natal_fact:") for row in rows for ref in row.evidence_refs)
     assert all(
         {
             "scale",

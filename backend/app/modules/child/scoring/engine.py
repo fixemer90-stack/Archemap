@@ -5,34 +5,36 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import replace
+from enum import StrEnum
 from math import isfinite
 from uuid import UUID
 
-from app.modules.astrotype_v2.models import NatalFact, NatalFactEvidence
 from app.modules.child.scoring.types import (
     DimensionBreakdown,
     DimensionEvidence,
     DimensionResult,
     EvidenceDirection,
-    ParentStyleDimension,
     ScaleSemantics,
+    ScoringEvidence,
+    ScoringFact,
     ScoringPolicy,
     ScoringRule,
 )
 
 
-def score_dimensions(
+def score_dimensions[DimensionT: StrEnum](
     *,
-    dimensions: Sequence[ParentStyleDimension],
-    facts: Sequence[NatalFact],
-    evidence: Sequence[NatalFactEvidence],
-    rules: Sequence[ScoringRule],
-    scale_semantics: dict[ParentStyleDimension, ScaleSemantics],
+    dimensions: Sequence[DimensionT],
+    facts: Sequence[ScoringFact],
+    evidence: Sequence[ScoringEvidence],
+    rules: Sequence[ScoringRule[DimensionT]],
+    scale_semantics: dict[DimensionT, ScaleSemantics],
     scoring_version: str,
     policy: ScoringPolicy,
     allow_time_sensitive: bool,
-) -> tuple[DimensionResult[ParentStyleDimension], ...]:
-    """Score canonical dimensions from persisted facts and source links only."""
+    evidence_ref_namespace: str = "scoring_fact",
+) -> tuple[DimensionResult[DimensionT], ...]:
+    """Score canonical dimensions from deterministic facts and source links only."""
 
     _validate_numeric_inputs(facts=facts, evidence=evidence, rules=rules, policy=policy)
     evidence_by_fact = _validated_evidence(facts=facts, evidence=evidence)
@@ -47,6 +49,7 @@ def score_dimensions(
             scoring_version=scoring_version,
             policy=policy,
             allow_time_sensitive=allow_time_sensitive,
+            evidence_ref_namespace=evidence_ref_namespace,
         )
         for dimension in dimensions
     )
@@ -54,29 +57,23 @@ def score_dimensions(
 
 def _validated_evidence(
     *,
-    facts: Sequence[NatalFact],
-    evidence: Sequence[NatalFactEvidence],
-) -> dict[UUID, tuple[tuple[NatalFactEvidence, str, float], ...]]:
+    facts: Sequence[ScoringFact],
+    evidence: Sequence[ScoringEvidence],
+) -> dict[UUID, tuple[tuple[ScoringEvidence, str, float], ...]]:
     fact_ids = {fact.id for fact in facts}
     facts_by_id = {fact.id: fact for fact in facts}
-    chart_ids = {fact.chart_id for fact in facts}
-    if None in fact_ids:
-        raise ValueError("Persisted natal facts must have ids")
+    chart_ids = {row.chart_id for row in evidence}
     if len(chart_ids) > 1:
-        raise ValueError("All natal facts must belong to one parent chart")
+        raise ValueError("All scoring evidence must belong to one chart artifact")
 
-    grouped: dict[UUID, dict[str, tuple[NatalFactEvidence, float]]] = defaultdict(dict)
+    grouped: dict[UUID, dict[str, tuple[ScoringEvidence, float]]] = defaultdict(dict)
     for row in evidence:
-        if row.id is None:
-            raise ValueError("Persisted natal fact evidence must have ids")
         if row.fact_id not in fact_ids:
-            raise ValueError("Natal fact evidence references a fact outside the input set")
-        if chart_ids and row.chart_id not in chart_ids:
-            raise ValueError("Natal fact evidence belongs to another chart")
+            raise ValueError("Scoring evidence references a fact outside the input set")
         lineage_ref = _canonical_lineage_ref(row)
         if lineage_ref is None:
             continue
-        quality = _validated_unit_interval(row.payload.get("source_quality", 1.0), "evidence source_quality")
+        quality = _validated_unit_interval(row.source_quality, "evidence source_quality")
         existing = grouped[row.fact_id].get(lineage_ref)
         if existing is None or quality < existing[1]:
             grouped[row.fact_id][lineage_ref] = (row, quality)
@@ -90,7 +87,7 @@ def _validated_evidence(
             ):
                 lineage_owner[lineage_ref] = fact_id
 
-    deduplicated: dict[UUID, tuple[tuple[NatalFactEvidence, str, float], ...]] = {}
+    deduplicated: dict[UUID, tuple[tuple[ScoringEvidence, str, float], ...]] = {}
     for fact_id, lineages in grouped.items():
         owned = tuple(
             (row, lineage_ref, quality)
@@ -102,17 +99,18 @@ def _validated_evidence(
     return deduplicated
 
 
-def _score_dimension(
+def _score_dimension[DimensionT: StrEnum](
     *,
-    dimension: ParentStyleDimension,
-    facts: Sequence[NatalFact],
-    evidence_by_fact: dict[UUID, tuple[tuple[NatalFactEvidence, str, float], ...]],
-    rules: Sequence[ScoringRule],
+    dimension: DimensionT,
+    facts: Sequence[ScoringFact],
+    evidence_by_fact: dict[UUID, tuple[tuple[ScoringEvidence, str, float], ...]],
+    rules: Sequence[ScoringRule[DimensionT]],
     scale: ScaleSemantics,
     scoring_version: str,
     policy: ScoringPolicy,
     allow_time_sensitive: bool,
-) -> DimensionResult[ParentStyleDimension]:
+    evidence_ref_namespace: str,
+) -> DimensionResult[DimensionT]:
     dimension_rules = tuple(rule for rule in rules if rule.dimension is dimension)
     matched: list[DimensionEvidence] = []
     excluded_refs: set[str] = set()
@@ -121,7 +119,7 @@ def _score_dimension(
         source_rows = evidence_by_fact.get(fact.id, ())
         if not source_rows:
             continue
-        refs = tuple(f"natal_fact:{fact.id}:evidence:{row.id}" for row, _, _ in source_rows)
+        refs = tuple(f"{evidence_ref_namespace}:{fact.id}:evidence:{row.id}" for row, _, _ in source_rows)
         lineage_refs = tuple(lineage_ref for _, lineage_ref, _ in source_rows)
         for rule in dimension_rules:
             if not rule.matches(fact.fact_key):
@@ -231,14 +229,14 @@ def _confidence(
 
 
 def _source_quality(
-    fact: NatalFact,
-    evidence: Sequence[tuple[NatalFactEvidence, str, float]],
+    fact: ScoringFact,
+    evidence: Sequence[tuple[ScoringEvidence, str, float]],
 ) -> float:
     evidence_quality = sum(quality for _, _, quality in evidence) / len(evidence)
     return round(float(fact.confidence) * evidence_quality, 4)
 
 
-def _canonical_lineage_ref(row: NatalFactEvidence) -> str | None:
+def _canonical_lineage_ref(row: ScoringEvidence) -> str | None:
     source_table = row.source_table.strip()
     if not source_table:
         return None
@@ -250,24 +248,22 @@ def _canonical_lineage_ref(row: NatalFactEvidence) -> str | None:
     return None
 
 
-def _fact_lineage_sort_key(fact: NatalFact) -> tuple[str, str]:
+def _fact_lineage_sort_key(fact: ScoringFact) -> tuple[str, str]:
     return (fact.fact_key, str(fact.id))
 
 
-def _validate_numeric_inputs(
+def _validate_numeric_inputs[DimensionT: StrEnum](
     *,
-    facts: Sequence[NatalFact],
-    evidence: Sequence[NatalFactEvidence],
-    rules: Sequence[ScoringRule],
+    facts: Sequence[ScoringFact],
+    evidence: Sequence[ScoringEvidence],
+    rules: Sequence[ScoringRule[DimensionT]],
     policy: ScoringPolicy,
 ) -> None:
     for fact in facts:
         _validated_unit_interval(fact.weight, "fact weight")
         _validated_unit_interval(fact.confidence, "fact confidence")
     for row in evidence:
-        if not isinstance(row.payload, dict):
-            raise ValueError("evidence payload must be an object")
-        _validated_unit_interval(row.payload.get("source_quality", 1.0), "evidence source_quality")
+        _validated_unit_interval(row.source_quality, "evidence source_quality")
     for rule in rules:
         weight = float(rule.weight)
         if not isfinite(weight) or not -1.0 <= weight <= 1.0:
@@ -284,7 +280,7 @@ def _validated_unit_interval(value: object, label: str) -> float:
     return numeric
 
 
-def _fact_is_time_sensitive(fact: NatalFact) -> bool:
+def _fact_is_time_sensitive(fact: ScoringFact) -> bool:
     key = fact.fact_key.lower()
     if fact.fact_type in {"house", "angle", "angularity"}:
         return True

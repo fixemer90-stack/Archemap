@@ -22,9 +22,18 @@ from app.modules.child import models
 from app.modules.child.age_resolver import AGE_RULES_VERSION, ChildAgeResolution, resolve_child_age
 from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
+from app.modules.child.child_needs import build_child_need_rows, score_child_needs
 from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
-from app.modules.child.scoring.types import ParentStyleDimension
+from app.modules.child.scoring.types import ChildNeedDimension, ParentStyleDimension
+from app.modules.child.scoring.validation import validate_dimension_breakdown
 from app.modules.profiles.models import PersonProfile
+from app.reference_data.child.child_needs_v1 import (
+    CHILD_NEEDS_POLICY,
+    CHILD_NEEDS_REFERENCE_VERSION,
+    CHILD_NEEDS_RULES,
+    CHILD_NEEDS_SCALES,
+    CHILD_NEEDS_SCORING_VERSION,
+)
 from app.reference_data.child.parent_style_v1 import (
     PARENT_STYLE_POLICY,
     PARENT_STYLE_REFERENCE_VERSION,
@@ -345,6 +354,21 @@ class PersistedParentStyleProfile:
     parent_chart_id: UUID
     scoring_version: str
     scores: tuple[models.ChildParentStyleScore, ...]
+
+
+@dataclass(frozen=True)
+class ChildNeedProfilePersistenceResult:
+    scores: tuple[models.ChildNeedScore, ...]
+    created: bool
+
+
+@dataclass(frozen=True)
+class PersistedChildNeedProfile:
+    child_profile_id: UUID
+    generation_id: UUID
+    child_chart_version_id: UUID
+    scoring_version: str
+    scores: tuple[models.ChildNeedScore, ...]
 
 
 @dataclass(frozen=True)
@@ -799,6 +823,149 @@ class ChildRepository:
                 raise ChildLineageMismatchError("Parent Style profile contains an incoherent score")
             if not _numbers_close(row.confidence, semantics.confidence, tolerance=1e-4):
                 raise ChildLineageMismatchError("Parent Style profile contains incoherent confidence")
+
+    async def create_child_need_profile(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> ChildNeedProfilePersistenceResult:
+        """Score and persist one immutable Child Needs profile from its pinned chart."""
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-needs:{generation_id}:{CHILD_NEEDS_SCORING_VERSION}"},
+        )
+        await self._require_owned_child(child_profile_id=child_profile_id, owner_user_id=owner_user_id)
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Child Needs generation does not belong to the child")
+        existing = await self._load_child_need_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        if existing:
+            self._validate_child_need_profile(existing, child_chart_version_id=generation.child_chart_version_id)
+            return ChildNeedProfilePersistenceResult(scores=existing, created=False)
+
+        chart = await self.session.scalar(
+            select(models.ChildChartVersion).where(
+                models.ChildChartVersion.id == generation.child_chart_version_id,
+                models.ChildChartVersion.child_profile_id == child_profile_id,
+            )
+        )
+        if chart is None:
+            raise ChildLineageMismatchError("Child Needs pinned chart is missing or belongs to another child")
+        rows = build_child_need_rows(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            child_chart_version_id=chart.id,
+            results=score_child_needs(chart=chart),
+        )
+        self._validate_child_need_profile(rows, child_chart_version_id=chart.id)
+        self.session.add_all(list(rows))
+        await self.session.flush()
+        return ChildNeedProfilePersistenceResult(scores=rows, created=True)
+
+    async def load_child_need_profile(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> PersistedChildNeedProfile:
+        """Reload the current persisted scoring version without recalculation."""
+
+        await self._require_owned_child(child_profile_id=child_profile_id, owner_user_id=owner_user_id)
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Child Needs generation does not belong to the child")
+        scores = await self._load_child_need_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        self._validate_child_need_profile(scores, child_chart_version_id=generation.child_chart_version_id)
+        return PersistedChildNeedProfile(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            child_chart_version_id=generation.child_chart_version_id,
+            scoring_version=CHILD_NEEDS_SCORING_VERSION,
+            scores=scores,
+        )
+
+    async def _load_child_need_scores(
+        self,
+        *,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> tuple[models.ChildNeedScore, ...]:
+        persisted = tuple(
+            (
+                await self.session.execute(
+                    select(models.ChildNeedScore).where(
+                        models.ChildNeedScore.child_profile_id == child_profile_id,
+                        models.ChildNeedScore.generation_id == generation_id,
+                        models.ChildNeedScore.scoring_version == CHILD_NEEDS_SCORING_VERSION,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        rank = {dimension.value: index for index, dimension in enumerate(ChildNeedDimension)}
+        return tuple(
+            sorted(persisted, key=lambda row: (rank.get(row.dimension, len(rank)), row.dimension, str(row.id)))
+        )
+
+    @staticmethod
+    def _validate_child_need_profile(
+        rows: Sequence[models.ChildNeedScore],
+        *,
+        child_chart_version_id: UUID,
+    ) -> None:
+        expected = tuple(dimension.value for dimension in ChildNeedDimension)
+        if tuple(row.dimension for row in rows) != expected:
+            raise ChildLineageMismatchError("Child Needs profile is incomplete or not canonically ordered")
+        if any(row.child_chart_version_id != child_chart_version_id for row in rows):
+            raise ChildLineageMismatchError("Child Needs profile references another child chart")
+        if any(row.scoring_version != CHILD_NEEDS_SCORING_VERSION for row in rows):
+            raise ChildLineageMismatchError("Child Needs profile uses another scoring version")
+        for row in rows:
+            if not isfinite(row.score) or not 0.0 <= row.score <= 100.0:
+                raise ChildLineageMismatchError("Child Needs profile contains an invalid score")
+            if not isfinite(row.confidence) or not 0.0 <= row.confidence <= 1.0:
+                raise ChildLineageMismatchError("Child Needs profile contains invalid confidence")
+            if not _is_unique_string_list(row.evidence_refs, allow_empty=True):
+                raise ChildLineageMismatchError("Child Needs profile contains malformed evidence refs")
+            semantics = validate_dimension_breakdown(
+                row.breakdown,
+                dimension=ChildNeedDimension(row.dimension),
+                reference_version=CHILD_NEEDS_REFERENCE_VERSION,
+                scales=CHILD_NEEDS_SCALES,
+                rules=CHILD_NEEDS_RULES,
+                policy=CHILD_NEEDS_POLICY,
+            )
+            if semantics is None:
+                raise ChildLineageMismatchError("Child Needs profile contains malformed breakdown")
+            if row.evidence_refs != list(semantics.evidence_refs):
+                raise ChildLineageMismatchError("Child Needs profile contains incoherent evidence refs")
+            if not _numbers_close(row.score, semantics.score, tolerance=1e-6):
+                raise ChildLineageMismatchError("Child Needs profile contains an incoherent score")
+            if not _numbers_close(row.confidence, semantics.confidence, tolerance=1e-4):
+                raise ChildLineageMismatchError("Child Needs profile contains incoherent confidence")
 
     async def create_chart_version_idempotently(
         self,

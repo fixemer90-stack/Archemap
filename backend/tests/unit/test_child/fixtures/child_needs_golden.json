@@ -1,0 +1,119 @@
+{
+  "autonomy": {
+    "confidence": 1.0,
+    "counters": [],
+    "missing_families": [],
+    "score": 80.1,
+    "supports": [
+      "placement:uranus:aquarius:house_11",
+      "placement:mars:aries:house_1",
+      "placement:sun:leo:house_5",
+      "placement:mars:aries:house_1",
+      "balance:element:air"
+    ]
+  },
+  "exploration": {
+    "confidence": 0.8397,
+    "counters": ["placement:saturn:capricorn:house_10"],
+    "missing_families": [],
+    "score": 71.2,
+    "supports": [
+      "placement:jupiter:sagittarius:house_9",
+      "placement:uranus:aquarius:house_11",
+      "placement:jupiter:sagittarius:house_9",
+      "balance:element:fire",
+      "balance:modality:mutable"
+    ]
+  },
+  "personal_space": {
+    "confidence": 0.7373,
+    "counters": ["placement:moon:cancer:house_4", "balance:element:water"],
+    "missing_families": [],
+    "score": 61.2,
+    "supports": [
+      "placement:uranus:aquarius:house_11",
+      "placement:neptune:pisces:house_12",
+      "balance:element:air"
+    ]
+  },
+  "physical_sensory_calm": {
+    "confidence": 0.5728,
+    "counters": ["placement:mars:aries:house_1", "balance:element:fire"],
+    "missing_families": ["body:venus"],
+    "score": 53.0,
+    "supports": [
+      "placement:moon:cancer:house_4",
+      "placement:moon:cancer:house_4",
+      "balance:element:earth"
+    ]
+  },
+  "predictability": {
+    "confidence": 0.8636,
+    "counters": ["balance:modality:mutable"],
+    "missing_families": ["house:6"],
+    "score": 61.2,
+    "supports": [
+      "placement:saturn:capricorn:house_10",
+      "balance:modality:fixed",
+      "balance:element:earth"
+    ]
+  },
+  "reassurance": {
+    "confidence": 1.0,
+    "counters": [],
+    "missing_families": [],
+    "score": 79.7,
+    "supports": [
+      "placement:moon:cancer:house_4",
+      "aspect:moon:venus:trine",
+      "placement:venus:libra:house_7",
+      "placement:moon:cancer:house_4",
+      "balance:element:water"
+    ]
+  },
+  "recognition": {
+    "confidence": 1.0,
+    "counters": [],
+    "missing_families": [],
+    "score": 78.1,
+    "supports": [
+      "placement:sun:leo:house_5",
+      "placement:sun:leo:house_5",
+      "placement:venus:libra:house_7",
+      "placement:saturn:capricorn:house_10",
+      "balance:element:fire"
+    ]
+  },
+  "transition_time": {
+    "confidence": 0.5435,
+    "counters": ["placement:uranus:aquarius:house_11", "balance:modality:mutable"],
+    "missing_families": ["body:mercury", "house:6"],
+    "score": 51.6,
+    "supports": ["placement:saturn:capricorn:house_10", "balance:modality:fixed"]
+  },
+  "variety": {
+    "confidence": 0.7874,
+    "counters": ["placement:saturn:capricorn:house_10", "balance:modality:fixed"],
+    "missing_families": [],
+    "score": 71.9,
+    "supports": [
+      "placement:mercury:gemini:house_3",
+      "placement:uranus:aquarius:house_11",
+      "placement:jupiter:sagittarius:house_9",
+      "placement:mercury:gemini:house_3",
+      "balance:modality:mutable"
+    ]
+  },
+  "verbal_explanation": {
+    "confidence": 1.0,
+    "counters": [],
+    "missing_families": [],
+    "score": 72.7,
+    "supports": [
+      "placement:mercury:gemini:house_3",
+      "aspect:mercury:saturn:trine",
+      "placement:mercury:gemini:house_3",
+      "balance:element:air"
+    ]
+  }
+}

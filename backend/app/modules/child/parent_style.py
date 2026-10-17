@@ -9,7 +9,12 @@ from uuid import UUID
 from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
 from app.modules.child.models import ChildParentStyleScore
 from app.modules.child.scoring.engine import score_dimensions
-from app.modules.child.scoring.types import DimensionResult, ParentStyleDimension
+from app.modules.child.scoring.types import (
+    DimensionResult,
+    ParentStyleDimension,
+    ScoringEvidence,
+    ScoringFact,
+)
 from app.reference_data.child.parent_style_v1 import (
     PARENT_STYLE_POLICY,
     PARENT_STYLE_REFERENCE_VERSION,
@@ -36,13 +41,34 @@ def score_parent_style(
         raise ValueError("Parent natal fact evidence must belong to the supplied parent chart")
     return score_dimensions(
         dimensions=tuple(ParentStyleDimension),
-        facts=facts,
-        evidence=evidence,
+        facts=tuple(
+            ScoringFact(
+                id=fact.id,
+                fact_key=fact.fact_key,
+                fact_type=fact.fact_type,
+                weight=float(fact.weight),
+                confidence=float(fact.confidence),
+            )
+            for fact in facts
+        ),
+        evidence=tuple(
+            ScoringEvidence(
+                id=row.id,
+                fact_id=row.fact_id,
+                chart_id=row.chart_id,
+                source_table=row.source_table,
+                source_id=row.source_id,
+                source_key=row.source_key,
+                source_quality=row.payload.get("source_quality", 1.0),
+            )
+            for row in evidence
+        ),
         rules=PARENT_STYLE_RULES,
         scale_semantics=PARENT_STYLE_SCALES,
         scoring_version=PARENT_STYLE_SCORING_VERSION,
         policy=PARENT_STYLE_POLICY,
         allow_time_sensitive=_has_exact_timing_proof(chart),
+        evidence_ref_namespace="natal_fact",
     )
 
 

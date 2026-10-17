@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S05 завершены, S06–S16 не начаты
+Статус: целевой контракт готов; S01–S06 завершены, S07–S16 не начаты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 
@@ -146,12 +146,16 @@ MVP dimensions:
 - predictability;
 - autonomy;
 - verbal_explanation;
+- physical_sensory_calm;
 - exploration;
 - recognition;
 - personal_space;
-- transition_time.
+- transition_time;
+- variety.
 
 Эти значения описывают условия, в которых взаимодействие может быть легче. API и narrative не называют их personality traits, diagnoses или fixed capacities.
+
+Реализация S06: `child-needs-mvp-1` возвращает ровно десять dimensions в каноническом порядке и хранит explicit `0/50/100` semantics из `child-needs-reference-1`. Единственный вход — persisted immutable `ChildChartVersion` с policy `child-birth-time-policy-v3`: gender, caregiver context, questionnaire, Parent Style, prose/report payload, LLM и network не читаются. Exact houses разрешены только при согласованном user-supplied/non-synthetic provenance; approximate использует только stable facts, явно разрешённые pinned policy, без house inference из keys; unknown исключает time-sensitive facts. Missing/malformed/contradictory provenance fail-closed создаёт neutral profile. Ненейтральный score требует минимум две independent signal families и две canonical source lineages; mixed ID/key, shared, duplicate и unidentified evidence дедуплицируются, correlation family capped, numeric values обязаны быть finite. Sign/aspect/balance/house-sensitive rules не используют простое наличие тела. Confidence независимо складывается из coverage, agreement и source quality; insufficient evidence даёт `score=50`, `confidence=0`. PostgreSQL repository под advisory lock создаёт ровно десять immutable rows, проверяет owner/generation/child-chart lineage, загружает только current scoring version без recalculation и строго пересчитывает nested JSON semantics из leaf evidence. Unique key `(generation_id, dimension, scoring_version)` допускает old/current coexistence; migration `d5e6f7a8b9c0` fail-safe отказывает downgrade до DDL, если старый key схлопнул бы valid version history.
 
 ## 9. FR-E22.6 — Synastry и Interaction Profile
 

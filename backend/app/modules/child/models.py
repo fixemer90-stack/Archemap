@@ -171,7 +171,12 @@ class ChildParentStyleScore(BaseModel):
 class ChildNeedScore(BaseModel):
     __tablename__ = "child_need_scores"
     __table_args__ = (
-        UniqueConstraint("generation_id", "dimension", name="uq_child_need_generation_dimension"),
+        UniqueConstraint(
+            "generation_id",
+            "dimension",
+            "scoring_version",
+            name="uq_child_need_generation_dimension_version",
+        ),
         ForeignKeyConstraint(
             ["child_profile_id", "child_chart_version_id"],
             ["child_chart_versions.child_profile_id", "child_chart_versions.id"],

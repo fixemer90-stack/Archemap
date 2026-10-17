@@ -7,6 +7,7 @@ import random
 import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -35,7 +36,7 @@ def _chart(
         input_hash="c" * 64,
         birth_time_confidence=confidence,
         allowed_fact_families=allowed,
-        excluded_fact_families=list(payload["exclusions"]),
+        excluded_fact_families=list(cast(list[str], payload["exclusions"])),
         uncertainty_reason=resolve_birth_time_policy(confidence).uncertainty_reason,
         calculation_payload=payload,
     )
@@ -56,7 +57,7 @@ def _payload(confidence: str = "exact") -> dict[str, object]:
         ("Pluto", "Scorpio", 8),
     ]
     sign_by_body = {body: sign for body, sign, _ in positions}
-    facts = {
+    facts: dict[str, dict[str, object]] = {
         **{f"planet_sign:{body}": {"stable": True, "confidence": 1.0} for body, _, _ in positions},
         "aspect:Moon:Venus:trine": {"stable": True, "confidence": 1.0},
         "aspect:Mercury:Saturn:trine": {"stable": True, "confidence": 1.0},
@@ -332,6 +333,9 @@ def test_approximate_stability_samples_must_be_aware_and_match_center_offsets(
         lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(
             1, "2021-05-12T08:00:00+00:00"
         ),
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(
+            0, "2021-05-12T00:00:00+03:00"
+        ),
         lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].reverse(),
         lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(
             2, "2021-05-12T20:59:59"
@@ -345,6 +349,49 @@ def test_unknown_stability_samples_must_match_ordered_production_shape(
     mutation(chart)
 
     assert all(result.score == 50 and result.confidence == 0 for result in _score(chart))
+
+
+@pytest.mark.parametrize(
+    "samples",
+    [
+        [
+            "2021-05-11T21:00:00+00:00",
+            "2021-05-12T09:00:00+00:00",
+            "2021-05-12T20:59:59+00:00",
+        ],
+        [
+            "2021-03-14T05:00:00+00:00",
+            "2021-03-14T16:00:00+00:00",
+            "2021-03-15T03:59:59+00:00",
+        ],
+        [
+            "2021-11-07T04:00:00+00:00",
+            "2021-11-07T17:00:00+00:00",
+            "2021-11-08T04:59:59+00:00",
+        ],
+    ],
+    ids=["normal-day", "spring-forward", "fall-back"],
+)
+def test_unknown_stability_accepts_full_local_day_sample_spans(samples: list[str]) -> None:
+    chart = _chart("unknown")
+    chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"] = samples
+    chart.calculation_payload["technical_reference"]["birth_datetime_utc"] = samples[1]
+
+    assert any(result.supports or result.counters for result in _score(chart))
+
+
+def test_unknown_stability_rejects_one_second_review_counterexample() -> None:
+    chart = _chart("unknown")
+    chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"] = [
+        "2021-05-12T08:59:59+00:00",
+        "2021-05-12T09:00:00+00:00",
+        "2021-05-12T09:00:01+00:00",
+    ]
+
+    results = _score(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in results)
+    assert all(not result.supports and not result.counters for result in results)
 
 
 def test_stability_observations_must_match_persisted_fact_value() -> None:

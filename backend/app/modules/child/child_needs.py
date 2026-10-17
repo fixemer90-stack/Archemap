@@ -38,6 +38,10 @@ _CHILD_NEED_ROW_NAMESPACE = uuid.UUID("41e1581b-b645-5d5f-b9c7-e88946f01d82")
 _CHILD_FACT_NAMESPACE = uuid.UUID("548965fe-849d-5a13-a355-e1ed12577f64")
 _CHILD_EVIDENCE_NAMESPACE = uuid.UUID("92590590-b68f-51ec-99f4-059d19ec7223")
 _POLICY_VERSION = "child-birth-time-policy-v3"
+_UNKNOWN_SAMPLE_SEGMENT_MIN = timedelta(hours=10)
+_UNKNOWN_SAMPLE_SEGMENT_MAX = timedelta(hours=14)
+_UNKNOWN_SAMPLE_TOTAL_MIN = timedelta(hours=22)
+_UNKNOWN_SAMPLE_TOTAL_MAX = timedelta(hours=26)
 _ELEMENTS = {
     "aries": "fire",
     "leo": "fire",
@@ -368,8 +372,19 @@ def _valid_unknown_stability_proof(stability: dict[str, Any], technical_referenc
         stability.get("window") == "local_birth_date"
         and sample_datetimes is not None
         and len(sample_datetimes) == 3
-        and sample_datetimes[0] < sample_datetimes[1] < sample_datetimes[2]
         and sample_datetimes[1] == technical_reference
+        and _has_unknown_full_day_sample_span(sample_datetimes)
+    )
+
+
+def _has_unknown_full_day_sample_span(sample_datetimes: list[datetime]) -> bool:
+    first_segment = sample_datetimes[1] - sample_datetimes[0]
+    second_segment = sample_datetimes[2] - sample_datetimes[1]
+    total_span = sample_datetimes[2] - sample_datetimes[0]
+    return (
+        _UNKNOWN_SAMPLE_SEGMENT_MIN <= first_segment <= _UNKNOWN_SAMPLE_SEGMENT_MAX
+        and _UNKNOWN_SAMPLE_SEGMENT_MIN <= second_segment <= _UNKNOWN_SAMPLE_SEGMENT_MAX
+        and _UNKNOWN_SAMPLE_TOTAL_MIN <= total_span <= _UNKNOWN_SAMPLE_TOTAL_MAX
     )
 
 
@@ -428,10 +443,18 @@ def _parse_aware_datetime(value: object) -> datetime | None:
 def _parse_sample_datetimes(value: object) -> list[datetime] | None:
     if not isinstance(value, list):
         return None
-    parsed = [_parse_aware_datetime(item) for item in value]
-    if any(item is None for item in parsed):
-        return None
-    return [cast(datetime, item) for item in parsed]
+    parsed: list[datetime] = []
+    for item in value:
+        if not isinstance(item, str) or not item:
+            return None
+        try:
+            sample = datetime.fromisoformat(item)
+        except ValueError:
+            return None
+        if sample.tzinfo is None or sample.utcoffset() != timedelta(0):
+            return None
+        parsed.append(sample.astimezone(UTC))
+    return parsed
 
 
 def _deduplicate_positions(values: list[object]) -> list[dict[str, Any]] | None:

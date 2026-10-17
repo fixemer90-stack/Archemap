@@ -33,9 +33,9 @@ Child Needs описывают условия, в которых взаимод�
    - `approximate` использует только факты, одинаковые во всех пяти declared samples pinned окна; aware UTC samples обязаны точно соответствовать technical center и canonical offsets;
    - `unknown` всегда исключает Moon и аспекты с Moon независимо от входного `stable=True`; три aware UTC samples обязаны иметь production order, technical reference совпадать со средним sample, каждый полу-дневный segment занимать `10h..14h`, а полный span — `22h..26h`, сохраняя normal и spring/fall DST production shape и отклоняя seconds/minutes counterexamples;
    - missing/malformed/contradictory provenance создаёт нейтральный профиль без time-sensitive evidence.
-9. Planet positions дедуплицируются по canonical body, aspects — по canonical body pair и code: identical duplicate не меняет score/independence, conflicting duplicate fail-closed. Balance появляется только из уникальных реальных placements.
+9. Planet positions сначала нормализуются в canonical body/sign rows, aspects — в canonical ordered body pair/code rows, и только затем дедуплицируются: case/order variant identical duplicate не меняет все десять результатов, conflicting duplicate fail-closed. Approximate stability lookup канонически разрешает production title-cased `planet_sign:*`/`aspect:*` keys. Balance появляется только из уникальных реальных placements.
 10. Repository под PostgreSQL advisory lock создаёт ровно десять immutable `ChildNeedScore` rows, проверяет owner/generation/chart lineage и возвращает current scoring version без пересчёта.
-11. Nested JSON проходит strict semantic validation: canonical dimensions/order, versions/scales, finite values, unique refs, family/lineage counts, missing families, raw delta, confidence components, score и confidence пересчитываются из leaf evidence.
+11. Nested JSON проходит strict semantic validation: canonical dimensions/order, versions/scales, finite values, unique refs, family/lineage counts, missing families, raw delta, confidence components, score и confidence пересчитываются из leaf evidence. Один semantic rule leaf не может быть раздроблен на несколько строк с тем же fact/evidence/lineage ownership, включая split между supports/counters; multi-lineage balance leaf остаётся допустимым, а ownership проверяется отдельно внутри каждой dimension.
 12. Unique identity расширена до `(generation_id, dimension, scoring_version)`, поэтому old/current версии сосуществуют. Migration `d5e6f7a8b9c0` отказывает downgrade до DDL, если старый uniqueness contract схлопнул бы valid version history.
 
 ## Затронутые файлы
@@ -58,18 +58,19 @@ Child Needs описывают условия, в которых взаимод�
 - [x] Ненейтральный score требует двух signal families и двух canonical source lineages.
 - [x] Нет diagnosis, ability ranking, binary labels или child-trait mapping.
 - [x] Engine не читает gender, caregiver context, questionnaire, Parent Style, prose/report payload, LLM/network.
-- [x] Duplicate/conflicting positions/aspects, shared/mixed lineage, fabricated balance, invalid numbers, malformed timestamps, unknown-time seconds-span counterexample, normal/spring/fall full-day sample shapes, shuffled inputs и opposite signs покрыты fixtures.
+- [x] Case/order-variant и conflicting positions/aspects, shared/mixed lineage, split duplicate evidence leaves, fabricated balance, invalid numbers, malformed timestamps, unknown-time seconds-span counterexample, normal/spring/fall full-day sample shapes, shuffled inputs и opposite signs покрыты fixtures.
 - [x] Current/old scoring versions сосуществуют; corrupt persisted JSON отклоняется fail-closed.
 - [x] Concurrent replay idempotent; caught/rolled-back invalid work не оставляет partial score rows.
 
 ## Verification
 
 - Initial RED: новый focused suite → `19 failed` на отсутствующих Child Needs contracts/module/validator. Spec-blocker RED: focused S06 suite → `17 failed` на permissive policy/stability/duplicate/lineage paths; S03 canonical exclusion order → `1 failed`.
-- `uv run pytest tests/unit/test_child/test_child_needs_engine.py tests/unit/test_child/test_parent_style_engine.py -q` → `86 passed`.
-- `uv run pytest tests/unit/test_child -q` → `129 passed`.
+- `uv run pytest tests/unit/test_child/test_child_needs_engine.py tests/unit/test_child/test_parent_style_engine.py -q` → `90 passed`.
+- `uv run pytest tests/unit/test_child -q` → `133 passed`.
 - S03/chart regression: `uv run pytest tests/unit/test_astrotype_v2/test_chart_adapter.py tests/unit/test_astrotype_v2/test_chart_persistence.py tests/unit/test_astrotype_v2/test_chart_contract.py tests/chart/test_chart_engine.py -q` → `31 passed`.
 - Career + Astrotype fact regression: `uv run pytest tests/unit/test_career tests/unit/test_astrotype_v2/test_*fact*.py -q` → `127 passed`, `1` dependency deprecation warning.
-- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_needs.py -q` → `1 passed`, включая owner/generation/chart lineage rejection, separate-transaction concurrent create, immutable exact reload, persisted balance lineage inspection (`planet_positions:*` only), current-version filtering, old/current coexistence, clean downgrade/re-upgrade, lossy downgrade refusal с сохранением revision/rows/current constraint, invalid numeric caught-error commit без score rows и corrupt JSON rejection без дополнительных writes.
+- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_needs.py -q` → `1 passed`, включая owner/generation/chart lineage rejection, separate-transaction concurrent create, immutable exact reload, persisted balance lineage inspection (`planet_positions:*` only), current-version filtering, old/current coexistence, clean downgrade/re-upgrade, lossy downgrade refusal с сохранением revision/rows/current constraint, split duplicate leaf rejection, invalid numeric caught-error commit без score rows и corrupt JSON rejection без дополнительных writes.
+- Scoring/reference/policy versions не изменены: canonical baseline output, row identities и valid persisted profile semantics остаются прежними; исправление только делает input normalization order-independent и отклоняет ранее невалидную duplicate-leaf corruption.
 - Changed-path Ruff check/format, strict mypy, exact-path Prettier и `git diff --check` проходят после последнего изменения.
 
 ## Зависимости

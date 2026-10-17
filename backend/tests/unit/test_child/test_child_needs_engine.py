@@ -443,6 +443,43 @@ def test_duplicate_moon_position_and_aspect_do_not_change_scores_or_independence
     assert _score(duplicate) == _score(chart)
 
 
+@pytest.mark.parametrize("duplicate_first", [False, True])
+def test_approximate_case_variant_duplicate_position_is_order_independent(duplicate_first: bool) -> None:
+    baseline = _score(_chart("approximate"))
+    chart = _chart("approximate")
+    canonical = next(row for row in chart.calculation_payload["planet_positions"] if row["body"] == "Mercury")
+    duplicate = copy.deepcopy(canonical)
+    duplicate.update({"body": "  mErCuRy  ", "sign": "  gEmInI  "})
+    if duplicate_first:
+        chart.calculation_payload["planet_positions"].insert(0, duplicate)
+    else:
+        chart.calculation_payload["planet_positions"].append(duplicate)
+
+    assert _score(chart) == baseline
+    assert len(_score(chart)) == 10
+
+
+@pytest.mark.parametrize("duplicate_first", [False, True])
+def test_approximate_reversed_case_variant_aspect_is_order_independent(duplicate_first: bool) -> None:
+    baseline = _score(_chart("approximate"))
+    chart = _chart("approximate")
+    canonical = next(
+        row for row in chart.calculation_payload["aspects"] if row["body_a"] == "Mercury" and row["body_b"] == "Saturn"
+    )
+    duplicate = copy.deepcopy(canonical)
+    duplicate.update({"body_a": "  sAtUrN  ", "body_b": "  mErCuRy  ", "aspect_code": "  TrInE  "})
+    if duplicate_first:
+        chart.calculation_payload["aspects"].insert(0, duplicate)
+    else:
+        chart.calculation_payload["aspects"].append(duplicate)
+
+    actual = _score(chart)
+    assert actual == baseline
+    assert next(result for result in actual if result.dimension.value == "verbal_explanation") == next(
+        result for result in baseline if result.dimension.value == "verbal_explanation"
+    )
+
+
 def test_conflicting_duplicate_position_fails_closed() -> None:
     chart = _chart()
     duplicate = copy.deepcopy(chart.calculation_payload["planet_positions"][1])
@@ -689,6 +726,15 @@ def test_child_need_validator_rejects_corrupt_json_numbers_refs_and_dimensions()
     corruptions.append(rows)
     rows = _rows()
     rows[0].breakdown["supports"][0]["weight"] = 0.99
+    corruptions.append(rows)
+    rows = _rows()
+    original = rows[0].breakdown["supports"][0]
+    duplicate = copy.deepcopy(original)
+    original["factor_value"] /= 2
+    original["contribution"] /= 2
+    duplicate["factor_value"] /= 2
+    duplicate["contribution"] /= 2
+    rows[0].breakdown["supports"].append(duplicate)
     corruptions.append(rows)
 
     for malformed in corruptions:

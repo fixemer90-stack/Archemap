@@ -353,7 +353,16 @@ def _stable_fact_map(chart: ChildChartVersion, payload: dict[str, Any]) -> dict[
     stability = payload.get("stability_evidence")
     if not isinstance(stability, dict) or not isinstance(stability.get("facts"), dict):
         return None
-    return cast(dict[str, Any], stability["facts"])
+    canonical: dict[str, Any] = {}
+    for key, value in cast(dict[object, Any], stability["facts"]).items():
+        if not isinstance(key, str):
+            return None
+        canonical_key = _canonical_stability_key(key)
+        existing = canonical.get(canonical_key)
+        if existing is not None and existing != value:
+            return None
+        canonical[canonical_key] = value
+    return canonical
 
 
 def _valid_approximate_stability_proof(stability: dict[str, Any], center: datetime) -> bool:
@@ -458,30 +467,31 @@ def _parse_sample_datetimes(value: object) -> list[datetime] | None:
 
 
 def _deduplicate_positions(values: list[object]) -> list[dict[str, Any]] | None:
-    unique: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    unique: dict[str, dict[str, Any]] = {}
     for value in values:
         if not isinstance(value, dict):
             return None
         body = value.get("body")
         if not isinstance(body, str) or not body.strip():
             return None
-        canonical_body = body.strip().casefold()
+        canonical_body = _canonical_body_name(body)
         normalized = dict(value)
         normalized["body"] = canonical_body
         sign = normalized.get("sign")
         if isinstance(sign, str):
-            normalized["sign"] = sign.strip().casefold()
-        existing = unique.get(canonical_body)
+            normalized["sign"] = _canonical_sign_name(sign)
+        identity = canonical_body.casefold()
+        existing = unique.get(identity)
         if existing is not None:
-            if existing[1] != normalized:
+            if existing != normalized:
                 return None
             continue
-        unique[canonical_body] = (value, normalized)
-    return [unique[key][0] for key in sorted(unique)]
+        unique[identity] = normalized
+    return [unique[key] for key in sorted(unique)]
 
 
 def _deduplicate_aspects(values: list[object]) -> list[dict[str, Any]] | None:
-    unique: dict[tuple[str, str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
+    unique: dict[tuple[str, str, str], dict[str, Any]] = {}
     for value in values:
         if not isinstance(value, dict):
             return None
@@ -490,18 +500,36 @@ def _deduplicate_aspects(values: list[object]) -> list[dict[str, Any]] | None:
         code = value.get("aspect_code")
         if not all(isinstance(item, str) and item.strip() for item in (body_a, body_b, code)):
             return None
-        first, second = sorted((cast(str, body_a).strip().casefold(), cast(str, body_b).strip().casefold()))
+        first, second = sorted((_canonical_body_name(cast(str, body_a)), _canonical_body_name(cast(str, body_b))))
         canonical_code = cast(str, code).strip().casefold()
-        key = (first, second, canonical_code)
+        key = (first.casefold(), second.casefold(), canonical_code)
         normalized = dict(value)
         normalized.update({"body_a": first, "body_b": second, "aspect_code": canonical_code})
         existing = unique.get(key)
         if existing is not None:
-            if existing[1] != normalized:
+            if existing != normalized:
                 return None
             continue
-        unique[key] = (value, normalized)
-    return [unique[key][0] for key in sorted(unique)]
+        unique[key] = normalized
+    return [unique[key] for key in sorted(unique)]
+
+
+def _canonical_body_name(value: str) -> str:
+    return " ".join(part.capitalize() for part in value.strip().casefold().split())
+
+
+def _canonical_sign_name(value: str) -> str:
+    return value.strip().casefold().capitalize()
+
+
+def _canonical_stability_key(value: str) -> str:
+    parts = value.split(":")
+    if len(parts) == 2 and parts[0].strip().casefold() == "planet_sign":
+        return f"planet_sign:{_canonical_body_name(parts[1])}"
+    if len(parts) == 4 and parts[0].strip().casefold() == "aspect":
+        first, second = sorted((_canonical_body_name(parts[1]), _canonical_body_name(parts[2])))
+        return f"aspect:{first}:{second}:{parts[3].strip().casefold()}"
+    return value
 
 
 def _fact_with_evidence(

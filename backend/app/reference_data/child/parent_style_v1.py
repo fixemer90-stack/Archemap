@@ -55,7 +55,7 @@ PARENT_STYLE_SCALES: dict[ParentStyleDimension, ScaleSemantics] = {
 R = ScoringRule
 D = ParentStyleDimension
 
-PARENT_STYLE_RULES: tuple[ScoringRule, ...] = (
+PARENT_STYLE_RULES: tuple[ScoringRule[ParentStyleDimension], ...] = (
     R(D.EMOTIONAL_RESPONSIVENESS, ("placement:moon:cancer:",), "body:moon", 0.18),
     R(D.EMOTIONAL_RESPONSIVENESS, ("placement:moon:pisces:",), "body:moon", 0.16),
     R(D.EMOTIONAL_RESPONSIVENESS, ("placement:moon:scorpio:",), "body:moon", 0.12),

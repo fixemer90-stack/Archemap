@@ -104,6 +104,8 @@ def validate_dimension_breakdown[DimensionT: StrEnum](
         return None
 
     evidence_items = cast(list[dict[str, Any]], [*supports, *counters])
+    if _has_duplicate_leaf_ownership(evidence_items):
+        return None
     if not _evidence_matches_rules(
         evidence_items,
         dimension=dimension,
@@ -190,6 +192,34 @@ def validate_dimension_breakdown[DimensionT: StrEnum](
     score = round(50.0 + unrounded_raw_delta * 50.0, 2) if enough else 50.0
     confidence = round(max(0.0, min(1.0, coverage * agreement * source_quality)), 4) if enough else 0.0
     return PersistedBreakdownSemantics(evidence_refs=evidence_refs, score=score, confidence=confidence)
+
+
+def _has_duplicate_leaf_ownership(evidence_items: Sequence[dict[str, Any]]) -> bool:
+    fact_owners: set[tuple[str, str, str, float]] = set()
+    evidence_owners: set[tuple[str, str, float, str]] = set()
+    lineage_owners: set[tuple[str, str, float, str]] = set()
+    for item in evidence_items:
+        owner = (
+            cast(str, item["factor_key"]),
+            cast(str, item["correlation_family"]),
+            cast(str, item["fact_id"]),
+            float(item["weight"]),
+        )
+        if owner in fact_owners:
+            return True
+        fact_owners.add(owner)
+        reference_owner = (owner[0], owner[1], owner[3])
+        for ref in cast(list[str], item["evidence_refs"]):
+            identity = (*reference_owner, ref)
+            if identity in evidence_owners:
+                return True
+            evidence_owners.add(identity)
+        for ref in cast(list[str], item["lineage_refs"]):
+            identity = (*reference_owner, ref)
+            if identity in lineage_owners:
+                return True
+            lineage_owners.add(identity)
+    return False
 
 
 def _valid_evidence(value: object, *, direction: str) -> bool:

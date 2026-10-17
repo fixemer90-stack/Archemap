@@ -368,6 +368,29 @@ async def test_child_needs_persist_reload_concurrency_versions_and_corruption(
             == 20
         )
 
+    async with sessions() as session:
+        split_leaf = cast(dict[str, Any], copy.deepcopy(original))
+        first_support = split_leaf["supports"][0]
+        duplicate_support = copy.deepcopy(first_support)
+        first_support["factor_value"] /= 2
+        first_support["contribution"] /= 2
+        duplicate_support["factor_value"] /= 2
+        duplicate_support["contribution"] /= 2
+        split_leaf["supports"].append(duplicate_support)
+        await session.execute(
+            text("UPDATE child_need_scores SET breakdown = CAST(:payload AS jsonb) WHERE id = :row_id"),
+            {"payload": json.dumps(split_leaf), "row_id": row_id},
+        )
+        await session.commit()
+
+    async with sessions() as session:
+        with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+            await ChildRepository(session).load_child_need_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation_id,
+            )
+
     invalid_numeric_generation_id = uuid4()
     async with sessions() as session:
         invalid_chart = ChildChartVersion(

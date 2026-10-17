@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S04 завершены; S05–S16 не начаты
+🟡 В работе — S01–S05 завершены; S06–S16 не начаты
 
 ## Цель
 
@@ -150,7 +150,7 @@ Child Report помогает взрослому понять:
 | S02 | [Storage, lineage и multiple children](./S02-storage-lineage-multiple-children.md)            | ✅ Завершено |
 | S03 | [Child chart и birth-time confidence](./S03-child-chart-birth-time-confidence.md)             | ✅ Завершено |
 | S04 | [Age Resolver и age snapshots](./S04-age-resolver-age-snapshots.md)                           | ✅ Завершено |
-| S05 | [Parent Style engine](./S05-parent-style-engine.md)                                           | ⬜ Не начато |
+| S05 | [Parent Style engine](./S05-parent-style-engine.md)                                           | ✅ Завершено |
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ⬜ Не начато |
 | S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ⬜ Не начато |
 | S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ⬜ Не начато |
@@ -207,4 +207,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence; S03 закрыта versioned exact/approximate/unknown chart policy, stability/exclusion evidence, Moon-boundary golden fixtures и immutable correction lineage; S04 закрыта calendar-correct under-18 resolver, server-owned local effective date, immutable input-hashed snapshots, fresh committed state после shared correction/snapshot lock, side-effect-free cross-date age-update replay, fail-safe conditional downgrade, owner-scoped age update lineage и shared pinned web/PDF read contract. Остальные deterministic engines, API routes, frontend, runtime и rollout остаются в S05–S16.
+Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence; S03 закрыта versioned exact/approximate/unknown chart policy, stability/exclusion evidence, Moon-boundary golden fixtures и immutable correction lineage; S04 закрыта calendar-correct under-18 resolver, server-owned local effective date, immutable input-hashed snapshots, fresh committed state после shared correction/snapshot lock, side-effect-free cross-date age-update replay, fail-safe conditional downgrade, owner-scoped age update lineage и shared pinned web/PDF read contract; S05 закрыта deterministic восьмимерным Parent Style engine с persisted v2 facts/evidence only, multi-family neutral fail-closed, correlation caps, confidence decomposition, exact-time gate, stable versioned PostgreSQL rows и owner/lineage/concurrency integration evidence. Остальные deterministic engines, API routes, frontend, runtime и rollout остаются в S06–S16.

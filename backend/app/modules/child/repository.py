@@ -15,12 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.models import BaseModel
-from app.modules.astrotype_v2.models import NatalChart
+from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
 from app.modules.child import models
 from app.modules.child.age_resolver import AGE_RULES_VERSION, ChildAgeResolution, resolve_child_age
 from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
+from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
+from app.modules.child.scoring.types import ParentStyleDimension
 from app.modules.profiles.models import PersonProfile
+from app.reference_data.child.parent_style_v1 import PARENT_STYLE_SCORING_VERSION
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
 
@@ -80,6 +83,21 @@ class ChildAgeGuidanceCreateResult:
 class ChildAgeSnapshotCreateResult:
     snapshot: models.ChildAgeSnapshot
     created: bool
+
+
+@dataclass(frozen=True)
+class ParentStyleProfilePersistenceResult:
+    scores: tuple[models.ChildParentStyleScore, ...]
+    created: bool
+
+
+@dataclass(frozen=True)
+class PersistedParentStyleProfile:
+    child_profile_id: UUID
+    generation_id: UUID
+    parent_chart_id: UUID
+    scoring_version: str
+    scores: tuple[models.ChildParentStyleScore, ...]
 
 
 @dataclass(frozen=True)
@@ -351,6 +369,166 @@ class ChildRepository:
         if target != expected:
             raise ChildIdempotencyTargetMismatchError("Generation idempotency key was reused for another target")
         return ChildGenerationCreateResult(generation=existing, created=False)
+
+    async def create_parent_style_profile(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> ParentStyleProfilePersistenceResult:
+        """Score and persist one immutable Parent Style profile from v2 fact rows."""
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-parent-style:{generation_id}:{PARENT_STYLE_SCORING_VERSION}"},
+        )
+        child = await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Parent Style generation does not belong to the child")
+        await self._require_parent_chart_owner(
+            parent_chart_id=generation.parent_chart_id,
+            parent_profile_id=child.parent_profile_id,
+            owner_user_id=owner_user_id,
+        )
+
+        existing = await self._load_parent_style_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        if existing:
+            self._validate_parent_style_profile(existing, parent_chart_id=generation.parent_chart_id)
+            return ParentStyleProfilePersistenceResult(scores=existing, created=False)
+
+        chart = await self.session.get(NatalChart, generation.parent_chart_id)
+        if chart is None:
+            raise ChildLineageMismatchError("Parent Style parent chart is missing")
+        facts = tuple(
+            (
+                await self.session.execute(
+                    select(NatalFact)
+                    .where(NatalFact.chart_id == chart.id)
+                    .order_by(NatalFact.fact_type, NatalFact.fact_key, NatalFact.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        fact_ids = [fact.id for fact in facts]
+        evidence: tuple[NatalFactEvidence, ...] = ()
+        if fact_ids:
+            evidence = tuple(
+                (
+                    await self.session.execute(
+                        select(NatalFactEvidence)
+                        .where(
+                            NatalFactEvidence.chart_id == chart.id,
+                            NatalFactEvidence.fact_id.in_(fact_ids),
+                        )
+                        .order_by(
+                            NatalFactEvidence.fact_id,
+                            NatalFactEvidence.source_table,
+                            NatalFactEvidence.source_key,
+                            NatalFactEvidence.id,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        rows = build_parent_style_rows(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=chart.id,
+            results=score_parent_style(chart=chart, facts=facts, evidence=evidence),
+        )
+        self._validate_parent_style_profile(rows, parent_chart_id=chart.id)
+        self.session.add_all(list(rows))
+        await self.session.flush()
+        return ParentStyleProfilePersistenceResult(scores=rows, created=True)
+
+    async def load_parent_style_profile(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> PersistedParentStyleProfile:
+        """Reload the exact persisted profile without recalculating mutable inputs."""
+
+        await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Parent Style generation does not belong to the child")
+        scores = await self._load_parent_style_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        self._validate_parent_style_profile(scores, parent_chart_id=generation.parent_chart_id)
+        return PersistedParentStyleProfile(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=generation.parent_chart_id,
+            scoring_version=PARENT_STYLE_SCORING_VERSION,
+            scores=scores,
+        )
+
+    async def _load_parent_style_scores(
+        self,
+        *,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> tuple[models.ChildParentStyleScore, ...]:
+        persisted = tuple(
+            (
+                await self.session.execute(
+                    select(models.ChildParentStyleScore).where(
+                        models.ChildParentStyleScore.child_profile_id == child_profile_id,
+                        models.ChildParentStyleScore.generation_id == generation_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_dimension = {row.dimension: row for row in persisted}
+        return tuple(
+            by_dimension[dimension.value] for dimension in ParentStyleDimension if dimension.value in by_dimension
+        )
+
+    @staticmethod
+    def _validate_parent_style_profile(
+        rows: Sequence[models.ChildParentStyleScore],
+        *,
+        parent_chart_id: UUID,
+    ) -> None:
+        expected_dimensions = tuple(dimension.value for dimension in ParentStyleDimension)
+        actual_dimensions = tuple(row.dimension for row in rows)
+        if actual_dimensions != expected_dimensions:
+            raise ChildLineageMismatchError("Parent Style profile is incomplete or not canonically ordered")
+        if any(row.parent_chart_id != parent_chart_id for row in rows):
+            raise ChildLineageMismatchError("Parent Style profile references another parent chart")
+        if any(row.scoring_version != PARENT_STYLE_SCORING_VERSION for row in rows):
+            raise ChildLineageMismatchError("Parent Style profile uses another scoring version")
 
     async def create_chart_version_idempotently(
         self,

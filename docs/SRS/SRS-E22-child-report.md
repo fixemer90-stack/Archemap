@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S04 завершены, S05–S16 не начаты
+Статус: целевой контракт готов; S01–S05 завершены, S06–S16 не начаты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 
@@ -135,6 +135,8 @@ MVP dimensions:
 - consistency.
 
 Каждый score имеет диапазон `0..100`, confidence `0..1`, evidence, counter-evidence, scoring version и chart lineage. Engine переиспользует persisted v2 facts, но не mutable prose Self report.
+
+Реализация S05: `parent-style-mvp-1` возвращает ровно восемь dimensions в каноническом порядке и хранит явную семантику концов шкалы и нейтральной точки. Score смещается от `50` только при evidence минимум из двух независимых signal families; иначе результат fail-closed остаётся `50` с confidence `0`. Correlation-family cap предотвращает раздувание повторяющимися сигналами, а confidence отдельно складывается из coverage, agreement и source quality. Houses/angles исключаются без явного persisted proof точного пользовательского времени. Pure builder создаёт стабильные IDs и полный JSONB breakdown; owner-scoped repository проверяет child/generation/parent-chart lineage, атомарно сохраняет все восемь строк и возвращает тот же persisted profile при последовательном или concurrent replay без пересчёта mutable inputs.
 
 ## 8. FR-E22.5 — Child Needs Profile
 

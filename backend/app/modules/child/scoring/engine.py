@@ -242,11 +242,11 @@ def _canonical_lineage_ref(row: NatalFactEvidence) -> str | None:
     source_table = row.source_table.strip()
     if not source_table:
         return None
-    if row.source_id is not None:
-        return f"{source_table}:id:{row.source_id}"
     source_key = row.source_key.strip() if isinstance(row.source_key, str) else ""
     if source_key:
         return f"{source_table}:key:{source_key}"
+    if row.source_id is not None:
+        return f"{source_table}:id:{row.source_id}"
     return None
 
 

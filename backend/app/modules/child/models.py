@@ -133,7 +133,12 @@ class ChildAgeSnapshot(BaseModel):
 class ChildParentStyleScore(BaseModel):
     __tablename__ = "child_parent_style_scores"
     __table_args__ = (
-        UniqueConstraint("generation_id", "dimension", name="uq_child_parent_style_generation_dimension"),
+        UniqueConstraint(
+            "generation_id",
+            "dimension",
+            "scoring_version",
+            name="uq_child_parent_style_generation_dimension_version",
+        ),
         ForeignKeyConstraint(
             ["child_profile_id", "generation_id", "parent_chart_id"],
             [

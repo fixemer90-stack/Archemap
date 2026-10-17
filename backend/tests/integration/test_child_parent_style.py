@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import copy
+import json
+import os
+import subprocess
+import sys
 from datetime import UTC, date, datetime
+from pathlib import Path
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -11,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
 from app.modules.child.models import ChildChartVersion, ChildGeneration, ChildParentStyleScore, ChildProfile
 from app.modules.child.repository import ChildLineageMismatchError, ChildRepository
+from app.modules.child.scoring.types import ParentStyleDimension
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
 
@@ -217,8 +225,75 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
         )
     await db_session.commit()
 
-    assert isinstance(db_session.bind, AsyncEngine)
-    session_factory = async_sessionmaker(db_session.bind, class_=AsyncSession, expire_on_commit=False)
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    def run_alembic(*args: str, succeeds: bool = True) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["DATABASE_URL"] = engine.url.render_as_string(hide_password=False)
+        result = subprocess.run(  # noqa: S603 - fixed interpreter/module and test-owned Alembic arguments
+            [sys.executable, "-m", "alembic", *args],
+            cwd=Path(__file__).resolve().parents[2],
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert (result.returncode == 0) is succeeds, result.stdout + result.stderr
+        return result
+
+    async def constraint_exists(name: str) -> bool:
+        async with engine.connect() as connection:
+            return bool(
+                await connection.scalar(
+                    text(
+                        "SELECT EXISTS ("
+                        "SELECT 1 FROM pg_constraint "
+                        "WHERE conrelid = 'child_parent_style_scores'::regclass AND conname = :name)"
+                    ),
+                    {"name": name},
+                )
+            )
+
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "ALTER TABLE child_parent_style_scores "
+                "DROP CONSTRAINT uq_child_parent_style_generation_dimension_version"
+            )
+        )
+        await connection.execute(
+            text(
+                "ALTER TABLE child_parent_style_scores "
+                "ADD CONSTRAINT uq_child_parent_style_generation_dimension UNIQUE (generation_id, dimension)"
+            )
+        )
+    run_alembic("stamp", "b3c4d5e6f7a8")
+    run_alembic("upgrade", "head")
+    assert await constraint_exists("uq_child_parent_style_generation_dimension_version")
+    run_alembic("downgrade", "b3c4d5e6f7a8")
+    assert await constraint_exists("uq_child_parent_style_generation_dimension")
+    run_alembic("upgrade", "head")
+    assert await constraint_exists("uq_child_parent_style_generation_dimension_version")
+
+    db_session.add_all(
+        [
+            ChildParentStyleScore(
+                child_profile_id=child.id,
+                parent_chart_id=parent_chart.id,
+                generation_id=generation_id,
+                dimension=dimension.value,
+                score=50.0,
+                confidence=0.0,
+                scoring_version="parent-style-legacy-1",
+                breakdown={},
+                evidence_refs=[],
+            )
+            for dimension in ParentStyleDimension
+        ]
+    )
+    await db_session.commit()
 
     async with session_factory() as rejected_session:
         with pytest.raises(ChildLineageMismatchError, match="does not match the owner"):
@@ -267,11 +342,25 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
             .all()
         )
 
-    assert persisted_count == 8
+    assert persisted_count == 16
     assert tuple(row.id for row in loaded.scores) == first[1]
     assert _score_snapshot(loaded.scores) == first[2] == second[2]
     assert loaded.parent_chart_id == parent_chart.id
     assert loaded.generation_id == generation_id
+
+    failed_downgrade = run_alembic("downgrade", "b3c4d5e6f7a8", succeeds=False)
+    assert "Refusing lossy downgrade" in failed_downgrade.stderr
+    async with engine.connect() as connection:
+        assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "c4d5e6f7a8b9"
+        assert (
+            await connection.scalar(
+                text("SELECT count(*) FROM child_parent_style_scores WHERE generation_id = :generation_id"),
+                {"generation_id": generation_id},
+            )
+            == 16
+        )
+    assert await constraint_exists("uq_child_parent_style_generation_dimension_version")
+    assert not await constraint_exists("uq_child_parent_style_generation_dimension")
 
     invalid_generation_id = uuid4()
     async with session_factory() as invalid_session:
@@ -314,10 +403,13 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
         await invalid_session.commit()
 
     async with session_factory() as corrupt_session:
-        first_score_id, original_dimension = (
+        first_score_id, original_dimension, original_breakdown = (
             await corrupt_session.execute(
-                select(ChildParentStyleScore.id, ChildParentStyleScore.dimension)
-                .where(ChildParentStyleScore.generation_id == generation_id)
+                select(ChildParentStyleScore.id, ChildParentStyleScore.dimension, ChildParentStyleScore.breakdown)
+                .where(
+                    ChildParentStyleScore.generation_id == generation_id,
+                    ChildParentStyleScore.scoring_version == "parent-style-mvp-1",
+                )
                 .order_by(ChildParentStyleScore.dimension)
                 .limit(1)
             )
@@ -336,24 +428,43 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
                 generation_id=generation_id,
             )
 
-    async with session_factory() as corrupt_session:
-        await corrupt_session.execute(
-            text("UPDATE child_parent_style_scores SET dimension = :dimension WHERE id = :row_id"),
-            {"dimension": original_dimension, "row_id": first_score_id},
-        )
-        await corrupt_session.execute(
-            text("UPDATE child_parent_style_scores SET breakdown = '[]'::jsonb WHERE id = :row_id"),
-            {"row_id": first_score_id},
-        )
-        await corrupt_session.commit()
-
-    async with session_factory() as corrupt_load_session:
-        with pytest.raises(ChildLineageMismatchError, match="breakdown"):
-            await ChildRepository(corrupt_load_session).load_parent_style_profile(
-                owner_user_id=owner.id,
-                child_profile_id=child.id,
-                generation_id=generation_id,
+    supports_string = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    supports_string["supports"] = "not-a-list"
+    bad_confidence_component = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    bad_confidence_component["confidence_components"]["coverage"] = 1.1
+    malformed_nested_refs = cast(dict[str, Any], copy.deepcopy(original_breakdown))
+    malformed_nested_refs["independent_lineage_refs"] = ["source:one", 7]
+    corruptions = (supports_string, bad_confidence_component, malformed_nested_refs)
+    for malformed in corruptions:
+        async with session_factory() as corrupt_session:
+            await corrupt_session.execute(
+                text(
+                    "UPDATE child_parent_style_scores "
+                    "SET dimension = :dimension, breakdown = CAST(:breakdown AS jsonb) WHERE id = :row_id"
+                ),
+                {
+                    "dimension": original_dimension,
+                    "breakdown": json.dumps(malformed),
+                    "row_id": first_score_id,
+                },
             )
+            await corrupt_session.commit()
+
+        async with session_factory() as corrupt_load_session:
+            with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+                await ChildRepository(corrupt_load_session).load_parent_style_profile(
+                    owner_user_id=owner.id,
+                    child_profile_id=child.id,
+                    generation_id=generation_id,
+                )
+
+    async with session_factory() as cleanup_session:
+        await cleanup_session.execute(
+            text("UPDATE child_parent_style_scores SET breakdown = CAST(:breakdown AS jsonb) WHERE id = :row_id"),
+            {"breakdown": json.dumps(original_breakdown), "row_id": first_score_id},
+        )
+        await cleanup_session.execute(text("DROP TABLE alembic_version"))
+        await cleanup_session.commit()
 
     async with session_factory() as foreign_session:
         with pytest.raises(ChildLineageMismatchError, match="not owned"):

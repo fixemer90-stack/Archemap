@@ -24,9 +24,145 @@ from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, ch
 from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
 from app.modules.child.scoring.types import ParentStyleDimension
 from app.modules.profiles.models import PersonProfile
-from app.reference_data.child.parent_style_v1 import PARENT_STYLE_SCORING_VERSION
+from app.reference_data.child.parent_style_v1 import PARENT_STYLE_REFERENCE_VERSION, PARENT_STYLE_SCORING_VERSION
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
+
+_PARENT_STYLE_EVIDENCE_KEYS = {
+    "factor_key",
+    "fact_id",
+    "evidence_refs",
+    "lineage_refs",
+    "correlation_family",
+    "factor_value",
+    "source_quality",
+    "weight",
+    "contribution",
+    "direction",
+}
+
+
+def _is_finite_number(value: object, *, minimum: float, maximum: float) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and isfinite(float(value))
+        and minimum <= float(value) <= maximum
+    )
+
+
+def _is_nonnegative_int(value: object) -> bool:
+    return not isinstance(value, bool) and isinstance(value, int) and value >= 0
+
+
+def _is_string_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _valid_parent_style_evidence(value: object, *, direction: str) -> bool:
+    if not isinstance(value, dict) or not value.keys() >= _PARENT_STYLE_EVIDENCE_KEYS:
+        return False
+    if not all(isinstance(value[key], str) and value[key] for key in ("factor_key", "fact_id", "correlation_family")):
+        return False
+    try:
+        UUID(value["fact_id"])
+    except (TypeError, ValueError, AttributeError):
+        return False
+    if not _is_string_list(value["evidence_refs"]) or not _is_string_list(value["lineage_refs"]):
+        return False
+    if not _is_finite_number(value["factor_value"], minimum=0.0, maximum=1.0):
+        return False
+    if not _is_finite_number(value["source_quality"], minimum=0.0, maximum=1.0):
+        return False
+    if not _is_finite_number(value["weight"], minimum=-1.0, maximum=1.0):
+        return False
+    if not _is_finite_number(value["contribution"], minimum=-1.0, maximum=1.0):
+        return False
+    contribution = float(value["contribution"])
+    return value["direction"] == direction and (contribution >= 0 if direction == "supports" else contribution < 0)
+
+
+def _valid_parent_style_breakdown(breakdown: object) -> bool:
+    if not isinstance(breakdown, dict):
+        return False
+    required_keys = {
+        "reference_version",
+        "scale",
+        "supports",
+        "counters",
+        "missing_families",
+        "confidence_components",
+        "raw_delta",
+        "independent_family_count",
+        "required_family_count",
+        "independent_lineage_count",
+        "independent_lineage_refs",
+        "required_lineage_count",
+        "expected_family_count",
+        "correlation_family_totals",
+        "excluded_time_sensitive_refs",
+    }
+    if not required_keys <= breakdown.keys() or breakdown["reference_version"] != PARENT_STYLE_REFERENCE_VERSION:
+        return False
+    scale = breakdown["scale"]
+    if not isinstance(scale, dict) or not all(
+        isinstance(scale.get(key), str) and scale[key] for key in ("zero", "hundred", "neutral")
+    ):
+        return False
+    supports = breakdown["supports"]
+    counters = breakdown["counters"]
+    if not isinstance(supports, list) or not all(
+        _valid_parent_style_evidence(item, direction="supports") for item in supports
+    ):
+        return False
+    if not isinstance(counters, list) or not all(
+        _valid_parent_style_evidence(item, direction="counters") for item in counters
+    ):
+        return False
+    for key in (
+        "missing_families",
+        "independent_lineage_refs",
+        "excluded_time_sensitive_refs",
+    ):
+        if not _is_string_list(breakdown[key]):
+            return False
+    confidence_components = breakdown["confidence_components"]
+    if not isinstance(confidence_components, dict) or not all(
+        _is_finite_number(confidence_components.get(key), minimum=0.0, maximum=1.0)
+        for key in ("coverage", "agreement", "source_quality")
+    ):
+        return False
+    if not _is_finite_number(breakdown["raw_delta"], minimum=-1.0, maximum=1.0):
+        return False
+    count_keys = (
+        "independent_family_count",
+        "required_family_count",
+        "independent_lineage_count",
+        "required_lineage_count",
+        "expected_family_count",
+    )
+    if not all(_is_nonnegative_int(breakdown[key]) for key in count_keys):
+        return False
+    totals = breakdown["correlation_family_totals"]
+    if not isinstance(totals, list):
+        return False
+    families: list[str] = []
+    for total in totals:
+        if (
+            not isinstance(total, dict)
+            or not isinstance(total.get("family"), str)
+            or not total["family"]
+            or not _is_finite_number(total.get("contribution"), minimum=-1.0, maximum=1.0)
+        ):
+            return False
+        families.append(total["family"])
+    independent_family_count = cast(int, breakdown["independent_family_count"])
+    independent_lineage_count = cast(int, breakdown["independent_lineage_count"])
+    independent_lineage_refs = cast(list[str], breakdown["independent_lineage_refs"])
+    return (
+        len(families) == len(set(families)) == independent_family_count
+        and len(independent_lineage_refs) == independent_lineage_count
+    )
 
 
 def _server_now(now: datetime | None) -> datetime:
@@ -534,23 +670,6 @@ class ChildRepository:
             raise ChildLineageMismatchError("Parent Style profile references another parent chart")
         if any(row.scoring_version != PARENT_STYLE_SCORING_VERSION for row in rows):
             raise ChildLineageMismatchError("Parent Style profile uses another scoring version")
-        required_breakdown_keys = {
-            "reference_version",
-            "scale",
-            "supports",
-            "counters",
-            "missing_families",
-            "confidence_components",
-            "raw_delta",
-            "independent_family_count",
-            "required_family_count",
-            "independent_lineage_count",
-            "independent_lineage_refs",
-            "required_lineage_count",
-            "expected_family_count",
-            "correlation_family_totals",
-            "excluded_time_sensitive_refs",
-        }
         for row in rows:
             if not isfinite(row.score) or not 0.0 <= row.score <= 100.0:
                 raise ChildLineageMismatchError("Parent Style profile contains an invalid score")
@@ -558,25 +677,8 @@ class ChildRepository:
                 raise ChildLineageMismatchError("Parent Style profile contains invalid confidence")
             if not isinstance(row.evidence_refs, list) or any(not isinstance(ref, str) for ref in row.evidence_refs):
                 raise ChildLineageMismatchError("Parent Style profile contains malformed evidence refs")
-            breakdown = row.breakdown
-            if not isinstance(breakdown, dict) or not required_breakdown_keys <= breakdown.keys():
+            if not _valid_parent_style_breakdown(row.breakdown):
                 raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown")
-            if not isinstance(breakdown["scale"], dict) or not all(
-                isinstance(breakdown["scale"].get(key), str) for key in ("zero", "hundred", "neutral")
-            ):
-                raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown scale")
-            for key in (
-                "supports",
-                "counters",
-                "missing_families",
-                "independent_lineage_refs",
-                "correlation_family_totals",
-                "excluded_time_sensitive_refs",
-            ):
-                if not isinstance(breakdown[key], list):
-                    raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown")
-            if not isinstance(breakdown["confidence_components"], dict):
-                raise ChildLineageMismatchError("Parent Style profile contains malformed breakdown confidence")
 
     async def create_chart_version_idempotently(
         self,

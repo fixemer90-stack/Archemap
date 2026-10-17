@@ -32,6 +32,7 @@ EXPECTED_TABLES = {
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION = ROOT / "alembic" / "versions" / "a2b3c4d5e6f7_add_child_report_foundation.py"
 AGE_SNAPSHOT_MIGRATION = ROOT / "alembic" / "versions" / "b3c4d5e6f7a8_include_age_snapshot_input_hash.py"
+PARENT_STYLE_VERSION_MIGRATION = ROOT / "alembic" / "versions" / "c4d5e6f7a8b9_version_child_parent_style_profiles.py"
 
 
 def test_child_domain_schemas_enforce_birth_time_score_and_lineage_contracts() -> None:
@@ -161,6 +162,27 @@ def test_orm_declares_isolated_child_entities_and_complete_lineage() -> None:
         for constraint in age_snapshot.constraints
         if isinstance(constraint, UniqueConstraint)
     )
+
+    parent_style = cast(Table, models.ChildParentStyleScore.__table__)
+    assert any(
+        {column.name for column in constraint.columns} == {"generation_id", "dimension", "scoring_version"}
+        for constraint in parent_style.constraints
+        if isinstance(constraint, UniqueConstraint)
+    )
+
+
+def test_parent_style_version_migration_is_additive_and_has_fail_safe_downgrade() -> None:
+    source = PARENT_STYLE_VERSION_MIGRATION.read_text(encoding="utf-8")
+    upgrade = source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
+    downgrade = source.split("def downgrade()", 1)[1]
+
+    assert "uq_child_parent_style_generation_dimension_version" in source
+    assert "uq_child_parent_style_generation_dimension" in source
+    assert '"scoring_version"' in upgrade
+    assert "drop_table" not in upgrade
+    assert "GROUP BY generation_id, dimension" in downgrade
+    assert "Refusing lossy downgrade" in downgrade
+    assert downgrade.index("duplicate_groups") < downgrade.index("op.drop_constraint")
 
 
 def test_child_foundation_migration_is_additive_reversible_and_legacy_safe() -> None:

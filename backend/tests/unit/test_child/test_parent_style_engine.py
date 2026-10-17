@@ -207,6 +207,33 @@ def test_two_facts_from_the_same_persisted_source_lineage_stay_neutral() -> None
     assert result.confidence == 0
 
 
+def test_source_key_is_canonical_when_mixed_id_and_key_rows_share_the_same_source() -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    moon = _fact("placement:moon:cancer:no_house")
+    venus = _fact("placement:venus:libra:no_house")
+    shared_source_key = "shared-placement-row"
+    result = next(
+        item
+        for item in score_parent_style(
+            chart=_chart(),
+            facts=[moon, venus],
+            evidence=[
+                _evidence_row(moon, source_id=uuid.uuid4(), source_key=shared_source_key),
+                _evidence_row(venus, source_id=None, source_key=shared_source_key),
+            ],
+        )
+        if item.dimension is ParentStyleDimension.EMOTIONAL_RESPONSIVENESS
+    )
+
+    assert result.breakdown.independent_family_count == 1
+    assert result.breakdown.independent_lineage_count == 1
+    assert result.breakdown.independent_lineage_refs == (f"astrotype_v2_placement:key:{shared_source_key}",)
+    assert result.score == 50
+    assert result.confidence == 0
+
+
 def test_duplicate_and_unidentified_evidence_do_not_inflate_quality_or_independence() -> None:
     from app.modules.child.parent_style import score_parent_style
     from app.modules.child.scoring.types import ParentStyleDimension

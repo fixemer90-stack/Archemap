@@ -286,7 +286,7 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
                 dimension=dimension.value,
                 score=50.0,
                 confidence=0.0,
-                scoring_version="parent-style-legacy-1",
+                scoring_version="parent-style-mvp-1",
                 breakdown={},
                 evidence_refs=[],
             )
@@ -408,7 +408,7 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
                 select(ChildParentStyleScore.id, ChildParentStyleScore.dimension, ChildParentStyleScore.breakdown)
                 .where(
                     ChildParentStyleScore.generation_id == generation_id,
-                    ChildParentStyleScore.scoring_version == "parent-style-mvp-1",
+                    ChildParentStyleScore.scoring_version == "parent-style-mvp-2",
                 )
                 .order_by(ChildParentStyleScore.dimension)
                 .limit(1)

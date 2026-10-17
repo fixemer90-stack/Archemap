@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import random
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -144,7 +145,7 @@ def test_parent_style_returns_exactly_eight_canonical_dimensions_with_golden_out
     assert len(first) == 8
     assert all(0 <= result.score <= 100 for result in first)
     assert all(0 <= result.confidence <= 1 for result in first)
-    assert all(result.scoring_version == "parent-style-mvp-1" for result in first)
+    assert all(result.scoring_version == "parent-style-mvp-2" for result in first)
 
     expected = json.loads(FIXTURE.read_text(encoding="utf-8"))
     actual = {
@@ -644,7 +645,7 @@ def test_parent_style_results_build_complete_orm_rows_with_stable_breakdown() ->
     assert all(row.child_profile_id == child_profile_id for row in rows)
     assert all(row.generation_id == generation_id for row in rows)
     assert all(row.parent_chart_id == _chart().id for row in rows)
-    assert all(row.scoring_version == "parent-style-mvp-1" for row in rows)
+    assert all(row.scoring_version == "parent-style-mvp-2" for row in rows)
     assert all(row.evidence_refs == sorted(set(row.evidence_refs)) for row in rows)
     assert all(
         {
@@ -816,3 +817,64 @@ def test_parent_style_profile_validator_rejects_incoherent_score_and_confidence(
     low_evidence_rows[0].confidence = 0.1
     with pytest.raises(ChildLineageMismatchError, match="confidence"):
         _validate_parent_style_rows(low_evidence_rows)
+
+
+def test_generated_parent_style_profiles_round_trip_across_randomized_numeric_inputs() -> None:
+    from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
+
+    randomizer = random.Random(20260305)  # noqa: S311 - deterministic property-style test inputs
+    fact_specs = [
+        *(f"placement:moon:cancer:no_house:rounding-{index}" for index in range(17)),
+        "placement:venus:libra:no_house",
+        "placement:mercury:gemini:no_house",
+        "placement:mars:aries:no_house",
+        "placement:saturn:capricorn:no_house",
+        "placement:uranus:aquarius:no_house",
+        "placement:sun:leo:no_house",
+        "balance:element:water",
+        "balance:element:air",
+        "balance:element:earth",
+        "balance:modality:fixed",
+        "balance:modality:mutable",
+    ]
+
+    for iteration in range(100):
+        facts = [
+            _fact(
+                key,
+                fact_type="balance" if key.startswith("balance:") else "placement",
+                weight=randomizer.random(),
+                confidence=randomizer.random(),
+            )
+            for key in fact_specs
+        ]
+        evidence = [
+            _evidence_row(
+                fact,
+                source_id=uuid.uuid5(uuid.NAMESPACE_DNS, f"round-trip:{iteration}:{fact.fact_key}"),
+                source_key=f"round-trip:{iteration}:{fact.fact_key}",
+                source_quality=randomizer.random(),
+                row_key=f"round-trip-{iteration}",
+            )
+            for fact in facts
+        ]
+        rows = list(
+            build_parent_style_rows(
+                child_profile_id=uuid.uuid5(uuid.NAMESPACE_URL, f"child:{iteration}"),
+                generation_id=uuid.uuid5(uuid.NAMESPACE_URL, f"generation:{iteration}"),
+                parent_chart_id=_chart().id,
+                results=score_parent_style(chart=_chart(), facts=facts, evidence=evidence),
+            )
+        )
+
+        _validate_parent_style_rows(rows)
+
+
+def test_parent_style_profile_validator_rejects_contribution_corruption_beyond_tolerance() -> None:
+    from app.modules.child.repository import ChildLineageMismatchError
+
+    rows = copy.deepcopy(_parent_style_rows_for_validation())
+    rows[0].breakdown["supports"][0]["contribution"] += 0.00001
+
+    with pytest.raises(ChildLineageMismatchError, match="breakdown"):
+        _validate_parent_style_rows(rows)

@@ -125,7 +125,7 @@ def _evidence_payload(item: object) -> dict[str, object]:
         "factor_value": item.factor_value,
         "source_quality": item.source_quality,
         "weight": item.weight,
-        "contribution": round(item.contribution, 6),
+        "contribution": item.contribution,
         "direction": item.direction.value,
     }
 

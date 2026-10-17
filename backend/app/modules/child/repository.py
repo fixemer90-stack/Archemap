@@ -234,7 +234,8 @@ def _validated_parent_style_breakdown(
         return None
 
     contribution_sum = sum(float(item["contribution"]) for item in evidence_items)
-    raw_delta = round(max(-1.0, min(1.0, contribution_sum)), 6)
+    unrounded_raw_delta = max(-1.0, min(1.0, contribution_sum))
+    raw_delta = round(unrounded_raw_delta, 6)
     if not _numbers_close(breakdown["raw_delta"], raw_delta, tolerance=1e-6):
         return None
 
@@ -265,7 +266,7 @@ def _validated_parent_style_breakdown(
         independent_family_count >= PARENT_STYLE_POLICY.minimum_independent_families
         and independent_lineage_count >= PARENT_STYLE_POLICY.minimum_independent_families
     )
-    score = round(50.0 + raw_delta * 50.0, 2) if enough_evidence else 50.0
+    score = round(50.0 + unrounded_raw_delta * 50.0, 2) if enough_evidence else 50.0
     confidence = round(max(0.0, min(1.0, coverage * agreement * source_quality)), 4) if enough_evidence else 0.0
     return _ParentStyleBreakdownSemantics(
         evidence_refs=evidence_refs,

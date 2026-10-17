@@ -9,7 +9,7 @@ from app.modules.child.scoring.types import (
     ScoringRule,
 )
 
-PARENT_STYLE_SCORING_VERSION = "parent-style-mvp-1"
+PARENT_STYLE_SCORING_VERSION = "parent-style-mvp-2"
 PARENT_STYLE_REFERENCE_VERSION = "parent-style-reference-1"
 PARENT_STYLE_POLICY = ScoringPolicy(
     correlation_family_cap=0.30,

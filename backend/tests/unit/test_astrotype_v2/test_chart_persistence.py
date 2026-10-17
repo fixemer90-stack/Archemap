@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.chart_engine.types import Aspect, ChartData, HousePosition, PlanetPosition
-from app.modules.astrotype_v2.chart_adapter import build_natal_chart_rows
+from app.modules.astrotype_v2.chart_adapter import NatalTimingProvenance, build_natal_chart_rows
 from app.modules.astrotype_v2.models import NatalChart
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -62,6 +62,7 @@ async def test_persist_natal_chart_rows_adds_chart_then_all_child_collections_an
         profile_id=uuid.uuid4(),
         engine_version="v2-test",
         input_hash="abc123",
+        timing_provenance=NatalTimingProvenance(birth_time_accuracy="unknown", birth_time=None),
     )
 
     persisted = await persist_natal_chart_rows(repository, rows)
@@ -102,6 +103,7 @@ def test_v2_chart_rows_persist_ascendant_and_mc_points() -> None:
         profile_id=uuid.uuid4(),
         engine_version="v2-test",
         input_hash="abc123",
+        timing_provenance=NatalTimingProvenance(birth_time_accuracy="unknown", birth_time=None),
     )
 
     by_body = {row.body: row for row in rows.planet_positions}

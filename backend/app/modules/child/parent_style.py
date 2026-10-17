@@ -96,6 +96,8 @@ def build_parent_style_rows(
                     "raw_delta": result.breakdown.raw_delta,
                     "independent_family_count": result.breakdown.independent_family_count,
                     "required_family_count": result.breakdown.required_family_count,
+                    "independent_lineage_count": result.breakdown.independent_lineage_count,
+                    "required_lineage_count": result.breakdown.required_lineage_count,
                     "expected_family_count": result.breakdown.expected_family_count,
                     "correlation_family_totals": [
                         {"family": family, "contribution": contribution}
@@ -128,10 +130,14 @@ def _evidence_payload(item: object) -> dict[str, object]:
 
 def _has_exact_timing_proof(chart: NatalChart) -> bool:
     payload = chart.calculation_payload if isinstance(chart.calculation_payload, dict) else {}
-    proof = payload.get("birth_time_proof")
-    if not isinstance(proof, dict):
-        proof = payload.get("technical_reference")
-    if not isinstance(proof, dict):
+    proofs = [
+        block for key in ("birth_time_proof", "technical_reference") if isinstance((block := payload.get(key)), dict)
+    ]
+    if not proofs:
         return False
-    confidence = proof.get("birth_time_confidence") or proof.get("confidence")
-    return proof.get("user_supplied_time") is True and proof.get("synthetic_noon") is False and confidence == "exact"
+    return all(
+        proof.get("user_supplied_time") is True
+        and proof.get("synthetic_noon") is False
+        and (proof.get("birth_time_confidence") or proof.get("confidence")) == "exact"
+        for proof in proofs
+    )

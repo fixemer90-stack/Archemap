@@ -67,6 +67,8 @@ class DimensionBreakdown:
     raw_delta: float
     independent_family_count: int
     required_family_count: int
+    independent_lineage_count: int
+    required_lineage_count: int
     expected_family_count: int
     coverage: float
     agreement: float

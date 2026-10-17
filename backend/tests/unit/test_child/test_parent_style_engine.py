@@ -132,9 +132,53 @@ def test_low_evidence_stays_neutral_with_zero_confidence_and_missing_families() 
     assert result.confidence == 0
     assert [item.correlation_family for item in result.supports] == ["body:moon"]
     assert result.counters == ()
-    assert result.missing_families == ("balance:water", "body:saturn", "body:venus", "pair:moon-venus")
+    assert result.missing_families == ("balance:water", "body:venus", "pair:moon-saturn", "pair:moon-venus")
     assert result.breakdown.independent_family_count == 1
     assert result.breakdown.required_family_count == 2
+
+
+def test_one_saturn_house_fact_cannot_satisfy_two_family_threshold() -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    facts = [_fact("placement:saturn:capricorn:house_10")]
+    result = next(
+        item
+        for item in score_parent_style(
+            chart=_chart(exact_timing_proof=True),
+            facts=facts,
+            evidence=_evidence(facts),
+        )
+        if item.dimension is ParentStyleDimension.STRUCTURE
+    )
+
+    assert result.breakdown.independent_family_count == 2
+    assert result.breakdown.independent_lineage_count == 1
+    assert result.breakdown.required_lineage_count == 2
+    assert result.score == 50
+    assert result.confidence == 0
+
+
+def test_opposite_sign_charts_do_not_produce_identical_parent_style_profiles() -> None:
+    from app.modules.child.parent_style import score_parent_style
+
+    receptive_facts = [
+        _fact("placement:moon:cancer:no_house"),
+        _fact("placement:venus:libra:no_house"),
+        _fact("placement:mercury:gemini:no_house"),
+        _fact("placement:saturn:capricorn:no_house"),
+    ]
+    contrasting_facts = [
+        _fact("placement:moon:capricorn:no_house"),
+        _fact("placement:venus:aries:no_house"),
+        _fact("placement:mercury:pisces:no_house"),
+        _fact("placement:saturn:cancer:no_house"),
+    ]
+
+    receptive = score_parent_style(chart=_chart(), facts=receptive_facts, evidence=_evidence(receptive_facts))
+    contrasting = score_parent_style(chart=_chart(), facts=contrasting_facts, evidence=_evidence(contrasting_facts))
+
+    assert tuple(result.score for result in receptive) != tuple(result.score for result in contrasting)
 
 
 def test_confidence_is_separate_from_score_and_explains_quality_coverage_and_agreement() -> None:
@@ -220,6 +264,95 @@ def test_time_sensitive_facts_fail_closed_without_explicit_exact_timing_proof() 
     assert "house:10" not in exact.missing_families
     assert exact.score > historical.score
     assert exact.breakdown.excluded_time_sensitive_refs == ()
+
+
+def test_canonical_adapter_timing_payload_accepts_exact_and_excludes_inexact_timing() -> None:
+    from app.modules.astrotype_v2.chart_adapter import NatalTimingProvenance
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    exact_chart = _chart()
+    exact_chart.calculation_payload = {
+        "ayanamsa": 0.0,
+        "birth_time_proof": NatalTimingProvenance(
+            birth_time_accuracy="exact",
+            birth_time=datetime(1990, 1, 1, 9, tzinfo=UTC).time(),
+        ).as_payload(),
+    }
+    unknown_chart = _chart()
+    unknown_chart.calculation_payload = {
+        "ayanamsa": 0.0,
+        "birth_time_proof": NatalTimingProvenance(
+            birth_time_accuracy="unknown",
+            birth_time=None,
+        ).as_payload(),
+    }
+    approximate_chart = _chart()
+    approximate_chart.calculation_payload = {
+        "ayanamsa": 0.0,
+        "birth_time_proof": NatalTimingProvenance(
+            birth_time_accuracy="approximate",
+            birth_time=datetime(1990, 1, 1, 9, tzinfo=UTC).time(),
+        ).as_payload(),
+    }
+    facts = [
+        _fact("placement:saturn:capricorn:house_10"),
+        _fact("balance:element:earth", fact_type="balance"),
+    ]
+    evidence = _evidence(facts)
+
+    exact = next(
+        item
+        for item in score_parent_style(chart=exact_chart, facts=facts, evidence=evidence)
+        if item.dimension is ParentStyleDimension.STRUCTURE
+    )
+    unknown = next(
+        item
+        for item in score_parent_style(chart=unknown_chart, facts=facts, evidence=evidence)
+        if item.dimension is ParentStyleDimension.STRUCTURE
+    )
+    approximate = next(
+        item
+        for item in score_parent_style(chart=approximate_chart, facts=facts, evidence=evidence)
+        if item.dimension is ParentStyleDimension.STRUCTURE
+    )
+
+    assert "house:10" not in exact.missing_families
+    assert exact.breakdown.excluded_time_sensitive_refs == ()
+    for excluded in (unknown, approximate):
+        assert "house:10" in excluded.missing_families
+        assert excluded.breakdown.excluded_time_sensitive_refs
+
+
+def test_timing_proof_fails_closed_when_any_recognized_block_contradicts_exact_time() -> None:
+    from app.modules.child.parent_style import score_parent_style
+    from app.modules.child.scoring.types import ParentStyleDimension
+
+    chart = _chart(exact_timing_proof=True)
+    chart.calculation_payload = {
+        "birth_time_proof": {
+            "synthetic_noon": False,
+            "user_supplied_time": True,
+            "birth_time_confidence": "exact",
+        },
+        "technical_reference": {
+            "synthetic_noon": True,
+            "user_supplied_time": False,
+            "birth_time_confidence": "unknown",
+        },
+    }
+    facts = [
+        _fact("placement:saturn:capricorn:house_10"),
+        _fact("balance:element:earth", fact_type="balance"),
+    ]
+    result = next(
+        item
+        for item in score_parent_style(chart=chart, facts=facts, evidence=_evidence(facts))
+        if item.dimension is ParentStyleDimension.STRUCTURE
+    )
+
+    assert "house:10" in result.missing_families
+    assert result.breakdown.excluded_time_sensitive_refs
 
 
 def test_unpersisted_or_cross_chart_evidence_is_rejected_and_unlinked_facts_are_ignored() -> None:
@@ -311,6 +444,8 @@ def test_parent_style_results_build_complete_orm_rows_with_stable_breakdown() ->
             "confidence_components",
             "correlation_family_totals",
             "excluded_time_sensitive_refs",
+            "independent_lineage_count",
+            "required_lineage_count",
         }
         <= set(row.breakdown)
         for row in rows

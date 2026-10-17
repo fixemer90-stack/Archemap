@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections import Counter
 from dataclasses import dataclass
+from datetime import time
 from typing import Any
 
 from app.chart_engine.features import SIGN_ELEMENTS, SIGN_MODALITIES
@@ -13,6 +14,23 @@ from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.reference_data import canonicalize_body_pair
 
 _BALANCE_BODIES_EXCLUDED = frozenset({"Ascendant", "MC"})
+
+
+@dataclass(frozen=True, slots=True)
+class NatalTimingProvenance:
+    """Source timing metadata used to build a canonical fail-closed proof."""
+
+    birth_time_accuracy: str
+    birth_time: time | None
+
+    def as_payload(self) -> dict[str, object]:
+        has_user_time = self.birth_time is not None and self.birth_time_accuracy in {"exact", "approximate"}
+        return {
+            "contract_version": "natal-timing-proof-v1",
+            "birth_time_confidence": self.birth_time_accuracy,
+            "user_supplied_time": has_user_time,
+            "synthetic_noon": not has_user_time,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +52,7 @@ def build_natal_chart_rows(
     profile_id: uuid.UUID,
     engine_version: str,
     input_hash: str,
+    timing_provenance: NatalTimingProvenance,
 ) -> NatalChartRows:
     """Convert chart-engine data into v2 natal-only ORM rows without persisting them."""
     chart_id = uuid.uuid4()
@@ -48,7 +67,10 @@ def build_natal_chart_rows(
         latitude=chart_data.latitude,
         longitude=chart_data.longitude,
         house_system=chart_data.house_system,
-        calculation_payload={"ayanamsa": chart_data.ayanamsa},
+        calculation_payload={
+            "ayanamsa": chart_data.ayanamsa,
+            "birth_time_proof": timing_provenance.as_payload(),
+        },
     )
 
     planet_positions = [

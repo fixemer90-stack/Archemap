@@ -120,8 +120,12 @@ def _score_dimension(
 
     capped = _cap_correlated(matched, policy.correlation_family_cap)
     active_families = {item.correlation_family for item in capped if item.contribution != 0}
+    active_fact_lineages = {item.fact_id for item in capped if item.contribution != 0}
     raw_delta = _clamp(sum(item.contribution for item in capped), -1.0, 1.0)
-    enough_evidence = len(active_families) >= policy.minimum_independent_families
+    enough_evidence = (
+        len(active_families) >= policy.minimum_independent_families
+        and len(active_fact_lineages) >= policy.minimum_independent_families
+    )
     score = round(50.0 + raw_delta * 50.0, 2) if enough_evidence else 50.0
     coverage, agreement, source_quality, confidence = _confidence(capped, len(active_families), policy)
     if not enough_evidence:
@@ -151,6 +155,8 @@ def _score_dimension(
             raw_delta=round(raw_delta, 6),
             independent_family_count=len(active_families),
             required_family_count=policy.minimum_independent_families,
+            independent_lineage_count=len(active_fact_lineages),
+            required_lineage_count=policy.minimum_independent_families,
             expected_family_count=policy.expected_independent_families,
             coverage=coverage,
             agreement=agreement,

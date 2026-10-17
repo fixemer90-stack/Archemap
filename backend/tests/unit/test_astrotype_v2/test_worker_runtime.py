@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime, time
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -182,3 +184,89 @@ async def test_worker_generation_status_transition_persists_report_and_diagnosti
         "failed_sections": ["perception_and_mind"],
     }
     assert repository.flushes == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("birth_time_accuracy", "profile_birth_time", "expected_proof"),
+    [
+        (
+            "exact",
+            time(8, 45),
+            {
+                "contract_version": "natal-timing-proof-v1",
+                "birth_time_confidence": "exact",
+                "user_supplied_time": True,
+                "synthetic_noon": False,
+            },
+        ),
+        (
+            "unknown",
+            time(12, 0),
+            {
+                "contract_version": "natal-timing-proof-v1",
+                "birth_time_confidence": "unknown",
+                "user_supplied_time": False,
+                "synthetic_noon": True,
+            },
+        ),
+        (
+            "approximate",
+            time(8, 45),
+            {
+                "contract_version": "natal-timing-proof-v1",
+                "birth_time_confidence": "approximate",
+                "user_supplied_time": True,
+                "synthetic_noon": False,
+            },
+        ),
+    ],
+)
+async def test_worker_persists_canonical_timing_proof_from_profile_accuracy(
+    monkeypatch: pytest.MonkeyPatch,
+    birth_time_accuracy: str,
+    profile_birth_time: time,
+    expected_proof: dict[str, object],
+) -> None:
+    from app.chart_engine.types import ChartData
+    from workers.tasks import astrotype_v2
+
+    class _ChartRepository:
+        async def get_chart_by_profile_engine_input(self, **_: object) -> None:
+            return None
+
+    profile = SimpleNamespace(
+        id=uuid.uuid4(),
+        birth_date=date(1990, 1, 1),
+        birth_time=profile_birth_time,
+        birth_time_accuracy=birth_time_accuracy,
+        birth_place="Moscow",
+        latitude=55.7558,
+        longitude=37.6173,
+        timezone="Europe/Moscow",
+    )
+    chart_data = ChartData(
+        birth_datetime=datetime(1990, 1, 1, 5, 45, tzinfo=UTC),
+        latitude=profile.latitude,
+        longitude=profile.longitude,
+        timezone=profile.timezone,
+        planets=[],
+        houses=[],
+        aspects=[],
+        house_system="P",
+        ayanamsa=0.0,
+    )
+    monkeypatch.setattr(astrotype_v2, "build_chart", lambda **_: chart_data)
+
+    async def fake_persist(*_: object, **__: object) -> None:
+        return None
+
+    monkeypatch.setattr(astrotype_v2, "persist_natal_chart_rows", fake_persist)
+
+    chart = await astrotype_v2._get_or_create_chart(
+        repository=cast(Any, _ChartRepository()),
+        profile=cast(Any, profile),
+        user_id=uuid.uuid4(),
+    )
+
+    assert chart.calculation_payload["birth_time_proof"] == expected_proof

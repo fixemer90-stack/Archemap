@@ -21,7 +21,7 @@ from app.config import settings
 from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.astrotype_v2 import models
-from app.modules.astrotype_v2.chart_adapter import build_natal_chart_rows
+from app.modules.astrotype_v2.chart_adapter import NatalTimingProvenance, build_natal_chart_rows
 from app.modules.astrotype_v2.chart_persistence import persist_natal_chart_rows
 from app.modules.astrotype_v2.fact_extractor import (
     build_aspect_fact_rows,
@@ -679,6 +679,10 @@ async def _get_or_create_chart(
         profile_id=profile.id,
         engine_version=_ENGINE_VERSION,
         input_hash=input_hash,
+        timing_provenance=NatalTimingProvenance(
+            birth_time_accuracy=profile.birth_time_accuracy,
+            birth_time=profile.birth_time,
+        ),
     )
     await persist_natal_chart_rows(repository, rows)
     return rows.chart

@@ -57,14 +57,13 @@
     ]
   },
   "emotional_responsiveness": {
-    "confidence": 0.8473,
-    "counters": [
-      "placement:saturn:capricorn:house_10"
-    ],
+    "confidence": 0.75,
+    "counters": [],
     "missing_families": [
+      "pair:moon-saturn",
       "pair:moon-venus"
     ],
-    "score": 68.2,
+    "score": 72.2,
     "supports": [
       "placement:moon:cancer:house_4",
       "balance:element:water",
@@ -87,19 +86,19 @@
     ]
   },
   "protection": {
-    "confidence": 0.8408,
+    "confidence": 0.8299,
     "counters": [
       "placement:uranus:aquarius:house_11"
     ],
     "missing_families": [
       "house:4"
     ],
-    "score": 71.4,
+    "score": 69.4,
     "supports": [
       "placement:moon:cancer:house_4",
       "balance:element:water",
-      "placement:mars:aries:house_1",
-      "placement:saturn:capricorn:house_10"
+      "placement:saturn:capricorn:house_10",
+      "placement:mars:aries:house_1"
     ]
   },
   "structure": {

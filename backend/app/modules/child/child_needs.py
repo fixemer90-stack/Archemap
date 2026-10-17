@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections import Counter
 from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 from math import isfinite
 from typing import Any, cast
 from uuid import UUID
@@ -12,6 +13,8 @@ from uuid import UUID
 from app.modules.child.birth_time_policy import (
     APPROXIMATE_SAMPLE_OFFSETS_MINUTES,
     APPROXIMATE_WINDOW_MINUTES,
+    canonical_excluded_fact_families,
+    resolve_birth_time_policy,
 )
 from app.modules.child.models import ChildChartVersion, ChildNeedScore
 from app.modules.child.scoring.engine import score_dimensions
@@ -149,9 +152,13 @@ def _facts_from_pinned_chart(
     payload = chart.calculation_payload
     if not isinstance(payload, dict) or not _valid_confidence_provenance(chart, payload):
         return (), (), False
-    positions = payload.get("planet_positions")
-    aspects = payload.get("aspects")
-    if not isinstance(positions, list) or not isinstance(aspects, list):
+    raw_positions = payload.get("planet_positions")
+    raw_aspects = payload.get("aspects")
+    if not isinstance(raw_positions, list) or not isinstance(raw_aspects, list):
+        return (), (), False
+    positions = _deduplicate_positions(raw_positions)
+    aspects = _deduplicate_aspects(raw_aspects)
+    if positions is None or aspects is None:
         return (), (), False
 
     stable_facts = _stable_fact_map(chart, payload)
@@ -162,18 +169,32 @@ def _facts_from_pinned_chart(
     facts: list[ScoringFact] = []
     evidence: list[ScoringEvidence] = []
     signs: list[str] = []
+    placement_sources: list[tuple[str, float]] = []
 
-    for raw in sorted(positions, key=lambda item: str(item.get("body", "")) if isinstance(item, dict) else ""):
-        if not isinstance(raw, dict):
-            return (), (), False
+    for raw in positions:
         body = raw.get("body")
         sign = raw.get("sign")
         if not isinstance(body, str) or not body or not isinstance(sign, str) or sign.lower() not in _ELEMENTS:
             return (), (), False
+        if chart.birth_time_confidence == "unknown" and body.strip().casefold() == "moon":
+            continue
         stability_key = f"planet_sign:{body}"
         quality = (
-            1.0 if exact else _stable_quality(stable_facts, stability_key, expected_sample_count=expected_sample_count)
+            1.0
+            if exact
+            else _stable_quality(
+                stable_facts,
+                stability_key,
+                expected_sample_count=expected_sample_count,
+                expected_value=sign,
+            )
         )
+        if (
+            chart.birth_time_confidence == "approximate"
+            and body.strip().casefold() == "moon"
+            and "stable_moon_sign" not in chart.allowed_fact_families
+        ):
+            quality = None
         if quality is None:
             continue
         house = raw.get("house_number") if exact else None
@@ -191,21 +212,31 @@ def _facts_from_pinned_chart(
         facts.append(fact)
         evidence.append(row)
         signs.append(sign.lower())
+        placement_sources.append((f"planet_positions:{body}", quality))
 
-    for raw in sorted(aspects, key=_aspect_sort_key):
-        if not isinstance(raw, dict):
-            return (), (), False
+    for raw in aspects:
         body_a = raw.get("body_a")
         body_b = raw.get("body_b")
         code = raw.get("aspect_code")
         if not all(isinstance(value, str) and value for value in (body_a, body_b, code)):
             return (), (), False
+        if chart.birth_time_confidence == "unknown" and any(
+            cast(str, value).strip().casefold() == "moon" for value in (body_a, body_b)
+        ):
+            continue
         first, second = sorted((cast(str, body_a).lower(), cast(str, body_b).lower()))
         stability_key = (
             f"aspect:{min(cast(str, body_a), cast(str, body_b))}:{max(cast(str, body_a), cast(str, body_b))}:{code}"
         )
         quality = (
-            1.0 if exact else _stable_quality(stable_facts, stability_key, expected_sample_count=expected_sample_count)
+            1.0
+            if exact
+            else _stable_quality(
+                stable_facts,
+                stability_key,
+                expected_sample_count=expected_sample_count,
+                expected_value=True,
+            )
         )
         if quality is None:
             continue
@@ -226,16 +257,25 @@ def _facts_from_pinned_chart(
         for family, mapping in (("element", _ELEMENTS), ("modality", _MODALITIES)):
             counts = Counter(mapping[sign] for sign in signs)
             for name, count in sorted(counts.items()):
-                fact, row = _fact_with_evidence(
+                fact_key = f"balance:{family}:{name}"
+                fact = _scoring_fact(
                     chart=chart,
-                    fact_key=f"balance:{family}:{name}",
+                    fact_key=fact_key,
                     fact_type="balance",
                     weight=count / denominator,
-                    confidence=1.0,
-                    source_key=f"derived_balance:{family}:{name}",
+                    confidence=min(quality for _, quality in placement_sources),
                 )
                 facts.append(fact)
-                evidence.append(row)
+                evidence.extend(
+                    _scoring_evidence(
+                        chart=chart,
+                        fact=fact,
+                        fact_key=fact_key,
+                        source_key=source_key,
+                        source_quality=quality,
+                    )
+                    for source_key, quality in placement_sources
+                )
 
     return tuple(facts), tuple(evidence), exact
 
@@ -250,39 +290,55 @@ def _valid_confidence_provenance(chart: ChildChartVersion, payload: dict[str, An
     if stability.get("policy_version") != _POLICY_VERSION:
         return False
     confidence = chart.birth_time_confidence
+    try:
+        policy = resolve_birth_time_policy(confidence)
+    except ValueError:
+        return False
     allowed = chart.allowed_fact_families
-    if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
+    if not isinstance(allowed, list) or allowed != list(policy.allowed_fact_families):
+        return False
+    if chart.uncertainty_reason != policy.uncertainty_reason:
+        return False
+    facts = stability.get("facts")
+    if confidence == "exact":
+        unstable_facts: tuple[str, ...] = ()
+    elif not isinstance(facts, dict) or not all(
+        isinstance(key, str) and isinstance(value, dict) and isinstance(value.get("stable"), bool)
+        for key, value in facts.items()
+    ):
+        return False
+    else:
+        unstable_facts = tuple(sorted(key for key, value in facts.items() if value["stable"] is False))
+    expected_exclusions = list(canonical_excluded_fact_families(policy, unstable_facts))
+    persisted_exclusions = chart.excluded_fact_families
+    payload_exclusions = payload.get("exclusions")
+    if not _is_unique_string_list(persisted_exclusions) or persisted_exclusions != expected_exclusions:
+        return False
+    if not _is_unique_string_list(payload_exclusions) or payload_exclusions != expected_exclusions:
+        return False
+    birth_datetime = _parse_aware_datetime(technical.get("birth_datetime_utc"))
+    if birth_datetime is None:
         return False
     marker = technical.get("birth_time_confidence")
     if marker is not None and marker != confidence:
         return False
     if confidence == "exact":
-        required = {"planet_positions", "planet_signs", "aspects", "houses", "angles", "house_assignments"}
         return (
-            required <= set(allowed)
-            and technical.get("user_supplied_time") is True
+            technical.get("user_supplied_time") is True
             and technical.get("synthetic_noon") is False
             and stability.get("exact_input") is True
         )
-    facts = stability.get("facts")
-    if not isinstance(facts, dict):
-        return False
     if confidence == "approximate":
         return (
-            {"stable_planet_signs", "stable_aspects"} <= set(allowed)
-            and technical.get("user_supplied_time") is True
+            technical.get("user_supplied_time") is True
             and technical.get("synthetic_noon") is False
-            and not ({"houses", "angles", "house_assignments", "house_overlays"} & set(allowed))
-            and _valid_approximate_stability_proof(stability)
+            and _valid_approximate_stability_proof(stability, birth_datetime)
         )
     if confidence == "unknown":
         return (
-            {"stable_planet_signs", "stable_aspects"} <= set(allowed)
-            and "stable_moon_sign" not in allowed
-            and technical.get("user_supplied_time") is False
+            technical.get("user_supplied_time") is False
             and technical.get("synthetic_noon") is True
-            and not ({"houses", "angles", "house_assignments", "house_overlays"} & set(allowed))
-            and _valid_unknown_stability_proof(stability)
+            and _valid_unknown_stability_proof(stability, birth_datetime)
         )
     return False
 
@@ -296,30 +352,34 @@ def _stable_fact_map(chart: ChildChartVersion, payload: dict[str, Any]) -> dict[
     return cast(dict[str, Any], stability["facts"])
 
 
-def _valid_approximate_stability_proof(stability: dict[str, Any]) -> bool:
-    sample_datetimes = stability.get("sample_datetimes_utc")
+def _valid_approximate_stability_proof(stability: dict[str, Any], center: datetime) -> bool:
+    sample_datetimes = _parse_sample_datetimes(stability.get("sample_datetimes_utc"))
+    expected = [center + timedelta(minutes=offset) for offset in APPROXIMATE_SAMPLE_OFFSETS_MINUTES]
     return (
         stability.get("window_minutes") == APPROXIMATE_WINDOW_MINUTES
         and stability.get("sample_offsets_minutes") == list(APPROXIMATE_SAMPLE_OFFSETS_MINUTES)
-        and isinstance(sample_datetimes, list)
-        and len(sample_datetimes) == len(APPROXIMATE_SAMPLE_OFFSETS_MINUTES)
-        and all(isinstance(value, str) and value for value in sample_datetimes)
-        and len(set(sample_datetimes)) == len(sample_datetimes)
+        and sample_datetimes == expected
     )
 
 
-def _valid_unknown_stability_proof(stability: dict[str, Any]) -> bool:
-    sample_datetimes = stability.get("sample_datetimes_utc")
+def _valid_unknown_stability_proof(stability: dict[str, Any], technical_reference: datetime) -> bool:
+    sample_datetimes = _parse_sample_datetimes(stability.get("sample_datetimes_utc"))
     return (
         stability.get("window") == "local_birth_date"
-        and isinstance(sample_datetimes, list)
+        and sample_datetimes is not None
         and len(sample_datetimes) == 3
-        and all(isinstance(value, str) and value for value in sample_datetimes)
-        and len(set(sample_datetimes)) == len(sample_datetimes)
+        and sample_datetimes[0] < sample_datetimes[1] < sample_datetimes[2]
+        and sample_datetimes[1] == technical_reference
     )
 
 
-def _stable_quality(facts: dict[str, Any], key: str, *, expected_sample_count: int) -> float | None:
+def _stable_quality(
+    facts: dict[str, Any],
+    key: str,
+    *,
+    expected_sample_count: int,
+    expected_value: object,
+) -> float | None:
     value = facts.get(key)
     if not isinstance(value, dict) or value.get("stable") is not True:
         return None
@@ -331,7 +391,7 @@ def _stable_quality(facts: dict[str, Any], key: str, *, expected_sample_count: i
         or sample_count != expected_sample_count
         or not isinstance(observed_values, list)
         or len(observed_values) != sample_count
-        or len({repr(item) for item in observed_values}) != 1
+        or any(item != expected_value for item in observed_values)
     ):
         return None
     quality = value.get("confidence")
@@ -345,6 +405,82 @@ def _stable_quality(facts: dict[str, Any], key: str, *, expected_sample_count: i
     return numeric
 
 
+def _is_unique_string_list(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and all(isinstance(item, str) and item for item in value)
+        and len(value) == len(set(value))
+    )
+
+
+def _parse_aware_datetime(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed.astimezone(UTC)
+
+
+def _parse_sample_datetimes(value: object) -> list[datetime] | None:
+    if not isinstance(value, list):
+        return None
+    parsed = [_parse_aware_datetime(item) for item in value]
+    if any(item is None for item in parsed):
+        return None
+    return [cast(datetime, item) for item in parsed]
+
+
+def _deduplicate_positions(values: list[object]) -> list[dict[str, Any]] | None:
+    unique: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    for value in values:
+        if not isinstance(value, dict):
+            return None
+        body = value.get("body")
+        if not isinstance(body, str) or not body.strip():
+            return None
+        canonical_body = body.strip().casefold()
+        normalized = dict(value)
+        normalized["body"] = canonical_body
+        sign = normalized.get("sign")
+        if isinstance(sign, str):
+            normalized["sign"] = sign.strip().casefold()
+        existing = unique.get(canonical_body)
+        if existing is not None:
+            if existing[1] != normalized:
+                return None
+            continue
+        unique[canonical_body] = (value, normalized)
+    return [unique[key][0] for key in sorted(unique)]
+
+
+def _deduplicate_aspects(values: list[object]) -> list[dict[str, Any]] | None:
+    unique: dict[tuple[str, str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
+    for value in values:
+        if not isinstance(value, dict):
+            return None
+        body_a = value.get("body_a")
+        body_b = value.get("body_b")
+        code = value.get("aspect_code")
+        if not all(isinstance(item, str) and item.strip() for item in (body_a, body_b, code)):
+            return None
+        first, second = sorted((cast(str, body_a).strip().casefold(), cast(str, body_b).strip().casefold()))
+        canonical_code = cast(str, code).strip().casefold()
+        key = (first, second, canonical_code)
+        normalized = dict(value)
+        normalized.update({"body_a": first, "body_b": second, "aspect_code": canonical_code})
+        existing = unique.get(key)
+        if existing is not None:
+            if existing[1] != normalized:
+                return None
+            continue
+        unique[key] = (value, normalized)
+    return [unique[key][0] for key in sorted(unique)]
+
+
 def _fact_with_evidence(
     *,
     chart: ChildChartVersion,
@@ -354,26 +490,54 @@ def _fact_with_evidence(
     confidence: float,
     source_key: str,
 ) -> tuple[ScoringFact, ScoringEvidence]:
-    fact_id = uuid.uuid5(_CHILD_FACT_NAMESPACE, f"{chart.id}:{fact_key}")
-    evidence_id = uuid.uuid5(_CHILD_EVIDENCE_NAMESPACE, f"{chart.id}:{source_key}:{fact_key}")
+    fact = _scoring_fact(
+        chart=chart,
+        fact_key=fact_key,
+        fact_type=fact_type,
+        weight=weight,
+        confidence=confidence,
+    )
     return (
-        ScoringFact(fact_id, fact_key, fact_type, weight, confidence),
-        ScoringEvidence(
-            evidence_id,
-            fact_id,
-            chart.id,
-            "child_chart_versions",
-            chart.id,
-            source_key,
-            confidence,
+        fact,
+        _scoring_evidence(
+            chart=chart,
+            fact=fact,
+            fact_key=fact_key,
+            source_key=source_key,
+            source_quality=confidence,
         ),
     )
 
 
-def _aspect_sort_key(value: object) -> tuple[str, str, str]:
-    if not isinstance(value, dict):
-        return ("", "", "")
-    return (str(value.get("body_a", "")), str(value.get("body_b", "")), str(value.get("aspect_code", "")))
+def _scoring_fact(
+    *, chart: ChildChartVersion, fact_key: str, fact_type: str, weight: float, confidence: float
+) -> ScoringFact:
+    return ScoringFact(
+        uuid.uuid5(_CHILD_FACT_NAMESPACE, f"{chart.id}:{fact_key}"),
+        fact_key,
+        fact_type,
+        weight,
+        confidence,
+    )
+
+
+def _scoring_evidence(
+    *,
+    chart: ChildChartVersion,
+    fact: ScoringFact,
+    fact_key: str,
+    source_key: str,
+    source_quality: float,
+) -> ScoringEvidence:
+    return ScoringEvidence(
+        uuid.uuid5(_CHILD_EVIDENCE_NAMESPACE, f"{chart.id}:{source_key}:{fact_key}"),
+        fact.id,
+        chart.id,
+        "child_chart_versions",
+        chart.id,
+        source_key,
+        source_quality,
+    )
 
 
 def _evidence_payload(item: DimensionEvidence) -> dict[str, object]:

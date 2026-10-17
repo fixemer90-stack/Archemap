@@ -16,6 +16,7 @@ from app.modules.child.birth_time_policy import (
     APPROXIMATE_SAMPLE_OFFSETS_MINUTES,
     APPROXIMATE_WINDOW_MINUTES,
     BIRTH_TIME_POLICY_VERSION,
+    canonical_excluded_fact_families,
     resolve_birth_time_policy,
 )
 
@@ -143,10 +144,10 @@ def _build_unknown_chart(
             evidence = {**evidence, "stable": False, "reason": "aspect_involves_unstable_body"}
         facts[f"aspect:{':'.join(aspect_key)}"] = evidence
 
-    exclusions = [
-        *policy.excluded_fact_families,
-        *(fact_key for fact_key, evidence in facts.items() if not evidence["stable"]),
-    ]
+    exclusions = canonical_excluded_fact_families(
+        policy,
+        [fact_key for fact_key, evidence in facts.items() if not evidence["stable"]],
+    )
     payload: dict[str, Any] = {
         "contract_version": BIRTH_TIME_POLICY_VERSION,
         "technical_reference": {
@@ -187,14 +188,14 @@ def _build_unknown_chart(
             "sample_datetimes_utc": [value.isoformat() for value in sample_datetimes],
             "facts": facts,
         },
-        "exclusions": sorted(set(exclusions)),
+        "exclusions": list(exclusions),
     }
     return ChildChartBuild(
         engine_version=engine_version,
         input_hash=_input_hash(chart_input, engine_version=engine_version),
         birth_time_confidence="unknown",
         allowed_fact_families=policy.allowed_fact_families,
-        excluded_fact_families=tuple(sorted(set(exclusions))),
+        excluded_fact_families=exclusions,
         uncertainty_reason=policy.uncertainty_reason,
         calculation_payload=payload,
         source_input=chart_input,
@@ -342,10 +343,10 @@ def _build_approximate_chart(
             evidence = {**evidence, "stable": False, "reason": "aspect_involves_unstable_body"}
         facts[f"aspect:{':'.join(aspect_key)}"] = evidence
 
-    exclusions = [
-        *policy.excluded_fact_families,
-        *(fact_key for fact_key, evidence in facts.items() if not evidence["stable"]),
-    ]
+    exclusions = canonical_excluded_fact_families(
+        policy,
+        [fact_key for fact_key, evidence in facts.items() if not evidence["stable"]],
+    )
     payload: dict[str, Any] = {
         "contract_version": BIRTH_TIME_POLICY_VERSION,
         "technical_reference": {
@@ -387,14 +388,14 @@ def _build_approximate_chart(
             "sample_datetimes_utc": [value.isoformat() for value in sample_datetimes],
             "facts": facts,
         },
-        "exclusions": sorted(set(exclusions)),
+        "exclusions": list(exclusions),
     }
     return ChildChartBuild(
         engine_version=engine_version,
         input_hash=_input_hash(chart_input, engine_version=engine_version),
         birth_time_confidence="approximate",
         allowed_fact_families=policy.allowed_fact_families,
-        excluded_fact_families=tuple(sorted(set(exclusions))),
+        excluded_fact_families=exclusions,
         uncertainty_reason=policy.uncertainty_reason,
         calculation_payload=payload,
         source_input=chart_input,

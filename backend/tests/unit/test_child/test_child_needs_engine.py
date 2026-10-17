@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from app.modules.child.birth_time_policy import resolve_birth_time_policy
 from app.modules.child.child_needs import ChildNeedResult
 from app.modules.child.models import ChildChartVersion, ChildNeedScore
 
@@ -23,20 +24,7 @@ def _chart(
     payload: dict[str, object] | None = None,
 ) -> ChildChartVersion:
     if allowed is None:
-        allowed = {
-            "exact": [
-                "planet_positions",
-                "planet_signs",
-                "moon_sign",
-                "aspects",
-                "houses",
-                "angles",
-                "house_assignments",
-                "house_overlays",
-            ],
-            "approximate": ["stable_planet_signs", "stable_aspects", "stable_moon_sign"],
-            "unknown": ["stable_planet_signs", "stable_aspects"],
-        }[confidence]
+        allowed = list(resolve_birth_time_policy(confidence).allowed_fact_families)
     if payload is None:
         payload = _payload(confidence)
     return ChildChartVersion(
@@ -47,8 +35,8 @@ def _chart(
         input_hash="c" * 64,
         birth_time_confidence=confidence,
         allowed_fact_families=allowed,
-        excluded_fact_families=[] if confidence == "exact" else ["houses", "angles", "house_assignments"],
-        uncertainty_reason=None if confidence == "exact" else "limited timing",
+        excluded_fact_families=list(payload["exclusions"]),
+        uncertainty_reason=resolve_birth_time_policy(confidence).uncertainty_reason,
         calculation_payload=payload,
     )
 
@@ -67,12 +55,21 @@ def _payload(confidence: str = "exact") -> dict[str, object]:
         ("Neptune", "Pisces", 12),
         ("Pluto", "Scorpio", 8),
     ]
+    sign_by_body = {body: sign for body, sign, _ in positions}
     facts = {
         **{f"planet_sign:{body}": {"stable": True, "confidence": 1.0} for body, _, _ in positions},
         "aspect:Moon:Venus:trine": {"stable": True, "confidence": 1.0},
         "aspect:Mercury:Saturn:trine": {"stable": True, "confidence": 1.0},
     }
+    if confidence == "unknown":
+        facts["planet_sign:Moon"] = {"stable": False, "confidence": 1.0, "reason": "unknown_time_moon"}
+        facts["aspect:Moon:Venus:trine"] = {
+            "stable": False,
+            "confidence": 1.0,
+            "reason": "aspect_involves_unstable_body",
+        }
     technical_reference: dict[str, object] = {
+        "birth_datetime_utc": ("2021-05-12T07:00:00+00:00" if confidence != "unknown" else "2021-05-12T09:00:00+00:00"),
         "synthetic_noon": confidence == "unknown",
         "user_supplied_time": confidence != "unknown",
         "birth_time_confidence": confidence,
@@ -92,19 +89,26 @@ def _payload(confidence: str = "exact") -> dict[str, object]:
                 "retrograde": False if exact else None,
             }
             for body, sign, house in positions
+            if confidence != "unknown" or body != "Moon"
         ],
         "houses": (
             [{"house_number": n, "longitude": float(n), "sign": "Aries"} for n in range(1, 13)] if exact else []
         ),
         "aspects": [
-            {
-                "body_a": "Moon",
-                "body_b": "Venus",
-                "aspect_code": "trine",
-                "angle_degrees": 120.0 if exact else None,
-                "orb_degrees": 1.0 if exact else None,
-                "applying": True if exact else None,
-            },
+            *(
+                [
+                    {
+                        "body_a": "Moon",
+                        "body_b": "Venus",
+                        "aspect_code": "trine",
+                        "angle_degrees": 120.0 if exact else None,
+                        "orb_degrees": 1.0 if exact else None,
+                        "applying": True if exact else None,
+                    }
+                ]
+                if confidence != "unknown"
+                else []
+            ),
             {
                 "body_a": "Mercury",
                 "body_b": "Saturn",
@@ -135,7 +139,9 @@ def _payload(confidence: str = "exact") -> dict[str, object]:
                 "facts": {
                     key: {
                         **value,
-                        "observed_values": [key] * 5,
+                        "observed_values": (
+                            [sign_by_body[key.split(":", 1)[1]]] * 5 if key.startswith("planet_sign:") else [True] * 5
+                        ),
                         "sample_count": 5,
                     }
                     for key, value in facts.items()
@@ -153,14 +159,23 @@ def _payload(confidence: str = "exact") -> dict[str, object]:
                 "facts": {
                     key: {
                         **value,
-                        "observed_values": [key] * 3,
+                        "observed_values": (
+                            [sign_by_body[key.split(":", 1)[1]]] * 3 if key.startswith("planet_sign:") else [True] * 3
+                        ),
                         "sample_count": 3,
                     }
                     for key, value in facts.items()
                 },
             }
         ),
-        "exclusions": [] if exact else ["houses", "angles", "house_assignments"],
+        "exclusions": (
+            []
+            if exact
+            else [
+                *resolve_birth_time_policy(confidence).excluded_fact_families,
+                *(["aspect:Moon:Venus:trine", "planet_sign:Moon"] if confidence == "unknown" else []),
+            ]
+        ),
     }
 
 
@@ -256,6 +271,178 @@ def test_approximate_requires_complete_consistent_stability_proof() -> None:
 
     assert all(result.score == 50 and result.confidence == 0 for result in results)
     assert all(not result.supports and not result.counters for result in results)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda chart: chart.allowed_fact_families.append("invented"),
+        lambda chart: chart.allowed_fact_families.reverse(),
+        lambda chart: setattr(chart, "uncertainty_reason", "not the pinned policy"),
+        lambda chart: chart.excluded_fact_families.remove("house_overlays"),
+        lambda chart: chart.calculation_payload["exclusions"].append("invented"),
+        lambda chart: chart.calculation_payload.__setitem__("exclusions", ["houses", "houses"]),
+    ],
+)
+def test_confidence_allowlists_and_exclusions_must_match_canonical_policy_exactly(
+    mutation: Callable[[ChildChartVersion], object],
+) -> None:
+    chart = _chart("approximate")
+    mutation(chart)
+
+    results = _score(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in results)
+    assert all(not result.supports and not result.counters for result in results)
+
+
+def test_exact_chart_rejects_any_house_exclusion_contradiction() -> None:
+    chart = _chart("exact")
+    chart.excluded_fact_families = ["houses"]
+    chart.calculation_payload["exclusions"] = ["houses"]
+
+    assert all(result.score == 50 and result.confidence == 0 for result in _score(chart))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(0, "junk"),
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(
+            0, "2021-05-12T06:00:00"
+        ),
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].reverse(),
+        lambda chart: chart.calculation_payload["technical_reference"].__setitem__(
+            "birth_datetime_utc", "2021-05-12T07:30:00+00:00"
+        ),
+    ],
+)
+def test_approximate_stability_samples_must_be_aware_and_match_center_offsets(
+    mutation: Callable[[ChildChartVersion], object],
+) -> None:
+    chart = _chart("approximate")
+    mutation(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in _score(chart))
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(
+            1, "2021-05-12T08:00:00+00:00"
+        ),
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].reverse(),
+        lambda chart: chart.calculation_payload["stability_evidence"]["sample_datetimes_utc"].__setitem__(
+            2, "2021-05-12T20:59:59"
+        ),
+    ],
+)
+def test_unknown_stability_samples_must_match_ordered_production_shape(
+    mutation: Callable[[ChildChartVersion], object],
+) -> None:
+    chart = _chart("unknown")
+    mutation(chart)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in _score(chart))
+
+
+def test_stability_observations_must_match_persisted_fact_value() -> None:
+    chart = _chart("approximate")
+    chart.calculation_payload["stability_evidence"]["facts"]["planet_sign:Moon"]["observed_values"] = ["Leo"] * 5
+    chart.calculation_payload["stability_evidence"]["facts"]["aspect:Moon:Venus:trine"]["observed_values"] = [
+        "present"
+    ] * 5
+
+    results = _score(chart)
+
+    assert all(
+        not any(
+            item.factor_key.startswith(("placement:moon:", "aspect:moon:venus:"))
+            for item in (*result.supports, *result.counters)
+        )
+        for result in results
+    )
+
+
+def test_unknown_moon_and_moon_aspects_are_rejected_even_with_malicious_stable_proof() -> None:
+    chart = _chart("unknown")
+    chart.calculation_payload["planet_positions"].append({"body": "Moon", "sign": "Cancer", "house_number": None})
+    chart.calculation_payload["aspects"].append({"body_a": "Moon", "body_b": "Venus", "aspect_code": "trine"})
+    moon = chart.calculation_payload["stability_evidence"]["facts"]["planet_sign:Moon"]
+    moon.update({"stable": True, "confidence": 1.0, "observed_values": ["Cancer"] * 3, "sample_count": 3})
+    chart.calculation_payload["stability_evidence"]["facts"]["aspect:Moon:Venus:trine"].update(
+        {"stable": True, "confidence": 1.0, "observed_values": [True] * 3, "sample_count": 3}
+    )
+    chart.excluded_fact_families = list(resolve_birth_time_policy("unknown").excluded_fact_families)
+    chart.calculation_payload["exclusions"] = list(resolve_birth_time_policy("unknown").excluded_fact_families)
+
+    results = _score(chart)
+
+    assert any(result.supports or result.counters for result in results)
+    assert all(
+        not any("moon" in item.factor_key for item in (*result.supports, *result.counters)) for result in results
+    )
+
+
+def test_duplicate_moon_position_and_aspect_do_not_change_scores_or_independence() -> None:
+    chart = _chart()
+    duplicate = copy.deepcopy(chart)
+    duplicate.calculation_payload["planet_positions"].append(
+        copy.deepcopy(duplicate.calculation_payload["planet_positions"][1])
+    )
+    duplicate.calculation_payload["aspects"].append(copy.deepcopy(duplicate.calculation_payload["aspects"][0]))
+
+    assert _score(duplicate) == _score(chart)
+
+
+def test_conflicting_duplicate_position_fails_closed() -> None:
+    chart = _chart()
+    duplicate = copy.deepcopy(chart.calculation_payload["planet_positions"][1])
+    duplicate["sign"] = "Leo"
+    chart.calculation_payload["planet_positions"].append(duplicate)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in _score(chart))
+
+
+def test_conflicting_duplicate_aspect_fails_closed() -> None:
+    chart = _chart()
+    duplicate = copy.deepcopy(chart.calculation_payload["aspects"][0])
+    duplicate["orb_degrees"] = 2.0
+    chart.calculation_payload["aspects"].append(duplicate)
+
+    assert all(result.score == 50 and result.confidence == 0 for result in _score(chart))
+
+
+def test_duplicate_positions_cannot_fabricate_a_balance_fact() -> None:
+    chart = _chart()
+    moon = next(row for row in chart.calculation_payload["planet_positions"] if row["body"] == "Moon")
+    chart.calculation_payload["planet_positions"] = [copy.deepcopy(moon) for _ in range(4)]
+    chart.calculation_payload["aspects"] = []
+
+    results = _score(chart)
+
+    assert all(
+        not any(item.factor_key.startswith("balance:") for item in (*result.supports, *result.counters))
+        for result in results
+    )
+
+
+def test_balance_evidence_uses_only_underlying_planet_position_lineages() -> None:
+    results = _score(_chart())
+    balances = [
+        item
+        for result in results
+        for item in (*result.supports, *result.counters)
+        if item.factor_key.startswith("balance:")
+    ]
+
+    assert balances
+    assert all(len(item.lineage_refs) > 1 for item in balances)
+    assert all(
+        ref.startswith("child_chart_versions:key:planet_positions:") for item in balances for ref in item.lineage_refs
+    )
+    assert all("derived_balance" not in ref for item in balances for ref in item.lineage_refs)
 
 
 def test_house_rules_match_exact_house_token_not_house_number_prefix() -> None:

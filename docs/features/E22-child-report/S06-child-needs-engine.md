@@ -24,17 +24,19 @@ Child Needs описывают условия, в которых взаимод�
 2. Для каждой шкалы сохранены явные значения `0`, `50` и `100`; `50` означает balanced/insufficiently evidenced midpoint, а не label ребёнка.
 3. `child-needs-mvp-1` использует только deterministic facts/evidence, построенные из persisted `ChildChartVersion.calculation_payload`, и `child-needs-reference-1` rules catalog.
 4. Общий scoring engine переведён на generic dimension/fact/evidence contracts и сохраняет поведение/golden Parent Style S05.
-5. Ненейтральный score требует минимум две независимые signal families и две canonical persisted source lineages. Mixed ID/key, duplicate и unidentified evidence дедуплицируются; correlated family contribution ограничен cap.
+5. Ненейтральный score требует минимум две независимые signal families и две canonical persisted source lineages. Mixed ID/key, duplicate и unidentified evidence дедуплицируются; correlated family contribution ограничен cap. Derived balance facts ссылаются только на реальные `planet_positions:*` lineages, а не на synthetic `derived_balance:*` source.
 6. Confidence отдельно вычисляется из coverage, agreement и source quality. Low evidence всегда даёт `score=50`, `confidence=0`.
 7. Rules зависят от конкретных sign/aspect/balance/house values; универсальное наличие тела не является сигналом. Supports, counters, missing families, evidence refs, lineage refs, family totals и ordering детерминированы.
 8. Birth-time policy исполняется fail-closed:
-   - `exact` допускает persisted houses только при согласованном exact/user-supplied/non-synthetic provenance;
-   - `approximate` использует только stable facts, явно присутствующие в pinned `child-birth-time-policy-v3`, без houses/angles и без вывода house из fact key;
-   - `unknown` исключает все time-sensitive facts и Moon, если policy не доказала разрешённую устойчивость;
+   - `allowed_fact_families`, `uncertainty_reason` и canonical exclusions должны точно совпадать с `resolve_birth_time_policy(confidence)`; payload/persisted exclusions обязаны быть одним уникальным ordered списком, включающим все policy exclusions и ровно все unstable fact keys;
+   - `exact` допускает persisted houses только при согласованном exact/user-supplied/non-synthetic provenance и не допускает exclusions;
+   - `approximate` использует только факты, одинаковые во всех пяти declared samples pinned окна; aware UTC samples обязаны точно соответствовать technical center и canonical offsets;
+   - `unknown` всегда исключает Moon и аспекты с Moon независимо от входного `stable=True`; три aware UTC samples обязаны иметь production order, а technical reference совпадать со средним sample;
    - missing/malformed/contradictory provenance создаёт нейтральный профиль без time-sensitive evidence.
-9. Repository под PostgreSQL advisory lock создаёт ровно десять immutable `ChildNeedScore` rows, проверяет owner/generation/chart lineage и возвращает current scoring version без пересчёта.
-10. Nested JSON проходит strict semantic validation: canonical dimensions/order, versions/scales, finite values, unique refs, family/lineage counts, missing families, raw delta, confidence components, score и confidence пересчитываются из leaf evidence.
-11. Unique identity расширена до `(generation_id, dimension, scoring_version)`, поэтому old/current версии сосуществуют. Migration `d5e6f7a8b9c0` отказывает downgrade до DDL, если старый uniqueness contract схлопнул бы valid version history.
+9. Planet positions дедуплицируются по canonical body, aspects — по canonical body pair и code: identical duplicate не меняет score/independence, conflicting duplicate fail-closed. Balance появляется только из уникальных реальных placements.
+10. Repository под PostgreSQL advisory lock создаёт ровно десять immutable `ChildNeedScore` rows, проверяет owner/generation/chart lineage и возвращает current scoring version без пересчёта.
+11. Nested JSON проходит strict semantic validation: canonical dimensions/order, versions/scales, finite values, unique refs, family/lineage counts, missing families, raw delta, confidence components, score и confidence пересчитываются из leaf evidence.
+12. Unique identity расширена до `(generation_id, dimension, scoring_version)`, поэтому old/current версии сосуществуют. Migration `d5e6f7a8b9c0` отказывает downgrade до DDL, если старый uniqueness contract схлопнул бы valid version history.
 
 ## Затронутые файлы
 
@@ -51,23 +53,23 @@ Child Needs описывают условия, в которых взаимод�
 ## Критерии приёмки
 
 - [x] Ровно десять dimensions имеют score/confidence/evidence/scoring/reference/chart lineage.
-- [x] Unknown-time exclusions сохраняются downstream; approximate не использует unstable/house evidence.
+- [x] Unknown-time exclusions сохраняются downstream и всегда удаляют Moon/Moon aspects; approximate использует только matching sampled-stability proof без unstable/house evidence.
 - [x] Низкая evidence coverage даёт neutral score и нулевой confidence.
 - [x] Ненейтральный score требует двух signal families и двух canonical source lineages.
 - [x] Нет diagnosis, ability ranking, binary labels или child-trait mapping.
 - [x] Engine не читает gender, caregiver context, questionnaire, Parent Style, prose/report payload, LLM/network.
-- [x] Duplicate/shared/mixed-lineage evidence, invalid numbers, shuffled inputs и opposite signs покрыты fixtures.
+- [x] Duplicate/conflicting positions/aspects, shared/mixed lineage, fabricated balance, invalid numbers, malformed timestamps, shuffled inputs и opposite signs покрыты fixtures.
 - [x] Current/old scoring versions сосуществуют; corrupt persisted JSON отклоняется fail-closed.
 - [x] Concurrent replay idempotent; caught/rolled-back invalid work не оставляет partial score rows.
 
 ## Verification
 
-- RED: новый focused suite → `19 failed` на отсутствующих Child Needs contracts/module/validator.
-- `uv run pytest tests/unit/test_child/test_child_needs_engine.py tests/unit/test_child/test_parent_style_engine.py -q` → `60 passed`.
-- `uv run pytest tests/unit/test_child -q` → `103 passed`.
+- Initial RED: новый focused suite → `19 failed` на отсутствующих Child Needs contracts/module/validator. Spec-blocker RED: focused S06 suite → `17 failed` на permissive policy/stability/duplicate/lineage paths; S03 canonical exclusion order → `1 failed`.
+- `uv run pytest tests/unit/test_child/test_child_needs_engine.py tests/unit/test_child/test_parent_style_engine.py -q` → `81 passed`.
+- `uv run pytest tests/unit/test_child -q` → `124 passed`.
 - S03/chart regression: `uv run pytest tests/unit/test_astrotype_v2/test_chart_adapter.py tests/unit/test_astrotype_v2/test_chart_persistence.py tests/unit/test_astrotype_v2/test_chart_contract.py tests/chart/test_chart_engine.py -q` → `31 passed`.
 - Career + Astrotype fact regression: `uv run pytest tests/unit/test_career tests/unit/test_astrotype_v2/test_*fact*.py -q` → `127 passed`, `1` dependency deprecation warning.
-- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_needs.py -q` → `1 passed`, включая owner/generation/chart lineage rejection, separate-transaction concurrent create, immutable exact reload, current-version filtering, old/current coexistence, clean downgrade/re-upgrade, lossy downgrade refusal с сохранением revision/rows/current constraint, invalid numeric caught-error commit без score rows и corrupt JSON rejection без дополнительных writes.
+- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_needs.py -q` → `1 passed`, включая owner/generation/chart lineage rejection, separate-transaction concurrent create, immutable exact reload, persisted balance lineage inspection (`planet_positions:*` only), current-version filtering, old/current coexistence, clean downgrade/re-upgrade, lossy downgrade refusal с сохранением revision/rows/current constraint, invalid numeric caught-error commit без score rows и corrupt JSON rejection без дополнительных writes.
 - Changed-path Ruff check/format, strict mypy, exact-path Prettier и `git diff --check` проходят после последнего изменения.
 
 ## Зависимости

@@ -39,6 +39,7 @@ def _payload() -> dict[str, object]:
     return {
         "contract_version": "child-birth-time-policy-v3",
         "technical_reference": {
+            "birth_datetime_utc": "2021-05-12T07:00:00+00:00",
             "synthetic_noon": False,
             "user_supplied_time": True,
             "birth_time_confidence": "exact",
@@ -252,6 +253,19 @@ async def test_child_needs_persist_reload_concurrency_versions_and_corruption(
             generation_id=generation_id,
         )
         assert _snapshot(loaded.scores) == first[2] == second[2]
+        balance_evidence = [
+            item
+            for row in loaded.scores
+            for item in [*row.breakdown["supports"], *row.breakdown["counters"]]
+            if item["factor_key"].startswith("balance:")
+        ]
+        assert balance_evidence
+        assert all(len(item["lineage_refs"]) > 1 for item in balance_evidence)
+        assert all(
+            ref.startswith("child_chart_versions:key:planet_positions:")
+            for item in balance_evidence
+            for ref in item["lineage_refs"]
+        )
         session.add_all(
             [
                 ChildNeedScore(
@@ -362,12 +376,15 @@ async def test_child_needs_persist_reload_concurrency_versions_and_corruption(
             engine_version="0.1.6",
             input_hash="e" * 64,
             birth_time_confidence="approximate",
-            allowed_fact_families=["stable_planet_signs", "stable_aspects"],
-            excluded_fact_families=["houses", "angles", "house_assignments"],
-            uncertainty_reason="limited timing",
+            allowed_fact_families=["stable_planet_signs", "stable_aspects", "stable_moon_sign"],
+            excluded_fact_families=["houses", "angles", "house_assignments", "house_overlays", "unstable_facts"],
+            uncertainty_reason=(
+                "Birth time is approximate; only facts stable across the versioned window are retained."
+            ),
             calculation_payload={
                 **_payload(),
                 "technical_reference": {
+                    "birth_datetime_utc": "2021-05-12T07:00:00+00:00",
                     "synthetic_noon": False,
                     "user_supplied_time": True,
                     "birth_time_confidence": "approximate",
@@ -392,6 +409,7 @@ async def test_child_needs_persist_reload_concurrency_versions_and_corruption(
                         }
                     },
                 },
+                "exclusions": ["houses", "angles", "house_assignments", "house_overlays", "unstable_facts"],
             },
         )
         session.add(invalid_chart)

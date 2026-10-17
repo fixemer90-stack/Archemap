@@ -79,6 +79,7 @@ def test_unknown_time_uses_technical_noon_but_excludes_houses_angles_and_overlay
 
 
 def test_approximate_time_retains_only_facts_stable_across_versioned_sixty_minute_window() -> None:
+    from app.modules.child.birth_time_policy import resolve_birth_time_policy
     from app.modules.child.chart_adapter import ChildChartInput, build_child_chart
 
     center_utc = datetime(2021, 5, 12, 7, 0, tzinfo=UTC)
@@ -133,6 +134,12 @@ def test_approximate_time_retains_only_facts_stable_across_versioned_sixty_minut
     assert payload["aspects"] == []
     assert "planet_sign:Moon" in payload["exclusions"]
     assert "angle_sign:Ascendant" in payload["exclusions"]
+    unstable = sorted(
+        key for key, evidence in payload["stability_evidence"]["facts"].items() if evidence["stable"] is False
+    )
+    expected_exclusions = [*resolve_birth_time_policy("approximate").excluded_fact_families, *unstable]
+    assert payload["exclusions"] == expected_exclusions
+    assert list(result.excluded_fact_families) == expected_exclusions
     assert result.uncertainty_reason
 
 

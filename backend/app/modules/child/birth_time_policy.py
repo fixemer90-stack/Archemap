@@ -67,3 +67,13 @@ def resolve_birth_time_policy(confidence: str) -> BirthTimePolicy:
             ),
         )
     raise ValueError(f"Unsupported birth-time confidence: {confidence}")
+
+
+def canonical_excluded_fact_families(
+    policy: BirthTimePolicy, unstable_fact_keys: tuple[str, ...] | list[str]
+) -> tuple[str, ...]:
+    """Keep policy exclusions first, followed by unique unstable fact keys."""
+
+    canonical = policy.excluded_fact_families
+    canonical_set = set(canonical)
+    return (*canonical, *(key for key in sorted(set(unstable_fact_keys)) if key not in canonical_set))

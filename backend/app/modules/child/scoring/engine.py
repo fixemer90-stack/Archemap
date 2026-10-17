@@ -80,22 +80,26 @@ def _validated_evidence(
 
     lineage_owner: dict[str, UUID] = {}
     for fact_id, lineages in grouped.items():
+        fact = facts_by_id[fact_id]
+        if fact.fact_type == "balance":
+            continue
         for lineage_ref in lineages:
             current_owner = lineage_owner.get(lineage_ref)
-            if current_owner is None or _fact_lineage_sort_key(facts_by_id[fact_id]) < _fact_lineage_sort_key(
+            if current_owner is None or _fact_lineage_sort_key(fact) < _fact_lineage_sort_key(
                 facts_by_id[current_owner]
             ):
                 lineage_owner[lineage_ref] = fact_id
 
     deduplicated: dict[UUID, tuple[tuple[ScoringEvidence, str, float], ...]] = {}
     for fact_id, lineages in grouped.items():
-        owned = tuple(
+        fact = facts_by_id[fact_id]
+        retained = tuple(
             (row, lineage_ref, quality)
             for lineage_ref, (row, quality) in sorted(lineages.items())
-            if lineage_owner[lineage_ref] == fact_id
+            if fact.fact_type == "balance" or lineage_owner.get(lineage_ref) in {None, fact_id}
         )
-        if owned:
-            deduplicated[fact_id] = owned
+        if retained:
+            deduplicated[fact_id] = retained
     return deduplicated
 
 

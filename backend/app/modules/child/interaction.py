@@ -26,7 +26,7 @@ from app.modules.child.scoring.types import (
     InteractionResult,
     ParentStyleDimension,
 )
-from app.reference_data.child.child_needs_v1 import CHILD_NEEDS_SCORING_VERSION
+from app.reference_data.child.child_needs_v1 import CHILD_NEEDS_REFERENCE_VERSION, CHILD_NEEDS_SCORING_VERSION
 from app.reference_data.child.interaction_v1 import (
     CORRELATION_FAMILY_CAP,
     EXPECTED_INDEPENDENT_FAMILIES,
@@ -34,11 +34,13 @@ from app.reference_data.child.interaction_v1 import (
     INTERACTION_REFERENCE_VERSION,
     INTERACTION_SCORING_VERSION,
     MINIMUM_INDEPENDENT_FAMILIES,
+    SATURN_DIMENSION_CAP,
 )
-from app.reference_data.child.parent_style_v1 import PARENT_STYLE_SCORING_VERSION
+from app.reference_data.child.parent_style_v1 import PARENT_STYLE_REFERENCE_VERSION, PARENT_STYLE_SCORING_VERSION
 
 _INTERACTION_FACT_NAMESPACE = uuid.UUID("04785822-ed8b-505f-8051-c8ce978a437e")
 _INTERACTION_ROW_NAMESPACE = uuid.UUID("d156b116-30af-5c5b-a911-0c91bd91f230")
+_INTERACTION_FAMILY_NAMESPACE = uuid.UUID("58851186-cb43-5d50-a292-a37030e77365")
 
 
 def score_interactions(
@@ -73,7 +75,17 @@ def score_interactions(
         quality = min(parent_row.confidence, child_row.confidence)
         contribution = (fit - 0.5) * 2.0 * rule.weight * quality
         fact_key = f"fit:{rule.parent_dimension.value}:{rule.child_dimension.value}"
-        fact_id = uuid.uuid5(_INTERACTION_FACT_NAMESPACE, f"{pair_key}:{fact_key}")
+        fact_id = uuid.uuid5(_INTERACTION_FACT_NAMESPACE, f"{pair_key}:{fact_key}:{rule.dimension.value}")
+        lineages = tuple(
+            sorted(
+                set(
+                    (
+                        *_score_lineages(parent_row, PARENT_STYLE_REFERENCE_VERSION),
+                        *_score_lineages(child_row, CHILD_NEEDS_REFERENCE_VERSION),
+                    )
+                )
+            )
+        )
         by_dimension[rule.dimension].append(
             DimensionEvidence(
                 factor_key=fact_key,
@@ -82,10 +94,7 @@ def score_interactions(
                     f"child_parent_style_scores:{parent_row.id}",
                     f"child_need_scores:{child_row.id}",
                 ),
-                lineage_refs=(
-                    f"child_parent_style_scores:id:{parent_row.id}",
-                    f"child_need_scores:id:{child_row.id}",
-                ),
+                lineage_refs=lineages,
                 correlation_family=rule.signal_family,
                 factor_value=round(fit, 6),
                 source_quality=round(quality, 4),
@@ -189,7 +198,7 @@ def build_interaction_rows(
 
 
 def _score_dimension(dimension: InteractionDimension, evidence: Sequence[DimensionEvidence]) -> InteractionResult:
-    active = [item for item in evidence if item.contribution != 0.0]
+    active = _canonicalize_fit_families([item for item in evidence if item.contribution != 0.0])
     capped = [item for item in _cap_correlated(active) if item.contribution != 0.0]
     families = {item.correlation_family for item in capped}
     lineages = {ref for item in capped if item.contribution != 0.0 for ref in item.lineage_refs}
@@ -252,10 +261,73 @@ def _cap_correlated(evidence: Sequence[DimensionEvidence]) -> list[DimensionEvid
     for family in sorted(grouped):
         items = grouped[family]
         total = sum(item.contribution for item in items)
-        bounded = max(-CORRELATION_FAMILY_CAP, min(CORRELATION_FAMILY_CAP, total))
+        cap = SATURN_DIMENSION_CAP if family == "pair:saturn-pressure" else CORRELATION_FAMILY_CAP
+        bounded = max(-cap, min(cap, total))
         scale = bounded / total if total else 0.0
         capped.extend(replace(item, contribution=item.contribution * scale) for item in items)
     return capped
+
+
+def _canonicalize_fit_families(evidence: Sequence[DimensionEvidence]) -> list[DimensionEvidence]:
+    pair_evidence = [item for item in evidence if not item.correlation_family.startswith("fit:")]
+    fit_evidence = [item for item in evidence if item.correlation_family.startswith("fit:")]
+    deduplicated: dict[tuple[str, ...], DimensionEvidence] = {}
+    for item in fit_evidence:
+        identity = tuple(sorted(set(item.lineage_refs)))
+        existing = deduplicated.get(identity)
+        if existing is None or (-abs(item.contribution), item.factor_key, str(item.fact_id)) < (
+            -abs(existing.contribution),
+            existing.factor_key,
+            str(existing.fact_id),
+        ):
+            deduplicated[identity] = item
+    items = list(deduplicated.values())
+    groups: list[set[int]] = []
+    for index, item in enumerate(items):
+        overlapping = {
+            group_index
+            for group_index, group in enumerate(groups)
+            if any(set(items[member].lineage_refs) & set(item.lineage_refs) for member in group)
+        }
+        if not overlapping:
+            groups.append({index})
+            continue
+        merged = {index}
+        for group_index in sorted(overlapping, reverse=True):
+            merged.update(groups.pop(group_index))
+        groups.append(merged)
+    canonical: list[DimensionEvidence] = []
+    for group in groups:
+        refs = sorted({ref for index in group for ref in items[index].lineage_refs})
+        family = f"fit:lineage:{uuid.uuid5(_INTERACTION_FAMILY_NAMESPACE, '|'.join(refs))}"
+        canonical.extend(replace(items[index], correlation_family=family) for index in sorted(group))
+    return [*pair_evidence, *canonical]
+
+
+def _score_lineages(row: ChildParentStyleScore | ChildNeedScore, reference_version: str) -> tuple[str, ...]:
+    breakdown = row.breakdown
+    if not isinstance(breakdown, dict) or breakdown.get("reference_version") != reference_version:
+        raise ValueError("Score breakdown version is invalid")
+    refs: set[str] = set()
+    for key in ("supports", "counters"):
+        leaves = breakdown.get(key)
+        if not isinstance(leaves, list):
+            raise ValueError("Score breakdown evidence is malformed")
+        for leaf in leaves:
+            if not isinstance(leaf, dict):
+                raise ValueError("Score breakdown evidence is malformed")
+            lineage_refs = leaf.get("lineage_refs")
+            if (
+                not isinstance(lineage_refs, list)
+                or not lineage_refs
+                or any(not isinstance(ref, str) or not ref for ref in lineage_refs)
+                or len(lineage_refs) != len(set(lineage_refs))
+            ):
+                raise ValueError("Score breakdown lineage is malformed")
+            refs.update(lineage_refs)
+    if not refs:
+        raise ValueError("Score breakdown has no underlying lineage")
+    return tuple(sorted(refs))
 
 
 def _validate_parent_scores(

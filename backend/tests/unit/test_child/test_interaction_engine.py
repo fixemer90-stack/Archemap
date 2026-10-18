@@ -214,7 +214,11 @@ def _parent_scores(
             score=source[dimension],
             confidence=confidence,
             scoring_version="parent-style-mvp-2",
-            breakdown={},
+            breakdown={
+                "reference_version": "parent-style-reference-1",
+                "supports": [{"lineage_refs": [f"astrotype_v2_natal_planet_positions:key:{dimension.value}"]}],
+                "counters": [],
+            },
             evidence_refs=[f"parent:{dimension.value}"],
         )
         for dimension in ParentStyleDimension
@@ -235,7 +239,11 @@ def _child_scores(
             score=source[dimension],
             confidence=confidence,
             scoring_version="child-needs-mvp-1",
-            breakdown={},
+            breakdown={
+                "reference_version": "child-needs-reference-1",
+                "supports": [{"lineage_refs": [f"child_chart_versions:key:planet_positions:{dimension.value}"]}],
+                "counters": [],
+            },
             evidence_refs=[f"child:{dimension.value}"],
         )
         for dimension in ChildNeedDimension
@@ -445,3 +453,247 @@ def test_pair_identity_is_bound_into_deterministic_evidence_and_score_rows() -> 
     assert all(item.generation_id == uuid.UUID(int=6) for item in evidence)
     assert all(item.parent_chart_id == uuid.UUID(int=1) for item in evidence)
     assert all(item.child_chart_version_id == uuid.UUID(int=4) for item in evidence)
+
+
+def _score_breakdown_with_lineage(reference_version: str, *refs: str) -> dict[str, object]:
+    return {
+        "reference_version": reference_version,
+        "supports": [{"lineage_refs": list(refs)}],
+        "counters": [],
+    }
+
+
+def test_fit_independence_uses_underlying_lineage_not_derived_score_ids() -> None:
+    shared = "astrotype_v2_natal_planet_positions:key:moon"
+    parent = list(_parent_scores())
+    child = list(_child_scores())
+    for parent_row in parent:
+        parent_row.breakdown = _score_breakdown_with_lineage("parent-style-reference-1", shared)
+    for child_row in child:
+        child_row.breakdown = _score_breakdown_with_lineage("child-needs-reference-1", shared)
+
+    results, _ = _score(
+        parent_scores=parent,
+        child_scores=child,
+        positions=_positions(uuid.UUID(int=1), {"Uranus": 13.0}),
+        houses=_houses(uuid.UUID(int=1))[:1],
+    )
+
+    assert all(result.score == 50.0 and result.confidence == 0.0 for result in results)
+    assert all(result.breakdown.independent_lineage_refs in {(), (shared,)} for result in results)
+    assert all(
+        not ref.startswith(("child_parent_style_scores:", "child_need_scores:"))
+        for result in results
+        for ref in result.breakdown.independent_lineage_refs
+    )
+
+
+def test_saturn_total_is_capped_per_dimension_across_all_personal_planets() -> None:
+    parent = _positions(uuid.UUID(int=1), {"Saturn": 10.0})
+    child = _child_chart(longitudes={"Sun": 10.0, "Moon": 10.0, "Mercury": 10.0, "Venus": 10.0, "Mars": 10.0})
+
+    results, evidence = _score(positions=parent, child_chart=child)
+
+    saturn_rows = [row for row in evidence if row.source_key.startswith("cross_aspect:parent_saturn:")]
+    assert len(saturn_rows) == 5
+    assert {row.payload["correlation_family"] for row in saturn_rows} == {"pair:saturn-pressure"}
+    for result in results:
+        saturn_leaves = [
+            item for item in (*result.supports, *result.counters) if item.correlation_family == "pair:saturn-pressure"
+        ]
+        assert abs(sum(item.contribution for item in saturn_leaves)) <= 0.08 + 1e-9
+        assert abs(dict(result.breakdown.correlation_family_totals).get("pair:saturn-pressure", 0.0)) <= 0.08
+    assert all(row.payload["factor_label"] == "structure_expectations_pressure_awareness" for row in saturn_rows)
+
+
+def test_normative_reverse_pairs_and_exact_angles_are_emitted_but_unreliable_angles_are_excluded() -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    parent = _parent_chart()
+    positions = _positions(
+        parent.id,
+        {"Moon": 10.0, "Mars": 30.0, "Ascendant": 50.0, "MC": 70.0},
+    )
+    child = _child_chart(longitudes={"Venus": 10.0, "Mercury": 30.0, "Sun": 50.0, "Ascendant": 30.0})
+    exact = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=parent,
+        parent_positions=positions,
+        child_chart=child,
+    )
+    keys = {row.source_key for row in exact}
+    assert "cross_aspect:parent_moon:child_venus:conjunction" in keys
+    assert "cross_aspect:parent_mars:child_mercury:conjunction" in keys
+    assert "angle_aspect:parent_ascendant:child_sun:conjunction" in keys
+    assert "angle_aspect:parent_mars:child_ascendant:conjunction" in keys
+
+    unreliable = _child_chart(confidence="unknown", longitudes={"Sun": 50.0, "Ascendant": 30.0})
+    excluded = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=parent,
+        parent_positions=positions,
+        child_chart=unreliable,
+    )
+    assert all(row.source_type != "angle_aspect" for row in excluded)
+
+
+@pytest.mark.parametrize("bad", [math.nan, math.inf, -0.1, 360.0])
+def test_malformed_exact_child_longitude_fails_closed_for_the_entire_builder(bad: float) -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    parent = _parent_chart()
+    child = _child_chart()
+    child.calculation_payload["planet_positions"][1]["longitude"] = bad
+
+    assert (
+        build_synastry_evidence(
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart=parent,
+            parent_positions=_positions(parent.id),
+            child_chart=child,
+        )
+        == ()
+    )
+
+
+def test_conflicting_duplicate_exact_child_longitude_is_rejected_without_partial_evidence() -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    parent = _parent_chart()
+    child = _child_chart()
+    duplicate = copy.deepcopy(child.calculation_payload["planet_positions"][0])
+    duplicate["body"] = " sun "
+    duplicate["longitude"] = 99.0
+    child.calculation_payload["planet_positions"].append(duplicate)
+
+    with pytest.raises(ValueError, match="conflicting duplicate child position"):
+        build_synastry_evidence(
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart=parent,
+            parent_positions=_positions(parent.id),
+            child_chart=child,
+        )
+
+
+def test_persisted_current_rows_reject_relabelled_ids_and_unsafe_synastry_contract() -> None:
+    from app.modules.child.interaction import build_interaction_rows
+    from app.modules.child.repository import ChildLineageMismatchError, ChildRepository
+
+    results, evidence = _score()
+    scores = list(
+        build_interaction_rows(
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+            results=results,
+        )
+    )
+    for evidence_row in evidence:
+        evidence_row.child_profile_id = uuid.UUID(int=7)
+        evidence_row.payload["child_profile_id"] = str(uuid.UUID(int=7))
+    for score_row in scores:
+        score_row.child_profile_id = uuid.UUID(int=7)
+        score_row.breakdown["pair_lineage"]["child_profile_id"] = str(uuid.UUID(int=7))
+    with pytest.raises(ChildLineageMismatchError):
+        ChildRepository._validate_interaction_profile(
+            evidence,
+            scores,
+            child_profile_id=uuid.UUID(int=7),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+        )
+
+    results, evidence = _score()
+    valid_scores = build_interaction_rows(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart_id=uuid.UUID(int=1),
+        child_chart_version_id=uuid.UUID(int=4),
+        results=results,
+    )
+    ChildRepository._validate_interaction_profile(
+        evidence,
+        valid_scores,
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart_id=uuid.UUID(int=1),
+        child_chart_version_id=uuid.UUID(int=4),
+    )
+    evidence[0].source_type = "invented"
+    evidence[0].payload["aspect_code"] = "invented"
+    with pytest.raises(ChildLineageMismatchError):
+        ChildRepository._validate_interaction_profile(
+            evidence,
+            valid_scores,
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+        )
+
+    results, aspect_evidence = _score()
+    aspect_scores = build_interaction_rows(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart_id=uuid.UUID(int=1),
+        child_chart_version_id=uuid.UUID(int=4),
+        results=results,
+    )
+    aspect_row = next(row for row in aspect_evidence if row.source_type == "cross_chart_aspect")
+    aspect_row.payload["aspect_code"] = "invented"
+    with pytest.raises(ChildLineageMismatchError, match="aspect code"):
+        ChildRepository._validate_interaction_profile(
+            aspect_evidence,
+            aspect_scores,
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+        )
+
+    results, identity_evidence = _score()
+    identity_scores = list(
+        build_interaction_rows(
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+            results=results,
+        )
+    )
+    identity_scores[0].id = uuid.uuid4()
+    with pytest.raises(ChildLineageMismatchError, match="score identity"):
+        ChildRepository._validate_interaction_profile(
+            identity_evidence,
+            identity_scores,
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+        )
+
+    results, leaf_evidence = _score()
+    leaf_scores = build_interaction_rows(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart_id=uuid.UUID(int=1),
+        child_chart_version_id=uuid.UUID(int=4),
+        results=results,
+    )
+    first_leaves = [*leaf_scores[0].breakdown["supports"], *leaf_scores[0].breakdown["counters"]]
+    first_leaves[0]["fact_id"] = str(uuid.uuid4())
+    with pytest.raises(ChildLineageMismatchError, match="leaf identity"):
+        ChildRepository._validate_interaction_profile(
+            leaf_evidence,
+            leaf_scores,
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+        )

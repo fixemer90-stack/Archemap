@@ -12,7 +12,9 @@ from app.modules.astrotype_v2.models import NatalChart, NatalHouse, NatalPlanetP
 from app.modules.child.child_needs import _valid_confidence_provenance
 from app.modules.child.models import ChildChartVersion, ChildSynastryEvidence
 from app.modules.child.parent_style import _has_exact_timing_proof
+from app.modules.child.scoring.types import InteractionDimension
 from app.reference_data.child.interaction_v1 import (
+    ANGLE_BODIES,
     ASPECT_CATALOG,
     HOUSE_OVERLAY_DEFINITIONS,
     HOUSE_OVERLAY_WEIGHT,
@@ -106,6 +108,15 @@ def build_synastry_evidence(
                 raise ValueError("conflicting duplicate synastry evidence")
             rows[source_key] = row
     if parent_exact and child_exact:
+        _add_angle_aspects(
+            rows,
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart=parent_chart,
+            child_chart=child_chart,
+            parent_positions=parent,
+            child_positions=child,
+        )
         parent_cusps = _canonical_parent_houses(parent_houses, chart_id=parent_chart.id)
         child_cusps = _canonical_child_houses(child_chart)
         if parent_cusps is not None and child_cusps is not None:
@@ -121,6 +132,71 @@ def build_synastry_evidence(
                 child_cusps=child_cusps,
             )
     return tuple(rows[key] for key in sorted(rows))
+
+
+def _add_angle_aspects(
+    rows: dict[str, ChildSynastryEvidence],
+    *,
+    child_profile_id: UUID,
+    generation_id: UUID,
+    parent_chart: NatalChart,
+    child_chart: ChildChartVersion,
+    parent_positions: dict[str, float],
+    child_positions: dict[str, float],
+) -> None:
+    pairs = [
+        (parent_body, child_body, parent_longitude, child_longitude)
+        for parent_body, parent_longitude in parent_positions.items()
+        for child_body, child_longitude in child_positions.items()
+        if (parent_body in ANGLE_BODIES and child_body in PERSONAL_BODIES)
+        or (parent_body in PERSONAL_BODIES and child_body in ANGLE_BODIES)
+    ]
+    for parent_body, child_body, parent_longitude, child_longitude in sorted(pairs):
+        aspect = _resolve_aspect(parent_longitude, child_longitude)
+        if aspect is None:
+            continue
+        definition, orb = aspect
+        strength = round(max(0.0, 1.0 - orb / definition.orb), 6)
+        contribution = round(definition.direction * 0.06 * strength, 6)
+        source_key = f"angle_aspect:parent_{parent_body}:child_{child_body}:{definition.code}"
+        angle = parent_body if parent_body in ANGLE_BODIES else child_body
+        body = child_body if parent_body in ANGLE_BODIES else parent_body
+        payload = {
+            "reference_version": SYNASTRY_REFERENCE_VERSION,
+            "aspect_code": definition.code,
+            "orb_degrees": round(orb, 6),
+            "allowed_orb_degrees": definition.orb,
+            "strength": strength,
+            "correlation_family": f"angle:{angle}-{body}",
+            "factor_label": "angle_contact_context",
+            "dimensions": [InteractionDimension.COMMUNICATION_FIT.value, InteractionDimension.AUTONOMY_BALANCE.value],
+            "parent_body": parent_body,
+            "child_body": child_body,
+            "parent_chart_id": str(parent_chart.id),
+            "child_chart_version_id": str(child_chart.id),
+            "generation_id": str(generation_id),
+            "child_profile_id": str(child_profile_id),
+            "parent_source_ref": f"astrotype_v2_natal_planet_positions:key:{parent_body}",
+            "child_source_ref": f"child_chart_versions:key:planet_positions:{child_body}",
+            "time_reliable_for_overlays": True,
+        }
+        rows[source_key] = ChildSynastryEvidence(
+            id=uuid.uuid5(
+                _SYNASTRY_ROW_NAMESPACE,
+                f"{child_profile_id}:{generation_id}:{parent_chart.id}:{child_chart.id}:"
+                f"{SYNASTRY_REFERENCE_VERSION}:{source_key}",
+            ),
+            child_profile_id=child_profile_id,
+            parent_chart_id=parent_chart.id,
+            child_chart_version_id=child_chart.id,
+            generation_id=generation_id,
+            source_type="angle_aspect",
+            source_key=source_key,
+            reference_version=SYNASTRY_REFERENCE_VERSION,
+            contribution=contribution,
+            direction="supports" if contribution >= 0 else "counters",
+            payload=payload,
+        )
 
 
 def _add_house_overlays(
@@ -234,7 +310,7 @@ def _canonical_child_positions(chart: ChildChartVersion) -> dict[str, float] | N
         try:
             longitude = _longitude(longitude_value)
         except ValueError:
-            continue
+            return None
         existing = canonical.get(body)
         if existing is not None and existing != longitude:
             raise ValueError("conflicting duplicate child position")
@@ -300,7 +376,7 @@ def _rule_for_pair(parent_body: str, child_body: str) -> SynastryRule | None:
             parent_body,
             child_body,
             SATURN_DIMENSIONS,
-            f"pair:saturn-{child_body}",
+            "pair:saturn-pressure",
             0.08,
             "structure_expectations_pressure_awareness",
             True,
@@ -310,7 +386,7 @@ def _rule_for_pair(parent_body: str, child_body: str) -> SynastryRule | None:
             parent_body,
             child_body,
             SATURN_DIMENSIONS,
-            f"pair:{parent_body}-saturn",
+            "pair:saturn-pressure",
             0.08,
             "structure_expectations_pressure_awareness",
             True,

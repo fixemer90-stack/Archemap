@@ -10,6 +10,7 @@ INTERACTION_SCORING_VERSION = "child-interaction-mvp-1"
 INTERACTION_REFERENCE_VERSION = "child-interaction-reference-1"
 SYNASTRY_REFERENCE_VERSION = "child-synastry-reference-1"
 CORRELATION_FAMILY_CAP = 0.30
+SATURN_DIMENSION_CAP = 0.08
 MINIMUM_INDEPENDENT_FAMILIES = 2
 EXPECTED_INDEPENDENT_FAMILIES = 3
 
@@ -85,6 +86,7 @@ ASPECT_CATALOG: tuple[AspectDefinition, ...] = (
 )
 
 PERSONAL_BODIES = ("sun", "moon", "mercury", "venus", "mars")
+ANGLE_BODIES = ("ascendant", "mc")
 
 SYNASTRY_RULES: tuple[SynastryRule, ...] = (
     SynastryRule(
@@ -158,6 +160,22 @@ SYNASTRY_RULES: tuple[SynastryRule, ...] = (
         "pair:venus-moon",
         0.12,
         "care_reception_awareness",
+    ),
+    SynastryRule(
+        "moon",
+        "venus",
+        (D.EMOTIONAL_ATTUNEMENT, D.SOOTHING_COMPATIBILITY),
+        "pair:venus-moon",
+        0.12,
+        "care_reception_awareness",
+    ),
+    SynastryRule(
+        "mars",
+        "mercury",
+        (D.COMMUNICATION_FIT, D.CONFLICT_PATTERN),
+        "pair:mercury-mars",
+        0.11,
+        "communication_activation_awareness",
     ),
     SynastryRule(
         "mars", "mars", (D.TEMPO_FIT, D.CONFLICT_PATTERN), "pair:mars-mars", 0.12, "activation_tempo_awareness"

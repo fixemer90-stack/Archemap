@@ -38,7 +38,7 @@ from app.modules.child.scoring.types import (
     ParentStyleDimension,
 )
 from app.modules.child.scoring.validation import validate_dimension_breakdown
-from app.modules.child.synastry import build_synastry_evidence
+from app.modules.child.synastry import _rule_for_pair, build_synastry_evidence
 from app.modules.profiles.models import PersonProfile
 from app.reference_data.child.child_needs_v1 import (
     CHILD_NEEDS_POLICY,
@@ -48,11 +48,18 @@ from app.reference_data.child.child_needs_v1 import (
     CHILD_NEEDS_SCORING_VERSION,
 )
 from app.reference_data.child.interaction_v1 import (
+    ANGLE_BODIES,
+    ASPECT_CATALOG,
     CORRELATION_FAMILY_CAP,
     EXPECTED_INDEPENDENT_FAMILIES,
+    FIT_RULES,
+    HOUSE_OVERLAY_DEFINITIONS,
+    HOUSE_OVERLAY_WEIGHT,
     INTERACTION_REFERENCE_VERSION,
     INTERACTION_SCORING_VERSION,
     MINIMUM_INDEPENDENT_FAMILIES,
+    PERSONAL_BODIES,
+    SATURN_DIMENSION_CAP,
     SYNASTRY_REFERENCE_VERSION,
 )
 from app.reference_data.child.parent_style_v1 import (
@@ -64,6 +71,10 @@ from app.reference_data.child.parent_style_v1 import (
 )
 
 _ChildModel = TypeVar("_ChildModel", bound=BaseModel)
+_INTERACTION_FACT_NAMESPACE = uuid.UUID("04785822-ed8b-505f-8051-c8ce978a437e")
+_INTERACTION_FAMILY_NAMESPACE = uuid.UUID("58851186-cb43-5d50-a292-a37030e77365")
+_INTERACTION_ROW_NAMESPACE = uuid.UUID("d156b116-30af-5c5b-a911-0c91bd91f230")
+_SYNASTRY_ROW_NAMESPACE = uuid.UUID("c1a63410-a183-5b65-922e-e97ddc56e31c")
 
 _PARENT_STYLE_EVIDENCE_KEYS = {
     "factor_key",
@@ -77,6 +88,149 @@ _PARENT_STYLE_EVIDENCE_KEYS = {
     "contribution",
     "direction",
 }
+
+
+def _validate_synastry_contract(row: models.ChildSynastryEvidence) -> None:
+    payload = row.payload
+    if row.source_type in {"cross_chart_aspect", "angle_aspect"}:
+        prefix = "cross_aspect" if row.source_type == "cross_chart_aspect" else "angle_aspect"
+        parts = row.source_key.split(":")
+        if (
+            len(parts) != 4
+            or parts[0] != prefix
+            or not parts[1].startswith("parent_")
+            or not parts[2].startswith("child_")
+        ):
+            raise ChildLineageMismatchError("Synastry aspect source key is invalid")
+        parent_body = parts[1].removeprefix("parent_")
+        child_body = parts[2].removeprefix("child_")
+        aspect_code = parts[3]
+        aspect = next((item for item in ASPECT_CATALOG if item.code == aspect_code), None)
+        if aspect is None or payload.get("aspect_code") != aspect_code:
+            raise ChildLineageMismatchError("Synastry aspect code is invalid")
+        if payload.get("parent_body") != parent_body or payload.get("child_body") != child_body:
+            raise ChildLineageMismatchError("Synastry aspect pair is invalid")
+        if payload.get("allowed_orb_degrees") != aspect.orb or not _is_finite_number(
+            payload.get("orb_degrees"), minimum=0.0, maximum=aspect.orb
+        ):
+            raise ChildLineageMismatchError("Synastry aspect orb is invalid")
+        expected_strength = round(1.0 - float(payload["orb_degrees"]) / aspect.orb, 6)
+        if not _numbers_close(payload.get("strength"), expected_strength, tolerance=1e-6):
+            raise ChildLineageMismatchError("Synastry aspect strength is invalid")
+        if row.source_type == "cross_chart_aspect":
+            rule = _rule_for_pair(parent_body, child_body)
+            if rule is None:
+                raise ChildLineageMismatchError("Synastry aspect pair is not allowed")
+            expected = round(
+                aspect.direction * min(rule.weight * expected_strength, 0.08 if rule.saturn_bounded else 1.0),
+                6,
+            )
+            if (
+                payload.get("correlation_family") != rule.signal_family
+                or payload.get("factor_label") != rule.factor_label
+                or payload.get("dimensions") != [dimension.value for dimension in rule.dimensions]
+            ):
+                raise ChildLineageMismatchError("Synastry aspect rule is invalid")
+        else:
+            if not (
+                (parent_body in ANGLE_BODIES and child_body in PERSONAL_BODIES)
+                or (parent_body in PERSONAL_BODIES and child_body in ANGLE_BODIES)
+            ):
+                raise ChildLineageMismatchError("Synastry angle pair is not allowed")
+            if (
+                payload.get("time_reliable_for_overlays") is not True
+                or payload.get("factor_label") != "angle_contact_context"
+                or payload.get("dimensions")
+                != [InteractionDimension.COMMUNICATION_FIT.value, InteractionDimension.AUTONOMY_BALANCE.value]
+            ):
+                raise ChildLineageMismatchError("Synastry angle timing is invalid")
+            angle = parent_body if parent_body in ANGLE_BODIES else child_body
+            body = child_body if parent_body in ANGLE_BODIES else parent_body
+            if payload.get("correlation_family") != f"angle:{angle}-{body}":
+                raise ChildLineageMismatchError("Synastry angle family is invalid")
+            expected = round(aspect.direction * 0.06 * expected_strength, 6)
+        if not _numbers_close(row.contribution, expected, tolerance=1e-6):
+            raise ChildLineageMismatchError("Synastry aspect contribution is invalid")
+        if (
+            payload.get("parent_source_ref") != f"astrotype_v2_natal_planet_positions:key:{parent_body}"
+            or payload.get("child_source_ref") != f"child_chart_versions:key:planet_positions:{child_body}"
+        ):
+            raise ChildLineageMismatchError("Synastry aspect source refs are invalid")
+        return
+
+    parts = row.source_key.split(":")
+    if (
+        len(parts) != 4
+        or parts[0] != "house_overlay"
+        or parts[1]
+        not in {
+            "child_in_parent",
+            "parent_in_child",
+        }
+    ):
+        raise ChildLineageMismatchError("Synastry overlay source key is invalid")
+    try:
+        house_number = int(parts[3].removeprefix("house_"))
+    except ValueError as exc:
+        raise ChildLineageMismatchError("Synastry overlay house is invalid") from exc
+    definition = next((item for item in HOUSE_OVERLAY_DEFINITIONS if item.house_number == house_number), None)
+    if (
+        definition is None
+        or payload.get("overlay_direction") != parts[1]
+        or payload.get("body") != parts[2]
+        or payload.get("house_number") != house_number
+        or payload.get("time_reliable_for_overlays") is not True
+        or payload.get("factor_label") != definition.factor_label
+        or payload.get("dimensions") != [dimension.value for dimension in definition.dimensions]
+        or parts[2] not in PERSONAL_BODIES
+    ):
+        raise ChildLineageMismatchError("Synastry overlay contract is invalid")
+    expected = round(definition.direction * HOUSE_OVERLAY_WEIGHT, 6)
+    if not _numbers_close(row.contribution, expected, tolerance=1e-6):
+        raise ChildLineageMismatchError("Synastry overlay contribution is invalid")
+    expected_parent_ref = (
+        f"astrotype_v2_natal_houses:key:{house_number}"
+        if parts[1] == "child_in_parent"
+        else f"astrotype_v2_natal_planet_positions:key:{parts[2]}"
+    )
+    expected_child_ref = (
+        f"child_chart_versions:key:planet_positions:{parts[2]}"
+        if parts[1] == "child_in_parent"
+        else f"child_chart_versions:key:houses:{house_number}"
+    )
+    if (
+        payload.get("correlation_family") != f"overlay:{parts[1]}"
+        or payload.get("strength") != 1.0
+        or payload.get("parent_source_ref") != expected_parent_ref
+        or payload.get("child_source_ref") != expected_child_ref
+    ):
+        raise ChildLineageMismatchError("Synastry overlay source refs are invalid")
+
+
+def _expected_fit_families(leaves: Sequence[dict[str, Any]]) -> dict[str, str]:
+    fit_leaves = [item for item in leaves if cast(str, item["factor_key"]).startswith("fit:")]
+    groups: list[set[int]] = []
+    for index, item in enumerate(fit_leaves):
+        refs = set(cast(list[str], item["lineage_refs"]))
+        overlapping = {
+            group_index
+            for group_index, group in enumerate(groups)
+            if any(set(cast(list[str], fit_leaves[member]["lineage_refs"])) & refs for member in group)
+        }
+        if not overlapping:
+            groups.append({index})
+            continue
+        merged = {index}
+        for group_index in sorted(overlapping, reverse=True):
+            merged.update(groups.pop(group_index))
+        groups.append(merged)
+    expected: dict[str, str] = {}
+    for group in groups:
+        group_refs = sorted({ref for index in group for ref in cast(list[str], fit_leaves[index]["lineage_refs"])})
+        family = f"fit:lineage:{uuid.uuid5(_INTERACTION_FAMILY_NAMESPACE, '|'.join(group_refs))}"
+        for index in group:
+            expected[cast(str, fit_leaves[index]["factor_key"])] = family
+    return expected
 
 
 def _is_finite_number(value: object, *, minimum: float, maximum: float) -> bool:
@@ -322,6 +476,8 @@ def _validate_persisted_interaction_profile(
     }
     source_keys: set[str] = set()
     evidence_ids: set[str] = set()
+    evidence_by_key: dict[str, models.ChildSynastryEvidence] = {}
+    pair_key = f"{child_profile_id}:{generation_id}:{parent_chart_id}:{child_chart_version_id}"
     for row in evidence:
         if (
             row.child_profile_id != child_profile_id
@@ -332,6 +488,14 @@ def _validate_persisted_interaction_profile(
             raise ChildLineageMismatchError("Synastry evidence references another pair lineage")
         if row.reference_version != SYNASTRY_REFERENCE_VERSION or row.source_key in source_keys:
             raise ChildLineageMismatchError("Synastry evidence version or ownership is invalid")
+        expected_id = uuid.uuid5(
+            _SYNASTRY_ROW_NAMESPACE,
+            f"{pair_key}:{SYNASTRY_REFERENCE_VERSION}:{row.source_key}",
+        )
+        if row.id != expected_id:
+            raise ChildLineageMismatchError("Synastry evidence identity is invalid")
+        if row.source_type not in {"cross_chart_aspect", "angle_aspect", "house_overlay"}:
+            raise ChildLineageMismatchError("Synastry evidence source type is invalid")
         if not _is_finite_number(row.contribution, minimum=-1.0, maximum=1.0):
             raise ChildLineageMismatchError("Synastry evidence contains invalid contribution")
         if row.direction != ("supports" if row.contribution >= 0 else "counters"):
@@ -355,8 +519,10 @@ def _validate_persisted_interaction_profile(
             for key in ("correlation_family", "factor_label", "parent_source_ref", "child_source_ref")
         ):
             raise ChildLineageMismatchError("Synastry evidence source lineage is malformed")
+        _validate_synastry_contract(row)
         source_keys.add(row.source_key)
         evidence_ids.add(f"child_synastry_evidence:{row.id}")
+        evidence_by_key[row.source_key] = row
 
     expected_dimensions = tuple(dimension.value for dimension in InteractionDimension)
     if tuple(score.dimension for score in scores) != expected_dimensions:
@@ -371,6 +537,13 @@ def _validate_persisted_interaction_profile(
             raise ChildLineageMismatchError("Interaction score references another pair lineage")
         if score_row.scoring_version != INTERACTION_SCORING_VERSION:
             raise ChildLineageMismatchError("Interaction score uses another scoring version")
+        dimension = InteractionDimension(score_row.dimension)
+        expected_score_id = uuid.uuid5(
+            _INTERACTION_ROW_NAMESPACE,
+            f"{pair_key}:{score_row.scoring_version}:{dimension.value}",
+        )
+        if score_row.id != expected_score_id:
+            raise ChildLineageMismatchError("Interaction score identity is invalid")
         if not _is_finite_number(score_row.score, minimum=0.0, maximum=100.0) or not _is_finite_number(
             score_row.confidence, minimum=0.0, maximum=1.0
         ):
@@ -427,6 +600,30 @@ def _validate_persisted_interaction_profile(
             factor = invalid_counter.get("factor_key") if isinstance(invalid_counter, dict) else None
             raise ChildLineageMismatchError(f"Interaction counters are malformed: {factor}")
         leaves = cast(list[dict[str, Any]], [*supports, *counters])
+        expected_fit_families = _expected_fit_families(leaves)
+        for leaf in leaves:
+            factor_key = cast(str, leaf["factor_key"])
+            expected_fact_id = uuid.uuid5(
+                _INTERACTION_FACT_NAMESPACE,
+                f"{pair_key}:{factor_key}:{dimension.value}",
+            )
+            if leaf["fact_id"] != str(expected_fact_id):
+                raise ChildLineageMismatchError("Interaction leaf identity is invalid")
+            if factor_key.startswith("fit:"):
+                matching_fit = [
+                    rule
+                    for rule in FIT_RULES
+                    if rule.dimension is dimension
+                    and factor_key == f"fit:{rule.parent_dimension.value}:{rule.child_dimension.value}"
+                ]
+                if len(matching_fit) != 1 or leaf["correlation_family"] != expected_fit_families.get(factor_key):
+                    raise ChildLineageMismatchError("Interaction fit factor is invalid")
+            else:
+                source = evidence_by_key.get(factor_key)
+                if source is None or cast(list[str], leaf["lineage_refs"]) != sorted(
+                    [cast(str, source.payload["parent_source_ref"]), cast(str, source.payload["child_source_ref"])]
+                ):
+                    raise ChildLineageMismatchError("Interaction pair factor is invalid")
         leaf_refs = [ref for item in leaves for ref in cast(list[str], item["evidence_refs"])]
         if len(leaf_refs) != len(set(leaf_refs)):
             raise ChildLineageMismatchError("Interaction evidence ownership is duplicated")
@@ -441,7 +638,10 @@ def _validate_persisted_interaction_profile(
         totals: dict[str, float] = defaultdict(float)
         for item in active:
             totals[cast(str, item["correlation_family"])] += float(item["contribution"])
-        if any(abs(total) > CORRELATION_FAMILY_CAP + 1e-9 for total in totals.values()):
+        if any(
+            abs(total) > (SATURN_DIMENSION_CAP if family == "pair:saturn-pressure" else CORRELATION_FAMILY_CAP) + 1e-9
+            for family, total in totals.items()
+        ):
             raise ChildLineageMismatchError("Interaction correlated evidence exceeds its cap")
         persisted_totals = breakdown["correlation_family_totals"]
         if not isinstance(persisted_totals, list):

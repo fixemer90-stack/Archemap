@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S06 завершены, S07–S16 не начаты
+Статус: целевой контракт готов; S01–S07 завершены, S08–S16 не начаты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 
@@ -185,7 +185,7 @@ MVP dimensions:
 
 Запрещены общий compatibility percentage, binary labels, single-factor conclusion, correlated evidence double-counting и gender weights.
 
-Реализация S07: `child-interaction-mvp-1` возвращает восемь canonical dimensions и patterns `natural_match/moderate_tension/high_attention` без общего compatibility verdict. `child-synastry-reference-1` использует versioned pair/orb catalog; cross-chart longitude aspects строятся только для exact child chart, потому что sampled S03 sign/aspect stability не доказывает pair-aspect stability. House overlays создаются только при exact timing proof обоих charts и полных persisted cusps. Ненейтральный score требует двух independent families, двух canonical persisted lineages и минимум одного Parent Style ↔ Child Needs `fit:*` signal; pair-only/Saturn-only evidence остаётся neutral. Saturn и correlated families capped, evidence/score UUID включают exact pair lineage. Migration `e6f7a8b9c0d1` добавляет version-aware history и pair chart FKs с lossy-downgrade preflight; repository обеспечивает advisory-lock replay, A/B vs A/C isolation и strict semantic reload validation.
+Реализация S07: `child-interaction-mvp-1` возвращает восемь canonical dimensions и patterns `natural_match/moderate_tension/high_attention` без общего compatibility verdict. `child-synastry-reference-1` использует versioned pair/orb catalog, включая normative reverse directions и exact/exact angle ↔ personal-planet contacts; cross-chart longitude и angle evidence для non-exact child chart отсутствуют fail-closed. House overlays создаются только при exact timing proof обоих charts и полных persisted cusps. Fit leaves ссылаются на canonical underlying lineages из validated Parent Style/Child Needs breakdown, а не на IDs derived score rows; overlapping raw ownership canonicalizes correlated fit families и не создаёт ложную независимость. Ненейтральный score требует двух independent families, двух canonical persisted lineages и минимум одного fit signal. Все Saturn contacts принадлежат одной family с aggregate cap `0.08` на dimension. Malformed exact child longitude закрывает весь synastry builder; conflicting duplicates reject. Current-version reload проверяет source type/key grammar, pair/aspect/orb/overlay/angle catalog, source refs, bounded values, exact timing, deterministic row/leaf UUID и recomputed aggregates; old/current versions продолжают сосуществовать через current-version filtering. Migration `e6f7a8b9c0d1` сохраняет version-aware history и pair chart FKs с lossy-downgrade preflight.
 
 ## 10. FR-E22.7 — Questionnaire и Context Resolver
 

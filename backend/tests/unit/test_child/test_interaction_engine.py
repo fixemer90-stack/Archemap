@@ -961,5 +961,14 @@ def test_create_and_load_use_the_same_pre_read_source_snapshot_lock_helper() -> 
 
     helper_name = "_lock_interaction_source_snapshot"
     assert hasattr(ChildRepository, helper_name)
-    assert helper_name in inspect.getsource(ChildRepository.create_interaction_profile)
-    assert helper_name in inspect.getsource(ChildRepository.load_interaction_profile)
+    create_source = inspect.getsource(ChildRepository.create_interaction_profile)
+    load_source = inspect.getsource(ChildRepository.load_interaction_profile)
+    lock_source = inspect.getsource(ChildRepository._lock_interaction_source_snapshot)
+
+    assert helper_name in create_source
+    assert helper_name in load_source
+    assert "_require_owned_child" not in create_source
+    assert "_require_owned_child" not in load_source
+    assert lock_source.index("models.ChildProfile") < lock_source.index("models.ChildGeneration")
+    assert ".with_for_update(read=True)" in lock_source
+    assert "populate_existing=True" in lock_source

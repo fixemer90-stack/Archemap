@@ -573,6 +573,109 @@ async def test_reload_rejects_exact_evidence_after_parent_timing_becomes_unknown
 
 
 @pytest.mark.asyncio
+async def test_reload_locks_exact_owned_child_route_before_reading_parent_profile(
+    db_session: AsyncSession,
+) -> None:
+    owner, child, generation, _ = await _persist_interaction(db_session)
+    alternate_parent = PersonProfile(
+        user_id=owner.id,
+        name="Alternate Parent",
+        birth_date=date(1991, 2, 2),
+        birth_time=None,
+        birth_time_accuracy="exact",
+        birth_place="Moscow",
+        latitude=55.7,
+        longitude=37.6,
+        timezone="Europe/Moscow",
+    )
+    sibling = ChildProfile(
+        owner_user_id=owner.id,
+        parent_profile_id=child.parent_profile_id,
+        display_name="Sibling",
+        relationship_type="child",
+        child_gender=None,
+        birth_date=date(2022, 6, 13),
+        birth_time=None,
+        birth_time_confidence="exact",
+        birth_place="Moscow",
+        latitude=55.7,
+        longitude=37.6,
+        timezone="Europe/Moscow",
+        caregiver_context={},
+        birth_data_hash="s" * 64,
+        idempotency_key=f"routing-lock-sibling-{uuid4()}",
+        status="active",
+        version=1,
+    )
+    db_session.add_all([alternate_parent, sibling])
+    await db_session.commit()
+
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    sessions = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with (
+        sessions() as loader,
+        sessions() as target_updater,
+        sessions() as sibling_updater,
+        sessions() as observer,
+    ):
+        loader_pid = await loader.scalar(text("SELECT pg_backend_pid()"))
+        updater_pid = await target_updater.scalar(text("SELECT pg_backend_pid()"))
+        assert isinstance(loader_pid, int)
+        assert isinstance(updater_pid, int)
+
+        loaded = await ChildRepository(loader).load_interaction_profile(
+            owner_user_id=owner.id,
+            child_profile_id=child.id,
+            generation_id=generation.generation_id,
+        )
+        update_started = asyncio.Event()
+
+        async def update_target_route() -> None:
+            await target_updater.execute(text("SET LOCAL lock_timeout = '15s'"))
+            update_started.set()
+            await target_updater.execute(
+                text("UPDATE child_profiles SET parent_profile_id = :parent_id WHERE id = :child_id"),
+                {"parent_id": alternate_parent.id, "child_id": child.id},
+            )
+            await target_updater.commit()
+
+        update_task = asyncio.create_task(update_target_route())
+        await update_started.wait()
+        blocked_by_loader = False
+        async with asyncio.timeout(5):
+            while not blocked_by_loader:
+                blockers = await observer.scalar(
+                    text("SELECT pg_blocking_pids(:updater_pid)"), {"updater_pid": updater_pid}
+                )
+                blocked_by_loader = isinstance(blockers, list) and loader_pid in blockers
+
+        assert not update_task.done()
+        await sibling_updater.execute(text("SET LOCAL lock_timeout = '1s'"))
+        await sibling_updater.execute(
+            text("UPDATE child_profiles SET parent_profile_id = :parent_id WHERE id = :child_id"),
+            {"parent_id": alternate_parent.id, "child_id": sibling.id},
+        )
+        await sibling_updater.commit()
+        assert tuple(row.dimension for row in loaded.scores) == tuple(d.value for d in InteractionDimension)
+
+        await loader.commit()
+        await update_task
+
+    async with sessions() as fresh:
+        assert await fresh.scalar(select(ChildProfile.parent_profile_id).where(ChildProfile.id == sibling.id)) == (
+            alternate_parent.id
+        )
+        with pytest.raises(ChildLineageMismatchError, match="pinned chart lineage"):
+            await ChildRepository(fresh).load_interaction_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+            )
+
+
+@pytest.mark.asyncio
 async def test_reload_holds_shared_source_locks_until_validation_transaction_ends(
     db_session: AsyncSession,
 ) -> None:

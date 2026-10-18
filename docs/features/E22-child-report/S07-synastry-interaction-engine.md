@@ -25,7 +25,7 @@
 - `child-interaction-mvp-1` возвращает ровно восемь dimensions в каноническом порядке. Fit evidence извлекает underlying canonical lineage refs из semantically validated current Parent Style/Child Needs breakdown. Derived score IDs не считаются независимыми sources; overlapping raw ownership canonicalizes/deduplicates correlated fit families. Ненейтральный score требует минимум две independent families, две independent persisted lineages и хотя бы один fit signal; pair-only, shared-lineage и Saturn-only evidence остаются neutral.
 - Correlated evidence capped; все Saturn cross-aspects используют одну `pair:saturn-pressure` family. Positive и negative contradictory leaves capped пропорционально и сохраняются при exact cancellation (`+0.08/-0.08`), поэтому neutral final score не скрывает disagreement.
 - `e6f7a8b9c0d1` добавляет pair chart lineage, version-aware uniqueness, прямой и composite FK к child chart, S07 metadata/schema parity и fail-safe downgrade preflight до DDL.
-- Repository использует PostgreSQL advisory lock, current-version filtering и общий для create/reload pre-read source-snapshot helper. Под `READ COMMITTED` helper сначала берёт transaction-scoped `FOR SHARE` locks в одном documented порядке на exact generation, current Parent Style rows, current Child Needs rows, parent chart root, child chart root, parent positions/angles и parent houses; только затем выполняет authoritative `populate_existing` reads, regeneration и validation. Raw concurrent `UPDATE/DELETE` source rows блокируется до конца loader transaction. Persisted evidence и scores сравниваются с regenerated artifacts целиком, включая IDs, source contracts, payload, contributions, row refs, factor values/quality/weights, raw contribution, underlying lineage, canonical family grouping и leaf UUID. Изменение timing proof или upstream rows делает stale persisted profile недействительным; identity-map preload не может скрыть committed изменения другой session.
+- Repository использует PostgreSQL advisory lock, current-version filtering и общий для create/reload pre-read source-snapshot helper. Под `READ COMMITTED` helper одной authoritative owner-scoped query сначала берёт transaction-scoped `FOR SHARE` lock на exact `ChildProfile` и только после этого читает mutable `parent_profile_id`; далее lock order одинаков для exact generation, current Parent Style rows, current Child Needs rows, parent chart root, child chart root, parent positions/angles и parent houses. Все authoritative reads используют fresh/`populate_existing` semantics. Raw concurrent `UPDATE/DELETE` source rows блокируется до конца loader transaction, а unrelated child row не блокируется. Persisted evidence и scores сравниваются с regenerated artifacts целиком, включая IDs, source contracts, payload, contributions, row refs, factor values/quality/weights, raw contribution, underlying lineage, canonical family grouping и leaf UUID. Изменение child route, timing proof или upstream rows делает stale persisted profile недействительным; identity-map preload не может скрыть committed изменения другой session.
 - Deterministic interaction/synastry UUID namespaces и formulas вынесены в общий `interaction_identity.py`, используемый generator и validator.
 
 ## Затрагиваемые файлы
@@ -34,8 +34,10 @@
 | ---------------------------------------------------------- | ----------------- |
 | `backend/app/modules/child/synastry.py`                    | Изменить/добавить |
 | `backend/app/modules/child/interaction.py`                 | Изменить/добавить |
+| `backend/app/modules/child/repository.py`                  | Изменить/добавить |
 | `backend/app/reference_data/child/*`                       | Изменить/добавить |
 | `backend/tests/unit/test_child/test_interaction_engine.py` | Изменить/добавить |
+| `backend/tests/integration/test_child_interaction.py`      | Изменить/добавить |
 
 ## Критерии приёмки
 
@@ -49,6 +51,7 @@
 - [x] Pair A/B и A/C не смешивают evidence/cache/UUID lineage.
 - [x] Fresh PostgreSQL reload отклоняет committed corruption после identity-map preload и stale exact overlays после смены timing proof на unknown.
 - [x] Persisted fit leaves точно привязаны к ожидаемым Parent Style/Child Needs rows и recomputed catalog rule.
+- [x] Create/reload блокируют exact owned `ChildProfile` до чтения `parent_profile_id`, не блокируют sibling row и после смены route отклоняют stale interaction.
 
 ## Verification
 
@@ -58,7 +61,7 @@
 - `uv run pytest tests/unit/test_child -q` → `164 passed`.
 - Chart regressions: `uv run pytest tests/chart -q` → `28 passed`.
 - Career/fact regressions: `uv run pytest tests/unit/test_career tests/unit/test_astrotype_v2 -q` → `253 passed`, одна dependency deprecation warning WeasyPrint.
-- PostgreSQL combined S05–S07: `uv run pytest tests/integration/test_child_parent_style.py tests/integration/test_child_needs.py tests/integration/test_child_interaction.py -q` → `7 passed`, включая fresh-state identity-map corruption rejection, exact→unknown timing invalidation, real Alembic `d5→e6→d5→e6`, S07 schema parity, concurrent replay, pair isolation, old/current coexistence и lossy downgrade refusal. Explicit lock regression observes the raw Parent Style `UPDATE` waiting through `pg_blocking_pids` under `lock_timeout`, proves validated loader completion while locks remain held, releases the transaction, then confirms the update commits and a fresh reload rejects the stale interaction.
+- PostgreSQL combined S05–S07: `uv run pytest tests/integration/test_child_parent_style.py tests/integration/test_child_needs.py tests/integration/test_child_interaction.py -q` → `8 passed`, включая fresh-state identity-map corruption rejection, exact→unknown timing invalidation, real Alembic `d5→e6→d5→e6`, S07 schema parity, concurrent replay, pair isolation, old/current coexistence и lossy downgrade refusal. Explicit locks: `uv run pytest tests/integration/test_child_interaction.py::test_reload_locks_exact_owned_child_route_before_reading_parent_profile tests/integration/test_child_interaction.py::test_reload_holds_shared_source_locks_until_validation_transaction_ends -q` → `2 passed`. Первый regression наблюдает raw `UPDATE child_profiles.parent_profile_id` exact child row, ожидающий loader через `pg_blocking_pids` под `lock_timeout`, одновременно подтверждает commit update другого child, затем после release подтверждает commit target update и rejection следующего reload. Второй сохраняет тот же proof для upstream Parent Style row.
 - Repository-wide `ruff format --check . && ruff check .` → `420 files already formatted`, `All checks passed`; strict `mypy .` → `419 source files` без ошибок; exact-path Prettier проходит. `git diff --check` и single Alembic head входят в final commit gate.
 
 ## Зависимости

@@ -1547,19 +1547,33 @@ class ChildRepository:
         self,
         *,
         owner_user_id: UUID,
-        parent_profile_id: UUID,
         child_profile_id: UUID,
         generation_id: UUID,
     ) -> _InteractionSourceSnapshot:
         """Lock then authoritatively read one exact interaction source snapshot.
 
         Create and reload acquire PostgreSQL ``FOR SHARE`` locks in the same
-        deterministic table order: generation, current Parent Style scores,
-        current Child Needs scores, parent chart root, child chart root,
-        parent positions (including persisted angles), then parent houses.
+        deterministic table order: owned child route, generation, current Parent
+        Style scores, current Child Needs scores, parent chart root, child chart
+        root, parent positions (including persisted angles), then parent houses.
         Transaction-scoped locks prevent raw UPDATE/DELETE from changing source
-        rows between regeneration and semantic validation under READ COMMITTED.
+        rows between route authorization, regeneration, and semantic validation
+        under READ COMMITTED.
         """
+
+        child = await self.session.scalar(
+            select(models.ChildProfile)
+            .where(
+                models.ChildProfile.id == child_profile_id,
+                models.ChildProfile.owner_user_id == owner_user_id,
+            )
+            .order_by(models.ChildProfile.id)
+            .with_for_update(read=True)
+            .execution_options(populate_existing=True)
+        )
+        if child is None:
+            raise ChildLineageMismatchError("Child profile is not owned by the requested owner")
+        parent_profile_id = child.parent_profile_id
 
         locked_lineage = (
             await self.session.execute(
@@ -1713,14 +1727,8 @@ class ChildRepository:
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {"lock_key": f"child-interaction:{generation_id}:{INTERACTION_SCORING_VERSION}"},
         )
-        child = await self._require_owned_child(
-            child_profile_id=child_profile_id,
-            owner_user_id=owner_user_id,
-            fresh=True,
-        )
         source = await self._lock_interaction_source_snapshot(
             owner_user_id=owner_user_id,
-            parent_profile_id=child.parent_profile_id,
             child_profile_id=child_profile_id,
             generation_id=generation_id,
         )
@@ -1798,14 +1806,8 @@ class ChildRepository:
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {"lock_key": f"child-interaction:{generation_id}:{INTERACTION_SCORING_VERSION}"},
         )
-        child = await self._require_owned_child(
-            child_profile_id=child_profile_id,
-            owner_user_id=owner_user_id,
-            fresh=True,
-        )
         source = await self._lock_interaction_source_snapshot(
             owner_user_id=owner_user_id,
-            parent_profile_id=child.parent_profile_id,
             child_profile_id=child_profile_id,
             generation_id=generation_id,
         )

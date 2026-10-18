@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -16,6 +16,16 @@
 4. Особо ограничить Saturn/pressure interpretations.
 5. Сформировать patterns natural_match/moderate_tension/high_attention без verdict о совместимости.
 
+## Реализация
+
+- `child-synastry-reference-1` строит pair-bound cross-chart aspects только из канонических persisted longitudes и разрешённого каталога пар/orbs. Для `approximate/unknown` child chart cross-chart longitude evidence исключается fail-closed: sampled sign/aspect stability S03 не доказывает устойчивость pair aspect.
+- House overlays рассчитываются только при exact timing proof обоих charts и полном наборе 12 persisted cusps; при ненадёжном времени они отсутствуют без fallback.
+- Exact-time overlays versioned и bounded: используются как pair context с отдельными correlation families и не подменяют Parent Style/Child Needs fit.
+- `child-interaction-mvp-1` возвращает ровно восемь dimensions в каноническом порядке. Ненейтральный score требует минимум две independent families, две persisted lineages и хотя бы один `fit:*` signal из Parent Style + Child Needs; pair-only и Saturn-only evidence остаются neutral.
+- Correlated evidence capped; Saturn contribution дополнительно ограничен `0.08` и использует только безопасный label `structure_expectations_pressure_awareness`.
+- `e6f7a8b9c0d1` добавляет pair chart lineage, version-aware uniqueness для scores/synastry evidence и fail-safe downgrade preflight до DDL.
+- Repository использует PostgreSQL advisory lock, immutable replay, current-version reload и strict semantic validation score/confidence/pattern/evidence/pair lineage.
+
 ## Затрагиваемые файлы
 
 | Область                                                    | Действие          |
@@ -27,18 +37,22 @@
 
 ## Критерии приёмки
 
-- [ ] Нет общего compatibility percentage.
-- [ ] House overlays отсутствуют при ненадёжном времени.
-- [ ] Каждый interaction score multi-signal и evidence-backed.
-- [ ] Saturn fixtures не создают blame/fatalism.
-- [ ] Correlated evidence capped.
-- [ ] Pair A/B и A/C не смешивают evidence/cache.
+- [x] Нет общего compatibility percentage.
+- [x] House overlays отсутствуют при ненадёжном времени и появляются только для exact/exact пары с полными cusps.
+- [x] Каждый interaction score multi-signal и evidence-backed; pair-only evidence не выводит score из neutral.
+- [x] Saturn fixtures не создают blame/fatalism и не выводят score из neutral без fit evidence.
+- [x] Correlated evidence capped.
+- [x] Pair A/B и A/C не смешивают evidence/cache/UUID lineage.
 
 ## Verification
 
-- Добавить targeted unit/integration/frontend tests из критериев Story.
-- Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.
-- Записать фактические команды, результаты и runtime evidence в эту Story при реализации.
+- RED: focused Interaction suite не собиралась до появления S07 modules/contracts.
+- `uv run pytest tests/unit/test_child/test_parent_style_engine.py tests/unit/test_child/test_child_needs_engine.py tests/unit/test_child/test_interaction_engine.py -q` → `102 passed`.
+- `uv run pytest tests/unit/test_child -q` → `145 passed`.
+- Chart regressions → `31 passed`.
+- Career/fact regressions → `127 passed`, одна dependency deprecation warning WeasyPrint.
+- Disposable PostgreSQL 16: `TEST_DATABASE_URL=... uv run pytest tests/integration/test_child_interaction.py -q` → `1 passed`, включая concurrent replay, pair isolation, old/current coexistence, semantic corruption rejection и lossy downgrade refusal.
+- Repository-wide Ruff format/check и strict mypy проходят после последнего изменения; exact-path Prettier и `git diff --check` входят в commit gate.
 
 ## Зависимости
 

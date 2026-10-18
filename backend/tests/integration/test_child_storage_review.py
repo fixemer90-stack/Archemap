@@ -212,6 +212,8 @@ async def test_database_rejects_cross_child_and_cross_generation_lineage(db_sess
     db_session.add(
         models.ChildInteractionScore(
             child_profile_id=first_id,
+            parent_chart_id=parent_chart.id,
+            child_chart_version_id=second_chart.id,
             generation_id=second_generation_id,
             dimension="boundary_fit",
             score=50,
@@ -474,6 +476,8 @@ async def _seed_complete_graph(
             ),
             models.ChildInteractionScore(
                 child_profile_id=child.id,
+                parent_chart_id=parent_chart.id,
+                child_chart_version_id=chart.id,
                 generation_id=generation_id,
                 dimension="boundary_fit",
                 score=55,

@@ -225,11 +225,11 @@ async def test_child_needs_persist_reload_concurrency_versions_and_corruption(
             )
         )
     run_alembic("stamp", "c4d5e6f7a8b9")
-    run_alembic("upgrade", "head")
+    run_alembic("upgrade", "d5e6f7a8b9c0")
     assert await constraint_exists("uq_child_need_generation_dimension_version")
     run_alembic("downgrade", "c4d5e6f7a8b9")
     assert await constraint_exists("uq_child_need_generation_dimension")
-    run_alembic("upgrade", "head")
+    run_alembic("upgrade", "d5e6f7a8b9c0")
     assert await constraint_exists("uq_child_need_generation_dimension_version")
 
     async def create_same() -> tuple[bool, tuple[object, ...], list[tuple[object, ...]]]:

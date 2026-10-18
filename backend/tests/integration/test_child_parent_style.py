@@ -270,11 +270,11 @@ async def test_parent_style_persists_and_reloads_exact_versioned_profile_from_po
             )
         )
     run_alembic("stamp", "b3c4d5e6f7a8")
-    run_alembic("upgrade", "head")
+    run_alembic("upgrade", "c4d5e6f7a8b9")
     assert await constraint_exists("uq_child_parent_style_generation_dimension_version")
     run_alembic("downgrade", "b3c4d5e6f7a8")
     assert await constraint_exists("uq_child_parent_style_generation_dimension")
-    run_alembic("upgrade", "head")
+    run_alembic("upgrade", "c4d5e6f7a8b9")
     assert await constraint_exists("uq_child_parent_style_generation_dimension_version")
 
     db_session.add_all(

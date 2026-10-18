@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S06 завершены; S07–S16 не начаты
+🟡 В работе — S01–S07 завершены; S08–S16 не начаты
 
 ## Цель
 
@@ -128,8 +128,8 @@ Child Report помогает взрослому понять:
 
 - [x] У `unknown` birth time не используются houses, ASC, MC, house overlays и time-sensitive факты без доказанной устойчивости.
 - [x] `approximate` time использует только факты, устойчивые в документированном временном окне.
-- [ ] Каждый Parent Style, Child Needs и Interaction score имеет confidence, evidence и version lineage.
-- [ ] Ни один вывод не строится из одного астрологического фактора и не маркирует ребёнка бинарным trait.
+- [x] Каждый Parent Style, Child Needs и Interaction score имеет confidence, evidence и version lineage.
+- [x] Ни один вывод не строится из одного астрологического фактора и не маркирует ребёнка бинарным trait.
 - [x] Age Resolver календарно корректен, не принимает будущую DOB/возраст `>=18` и создаёт versioned snapshots с server-derived local `as_of_date`.
 - [x] Core report не мутирует при взрослении ребёнка; age update создаёт отдельную snapshot/guidance lineage.
 - [ ] Guidance Facts являются единственным content input LLM и не содержат unrestricted raw chart/answers.
@@ -152,7 +152,7 @@ Child Report помогает взрослому понять:
 | S04 | [Age Resolver и age snapshots](./S04-age-resolver-age-snapshots.md)                           | ✅ Завершено |
 | S05 | [Parent Style engine](./S05-parent-style-engine.md)                                           | ✅ Завершено |
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ✅ Завершено |
-| S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ⬜ Не начато |
+| S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ✅ Завершено |
 | S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ⬜ Не начато |
 | S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ⬜ Не начато |
 | S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ⬜ Не начато |
@@ -207,4 +207,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature, SRS, workflow, API и атомарные Stories подготовлены. S01 закрыта исполняемыми backend contracts и unit evidence; S02 закрыта additive PostgreSQL storage, enforced lineage/immutability, idempotency, full-graph reconstruction и purge/rollback integration evidence; S03 закрыта versioned exact/approximate/unknown chart policy, stability/exclusion evidence, Moon-boundary golden fixtures и immutable correction lineage; S04 закрыта calendar-correct under-18 resolver, server-owned local effective date, immutable input-hashed snapshots, fresh committed state после shared correction/snapshot lock, side-effect-free cross-date age-update replay, fail-safe conditional downgrade, owner-scoped age update lineage и shared pinned web/PDF read contract; S05 закрыта deterministic восьмимерным Parent Style engine с persisted v2 facts/evidence only, одновременным multi-family и canonical persisted-source-lineage neutral fail-closed, key-first mixed-lineage deduplication/refs, strict finite numeric и nested JSON reload validation, malformed-provenance timing exclusion, chart engine `0.1.6` cache boundary, sign/aspect/balance-sensitive rules, correlation caps, confidence decomposition, current-version filtering, coexistence old/current PostgreSQL profiles, version-aware uniqueness и fail-safe conditional migration downgrade. S06 закрыта deterministic десяти-мерным Child Needs engine `child-needs-mvp-1`/`child-needs-reference-1`, который читает только pinned `ChildChartVersion`, требует точного совпадения allowlists/reason/canonical exclusions с S03 policy, проверяет aware UTC sampled-stability proof и full-day `10h..14h` segment/`22h..26h` total span с normal/spring/fall DST fixtures, всегда исключает unknown Moon/Moon aspects, нормализует и order-independently дедуплицирует case/reversed canonical positions/aspects с canonical lookup production stability keys, выводит balances только из уникальных placements с реальными `planet_positions:*` lineages, требует две signal families и две canonical source lineages, сохраняет neutral low-evidence semantics, strict nested JSON reload validation с запретом split duplicate fact/evidence/lineage ownership внутри dimension, advisory-lock idempotency, old/current PostgreSQL coexistence и fail-safe conditional migration downgrade. Synastry/Interaction, Context Resolver, Guidance Facts, API routes, frontend, runtime и rollout остаются в S07–S16.
+Feature, SRS, workflow, API и атомарные Stories подготовлены. S01–S06 закрыты исполняемыми product/privacy, storage, chart-confidence, age, Parent Style и Child Needs контрактами. S07 закрыта pair-bound engine `child-interaction-mvp-1`/`child-interaction-reference-1`/`child-synastry-reference-1`: восемь canonical dimensions, exact/exact house overlays, fail-closed non-exact cross-chart longitude policy, multi-family + multi-lineage + required fit signal, Saturn safety cap, correlation caps, strict persisted semantic validation, pair A/B vs A/C isolation, version-aware PostgreSQL history и fail-safe downgrade.

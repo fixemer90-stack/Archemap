@@ -36,6 +36,23 @@ class ChildNeedDimension(StrEnum):
     VARIETY = "variety"
 
 
+class InteractionDimension(StrEnum):
+    EMOTIONAL_ATTUNEMENT = "emotional_attunement"
+    BOUNDARY_FIT = "boundary_fit"
+    AUTONOMY_BALANCE = "autonomy_balance"
+    COMMUNICATION_FIT = "communication_fit"
+    TEMPO_FIT = "tempo_fit"
+    CONFLICT_PATTERN = "conflict_pattern"
+    SOOTHING_COMPATIBILITY = "soothing_compatibility"
+    LEARNING_INTERACTION = "learning_interaction"
+
+
+class InteractionPattern(StrEnum):
+    NATURAL_MATCH = "natural_match"
+    MODERATE_TENSION = "moderate_tension"
+    HIGH_ATTENTION = "high_attention"
+
+
 @dataclass(frozen=True, slots=True)
 class ScaleSemantics:
     zero: str
@@ -113,6 +130,19 @@ class DimensionBreakdown:
     source_quality: float
     correlation_family_totals: tuple[tuple[str, float], ...]
     excluded_time_sensitive_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class InteractionResult:
+    dimension: InteractionDimension
+    score: float
+    confidence: float
+    pattern: InteractionPattern
+    scoring_version: str
+    supports: tuple[DimensionEvidence, ...]
+    counters: tuple[DimensionEvidence, ...]
+    evidence_refs: tuple[str, ...]
+    breakdown: DimensionBreakdown
 
 
 @dataclass(frozen=True, slots=True)

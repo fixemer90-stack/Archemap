@@ -215,7 +215,12 @@ class ChildNeedScore(BaseModel):
 class ChildSynastryEvidence(BaseModel):
     __tablename__ = "child_synastry_evidence"
     __table_args__ = (
-        UniqueConstraint("generation_id", "source_key", name="uq_child_synastry_generation_source"),
+        UniqueConstraint(
+            "generation_id",
+            "source_key",
+            "reference_version",
+            name="uq_child_synastry_generation_source_version",
+        ),
         ForeignKeyConstraint(
             ["child_profile_id", "child_chart_version_id"],
             ["child_chart_versions.child_profile_id", "child_chart_versions.id"],
@@ -248,6 +253,7 @@ class ChildSynastryEvidence(BaseModel):
     generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     source_type: Mapped[str] = mapped_column(String(80), nullable=False)
     source_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    reference_version: Mapped[str] = mapped_column(String(80), nullable=False, default="legacy")
     contribution: Mapped[float] = mapped_column(Float, nullable=False)
     direction: Mapped[str] = mapped_column(String(20), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
@@ -256,10 +262,26 @@ class ChildSynastryEvidence(BaseModel):
 class ChildInteractionScore(BaseModel):
     __tablename__ = "child_interaction_scores"
     __table_args__ = (
-        UniqueConstraint("generation_id", "dimension", name="uq_child_interaction_generation_dimension"),
+        UniqueConstraint(
+            "generation_id",
+            "dimension",
+            "scoring_version",
+            name="uq_child_interaction_generation_dimension_version",
+        ),
         ForeignKeyConstraint(
-            ["child_profile_id", "generation_id"],
-            ["child_generations.child_profile_id", "child_generations.generation_id"],
+            ["child_profile_id", "child_chart_version_id"],
+            ["child_chart_versions.child_profile_id", "child_chart_versions.id"],
+            name="fk_child_interaction_chart_lineage",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "generation_id", "parent_chart_id", "child_chart_version_id"],
+            [
+                "child_generations.child_profile_id",
+                "child_generations.generation_id",
+                "child_generations.parent_chart_id",
+                "child_generations.child_chart_version_id",
+            ],
             name="fk_child_interaction_generation_lineage",
             ondelete="CASCADE",
         ),
@@ -269,6 +291,12 @@ class ChildInteractionScore(BaseModel):
 
     child_profile_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHILD_PROFILE_FK, ondelete="CASCADE"), nullable=False, index=True
+    )
+    parent_chart_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_PARENT_CHART_FK, ondelete="RESTRICT"), nullable=False, index=True
+    )
+    child_chart_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_CHILD_CHART_FK, ondelete="RESTRICT"), nullable=False, index=True
     )
     generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     dimension: Mapped[str] = mapped_column(String(80), nullable=False, index=True)

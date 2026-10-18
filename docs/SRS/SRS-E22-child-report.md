@@ -185,6 +185,8 @@ MVP dimensions:
 
 Запрещены общий compatibility percentage, binary labels, single-factor conclusion, correlated evidence double-counting и gender weights.
 
+Реализация S07: `child-interaction-mvp-1` возвращает восемь canonical dimensions и patterns `natural_match/moderate_tension/high_attention` без общего compatibility verdict. `child-synastry-reference-1` использует versioned pair/orb catalog; cross-chart longitude aspects строятся только для exact child chart, потому что sampled S03 sign/aspect stability не доказывает pair-aspect stability. House overlays создаются только при exact timing proof обоих charts и полных persisted cusps. Ненейтральный score требует двух independent families, двух canonical persisted lineages и минимум одного Parent Style ↔ Child Needs `fit:*` signal; pair-only/Saturn-only evidence остаётся neutral. Saturn и correlated families capped, evidence/score UUID включают exact pair lineage. Migration `e6f7a8b9c0d1` добавляет version-aware history и pair chart FKs с lossy-downgrade preflight; repository обеспечивает advisory-lock replay, A/B vs A/C isolation и strict semantic reload validation.
+
 ## 10. FR-E22.7 — Questionnaire и Context Resolver
 
 MVP использует 8–12 versioned вопросов, фильтруемых backend по age stage. Отдельно хранятся:

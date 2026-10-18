@@ -17,15 +17,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import AuditLog
 from app.core.models import BaseModel
-from app.modules.astrotype_v2.models import NatalChart, NatalFact, NatalFactEvidence
+from app.modules.astrotype_v2.models import (
+    NatalChart,
+    NatalFact,
+    NatalFactEvidence,
+    NatalHouse,
+    NatalPlanetPosition,
+)
 from app.modules.child import models
 from app.modules.child.age_resolver import AGE_RULES_VERSION, ChildAgeResolution, resolve_child_age
 from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
 from app.modules.child.child_needs import build_child_need_rows, score_child_needs
+from app.modules.child.interaction import build_interaction_rows, score_interactions
 from app.modules.child.parent_style import build_parent_style_rows, score_parent_style
-from app.modules.child.scoring.types import ChildNeedDimension, ParentStyleDimension
+from app.modules.child.scoring.types import (
+    ChildNeedDimension,
+    InteractionDimension,
+    InteractionPattern,
+    ParentStyleDimension,
+)
 from app.modules.child.scoring.validation import validate_dimension_breakdown
+from app.modules.child.synastry import build_synastry_evidence
 from app.modules.profiles.models import PersonProfile
 from app.reference_data.child.child_needs_v1 import (
     CHILD_NEEDS_POLICY,
@@ -33,6 +46,14 @@ from app.reference_data.child.child_needs_v1 import (
     CHILD_NEEDS_RULES,
     CHILD_NEEDS_SCALES,
     CHILD_NEEDS_SCORING_VERSION,
+)
+from app.reference_data.child.interaction_v1 import (
+    CORRELATION_FAMILY_CAP,
+    EXPECTED_INDEPENDENT_FAMILIES,
+    INTERACTION_REFERENCE_VERSION,
+    INTERACTION_SCORING_VERSION,
+    MINIMUM_INDEPENDENT_FAMILIES,
+    SYNASTRY_REFERENCE_VERSION,
 )
 from app.reference_data.child.parent_style_v1 import (
     PARENT_STYLE_POLICY,
@@ -284,6 +305,219 @@ def _validated_parent_style_breakdown(
     )
 
 
+def _validate_persisted_interaction_profile(
+    evidence: Sequence[models.ChildSynastryEvidence],
+    scores: Sequence[models.ChildInteractionScore],
+    *,
+    child_profile_id: UUID,
+    generation_id: UUID,
+    parent_chart_id: UUID,
+    child_chart_version_id: UUID,
+) -> None:
+    pair_lineage = {
+        "child_profile_id": str(child_profile_id),
+        "generation_id": str(generation_id),
+        "parent_chart_id": str(parent_chart_id),
+        "child_chart_version_id": str(child_chart_version_id),
+    }
+    source_keys: set[str] = set()
+    evidence_ids: set[str] = set()
+    for row in evidence:
+        if (
+            row.child_profile_id != child_profile_id
+            or row.generation_id != generation_id
+            or row.parent_chart_id != parent_chart_id
+            or row.child_chart_version_id != child_chart_version_id
+        ):
+            raise ChildLineageMismatchError("Synastry evidence references another pair lineage")
+        if row.reference_version != SYNASTRY_REFERENCE_VERSION or row.source_key in source_keys:
+            raise ChildLineageMismatchError("Synastry evidence version or ownership is invalid")
+        if not _is_finite_number(row.contribution, minimum=-1.0, maximum=1.0):
+            raise ChildLineageMismatchError("Synastry evidence contains invalid contribution")
+        if row.direction != ("supports" if row.contribution >= 0 else "counters"):
+            raise ChildLineageMismatchError("Synastry evidence direction is incoherent")
+        if not isinstance(row.payload, dict) or row.payload.get("reference_version") != SYNASTRY_REFERENCE_VERSION:
+            raise ChildLineageMismatchError("Synastry evidence payload version is invalid")
+        if any(row.payload.get(key) != value for key, value in pair_lineage.items()):
+            raise ChildLineageMismatchError("Synastry evidence payload pair lineage is invalid")
+        dimensions = row.payload.get("dimensions")
+        if (
+            not isinstance(dimensions, list)
+            or not dimensions
+            or len(dimensions) != len(set(dimensions))
+            or any(value not in {dimension.value for dimension in InteractionDimension} for value in dimensions)
+        ):
+            raise ChildLineageMismatchError("Synastry evidence dimensions are malformed")
+        if not _is_finite_number(row.payload.get("strength"), minimum=0.0, maximum=1.0):
+            raise ChildLineageMismatchError("Synastry evidence strength is invalid")
+        if not all(
+            isinstance(row.payload.get(key), str) and row.payload[key]
+            for key in ("correlation_family", "factor_label", "parent_source_ref", "child_source_ref")
+        ):
+            raise ChildLineageMismatchError("Synastry evidence source lineage is malformed")
+        source_keys.add(row.source_key)
+        evidence_ids.add(f"child_synastry_evidence:{row.id}")
+
+    expected_dimensions = tuple(dimension.value for dimension in InteractionDimension)
+    if tuple(score.dimension for score in scores) != expected_dimensions:
+        raise ChildLineageMismatchError("Interaction profile is incomplete or not canonically ordered")
+    for score_row in scores:
+        if (
+            score_row.child_profile_id != child_profile_id
+            or score_row.generation_id != generation_id
+            or score_row.parent_chart_id != parent_chart_id
+            or score_row.child_chart_version_id != child_chart_version_id
+        ):
+            raise ChildLineageMismatchError("Interaction score references another pair lineage")
+        if score_row.scoring_version != INTERACTION_SCORING_VERSION:
+            raise ChildLineageMismatchError("Interaction score uses another scoring version")
+        if not _is_finite_number(score_row.score, minimum=0.0, maximum=100.0) or not _is_finite_number(
+            score_row.confidence, minimum=0.0, maximum=1.0
+        ):
+            raise ChildLineageMismatchError("Interaction score contains invalid numeric values")
+        if score_row.pattern not in {pattern.value for pattern in InteractionPattern}:
+            raise ChildLineageMismatchError("Interaction score contains invalid pattern")
+        if not _is_unique_string_list(score_row.evidence_refs, allow_empty=True):
+            raise ChildLineageMismatchError("Interaction score contains malformed evidence refs")
+        breakdown = score_row.breakdown
+        required_keys = {
+            "reference_version",
+            "parent_style_scoring_version",
+            "child_needs_scoring_version",
+            "pair_lineage",
+            "supports",
+            "counters",
+            "confidence_components",
+            "raw_delta",
+            "independent_family_count",
+            "required_family_count",
+            "independent_lineage_count",
+            "independent_lineage_refs",
+            "required_lineage_count",
+            "expected_family_count",
+            "correlation_family_totals",
+        }
+        if not isinstance(breakdown, dict) or breakdown.keys() != required_keys:
+            raise ChildLineageMismatchError("Interaction score contains malformed breakdown")
+        if (
+            breakdown["reference_version"] != INTERACTION_REFERENCE_VERSION
+            or breakdown["parent_style_scoring_version"] != PARENT_STYLE_SCORING_VERSION
+            or breakdown["child_needs_scoring_version"] != CHILD_NEEDS_SCORING_VERSION
+            or breakdown["pair_lineage"] != pair_lineage
+        ):
+            raise ChildLineageMismatchError("Interaction breakdown version or lineage is invalid")
+        supports = breakdown["supports"]
+        counters = breakdown["counters"]
+        if not isinstance(supports, list):
+            raise ChildLineageMismatchError("Interaction supports are malformed")
+        invalid_support = next(
+            (item for item in supports if not _valid_parent_style_evidence(item, direction="supports")),
+            None,
+        )
+        if invalid_support is not None:
+            factor = invalid_support.get("factor_key") if isinstance(invalid_support, dict) else None
+            raise ChildLineageMismatchError(f"Interaction supports are malformed: {factor}")
+        if not isinstance(counters, list):
+            raise ChildLineageMismatchError("Interaction counters are malformed")
+        invalid_counter = next(
+            (item for item in counters if not _valid_parent_style_evidence(item, direction="counters")),
+            None,
+        )
+        if invalid_counter is not None:
+            factor = invalid_counter.get("factor_key") if isinstance(invalid_counter, dict) else None
+            raise ChildLineageMismatchError(f"Interaction counters are malformed: {factor}")
+        leaves = cast(list[dict[str, Any]], [*supports, *counters])
+        leaf_refs = [ref for item in leaves for ref in cast(list[str], item["evidence_refs"])]
+        if len(leaf_refs) != len(set(leaf_refs)):
+            raise ChildLineageMismatchError("Interaction evidence ownership is duplicated")
+        actual_refs = tuple(sorted(set(leaf_refs)))
+        if score_row.evidence_refs != list(actual_refs):
+            raise ChildLineageMismatchError("Interaction evidence refs are incoherent")
+        if any(ref.startswith("child_synastry_evidence:") and ref not in evidence_ids for ref in actual_refs):
+            raise ChildLineageMismatchError("Interaction score references foreign synastry evidence")
+        active = [item for item in leaves if float(item["contribution"]) != 0.0]
+        families = {cast(str, item["correlation_family"]) for item in active}
+        lineages = tuple(sorted({ref for item in active for ref in cast(list[str], item["lineage_refs"])}))
+        totals: dict[str, float] = defaultdict(float)
+        for item in active:
+            totals[cast(str, item["correlation_family"])] += float(item["contribution"])
+        if any(abs(total) > CORRELATION_FAMILY_CAP + 1e-9 for total in totals.values()):
+            raise ChildLineageMismatchError("Interaction correlated evidence exceeds its cap")
+        persisted_totals = breakdown["correlation_family_totals"]
+        if not isinstance(persisted_totals, list):
+            raise ChildLineageMismatchError("Interaction family totals are malformed")
+        total_map: dict[str, float] = {}
+        for item in persisted_totals:
+            if (
+                not isinstance(item, dict)
+                or not isinstance(item.get("family"), str)
+                or not _is_finite_number(item.get("contribution"), minimum=-1.0, maximum=1.0)
+                or item["family"] in total_map
+            ):
+                raise ChildLineageMismatchError("Interaction family totals are malformed")
+            total_map[cast(str, item["family"])] = float(item["contribution"])
+        if set(total_map) != families or any(
+            not _numbers_close(total_map[family], round(total, 6), tolerance=1e-6) for family, total in totals.items()
+        ):
+            raise ChildLineageMismatchError("Interaction family totals are incoherent")
+        if (
+            breakdown["independent_family_count"] != len(families)
+            or breakdown["required_family_count"] != MINIMUM_INDEPENDENT_FAMILIES
+            or breakdown["independent_lineage_count"] != len(lineages)
+            or breakdown["independent_lineage_refs"] != list(lineages)
+            or breakdown["required_lineage_count"] != MINIMUM_INDEPENDENT_FAMILIES
+            or breakdown["expected_family_count"] != EXPECTED_INDEPENDENT_FAMILIES
+        ):
+            raise ChildLineageMismatchError("Interaction evidence counts are incoherent")
+        raw_delta = max(-1.0, min(1.0, sum(float(item["contribution"]) for item in leaves)))
+        if not _numbers_close(breakdown["raw_delta"], round(raw_delta, 6), tolerance=1e-6):
+            raise ChildLineageMismatchError("Interaction raw delta is incoherent")
+        positive = sum(float(item["contribution"]) for item in leaves if float(item["contribution"]) > 0)
+        negative = abs(sum(float(item["contribution"]) for item in leaves if float(item["contribution"]) < 0))
+        magnitude = positive + negative
+        coverage = round(min(1.0, len(families) / EXPECTED_INDEPENDENT_FAMILIES), 4)
+        agreement = round(max(positive, negative) / magnitude, 4) if magnitude else 0.0
+        source_quality = (
+            round(
+                sum(abs(float(item["contribution"])) * float(item["source_quality"]) for item in leaves) / magnitude,
+                4,
+            )
+            if magnitude
+            else 0.0
+        )
+        components = breakdown["confidence_components"]
+        if not isinstance(components, dict) or any(
+            not _numbers_close(components.get(key), expected, tolerance=1e-4)
+            for key, expected in (
+                ("coverage", coverage),
+                ("agreement", agreement),
+                ("source_quality", source_quality),
+            )
+        ):
+            raise ChildLineageMismatchError("Interaction confidence components are incoherent")
+        has_fit_signal = any(family.startswith("fit:") for family in families)
+        enough = (
+            has_fit_signal
+            and len(families) >= MINIMUM_INDEPENDENT_FAMILIES
+            and len(lineages) >= MINIMUM_INDEPENDENT_FAMILIES
+        )
+        expected_score = round(50.0 + raw_delta * 50.0, 2) if enough else 50.0
+        expected_confidence = round(coverage * agreement * source_quality, 4) if enough else 0.0
+        expected_pattern = (
+            InteractionPattern.NATURAL_MATCH.value
+            if expected_score >= 60.0
+            else InteractionPattern.MODERATE_TENSION.value
+            if expected_score >= 35.0
+            else InteractionPattern.HIGH_ATTENTION.value
+        )
+        if (
+            not _numbers_close(score_row.score, expected_score, tolerance=1e-6)
+            or not _numbers_close(score_row.confidence, expected_confidence, tolerance=1e-4)
+            or score_row.pattern != expected_pattern
+        ):
+            raise ChildLineageMismatchError("Interaction score, confidence, or pattern is incoherent")
+
+
 def _server_now(now: datetime | None) -> datetime:
     effective_now = datetime.now(UTC) if now is None else now
     if not isinstance(effective_now, datetime) or effective_now.tzinfo is None or effective_now.utcoffset() is None:
@@ -369,6 +603,24 @@ class PersistedChildNeedProfile:
     child_chart_version_id: UUID
     scoring_version: str
     scores: tuple[models.ChildNeedScore, ...]
+
+
+@dataclass(frozen=True)
+class InteractionProfilePersistenceResult:
+    evidence: tuple[models.ChildSynastryEvidence, ...]
+    scores: tuple[models.ChildInteractionScore, ...]
+    created: bool
+
+
+@dataclass(frozen=True)
+class PersistedInteractionProfile:
+    child_profile_id: UUID
+    generation_id: UUID
+    parent_chart_id: UUID
+    child_chart_version_id: UUID
+    scoring_version: str
+    evidence: tuple[models.ChildSynastryEvidence, ...]
+    scores: tuple[models.ChildInteractionScore, ...]
 
 
 @dataclass(frozen=True)
@@ -966,6 +1218,237 @@ class ChildRepository:
                 raise ChildLineageMismatchError("Child Needs profile contains an incoherent score")
             if not _numbers_close(row.confidence, semantics.confidence, tolerance=1e-4):
                 raise ChildLineageMismatchError("Child Needs profile contains incoherent confidence")
+
+    async def create_interaction_profile(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> InteractionProfilePersistenceResult:
+        """Persist one immutable pair-bound synastry and Interaction profile."""
+
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-interaction:{generation_id}:{INTERACTION_SCORING_VERSION}"},
+        )
+        child = await self._require_owned_child(child_profile_id=child_profile_id, owner_user_id=owner_user_id)
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Interaction generation does not belong to the child")
+        await self._require_parent_chart_owner(
+            parent_chart_id=generation.parent_chart_id,
+            parent_profile_id=child.parent_profile_id,
+            owner_user_id=owner_user_id,
+        )
+        existing_scores = await self._load_interaction_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        existing_evidence = await self._load_synastry_evidence(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        if existing_scores or existing_evidence:
+            self._validate_interaction_profile(
+                existing_evidence,
+                existing_scores,
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+                parent_chart_id=generation.parent_chart_id,
+                child_chart_version_id=generation.child_chart_version_id,
+            )
+            return InteractionProfilePersistenceResult(
+                evidence=existing_evidence,
+                scores=existing_scores,
+                created=False,
+            )
+
+        parent_scores = await self._load_parent_style_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        child_scores = await self._load_child_need_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        self._validate_parent_style_profile(parent_scores, parent_chart_id=generation.parent_chart_id)
+        self._validate_child_need_profile(child_scores, child_chart_version_id=generation.child_chart_version_id)
+        parent_chart = await self.session.get(NatalChart, generation.parent_chart_id)
+        child_chart = await self.session.scalar(
+            select(models.ChildChartVersion).where(
+                models.ChildChartVersion.child_profile_id == child_profile_id,
+                models.ChildChartVersion.id == generation.child_chart_version_id,
+            )
+        )
+        if parent_chart is None or child_chart is None:
+            raise ChildLineageMismatchError("Interaction pinned chart lineage is missing")
+        parent_positions = tuple(
+            (
+                await self.session.execute(
+                    select(NatalPlanetPosition)
+                    .where(NatalPlanetPosition.chart_id == parent_chart.id)
+                    .order_by(NatalPlanetPosition.body, NatalPlanetPosition.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        parent_houses = tuple(
+            (
+                await self.session.execute(
+                    select(NatalHouse)
+                    .where(NatalHouse.chart_id == parent_chart.id)
+                    .order_by(NatalHouse.house_number, NatalHouse.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        evidence = build_synastry_evidence(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart=parent_chart,
+            parent_positions=parent_positions,
+            child_chart=child_chart,
+            parent_houses=parent_houses,
+        )
+        scores = build_interaction_rows(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=parent_chart.id,
+            child_chart_version_id=child_chart.id,
+            results=score_interactions(
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+                parent_chart_id=parent_chart.id,
+                child_chart_version_id=child_chart.id,
+                parent_scores=parent_scores,
+                child_need_scores=child_scores,
+                synastry_evidence=evidence,
+            ),
+        )
+        self._validate_interaction_profile(
+            evidence,
+            scores,
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=parent_chart.id,
+            child_chart_version_id=child_chart.id,
+        )
+        self.session.add_all([*evidence, *scores])
+        await self.session.flush()
+        return InteractionProfilePersistenceResult(evidence=evidence, scores=scores, created=True)
+
+    async def load_interaction_profile(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        generation_id: UUID,
+    ) -> PersistedInteractionProfile:
+        """Reload and semantically validate the current pair scoring version."""
+
+        await self._require_owned_child(child_profile_id=child_profile_id, owner_user_id=owner_user_id)
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Interaction generation does not belong to the child")
+        evidence = await self._load_synastry_evidence(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        scores = await self._load_interaction_scores(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+        )
+        self._validate_interaction_profile(
+            evidence,
+            scores,
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=generation.parent_chart_id,
+            child_chart_version_id=generation.child_chart_version_id,
+        )
+        return PersistedInteractionProfile(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=generation.parent_chart_id,
+            child_chart_version_id=generation.child_chart_version_id,
+            scoring_version=INTERACTION_SCORING_VERSION,
+            evidence=evidence,
+            scores=scores,
+        )
+
+    async def _load_synastry_evidence(
+        self, *, child_profile_id: UUID, generation_id: UUID
+    ) -> tuple[models.ChildSynastryEvidence, ...]:
+        return tuple(
+            (
+                await self.session.execute(
+                    select(models.ChildSynastryEvidence)
+                    .where(
+                        models.ChildSynastryEvidence.child_profile_id == child_profile_id,
+                        models.ChildSynastryEvidence.generation_id == generation_id,
+                        models.ChildSynastryEvidence.reference_version == SYNASTRY_REFERENCE_VERSION,
+                    )
+                    .order_by(models.ChildSynastryEvidence.source_key, models.ChildSynastryEvidence.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    async def _load_interaction_scores(
+        self, *, child_profile_id: UUID, generation_id: UUID
+    ) -> tuple[models.ChildInteractionScore, ...]:
+        persisted = tuple(
+            (
+                await self.session.execute(
+                    select(models.ChildInteractionScore).where(
+                        models.ChildInteractionScore.child_profile_id == child_profile_id,
+                        models.ChildInteractionScore.generation_id == generation_id,
+                        models.ChildInteractionScore.scoring_version == INTERACTION_SCORING_VERSION,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        rank = {dimension.value: index for index, dimension in enumerate(InteractionDimension)}
+        return tuple(
+            sorted(persisted, key=lambda row: (rank.get(row.dimension, len(rank)), row.dimension, str(row.id)))
+        )
+
+    @staticmethod
+    def _validate_interaction_profile(
+        evidence: Sequence[models.ChildSynastryEvidence],
+        scores: Sequence[models.ChildInteractionScore],
+        *,
+        child_profile_id: UUID,
+        generation_id: UUID,
+        parent_chart_id: UUID,
+        child_chart_version_id: UUID,
+    ) -> None:
+        _validate_persisted_interaction_profile(
+            evidence,
+            scores,
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=parent_chart_id,
+            child_chart_version_id=child_chart_version_id,
+        )
 
     async def create_chart_version_idempotently(
         self,

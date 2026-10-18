@@ -744,6 +744,43 @@ def test_malformed_child_cusp_cycle_excludes_all_house_overlays() -> None:
     assert all(row.source_type != "house_overlay" for row in evidence)
 
 
+def test_identical_thirteenth_parent_cusp_excludes_all_house_overlays() -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    parent = _parent_chart()
+    houses = _houses(parent.id)
+    houses.append(copy.deepcopy(houses[0]))
+
+    evidence = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=parent,
+        parent_positions=_positions(parent.id),
+        child_chart=_child_chart(),
+        parent_houses=houses,
+    )
+
+    assert all(row.source_type != "house_overlay" for row in evidence)
+
+
+def test_identical_thirteenth_child_cusp_excludes_all_house_overlays() -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    child = _child_chart()
+    child.calculation_payload["houses"].append(copy.deepcopy(child.calculation_payload["houses"][0]))
+
+    evidence = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=_parent_chart(),
+        parent_positions=_positions(uuid.UUID(int=1)),
+        child_chart=child,
+        parent_houses=_houses(uuid.UUID(int=1)),
+    )
+
+    assert all(row.source_type != "house_overlay" for row in evidence)
+
+
 def test_wraparound_cusp_cycle_is_valid_for_parent_and_child() -> None:
     from app.modules.child.synastry import build_synastry_evidence
 
@@ -915,3 +952,14 @@ def test_persisted_fit_leaf_is_anchored_to_exact_upstream_rows() -> None:
             child_need_scores=child_scores,
             expected_evidence=evidence,
         )
+
+
+def test_create_and_load_use_the_same_pre_read_source_snapshot_lock_helper() -> None:
+    import inspect
+
+    from app.modules.child.repository import ChildRepository
+
+    helper_name = "_lock_interaction_source_snapshot"
+    assert hasattr(ChildRepository, helper_name)
+    assert helper_name in inspect.getsource(ChildRepository.create_interaction_profile)
+    assert helper_name in inspect.getsource(ChildRepository.load_interaction_profile)

@@ -326,6 +326,8 @@ def _canonical_child_positions(chart: ChildChartVersion) -> dict[str, float] | N
 
 
 def _canonical_parent_houses(houses: Sequence[NatalHouse], *, chart_id: UUID) -> tuple[float, ...] | None:
+    if len(houses) != 12:
+        return None
     canonical: dict[int, float] = {}
     for row in houses:
         if row.chart_id != chart_id or not 1 <= row.house_number <= 12:
@@ -343,7 +345,7 @@ def _canonical_parent_houses(houses: Sequence[NatalHouse], *, chart_id: UUID) ->
 
 def _canonical_child_houses(chart: ChildChartVersion) -> tuple[float, ...] | None:
     raw = chart.calculation_payload.get("houses")
-    if not isinstance(raw, list):
+    if not isinstance(raw, list) or len(raw) != 12:
         return None
     canonical: dict[int, float] = {}
     for item in raw:

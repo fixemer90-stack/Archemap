@@ -936,6 +936,14 @@ class PersistedInteractionProfile:
 
 
 @dataclass(frozen=True)
+class _InteractionSourceSnapshot:
+    generation: models.ChildGeneration
+    parent_scores: tuple[models.ChildParentStyleScore, ...]
+    child_scores: tuple[models.ChildNeedScore, ...]
+    expected_evidence: tuple[models.ChildSynastryEvidence, ...]
+
+
+@dataclass(frozen=True)
 class ChildAgeUpdateResult:
     snapshot: models.ChildAgeSnapshot
     guidance: models.ChildReportAgeGuidance
@@ -1535,18 +1543,95 @@ class ChildRepository:
             if not _numbers_close(row.confidence, semantics.confidence, tolerance=1e-4):
                 raise ChildLineageMismatchError("Child Needs profile contains incoherent confidence")
 
-    async def _load_interaction_source_state(
+    async def _lock_interaction_source_snapshot(
         self,
         *,
+        owner_user_id: UUID,
+        parent_profile_id: UUID,
         child_profile_id: UUID,
         generation_id: UUID,
-        parent_chart_id: UUID,
-        child_chart_version_id: UUID,
-    ) -> tuple[
-        tuple[models.ChildParentStyleScore, ...],
-        tuple[models.ChildNeedScore, ...],
-        tuple[models.ChildSynastryEvidence, ...],
-    ]:
+    ) -> _InteractionSourceSnapshot:
+        """Lock then authoritatively read one exact interaction source snapshot.
+
+        Create and reload acquire PostgreSQL ``FOR SHARE`` locks in the same
+        deterministic table order: generation, current Parent Style scores,
+        current Child Needs scores, parent chart root, child chart root,
+        parent positions (including persisted angles), then parent houses.
+        Transaction-scoped locks prevent raw UPDATE/DELETE from changing source
+        rows between regeneration and semantic validation under READ COMMITTED.
+        """
+
+        locked_lineage = (
+            await self.session.execute(
+                select(
+                    models.ChildGeneration.id,
+                    models.ChildGeneration.parent_chart_id,
+                    models.ChildGeneration.child_chart_version_id,
+                )
+                .where(
+                    models.ChildGeneration.child_profile_id == child_profile_id,
+                    models.ChildGeneration.owner_user_id == owner_user_id,
+                    models.ChildGeneration.generation_id == generation_id,
+                )
+                .order_by(models.ChildGeneration.id)
+                .with_for_update(read=True)
+            )
+        ).one_or_none()
+        if locked_lineage is None:
+            raise ChildLineageMismatchError("Interaction generation does not belong to the child")
+        generation_row_id, parent_chart_id, child_chart_version_id = locked_lineage
+
+        lock_queries = (
+            select(models.ChildParentStyleScore.id)
+            .where(
+                models.ChildParentStyleScore.child_profile_id == child_profile_id,
+                models.ChildParentStyleScore.generation_id == generation_id,
+                models.ChildParentStyleScore.scoring_version == PARENT_STYLE_SCORING_VERSION,
+            )
+            .order_by(models.ChildParentStyleScore.dimension, models.ChildParentStyleScore.id)
+            .with_for_update(read=True),
+            select(models.ChildNeedScore.id)
+            .where(
+                models.ChildNeedScore.child_profile_id == child_profile_id,
+                models.ChildNeedScore.generation_id == generation_id,
+                models.ChildNeedScore.scoring_version == CHILD_NEEDS_SCORING_VERSION,
+            )
+            .order_by(models.ChildNeedScore.dimension, models.ChildNeedScore.id)
+            .with_for_update(read=True),
+            select(NatalChart.id)
+            .where(
+                NatalChart.id == parent_chart_id,
+                NatalChart.profile_id == parent_profile_id,
+                NatalChart.user_id == owner_user_id,
+            )
+            .order_by(NatalChart.id)
+            .with_for_update(read=True),
+            select(models.ChildChartVersion.id)
+            .where(
+                models.ChildChartVersion.child_profile_id == child_profile_id,
+                models.ChildChartVersion.id == child_chart_version_id,
+            )
+            .order_by(models.ChildChartVersion.id)
+            .with_for_update(read=True),
+            select(NatalPlanetPosition.id)
+            .where(NatalPlanetPosition.chart_id == parent_chart_id)
+            .order_by(NatalPlanetPosition.body, NatalPlanetPosition.id)
+            .with_for_update(read=True),
+            select(NatalHouse.id)
+            .where(NatalHouse.chart_id == parent_chart_id)
+            .order_by(NatalHouse.house_number, NatalHouse.id)
+            .with_for_update(read=True),
+        )
+        for query in lock_queries:
+            await self.session.execute(query)
+
+        generation = await self.session.scalar(
+            select(models.ChildGeneration)
+            .where(models.ChildGeneration.id == generation_row_id)
+            .execution_options(populate_existing=True)
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Interaction generation does not belong to the child")
         parent_scores = await self._load_parent_style_scores(
             child_profile_id=child_profile_id,
             generation_id=generation_id,
@@ -1555,10 +1640,14 @@ class ChildRepository:
             child_profile_id=child_profile_id,
             generation_id=generation_id,
         )
-        self._validate_parent_style_profile(parent_scores, parent_chart_id=parent_chart_id)
-        self._validate_child_need_profile(child_scores, child_chart_version_id=child_chart_version_id)
         parent_chart = await self.session.scalar(
-            select(NatalChart).where(NatalChart.id == parent_chart_id).execution_options(populate_existing=True)
+            select(NatalChart)
+            .where(
+                NatalChart.id == parent_chart_id,
+                NatalChart.profile_id == parent_profile_id,
+                NatalChart.user_id == owner_user_id,
+            )
+            .execution_options(populate_existing=True)
         )
         child_chart = await self.session.scalar(
             select(models.ChildChartVersion)
@@ -1594,6 +1683,8 @@ class ChildRepository:
             .scalars()
             .all()
         )
+        self._validate_parent_style_profile(parent_scores, parent_chart_id=parent_chart_id)
+        self._validate_child_need_profile(child_scores, child_chart_version_id=child_chart_version_id)
         expected_evidence = build_synastry_evidence(
             child_profile_id=child_profile_id,
             generation_id=generation_id,
@@ -1602,7 +1693,12 @@ class ChildRepository:
             child_chart=child_chart,
             parent_houses=parent_houses,
         )
-        return parent_scores, child_scores, expected_evidence
+        return _InteractionSourceSnapshot(
+            generation=generation,
+            parent_scores=parent_scores,
+            child_scores=child_scores,
+            expected_evidence=expected_evidence,
+        )
 
     async def create_interaction_profile(
         self,
@@ -1622,28 +1718,16 @@ class ChildRepository:
             owner_user_id=owner_user_id,
             fresh=True,
         )
-        generation = await self.session.scalar(
-            select(models.ChildGeneration)
-            .where(
-                models.ChildGeneration.child_profile_id == child_profile_id,
-                models.ChildGeneration.owner_user_id == owner_user_id,
-                models.ChildGeneration.generation_id == generation_id,
-            )
-            .execution_options(populate_existing=True)
-        )
-        if generation is None:
-            raise ChildLineageMismatchError("Interaction generation does not belong to the child")
-        await self._require_parent_chart_owner(
-            parent_chart_id=generation.parent_chart_id,
-            parent_profile_id=child.parent_profile_id,
+        source = await self._lock_interaction_source_snapshot(
             owner_user_id=owner_user_id,
-        )
-        parent_scores, child_scores, expected_evidence = await self._load_interaction_source_state(
+            parent_profile_id=child.parent_profile_id,
             child_profile_id=child_profile_id,
             generation_id=generation_id,
-            parent_chart_id=generation.parent_chart_id,
-            child_chart_version_id=generation.child_chart_version_id,
         )
+        generation = source.generation
+        parent_scores = source.parent_scores
+        child_scores = source.child_scores
+        expected_evidence = source.expected_evidence
         existing_scores = await self._load_interaction_scores(
             child_profile_id=child_profile_id,
             generation_id=generation_id,
@@ -1714,28 +1798,21 @@ class ChildRepository:
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {"lock_key": f"child-interaction:{generation_id}:{INTERACTION_SCORING_VERSION}"},
         )
-        await self._require_owned_child(
+        child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
             fresh=True,
         )
-        generation = await self.session.scalar(
-            select(models.ChildGeneration)
-            .where(
-                models.ChildGeneration.child_profile_id == child_profile_id,
-                models.ChildGeneration.owner_user_id == owner_user_id,
-                models.ChildGeneration.generation_id == generation_id,
-            )
-            .execution_options(populate_existing=True)
-        )
-        if generation is None:
-            raise ChildLineageMismatchError("Interaction generation does not belong to the child")
-        parent_scores, child_scores, expected_evidence = await self._load_interaction_source_state(
+        source = await self._lock_interaction_source_snapshot(
+            owner_user_id=owner_user_id,
+            parent_profile_id=child.parent_profile_id,
             child_profile_id=child_profile_id,
             generation_id=generation_id,
-            parent_chart_id=generation.parent_chart_id,
-            child_chart_version_id=generation.child_chart_version_id,
         )
+        generation = source.generation
+        parent_scores = source.parent_scores
+        child_scores = source.child_scores
+        expected_evidence = source.expected_evidence
         evidence = await self._load_synastry_evidence(
             child_profile_id=child_profile_id,
             generation_id=generation_id,

@@ -25,6 +25,7 @@ from app.modules.child.models import (
     ChildChartVersion,
     ChildGeneration,
     ChildInteractionScore,
+    ChildParentStyleScore,
     ChildProfile,
     ChildSynastryEvidence,
 )
@@ -565,6 +566,66 @@ async def test_reload_rejects_exact_evidence_after_parent_timing_becomes_unknown
 
         with pytest.raises(ChildLineageMismatchError, match="pinned chart source state"):
             await repository.load_interaction_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_reload_holds_shared_source_locks_until_validation_transaction_ends(
+    db_session: AsyncSession,
+) -> None:
+    owner, child, generation, _ = await _persist_interaction(db_session)
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    sessions = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with sessions() as loader, sessions() as updater, sessions() as observer:
+        loader_pid = await loader.scalar(text("SELECT pg_backend_pid()"))
+        updater_pid = await updater.scalar(text("SELECT pg_backend_pid()"))
+        assert isinstance(loader_pid, int)
+        assert isinstance(updater_pid, int)
+
+        loaded = await ChildRepository(loader).load_interaction_profile(
+            owner_user_id=owner.id,
+            child_profile_id=child.id,
+            generation_id=generation.generation_id,
+        )
+        parent_score_id = await observer.scalar(
+            select(ChildParentStyleScore.id).where(ChildParentStyleScore.generation_id == generation.generation_id)
+        )
+        assert parent_score_id is not None
+
+        update_started = asyncio.Event()
+
+        async def update_parent_score() -> None:
+            await updater.execute(text("SET LOCAL lock_timeout = '15s'"))
+            update_started.set()
+            await updater.execute(
+                text("UPDATE child_parent_style_scores SET score = score + 1 WHERE id = :score_id"),
+                {"score_id": parent_score_id},
+            )
+            await updater.commit()
+
+        update_task = asyncio.create_task(update_parent_score())
+        await update_started.wait()
+        blocked_by_loader = False
+        async with asyncio.timeout(5):
+            while not blocked_by_loader:
+                blockers = await observer.scalar(
+                    text("SELECT pg_blocking_pids(:updater_pid)"), {"updater_pid": updater_pid}
+                )
+                blocked_by_loader = isinstance(blockers, list) and loader_pid in blockers
+
+        assert not update_task.done()
+        assert tuple(row.dimension for row in loaded.scores) == tuple(d.value for d in InteractionDimension)
+        await loader.commit()
+        await update_task
+
+    async with sessions() as fresh:
+        with pytest.raises(ChildLineageMismatchError):
+            await ChildRepository(fresh).load_interaction_profile(
                 owner_user_id=owner.id,
                 child_profile_id=child.id,
                 generation_id=generation.generation_id,

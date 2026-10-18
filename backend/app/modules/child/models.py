@@ -296,7 +296,14 @@ class ChildInteractionScore(BaseModel):
         UUID(as_uuid=True), ForeignKey(_PARENT_CHART_FK, ondelete="RESTRICT"), nullable=False, index=True
     )
     child_chart_version_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey(_CHILD_CHART_FK, ondelete="RESTRICT"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey(
+            _CHILD_CHART_FK,
+            name="fk_child_interaction_child_chart_version",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+        index=True,
     )
     generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     dimension: Mapped[str] = mapped_column(String(80), nullable=False, index=True)

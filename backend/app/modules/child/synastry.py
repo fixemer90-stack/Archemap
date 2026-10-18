@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Sequence
 from math import isfinite
 from typing import Any
@@ -10,6 +9,7 @@ from uuid import UUID
 
 from app.modules.astrotype_v2.models import NatalChart, NatalHouse, NatalPlanetPosition
 from app.modules.child.child_needs import _valid_confidence_provenance
+from app.modules.child.interaction_identity import synastry_evidence_id
 from app.modules.child.models import ChildChartVersion, ChildSynastryEvidence
 from app.modules.child.parent_style import _has_exact_timing_proof
 from app.modules.child.scoring.types import InteractionDimension
@@ -25,8 +25,6 @@ from app.reference_data.child.interaction_v1 import (
     SYNASTRY_RULES,
     SynastryRule,
 )
-
-_SYNASTRY_ROW_NAMESPACE = uuid.UUID("c1a63410-a183-5b65-922e-e97ddc56e31c")
 
 
 def build_synastry_evidence(
@@ -87,10 +85,13 @@ def build_synastry_evidence(
                 "time_reliable_for_overlays": parent_exact and child_exact,
             }
             row = ChildSynastryEvidence(
-                id=uuid.uuid5(
-                    _SYNASTRY_ROW_NAMESPACE,
-                    f"{child_profile_id}:{generation_id}:{parent_chart.id}:{child_chart.id}:"
-                    f"{SYNASTRY_REFERENCE_VERSION}:{source_key}",
+                id=synastry_evidence_id(
+                    child_profile_id=child_profile_id,
+                    generation_id=generation_id,
+                    parent_chart_id=parent_chart.id,
+                    child_chart_version_id=child_chart.id,
+                    reference_version=SYNASTRY_REFERENCE_VERSION,
+                    source_key=source_key,
                 ),
                 child_profile_id=child_profile_id,
                 parent_chart_id=parent_chart.id,
@@ -181,10 +182,13 @@ def _add_angle_aspects(
             "time_reliable_for_overlays": True,
         }
         rows[source_key] = ChildSynastryEvidence(
-            id=uuid.uuid5(
-                _SYNASTRY_ROW_NAMESPACE,
-                f"{child_profile_id}:{generation_id}:{parent_chart.id}:{child_chart.id}:"
-                f"{SYNASTRY_REFERENCE_VERSION}:{source_key}",
+            id=synastry_evidence_id(
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+                parent_chart_id=parent_chart.id,
+                child_chart_version_id=child_chart.id,
+                reference_version=SYNASTRY_REFERENCE_VERSION,
+                source_key=source_key,
             ),
             child_profile_id=child_profile_id,
             parent_chart_id=parent_chart.id,
@@ -254,10 +258,13 @@ def _add_house_overlays(
                 "time_reliable_for_overlays": True,
             }
             rows[source_key] = ChildSynastryEvidence(
-                id=uuid.uuid5(
-                    _SYNASTRY_ROW_NAMESPACE,
-                    f"{child_profile_id}:{generation_id}:{parent_chart.id}:{child_chart.id}:"
-                    f"{SYNASTRY_REFERENCE_VERSION}:{source_key}",
+                id=synastry_evidence_id(
+                    child_profile_id=child_profile_id,
+                    generation_id=generation_id,
+                    parent_chart_id=parent_chart.id,
+                    child_chart_version_id=child_chart.id,
+                    reference_version=SYNASTRY_REFERENCE_VERSION,
+                    source_key=source_key,
                 ),
                 child_profile_id=child_profile_id,
                 parent_chart_id=parent_chart.id,
@@ -330,7 +337,8 @@ def _canonical_parent_houses(houses: Sequence[NatalHouse], *, chart_id: UUID) ->
         canonical[row.house_number] = longitude
     if set(canonical) != set(range(1, 13)):
         return None
-    return tuple(canonical[number] for number in range(1, 13))
+    cusps = tuple(canonical[number] for number in range(1, 13))
+    return cusps if _valid_cusp_cycle(cusps) else None
 
 
 def _canonical_child_houses(chart: ChildChartVersion) -> tuple[float, ...] | None:
@@ -354,7 +362,15 @@ def _canonical_child_houses(chart: ChildChartVersion) -> tuple[float, ...] | Non
         canonical[number] = longitude
     if set(canonical) != set(range(1, 13)):
         return None
-    return tuple(canonical[number] for number in range(1, 13))
+    cusps = tuple(canonical[number] for number in range(1, 13))
+    return cusps if _valid_cusp_cycle(cusps) else None
+
+
+def _valid_cusp_cycle(cusps: tuple[float, ...]) -> bool:
+    if len(cusps) != 12 or len(set(cusps)) != 12:
+        return False
+    advances = tuple((cusps[(index + 1) % 12] - cusp) % 360.0 for index, cusp in enumerate(cusps))
+    return all(0.0 < advance < 360.0 for advance in advances) and abs(sum(advances) - 360.0) <= 1e-9
 
 
 def _house_for_longitude(longitude: float, cusps: tuple[float, ...]) -> int:

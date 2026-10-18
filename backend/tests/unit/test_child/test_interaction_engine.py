@@ -697,3 +697,221 @@ def test_persisted_current_rows_reject_relabelled_ids_and_unsafe_synastry_contra
             parent_chart_id=uuid.UUID(int=1),
             child_chart_version_id=uuid.UUID(int=4),
         )
+
+
+@pytest.mark.parametrize(
+    "cusps",
+    [
+        [0.0, 180.0, 30.0, 60.0, 90.0, 120.0, 150.0, 210.0, 240.0, 270.0, 300.0, 330.0],
+        [0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0, 210.0, 240.0, 270.0, 300.0, 300.0],
+    ],
+)
+def test_malformed_parent_cusp_cycle_excludes_all_house_overlays(cusps: list[float]) -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    parent = _parent_chart()
+    houses = _houses(parent.id)
+    for house, longitude in zip(houses, cusps, strict=True):
+        house.longitude = longitude
+
+    evidence = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=parent,
+        parent_positions=_positions(parent.id),
+        child_chart=_child_chart(),
+        parent_houses=houses,
+    )
+
+    assert all(row.source_type != "house_overlay" for row in evidence)
+
+
+def test_malformed_child_cusp_cycle_excludes_all_house_overlays() -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    child = _child_chart()
+    child.calculation_payload["houses"][1]["longitude"] = 180.0
+
+    evidence = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=_parent_chart(),
+        parent_positions=_positions(uuid.UUID(int=1)),
+        child_chart=child,
+        parent_houses=_houses(uuid.UUID(int=1)),
+    )
+
+    assert all(row.source_type != "house_overlay" for row in evidence)
+
+
+def test_wraparound_cusp_cycle_is_valid_for_parent_and_child() -> None:
+    from app.modules.child.synastry import build_synastry_evidence
+
+    cusps = [350.0, 20.0, 50.0, 80.0, 110.0, 140.0, 170.0, 200.0, 230.0, 260.0, 290.0, 320.0]
+    parent = _parent_chart()
+    houses = _houses(parent.id)
+    child = _child_chart()
+    for house, longitude in zip(houses, cusps, strict=True):
+        house.longitude = longitude
+    for house, longitude in zip(child.calculation_payload["houses"], cusps, strict=True):
+        house["longitude"] = longitude
+
+    evidence = build_synastry_evidence(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart=parent,
+        parent_positions=_positions(parent.id),
+        child_chart=child,
+        parent_houses=houses,
+    )
+
+    assert any(row.source_type == "house_overlay" for row in evidence)
+
+
+def test_saturn_exact_cancellation_preserves_support_and_counter_leaves() -> None:
+    from app.modules.child.interaction import _score_dimension
+    from app.modules.child.scoring.types import DimensionEvidence, EvidenceDirection, InteractionDimension
+
+    leaves = (
+        DimensionEvidence(
+            factor_key="saturn-support",
+            fact_id=uuid.UUID(int=101),
+            evidence_refs=("support",),
+            lineage_refs=("parent:saturn", "child:sun"),
+            correlation_family="pair:saturn-pressure",
+            factor_value=1.0,
+            source_quality=1.0,
+            weight=0.08,
+            contribution=0.08,
+            direction=EvidenceDirection.SUPPORTS,
+        ),
+        DimensionEvidence(
+            factor_key="saturn-counter",
+            fact_id=uuid.UUID(int=102),
+            evidence_refs=("counter",),
+            lineage_refs=("parent:saturn", "child:moon"),
+            correlation_family="pair:saturn-pressure",
+            factor_value=1.0,
+            source_quality=1.0,
+            weight=0.08,
+            contribution=-0.08,
+            direction=EvidenceDirection.COUNTERS,
+        ),
+    )
+
+    result = _score_dimension(InteractionDimension.BOUNDARY_FIT, leaves)
+
+    assert [item.contribution for item in result.supports] == [0.08]
+    assert [item.contribution for item in result.counters] == [-0.08]
+    assert result.breakdown.raw_delta == 0.0
+    assert result.breakdown.agreement == 0.5
+    assert dict(result.breakdown.correlation_family_totals)["pair:saturn-pressure"] == 0.0
+
+    from app.modules.child.interaction import build_interaction_rows
+
+    baseline, _ = _score()
+    persisted = build_interaction_rows(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart_id=uuid.UUID(int=1),
+        child_chart_version_id=uuid.UUID(int=4),
+        results=tuple(result if item.dimension is InteractionDimension.BOUNDARY_FIT else item for item in baseline),
+    )
+    boundary = next(row for row in persisted if row.dimension == InteractionDimension.BOUNDARY_FIT.value)
+    assert [leaf["contribution"] for leaf in boundary.breakdown["supports"]] == [0.08]
+    assert [leaf["contribution"] for leaf in boundary.breakdown["counters"]] == [-0.08]
+    assert boundary.breakdown["confidence_components"]["agreement"] == 0.5
+
+
+def test_shared_identity_helpers_match_generated_rows_and_leaves() -> None:
+    from app.modules.child.interaction import build_interaction_rows
+    from app.modules.child.interaction_identity import interaction_fact_id, interaction_score_id, synastry_evidence_id
+
+    results, evidence = _score()
+    scores = build_interaction_rows(
+        child_profile_id=uuid.UUID(int=5),
+        generation_id=uuid.UUID(int=6),
+        parent_chart_id=uuid.UUID(int=1),
+        child_chart_version_id=uuid.UUID(int=4),
+        results=results,
+    )
+
+    for evidence_row in evidence:
+        assert evidence_row.id == synastry_evidence_id(
+            child_profile_id=evidence_row.child_profile_id,
+            generation_id=evidence_row.generation_id,
+            parent_chart_id=evidence_row.parent_chart_id,
+            child_chart_version_id=evidence_row.child_chart_version_id,
+            reference_version=evidence_row.reference_version,
+            source_key=evidence_row.source_key,
+        )
+    for score_row in scores:
+        assert score_row.id == interaction_score_id(
+            child_profile_id=score_row.child_profile_id,
+            generation_id=score_row.generation_id,
+            parent_chart_id=score_row.parent_chart_id,
+            child_chart_version_id=score_row.child_chart_version_id,
+            scoring_version=score_row.scoring_version,
+            dimension=score_row.dimension,
+        )
+        for leaf in [*score_row.breakdown["supports"], *score_row.breakdown["counters"]]:
+            assert leaf["fact_id"] == str(
+                interaction_fact_id(
+                    child_profile_id=score_row.child_profile_id,
+                    generation_id=score_row.generation_id,
+                    parent_chart_id=score_row.parent_chart_id,
+                    child_chart_version_id=score_row.child_chart_version_id,
+                    factor_key=leaf["factor_key"],
+                    dimension=score_row.dimension,
+                )
+            )
+
+
+def test_persisted_fit_leaf_is_anchored_to_exact_upstream_rows() -> None:
+    from app.modules.child.interaction import build_interaction_rows
+    from app.modules.child.repository import ChildLineageMismatchError, ChildRepository
+
+    parent_scores = _parent_scores()
+    child_scores = _child_scores()
+    results, evidence = _score(parent_scores=parent_scores, child_scores=child_scores)
+    scores = list(
+        build_interaction_rows(
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+            results=results,
+        )
+    )
+    score_row, fit_leaf = next(
+        (row, leaf)
+        for row in scores
+        for leaf in [*row.breakdown["supports"], *row.breakdown["counters"]]
+        if leaf["factor_key"].startswith("fit:")
+    )
+    fit_leaf["factor_value"] = 0.0
+    fit_leaf["weight"] = 0.0
+    fit_leaf["evidence_refs"] = [
+        f"child_parent_style_scores:{parent_scores[-1].id}",
+        f"child_need_scores:{child_scores[-1].id}",
+    ]
+    score_row.evidence_refs = sorted(
+        {
+            ref
+            for leaf in [*score_row.breakdown["supports"], *score_row.breakdown["counters"]]
+            for ref in leaf["evidence_refs"]
+        }
+    )
+
+    with pytest.raises(ChildLineageMismatchError):
+        ChildRepository._validate_interaction_profile(
+            evidence,
+            scores,
+            child_profile_id=uuid.UUID(int=5),
+            generation_id=uuid.UUID(int=6),
+            parent_chart_id=uuid.UUID(int=1),
+            child_chart_version_id=uuid.UUID(int=4),
+            parent_scores=parent_scores,
+            child_need_scores=child_scores,
+            expected_evidence=evidence,
+        )

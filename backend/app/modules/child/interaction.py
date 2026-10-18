@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import replace
@@ -10,6 +9,11 @@ from math import isfinite
 from typing import cast
 from uuid import UUID
 
+from app.modules.child.interaction_identity import (
+    interaction_fact_id,
+    interaction_family_id,
+    interaction_score_id,
+)
 from app.modules.child.models import (
     ChildInteractionScore,
     ChildNeedScore,
@@ -38,10 +42,6 @@ from app.reference_data.child.interaction_v1 import (
 )
 from app.reference_data.child.parent_style_v1 import PARENT_STYLE_REFERENCE_VERSION, PARENT_STYLE_SCORING_VERSION
 
-_INTERACTION_FACT_NAMESPACE = uuid.UUID("04785822-ed8b-505f-8051-c8ce978a437e")
-_INTERACTION_ROW_NAMESPACE = uuid.UUID("d156b116-30af-5c5b-a911-0c91bd91f230")
-_INTERACTION_FAMILY_NAMESPACE = uuid.UUID("58851186-cb43-5d50-a292-a37030e77365")
-
 
 def score_interactions(
     *,
@@ -65,7 +65,6 @@ def score_interactions(
         child_chart_version_id=child_chart_version_id,
     )
     by_dimension: dict[InteractionDimension, list[DimensionEvidence]] = defaultdict(list)
-    pair_key = f"{child_profile_id}:{generation_id}:{parent_chart_id}:{child_chart_version_id}"
 
     for rule in FIT_RULES:
         parent_row = parent[rule.parent_dimension]
@@ -75,7 +74,14 @@ def score_interactions(
         quality = min(parent_row.confidence, child_row.confidence)
         contribution = (fit - 0.5) * 2.0 * rule.weight * quality
         fact_key = f"fit:{rule.parent_dimension.value}:{rule.child_dimension.value}"
-        fact_id = uuid.uuid5(_INTERACTION_FACT_NAMESPACE, f"{pair_key}:{fact_key}:{rule.dimension.value}")
+        fact_id = interaction_fact_id(
+            child_profile_id=child_profile_id,
+            generation_id=generation_id,
+            parent_chart_id=parent_chart_id,
+            child_chart_version_id=child_chart_version_id,
+            factor_key=fact_key,
+            dimension=rule.dimension.value,
+        )
         lineages = tuple(
             sorted(
                 set(
@@ -110,7 +116,14 @@ def score_interactions(
         strength = float(cast(int | float, row.payload["strength"]))
         for dimension_value in dimensions:
             dimension = InteractionDimension(dimension_value)
-            fact_id = uuid.uuid5(_INTERACTION_FACT_NAMESPACE, f"{pair_key}:{row.source_key}:{dimension.value}")
+            fact_id = interaction_fact_id(
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+                parent_chart_id=parent_chart_id,
+                child_chart_version_id=child_chart_version_id,
+                factor_key=row.source_key,
+                dimension=dimension.value,
+            )
             by_dimension[dimension].append(
                 DimensionEvidence(
                     factor_key=row.source_key,
@@ -146,12 +159,15 @@ def build_interaction_rows(
         raise ValueError("Interaction results must contain all canonical dimensions in order")
     if any(result.scoring_version != INTERACTION_SCORING_VERSION for result in results):
         raise ValueError("Interaction results use an unsupported scoring version")
-    pair = f"{child_profile_id}:{generation_id}:{parent_chart_id}:{child_chart_version_id}"
     return tuple(
         ChildInteractionScore(
-            id=uuid.uuid5(
-                _INTERACTION_ROW_NAMESPACE,
-                f"{pair}:{result.scoring_version}:{result.dimension.value}",
+            id=interaction_score_id(
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+                parent_chart_id=parent_chart_id,
+                child_chart_version_id=child_chart_version_id,
+                scoring_version=result.scoring_version,
+                dimension=result.dimension.value,
             ),
             child_profile_id=child_profile_id,
             parent_chart_id=parent_chart_id,
@@ -260,11 +276,18 @@ def _cap_correlated(evidence: Sequence[DimensionEvidence]) -> list[DimensionEvid
     capped: list[DimensionEvidence] = []
     for family in sorted(grouped):
         items = grouped[family]
-        total = sum(item.contribution for item in items)
         cap = SATURN_DIMENSION_CAP if family == "pair:saturn-pressure" else CORRELATION_FAMILY_CAP
-        bounded = max(-cap, min(cap, total))
-        scale = bounded / total if total else 0.0
-        capped.extend(replace(item, contribution=item.contribution * scale) for item in items)
+        positive = sum(item.contribution for item in items if item.contribution > 0)
+        negative = abs(sum(item.contribution for item in items if item.contribution < 0))
+        positive_scale = min(1.0, cap / positive) if positive else 1.0
+        negative_scale = min(1.0, cap / negative) if negative else 1.0
+        capped.extend(
+            replace(
+                item,
+                contribution=item.contribution * (positive_scale if item.contribution >= 0 else negative_scale),
+            )
+            for item in items
+        )
     return capped
 
 
@@ -299,7 +322,7 @@ def _canonicalize_fit_families(evidence: Sequence[DimensionEvidence]) -> list[Di
     canonical: list[DimensionEvidence] = []
     for group in groups:
         refs = sorted({ref for index in group for ref in items[index].lineage_refs})
-        family = f"fit:lineage:{uuid.uuid5(_INTERACTION_FAMILY_NAMESPACE, '|'.join(refs))}"
+        family = f"fit:lineage:{interaction_family_id(refs)}"
         canonical.extend(replace(items[index], correlation_family=family) for index in sorted(group))
     return [*pair_evidence, *canonical]
 

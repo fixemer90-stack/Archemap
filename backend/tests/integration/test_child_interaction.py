@@ -9,9 +9,11 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint, func, inspect, select, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.infrastructure.database import Base
 from app.modules.astrotype_v2.models import (
     NatalChart,
     NatalFact,
@@ -221,6 +223,30 @@ async def _seed_pair(db_session: AsyncSession) -> tuple[User, ChildProfile, Chil
     db_session.add(generation)
     await db_session.commit()
     return owner, child, generation
+
+
+async def _persist_interaction(
+    session: AsyncSession,
+) -> tuple[User, ChildProfile, ChildGeneration, InteractionProfilePersistenceResult]:
+    owner, child, generation = await _seed_pair(session)
+    repository = ChildRepository(session)
+    await repository.create_parent_style_profile(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        generation_id=generation.generation_id,
+    )
+    await repository.create_child_need_profile(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        generation_id=generation.generation_id,
+    )
+    result = await repository.create_interaction_profile(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        generation_id=generation.generation_id,
+    )
+    await session.commit()
+    return owner, child, generation, result
 
 
 def _snapshot(
@@ -462,3 +488,175 @@ async def test_interaction_repository_concurrency_reload_versions_and_atomic_cor
         )
         assert persisted is not None
         assert persisted.breakdown["raw_delta"] == 0.999
+
+
+@pytest.mark.asyncio
+async def test_reload_uses_fresh_database_values_after_identity_map_preload(db_session: AsyncSession) -> None:
+    owner, child, generation, _ = await _persist_interaction(db_session)
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    sessions = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with sessions() as session_a:
+        repository = ChildRepository(session_a)
+        preloaded = await repository.load_interaction_profile(
+            owner_user_id=owner.id,
+            child_profile_id=child.id,
+            generation_id=generation.generation_id,
+        )
+        score_id = preloaded.scores[0].id
+        evidence_id = preloaded.evidence[0].id
+        await session_a.commit()
+
+        async with sessions() as session_b:
+            await session_b.execute(
+                text(
+                    "UPDATE child_interaction_scores "
+                    "SET breakdown = jsonb_set(breakdown, '{raw_delta}', '0.777'::jsonb) "
+                    "WHERE id = :score_id"
+                ),
+                {"score_id": score_id},
+            )
+            await session_b.execute(
+                text("UPDATE child_synastry_evidence SET contribution = contribution / 2 WHERE id = :evidence_id"),
+                {"evidence_id": evidence_id},
+            )
+            await session_b.commit()
+
+        with pytest.raises(ChildLineageMismatchError):
+            await repository.load_interaction_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_reload_rejects_exact_evidence_after_parent_timing_becomes_unknown(db_session: AsyncSession) -> None:
+    owner, child, generation, created = await _persist_interaction(db_session)
+    assert any(row.source_type in {"angle_aspect", "house_overlay"} for row in created.evidence)
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    sessions = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with sessions() as session_a:
+        repository = ChildRepository(session_a)
+        await repository.load_interaction_profile(
+            owner_user_id=owner.id,
+            child_profile_id=child.id,
+            generation_id=generation.generation_id,
+        )
+        await session_a.commit()
+
+        async with sessions() as session_b:
+            await session_b.execute(
+                text(
+                    "UPDATE astrotype_v2_natal_charts "
+                    "SET calculation_payload = jsonb_set("
+                    "jsonb_set(jsonb_set(calculation_payload, "
+                    "'{birth_time_proof,birth_time_confidence}', '\"unknown\"'::jsonb), "
+                    "'{birth_time_proof,user_supplied_time}', 'false'::jsonb), "
+                    "'{birth_time_proof,synthetic_noon}', 'true'::jsonb) "
+                    "WHERE id = :chart_id"
+                ),
+                {"chart_id": generation.parent_chart_id},
+            )
+            await session_b.commit()
+
+        with pytest.raises(ChildLineageMismatchError, match="pinned chart source state"):
+            await repository.load_interaction_profile(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+            )
+
+
+def _s07_schema_snapshot(sync_connection: Connection) -> dict[str, object]:
+    inspector = inspect(sync_connection)
+    snapshot: dict[str, object] = {}
+    for table_name in ("child_synastry_evidence", "child_interaction_scores"):
+        table = Base.metadata.tables[table_name]
+        actual_foreign_keys = {
+            (
+                tuple(item["constrained_columns"]),
+                item["referred_table"],
+                tuple(item["referred_columns"]),
+            )
+            for item in inspector.get_foreign_keys(table_name)
+        }
+        expected_foreign_keys = {
+            (
+                tuple(column.name for column in constraint.columns),
+                next(iter(constraint.elements)).column.table.name,
+                tuple(element.column.name for element in constraint.elements),
+            )
+            for constraint in table.constraints
+            if isinstance(constraint, ForeignKeyConstraint)
+        }
+        actual_uniques = {
+            (item["name"], tuple(item["column_names"])) for item in inspector.get_unique_constraints(table_name)
+        }
+        expected_uniques = {
+            (constraint.name, tuple(column.name for column in constraint.columns))
+            for constraint in table.constraints
+            if isinstance(constraint, UniqueConstraint)
+        }
+        actual_checks = {item["name"] for item in inspector.get_check_constraints(table_name)}
+        expected_checks = {
+            constraint.name for constraint in table.constraints if isinstance(constraint, CheckConstraint)
+        }
+        actual_unique_names = {name for name, _columns in actual_uniques}
+        actual_indexes = {
+            (item["name"], tuple(item["column_names"]), item["unique"])
+            for item in inspector.get_indexes(table_name)
+            if item["name"] not in actual_unique_names
+        }
+        expected_indexes = {
+            (index.name, tuple(column.name for column in index.columns), index.unique) for index in table.indexes
+        }
+        snapshot[table_name] = {
+            "columns": ({item["name"] for item in inspector.get_columns(table_name)}, set(table.columns.keys())),
+            "foreign_keys": (actual_foreign_keys, expected_foreign_keys),
+            "uniques": (actual_uniques, expected_uniques),
+            "checks": (actual_checks, expected_checks),
+            "indexes": (actual_indexes, expected_indexes),
+        }
+    return snapshot
+
+
+@pytest.mark.asyncio
+async def test_e6_real_d5_upgrade_downgrade_reupgrade_and_schema_parity(db_session: AsyncSession) -> None:
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    async with engine.begin() as connection:
+        await connection.execute(text("DROP SCHEMA public CASCADE"))
+        await connection.execute(text("CREATE SCHEMA public"))
+    env = os.environ.copy()
+    env["DATABASE_URL"] = engine.url.render_as_string(hide_password=False)
+
+    upgrade_d5 = await asyncio.to_thread(_run_alembic, env, "upgrade", "d5e6f7a8b9c0")
+    assert upgrade_d5.returncode == 0, upgrade_d5.stdout + upgrade_d5.stderr
+    upgrade_e6 = await asyncio.to_thread(_run_alembic, env, "upgrade", "e6f7a8b9c0d1")
+    assert upgrade_e6.returncode == 0, upgrade_e6.stdout + upgrade_e6.stderr
+    async with engine.connect() as connection:
+        schema = await connection.run_sync(_s07_schema_snapshot)
+        direct_fk = await connection.scalar(
+            text(
+                "SELECT EXISTS (SELECT 1 FROM pg_constraint "
+                "WHERE conrelid = 'child_interaction_scores'::regclass "
+                "AND conname = 'fk_child_interaction_child_chart_version')"
+            )
+        )
+    assert direct_fk is True
+    for table_snapshot in schema.values():
+        assert isinstance(table_snapshot, dict)
+        for actual, expected in table_snapshot.values():
+            assert actual == expected
+
+    downgrade = await asyncio.to_thread(_run_alembic, env, "downgrade", "d5e6f7a8b9c0")
+    assert downgrade.returncode == 0, downgrade.stdout + downgrade.stderr
+    reupgrade = await asyncio.to_thread(_run_alembic, env, "upgrade", "e6f7a8b9c0d1")
+    assert reupgrade.returncode == 0, reupgrade.stdout + reupgrade.stderr
+    async with engine.connect() as connection:
+        reupgraded_schema = await connection.run_sync(_s07_schema_snapshot)
+    assert reupgraded_schema == schema

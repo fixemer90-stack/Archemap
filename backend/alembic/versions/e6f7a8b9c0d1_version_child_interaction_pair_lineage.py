@@ -21,6 +21,7 @@ _OLD_SYNASTRY_UNIQUE = "uq_child_synastry_generation_source"
 _NEW_SYNASTRY_UNIQUE = "uq_child_synastry_generation_source_version"
 _OLD_FK = "fk_child_interaction_generation_lineage"
 _CHART_FK = "fk_child_interaction_chart_lineage"
+_DIRECT_CHART_FK = "fk_child_interaction_child_chart_version"
 
 
 def upgrade() -> None:
@@ -74,6 +75,14 @@ def upgrade() -> None:
         "child_chart_versions",
         ["child_profile_id", "child_chart_version_id"],
         ["child_profile_id", "id"],
+        ondelete="RESTRICT",
+    )
+    op.create_foreign_key(
+        _DIRECT_CHART_FK,
+        "child_interaction_scores",
+        "child_chart_versions",
+        ["child_chart_version_id"],
+        ["id"],
         ondelete="RESTRICT",
     )
     op.create_foreign_key(
@@ -145,6 +154,7 @@ def downgrade() -> None:
     op.drop_index("ix_child_interaction_scores_parent_chart_id", table_name="child_interaction_scores")
     op.drop_constraint("fk_child_interaction_parent_chart", "child_interaction_scores", type_="foreignkey")
     op.drop_constraint(_OLD_FK, "child_interaction_scores", type_="foreignkey")
+    op.drop_constraint(_DIRECT_CHART_FK, "child_interaction_scores", type_="foreignkey")
     op.drop_constraint(_CHART_FK, "child_interaction_scores", type_="foreignkey")
     op.drop_constraint(_NEW_UNIQUE, "child_interaction_scores", type_="unique")
     op.create_foreign_key(

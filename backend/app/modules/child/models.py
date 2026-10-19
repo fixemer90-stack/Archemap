@@ -13,14 +13,20 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     Text,
     Time,
     UniqueConstraint,
     event,
+    inspect,
+)
+from sqlalchemy import (
+    text as sql_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models import BaseModel
@@ -318,12 +324,18 @@ class ChildInteractionScore(BaseModel):
 class ChildQuestionnaireSession(BaseModel):
     __tablename__ = "child_questionnaire_sessions"
     __table_args__ = (
-        UniqueConstraint("child_profile_id", "questionnaire_version", name="uq_child_questionnaire_profile_version"),
         UniqueConstraint("child_profile_id", "id", name="uq_child_questionnaire_profile_id"),
+        UniqueConstraint("child_profile_id", "id", "age_snapshot_id", name="uq_child_questionnaire_profile_id_age"),
         UniqueConstraint(
-            "child_profile_id",
+            "owner_user_id",
             "completion_idempotency_key",
-            name="uq_child_questionnaire_completion_idempotency",
+            name="uq_child_questionnaire_owner_completion_idempotency",
+        ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "owner_user_id"],
+            ["child_profiles.id", "child_profiles.owner_user_id"],
+            name="fk_child_questionnaire_owner_lineage",
+            ondelete="CASCADE",
         ),
         ForeignKeyConstraint(
             ["child_profile_id", "age_snapshot_id"],
@@ -331,8 +343,19 @@ class ChildQuestionnaireSession(BaseModel):
             name="fk_child_questionnaire_age_lineage",
             ondelete="RESTRICT",
         ),
+        Index(
+            "uq_child_questionnaire_current_draft",
+            "child_profile_id",
+            "age_snapshot_id",
+            "questionnaire_version",
+            unique=True,
+            postgresql_where=sql_text("status = 'draft'"),
+        ),
     )
 
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_USER_FK, ondelete="CASCADE"), nullable=False, index=True
+    )
     child_profile_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHILD_PROFILE_FK, ondelete="CASCADE"), nullable=False, index=True
     )
@@ -340,7 +363,9 @@ class ChildQuestionnaireSession(BaseModel):
         UUID(as_uuid=True), ForeignKey(_AGE_SNAPSHOT_FK, ondelete="RESTRICT"), nullable=False, index=True
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", index=True)
+    selected_question_keys: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     questionnaire_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    answer_version: Mapped[str] = mapped_column(String(80), nullable=False)
     context_version: Mapped[str] = mapped_column(String(80), nullable=False)
     consent_version: Mapped[str] = mapped_column(String(80), nullable=False)
     completion_idempotency_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -384,13 +409,40 @@ class ChildContextResolution(BaseModel):
             name="fk_child_context_generation_lineage",
             ondelete="CASCADE",
         ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "questionnaire_session_id", "age_snapshot_id"],
+            [
+                "child_questionnaire_sessions.child_profile_id",
+                "child_questionnaire_sessions.id",
+                "child_questionnaire_sessions.age_snapshot_id",
+            ],
+            name="fk_child_context_questionnaire_lineage",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "age_snapshot_id"],
+            ["child_age_snapshots.child_profile_id", "child_age_snapshots.id"],
+            name="fk_child_context_age_lineage",
+            ondelete="RESTRICT",
+        ),
     )
 
     child_profile_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHILD_PROFILE_FK, ondelete="CASCADE"), nullable=False, index=True
     )
     generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    questionnaire_session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("child_questionnaire_sessions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    age_snapshot_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_AGE_SNAPSHOT_FK, ondelete="RESTRICT"), nullable=False, index=True
+    )
     resolver_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    interaction_scoring_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     natural_strengths: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     potential_friction: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     compensation_areas: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
@@ -620,7 +672,6 @@ IMMUTABLE_CHILD_ARTIFACT_MODELS = (
     ChildNeedScore,
     ChildSynastryEvidence,
     ChildInteractionScore,
-    ChildAnswer,
     ChildContextResolution,
     ChildGuidanceFacts,
     ChildReport,
@@ -652,3 +703,45 @@ def _reject_immutable_artifact_mutation(*_: object) -> None:
 for _immutable_model in IMMUTABLE_CHILD_ARTIFACT_MODELS:
     event.listen(_immutable_model, "before_update", _reject_immutable_artifact_mutation)
     event.listen(_immutable_model, "before_delete", _reject_immutable_artifact_mutation)
+
+
+def _reject_completed_questionnaire_session_update(_mapper: object, connection: Connection, target: object) -> None:
+    if not isinstance(target, ChildQuestionnaireSession):
+        return
+    history = inspect(target).attrs.status.history
+    old_status = history.deleted[0] if history.deleted else target.status
+    completion_authorized_id = connection.execute(
+        sql_text("SELECT current_setting('app.child_questionnaire_completion_id', true)")
+    ).scalar_one_or_none()
+    if old_status == "draft" and target.status == "completed" and completion_authorized_id == str(target.id):
+        return
+    raise ImmutableChildArtifactError("Completed questionnaire session is immutable")
+
+
+def _reject_questionnaire_session_delete(*_: object) -> None:
+    raise ImmutableChildArtifactError("Questionnaire session cannot be deleted directly")
+
+
+def _reject_completed_answer_mutation(_mapper: object, connection: Connection, target: object) -> None:
+    if not isinstance(target, ChildAnswer):
+        return
+    state = inspect(target)
+    session_history = state.attrs.questionnaire_session_id.history
+    old_session_id = session_history.deleted[0] if session_history.deleted else target.questionnaire_session_id
+    session_ids = {old_session_id, target.questionnaire_session_id}
+    statuses = {
+        session_id: connection.execute(
+            sql_text("SELECT status FROM child_questionnaire_sessions WHERE id = :session_id"),
+            {"session_id": session_id},
+        ).scalar_one_or_none()
+        for session_id in session_ids
+    }
+    if any(status != "draft" for status in statuses.values()):
+        raise ImmutableChildArtifactError("Completed questionnaire answers are immutable")
+
+
+event.listen(ChildQuestionnaireSession, "before_update", _reject_completed_questionnaire_session_update)
+event.listen(ChildQuestionnaireSession, "before_delete", _reject_questionnaire_session_delete)
+event.listen(ChildAnswer, "before_insert", _reject_completed_answer_mutation)
+event.listen(ChildAnswer, "before_update", _reject_completed_answer_mutation)
+event.listen(ChildAnswer, "before_delete", _reject_completed_answer_mutation)

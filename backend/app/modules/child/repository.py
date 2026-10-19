@@ -864,12 +864,6 @@ class ChildGenerationCreateResult:
 
 
 @dataclass(frozen=True)
-class ChildQuestionnaireCompletionResult:
-    questionnaire: models.ChildQuestionnaireSession
-    completed_now: bool
-
-
-@dataclass(frozen=True)
 class ChildReportCreateResult:
     report: models.ChildReport
     created: bool
@@ -2138,55 +2132,6 @@ class ChildRepository:
             child.version += 1
             await self.session.flush()
         return result
-
-    async def complete_questionnaire_idempotently(
-        self,
-        *,
-        owner_user_id: UUID,
-        child_profile_id: UUID,
-        questionnaire_session_id: UUID,
-        completion_idempotency_key: str,
-        answers_hash: str,
-        completed_at: datetime,
-    ) -> ChildQuestionnaireCompletionResult:
-        await self._require_owned_child(
-            child_profile_id=child_profile_id,
-            owner_user_id=owner_user_id,
-        )
-        statement = (
-            update(models.ChildQuestionnaireSession)
-            .where(
-                models.ChildQuestionnaireSession.id == questionnaire_session_id,
-                models.ChildQuestionnaireSession.child_profile_id == child_profile_id,
-                models.ChildQuestionnaireSession.status == "draft",
-            )
-            .values(
-                status="completed",
-                completion_idempotency_key=completion_idempotency_key,
-                answers_hash=answers_hash,
-                completed_at=completed_at,
-            )
-            .returning(models.ChildQuestionnaireSession)
-        )
-        completed = (await self.session.execute(statement)).scalar_one_or_none()
-        if completed is not None:
-            return ChildQuestionnaireCompletionResult(questionnaire=completed, completed_now=True)
-
-        existing = await self.session.scalar(
-            select(models.ChildQuestionnaireSession).where(
-                models.ChildQuestionnaireSession.id == questionnaire_session_id,
-                models.ChildQuestionnaireSession.child_profile_id == child_profile_id,
-            )
-        )
-        if existing is None:
-            raise ChildLineageMismatchError("Questionnaire session does not belong to the child")
-        if (
-            existing.status != "completed"
-            or existing.completion_idempotency_key != completion_idempotency_key
-            or existing.answers_hash != answers_hash
-        ):
-            raise ChildIdempotencyTargetMismatchError("Questionnaire completion key was reused for another answer set")
-        return ChildQuestionnaireCompletionResult(questionnaire=existing, completed_now=False)
 
     async def create_report_idempotently(
         self,

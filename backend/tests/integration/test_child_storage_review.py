@@ -5,13 +5,15 @@ from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.audit import AuditLog
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child import models
+from app.modules.child.questionnaire import AnswerInput, questions_for_age_stage
+from app.modules.child.questionnaire_persistence import ChildQuestionnaireRepository
 from app.modules.child.repository import ChildLineageMismatchError, ChildRepository
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
@@ -179,6 +181,7 @@ async def test_database_rejects_cross_child_and_cross_generation_lineage(db_sess
         )
     first_id = first.id
     second_id = second.id
+    owner_id = owner.id
     first_generation_id = uuid4()
     second_generation_id = uuid4()
     db_session.add_all(
@@ -239,13 +242,18 @@ async def test_database_rejects_cross_child_and_cross_generation_lineage(db_sess
         input_hash="3" * 64,
     )
     db_session.add(age)
+    await db_session.flush()
+    age_id = age.id
     await db_session.commit()
     db_session.add(
         models.ChildQuestionnaireSession(
+            owner_user_id=owner_id,
             child_profile_id=second_id,
-            age_snapshot_id=age.id,
+            age_snapshot_id=age_id,
             status="draft",
+            selected_question_keys=[],
             questionnaire_version="q-v1",
+            answer_version="answer-v1",
             context_version="c-v1",
             consent_version="consent-v1",
         )
@@ -283,15 +291,28 @@ async def test_generation_questionnaire_report_and_age_guidance_are_concurrently
     )
     db_session.add_all([chart, age])
     await db_session.flush()
-    questionnaire = models.ChildQuestionnaireSession(
-        child_profile_id=child.id,
-        age_snapshot_id=age.id,
-        status="draft",
-        questionnaire_version="q-v1",
-        context_version="c-v1",
-        consent_version="consent-v1",
+    owner_id = owner.id
+    child_id = child.id
+    parent_chart_id = parent_chart.id
+    chart_id = chart.id
+    age_id = age.id
+    questionnaire_repository = ChildQuestionnaireRepository(db_session)
+    draft = await questionnaire_repository.get_or_create_current_draft(
+        owner_user_id=owner_id,
+        child_profile_id=child_id,
+        age_snapshot_id=age_id,
     )
-    db_session.add(questionnaire)
+    answers = tuple(
+        AnswerInput(question_key=question.key, option=question.options[0].code)
+        for question in questions_for_age_stage("3-6")
+    )
+    await questionnaire_repository.save_draft_answers(
+        owner_user_id=owner_id,
+        child_profile_id=child_id,
+        questionnaire_session_id=draft.session.id,
+        answers=answers,
+    )
+    questionnaire_id = draft.session.id
     await db_session.commit()
 
     assert isinstance(db_session.bind, AsyncEngine)
@@ -300,10 +321,10 @@ async def test_generation_questionnaire_report_and_age_guidance_are_concurrently
     async def create_generation() -> tuple[bool, models.ChildGeneration]:
         async with sessions() as session:
             result = await ChildRepository(session).create_generation_idempotently(
-                owner_user_id=owner.id,
-                child_profile_id=child.id,
-                parent_chart_id=parent_chart.id,
-                child_chart_version_id=chart.id,
+                owner_user_id=owner_id,
+                child_profile_id=child_id,
+                parent_chart_id=parent_chart_id,
+                child_chart_version_id=chart_id,
                 operation="generate",
                 idempotency_key="generation-key",
             )
@@ -317,13 +338,12 @@ async def test_generation_questionnaire_report_and_age_guidance_are_concurrently
 
     async def complete_questionnaire() -> bool:
         async with sessions() as session:
-            result = await ChildRepository(session).complete_questionnaire_idempotently(
-                owner_user_id=owner.id,
-                child_profile_id=child.id,
-                questionnaire_session_id=questionnaire.id,
+            result = await ChildQuestionnaireRepository(session).complete_idempotently(
+                owner_user_id=owner_id,
+                child_profile_id=child_id,
+                questionnaire_session_id=questionnaire_id,
                 completion_idempotency_key="completion-key",
-                answers_hash="6" * 64,
-                completed_at=datetime.now(UTC),
+                now=datetime.now(UTC),
             )
             await session.commit()
             return result.completed_now
@@ -334,11 +354,11 @@ async def test_generation_questionnaire_report_and_age_guidance_are_concurrently
     async def create_report() -> tuple[bool, models.ChildReport]:
         async with sessions() as session:
             result = await ChildRepository(session).create_report_idempotently(
-                owner_user_id=owner.id,
-                child_profile_id=child.id,
+                owner_user_id=owner_id,
+                child_profile_id=child_id,
                 generation_id=generation.generation_id,
-                parent_chart_id=parent_chart.id,
-                child_chart_version_id=chart.id,
+                parent_chart_id=parent_chart_id,
+                child_chart_version_id=chart_id,
                 idempotency_key="report-key",
                 version=1,
                 status="deterministic_ready",
@@ -360,10 +380,10 @@ async def test_generation_questionnaire_report_and_age_guidance_are_concurrently
     async def create_guidance() -> tuple[bool, models.ChildReportAgeGuidance]:
         async with sessions() as session:
             result = await ChildRepository(session).create_age_guidance_idempotently(
-                owner_user_id=owner.id,
-                child_profile_id=child.id,
+                owner_user_id=owner_id,
+                child_profile_id=child_id,
                 report_id=report.id,
-                age_snapshot_id=age.id,
+                age_snapshot_id=age_id,
                 version=1,
                 idempotency_key="age-guidance-key",
                 status="age_update_ready",
@@ -408,15 +428,15 @@ async def _seed_complete_graph(
     db_session.add_all([chart, age])
     await db_session.flush()
     questionnaire = models.ChildQuestionnaireSession(
+        owner_user_id=owner.id,
         child_profile_id=child.id,
         age_snapshot_id=age.id,
-        status="completed",
+        status="draft",
+        selected_question_keys=["support"],
         questionnaire_version="q-v1",
+        answer_version="answer-v1",
         context_version="context-v1",
         consent_version="consent-v1",
-        completion_idempotency_key="completed-key",
-        answers_hash="9" * 64,
-        completed_at=datetime.now(UTC),
     )
     generation_id = uuid4()
     generation = models.ChildGeneration(
@@ -490,7 +510,11 @@ async def _seed_complete_graph(
             models.ChildContextResolution(
                 child_profile_id=child.id,
                 generation_id=generation_id,
+                questionnaire_session_id=questionnaire.id,
+                age_snapshot_id=age.id,
                 resolver_version="resolver-v1",
+                interaction_scoring_version="score-v1",
+                input_hash="c" * 64,
                 natural_strengths=["calm"],
                 potential_friction=["pace"],
                 compensation_areas=[],
@@ -538,6 +562,16 @@ async def _seed_complete_graph(
     )
     db_session.add(report)
     await db_session.flush()
+    await db_session.execute(
+        text("SELECT set_config('app.child_questionnaire_completion_id', :session_id, true)"),
+        {"session_id": str(questionnaire.id)},
+    )
+    questionnaire.status = "completed"
+    questionnaire.completion_idempotency_key = "completed-key"
+    questionnaire.answers_hash = "9" * 64
+    questionnaire.completed_at = datetime.now(UTC)
+    await db_session.flush()
+    await db_session.execute(text("SELECT set_config('app.child_questionnaire_completion_id', '', true)"))
     generation.report_id = report.id
     db_session.add(
         models.ChildReportAgeGuidance(

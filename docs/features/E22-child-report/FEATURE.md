@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S07 завершены; S08–S16 не начаты
+🟡 В работе — S01–S08 завершены; S09–S16 не начаты
 
 ## Цель
 
@@ -153,7 +153,7 @@ Child Report помогает взрослому понять:
 | S05 | [Parent Style engine](./S05-parent-style-engine.md)                                           | ✅ Завершено |
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ✅ Завершено |
 | S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ✅ Завершено |
-| S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ⬜ Не начато |
+| S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ✅ Завершено |
 | S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ⬜ Не начато |
 | S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ⬜ Не начато |
 | S11 | [Async generation lifecycle](./S11-async-generation-lifecycle.md)                             | ⬜ Не начато |
@@ -207,4 +207,4 @@ flowchart LR
 
 ## Документационная готовность
 
-Feature, SRS, workflow, API и атомарные Stories подготовлены. S01–S07 закрыты исполняемыми product/privacy, storage, chart-confidence, age, Parent Style, Child Needs и pair Interaction контрактами. S07 использует underlying raw lineage ownership вместо derived score IDs, canonicalizes overlapping fit families, сохраняет contradictory Saturn leaves при bounded cancellation, покрывает полный normative directional pair catalog и exact/exact angle contacts, проверяет cyclic cusp geometry, fail-closed отклоняет malformed chart inputs, а create/reload заново валидирует persisted evidence и fit leaves против свежих pinned charts/timing и exact upstream score rows. Общие UUID helpers исключают drift generator/validator; PostgreSQL regression покрывает identity-map preload, timing mutation, real `d5→e6→d5→e6` migration и S07 schema parity.
+Feature, SRS, workflow, API и атомарные Stories подготовлены. S01–S08 закрыты исполняемыми product/privacy, storage, chart-confidence, age, Parent Style, Child Needs, pair Interaction и questionnaire/context контрактами. S07 использует underlying raw lineage ownership вместо derived score IDs, canonicalizes overlapping fit families, сохраняет contradictory Saturn leaves при bounded cancellation, покрывает полный normative directional pair catalog и exact/exact angle contacts, проверяет cyclic cusp geometry, fail-closed отклоняет malformed chart inputs, а create/reload заново валидирует persisted evidence и fit leaves против свежих pinned charts/timing и exact upstream score rows. S08 добавляет backend-owned десятивопросный age-filtered catalog, isolated editable drafts, server-owned canonical completion hash, completed-session/answer immutability и deterministic seven-output Context Resolver. Resolver сохраняет confirmation/contradiction/ambiguity как versioned safe codes с score/answer/age lineage, не меняет Interaction scores и не переносит raw answer values в downstream contract. PostgreSQL regression покрывает concurrent draft creation, idempotent completion, raw trigger guards и real `e6→f7→e6→f7` migration.

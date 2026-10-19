@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S07 завершены, S08–S16 не начаты
+Статус: целевой контракт готов; S01–S08 завершены, S09–S16 не начаты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 
@@ -209,6 +209,8 @@ Resolver формирует:
 - `unresolved_ambiguities`.
 
 Ответы не изменяют исходные chart scores. Они уточняют применение и приоритет guidance.
+
+Реализация S08: `child-questionnaire-mvp-1` содержит десять backend-owned bounded single-choice вопросов и выбирает 8–10 вопросов для каждого canonical age stage с обязательным присутствием caregiver context, observations, parent preferences и family constraints. Session pins owner, child, exact age snapshot, selected keys и questionnaire/answer/context/consent versions; partial unique current-draft identity допускает immutable completed history и новый draft для следующего snapshot/version. Draft answers редактируемы только до completion. Completion проверяет required questions, сервером пересчитывает order-independent canonical hash и сериализуется advisory/row locks; completed session и answers защищены ORM и PostgreSQL raw-SQL guards. `child-context-resolver-mvp-1` принимает только completed questionnaire, pinned age snapshot и exact восемь `child-interaction-mvp-1` scores, сохраняет все семь output families как deterministic adult-action codes с confidence и versioned score/answer/age lineage. Confirmation, contradiction и ambiguity не меняют score; raw answer values не входят в resolver payload. Current resolver reload заново строит expected payload из fresh locked sources и fail-closed отклоняет corruption, а legacy resolver versions могут сосуществовать без reinterpretation. Migration `f7a8b9c0d1e2` проверена real PostgreSQL циклом `e6→f7→e6→f7`.
 
 ## 11. FR-E22.8 — Guidance Facts
 

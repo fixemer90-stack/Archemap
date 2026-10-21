@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.child import models
 from app.modules.child.age_resolver import AgeStage
+from app.modules.child.guidance_facts import ChildGuidanceFactsRepository, GuidanceFactsCreateResult
 from app.modules.child.questionnaire import AnswerInput, questions_for_age_stage
 from app.modules.child.questionnaire_persistence import (
     ChildContextResolutionRepository,
@@ -25,10 +26,12 @@ from app.modules.child.repository import (
     ChildLineageMismatchError,
     ChildRepository,
 )
+from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandidate, validate_child_narrative
 from app.modules.child.scoring.types import InteractionDimension
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
 from app.reference_data.child.interaction_v1 import INTERACTION_SCORING_VERSION
+from tests.integration.test_child_interaction import _persist_interaction
 
 pytestmark = pytest.mark.usefixtures("_setup_database")
 _MIGRATION = runpy.run_path(
@@ -851,3 +854,137 @@ async def test_completed_answer_cannot_move_to_another_draft(db_session: AsyncSe
     persisted = await db_session.get(models.ChildAnswer, answer_id)
     assert persisted is not None
     assert persisted.questionnaire_session_id == completed_session_id
+
+
+@pytest.mark.asyncio
+async def test_guidance_facts_persist_from_locked_context_sources_idempotently(db_session: AsyncSession) -> None:
+    owner, child, generation, _ = await _persist_interaction(db_session)
+    age = models.ChildAgeSnapshot(
+        child_profile_id=child.id,
+        as_of_date=date(2026, 10, 18),
+        age_years=5,
+        age_months=5,
+        age_days=6,
+        age_stage="3-6",
+        age_rules_version="child-age-mvp-1",
+        input_hash="g" * 64,
+    )
+    db_session.add(age)
+    await db_session.commit()
+    questionnaire_repository = ChildQuestionnaireRepository(db_session)
+    draft = await questionnaire_repository.get_or_create_current_draft(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        age_snapshot_id=age.id,
+    )
+    await questionnaire_repository.save_draft_answers(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        questionnaire_session_id=draft.session.id,
+        answers=tuple(
+            AnswerInput(question_key=question.key, option=question.options[0].code)
+            for question in questions_for_age_stage("3-6")
+        ),
+    )
+    await questionnaire_repository.complete_idempotently(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        questionnaire_session_id=draft.session.id,
+        completion_idempotency_key="guidance-questionnaire",
+    )
+    await ChildContextResolutionRepository(db_session).create_or_load(
+        owner_user_id=owner.id,
+        child_profile_id=child.id,
+        generation_id=generation.generation_id,
+        questionnaire_session_id=draft.session.id,
+    )
+    await db_session.commit()
+
+    assert isinstance(db_session.bind, AsyncEngine)
+    sessions = async_sessionmaker(db_session.bind, class_=AsyncSession, expire_on_commit=False)
+
+    async def create() -> GuidanceFactsCreateResult:
+        async with sessions() as session:
+            result = await ChildGuidanceFactsRepository(session).create_or_load(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+                core_report_version=1,
+            )
+            await session.commit()
+            return result
+
+    first, second = await asyncio.gather(create(), create())
+    results = (first, second)
+    created = next(result for result in results if result.created is True)
+    replay = next(result for result in results if result.created is False)
+    assert replay.artifact.id == created.artifact.id
+    assert created.artifact.contract_version == "child-guidance-facts-v1"
+    assert created.artifact.payload["child_id"] == str(child.id)
+    assert created.artifact.payload["age_snapshot_id"] == str(age.id)
+    assert created.artifact.payload["recommended_actions"]
+    assert created.artifact.evidence_registry
+
+    def payload_keys(value: object) -> set[str]:
+        if isinstance(value, dict):
+            return {str(key) for key in value} | set().union(*(payload_keys(item) for item in value.values()))
+        if isinstance(value, list):
+            return set().union(*(payload_keys(item) for item in value))
+        return set()
+
+    assert not ({"answer", "answers", "raw_chart", "chart_payload"} & payload_keys(created.artifact.payload))
+    await db_session.commit()
+
+    persisted = await db_session.get(models.ChildGuidanceFacts, created.artifact.id)
+    assert persisted is not None
+    assert persisted.payload == created.artifact.payload
+    repository = ChildGuidanceFactsRepository(db_session)
+    with pytest.raises(ChildSafetyViolation):
+        validate_child_narrative(
+            NarrativeSectionCandidate(
+                section_key="boundaries_rules",
+                content="Ваш ребёнок будет агрессивным.",
+                fact_refs=(created.artifact.payload["recommended_actions"][0]["id"],),
+            ),
+            guidance_facts=await repository.load_domain_facts(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+                core_report_version=1,
+            ),
+        )
+    await db_session.commit()
+    async with sessions() as fresh_reader:
+        preserved = await fresh_reader.get(models.ChildGuidanceFacts, created.artifact.id)
+        assert preserved is not None
+        assert preserved.payload == created.artifact.payload
+
+    async with sessions() as corruptor:
+        immutable_trigger = await corruptor.scalar(
+            text("SELECT count(*) FROM pg_trigger WHERE tgname = 'trg_child_guidance_facts_immutable'")
+        )
+        if immutable_trigger == 1:
+            await corruptor.execute(
+                text("ALTER TABLE child_guidance_facts DISABLE TRIGGER trg_child_guidance_facts_immutable")
+            )
+        await corruptor.execute(
+            text(
+                "UPDATE child_guidance_facts SET payload = jsonb_set(payload, "
+                "'{parent_profile_id}', to_jsonb(CAST(:value AS text))) WHERE id = :id"
+            ),
+            {"value": str(uuid4()), "id": created.artifact.id},
+        )
+        if immutable_trigger == 1:
+            await corruptor.execute(
+                text("ALTER TABLE child_guidance_facts ENABLE TRIGGER trg_child_guidance_facts_immutable")
+            )
+        await corruptor.commit()
+
+    async with sessions() as fresh_loader:
+        with pytest.raises(ChildLineageMismatchError, match="corrupt or stale"):
+            await ChildGuidanceFactsRepository(fresh_loader).create_or_load(
+                owner_user_id=owner.id,
+                child_profile_id=child.id,
+                generation_id=generation.generation_id,
+                core_report_version=1,
+            )

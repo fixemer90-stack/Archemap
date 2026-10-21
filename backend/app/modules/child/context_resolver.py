@@ -149,6 +149,32 @@ _AGE_ACTIONS: dict[AgeStage, str] = {
     "12-15": "adult_respects_privacy_and_keeps_calm_availability",
     "15-18": "adult_negotiates_responsibility_and_preserves_safe_limits",
 }
+CONTEXT_ACTION_CODES: Final = frozenset(
+    {
+        "adult_reuses_working_interaction_pattern",
+        "adult_slows_down_and_observes_response",
+        "adult_uses_nonautomatic_supportive_response",
+        "adult_observes_before_choosing_guidance",
+        "adult_tracks_context_before_generalizing",
+        "adult_tests_small_adjustment_and_observes",
+        *(rule.confirmation_action for rule in _ANSWER_RULES.values()),
+        *(rule.contradiction_action for rule in _ANSWER_RULES.values()),
+        *_AGE_ACTIONS.values(),
+    }
+)
+CONTEXT_REASON_CODES: Final = frozenset(
+    {
+        "interaction_above_strength_threshold",
+        "interaction_below_friction_threshold",
+        "friction_requires_conscious_adult_adjustment",
+        "selected_observation_missing",
+        "observed_context_is_variable",
+        "evidence_not_directionally_conclusive",
+        "observation_confirms_interaction_expectation",
+        "observation_opposes_interaction_expectation",
+        *(f"age_stage_{stage.replace('-', '_')}" for stage in _AGE_ACTIONS),
+    }
+)
 
 
 def _value(row: object, key: str) -> object:

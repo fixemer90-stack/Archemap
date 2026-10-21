@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S08 завершены, S09–S16 не начаты
+Статус: целевой контракт готов; S01–S09 завершены, S10–S16 не начаты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 

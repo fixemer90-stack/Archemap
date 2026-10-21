@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S08 завершены; S09–S16 не начаты
+🟡 В работе — S01–S09 завершены; S10–S16 не начаты
 
 ## Цель
 
@@ -154,7 +154,7 @@ Child Report помогает взрослому понять:
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ✅ Завершено |
 | S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ✅ Завершено |
 | S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ✅ Завершено |
-| S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ⬜ Не начато |
+| S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ✅ Завершено |
 | S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ⬜ Не начато |
 | S11 | [Async generation lifecycle](./S11-async-generation-lifecycle.md)                             | ⬜ Не начато |
 | S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | ⬜ Не начато |

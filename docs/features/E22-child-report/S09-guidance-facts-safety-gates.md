@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -27,18 +27,33 @@
 
 ## Критерии приёмки
 
-- [ ] Guidance Facts не содержат raw chart/unrestricted answers.
-- [ ] Каждое действие поддержано evidence/context rule.
-- [ ] Low confidence требует условной формулировки.
-- [ ] Adult-action framing проверяется машинно.
-- [ ] Negative corpus блокируется до публикации.
-- [ ] Safety failure не уничтожает deterministic artifact.
+- [x] Guidance Facts не содержат raw chart/unrestricted answers.
+- [x] Каждое действие поддержано evidence/context rule.
+- [x] Low confidence требует условной формулировки.
+- [x] Adult-action framing проверяется машинно.
+- [x] Negative corpus блокируется до публикации.
+- [x] Safety failure не уничтожает deterministic artifact.
+
+## Реализация
+
+- `child-guidance-facts-v1` детерминированно собирается только из validated current Context Resolution, exact eight Interaction rows и pinned Age Snapshot. Payload содержит bounded codes, topic/dimension/applicability ownership, confidence markers и evidence registry без chart payload, answer values, имени, birth data или provider secrets.
+- `ChildGuidanceFactsRepository` повторно проходит owner/child/generation route validation через Context Resolution repository, держит source row locks, строит expected artifact заново и fail-closed сравнивает persisted payload/evidence при replay. Concurrent create сериализуется advisory lock и возвращает одну immutable row.
+- Для всех 15 report sections определены owned/reference/forbidden fact families, minimum evidence, low-confidence behavior и обязательные safety markers; action-oriented sections дополнительно проверяют owned topic/dimension.
+- `guidance_prompt_content()` возвращает exact FR-E22.8 content schema и не включает internal `generation_id`, age metadata или input hash; вложенные domain facts deep-frozen, а prompt/persistence получают независимые JSON-копии.
+- Pre-LLM quality gate проверяет exact allowlisted payload, все fact families, schema и membership evidence registry, caregiver-target и allowlisted resolver actions/reasons, confidence markers и executable section ownership.
+- Post-LLM gate получает только fact refs и authoritative `ChildGuidanceFacts`: confidence/evidence нельзя подменить caller-ом. Gate блокирует diagnosis/attachment labels, fatal/adult-outcome predictions, ability ranking, fixed labels, blame, medical/legal advice, unsafe discipline, age-inappropriate advice, unsupported/cross-section facts и direct planet-to-child-trait claims. Negative corpus покрывает русские и английские нормативные формулировки.
+- Safety rejection не мутирует и не удаляет persisted deterministic `ChildGuidanceFacts`; unsafe section не проходит publication gate.
 
 ## Verification
 
-- Добавить targeted unit/integration/frontend tests из критериев Story.
-- Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.
-- Записать фактические команды, результаты и runtime evidence в эту Story при реализации.
+- `uv run pytest tests/unit/test_child/test_child_safety_gates.py -q` — 97 passed;
+- `uv run pytest tests/integration/test_child_questionnaire_context.py -q` — 10 passed;
+- `uv run pytest tests/unit/test_child -q` — 269 passed;
+- все восемь child integration files — 32 passed;
+- repo-wide Ruff check и scoped format — PASS;
+- strict mypy `app` — PASS (244 source files).
+
+Независимые specification-compliance и code-quality/security review завершены с вердиктами PASS/APPROVED.
 
 ## Зависимости
 

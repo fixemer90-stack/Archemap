@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+✅ Завершено
 
 ## Контекст
 
@@ -27,18 +27,37 @@ Narrative должен быть подробным и человечным, но
 
 ## Критерии приёмки
 
-- [ ] LLM не получает raw chart и не вычисляет scores.
-- [ ] LLM не добавляет новые child facts/recommendations.
-- [ ] Каждая section проходит schema/evidence/safety gates.
-- [ ] Failed section можно повторить независимо.
-- [ ] Mock и real-provider fixtures покрыты.
-- [ ] Assembly сохраняет section order и age snapshot reference.
+- [x] LLM не получает raw chart и не вычисляет scores.
+- [x] LLM не добавляет новые child facts/recommendations.
+- [x] Каждая section проходит schema/evidence/safety gates.
+- [x] Failed section можно повторить независимо.
+- [x] Mock и real-provider fixtures покрыты.
+- [x] Assembly сохраняет section order и age snapshot reference.
 
 ## Verification
 
-- Добавить targeted unit/integration/frontend tests из критериев Story.
-- Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.
-- Записать фактические команды, результаты и runtime evidence в эту Story при реализации.
+- `uv run pytest tests/unit/test_child/test_narrative_pipeline.py -q` — 30 passed.
+- `uv run pytest tests/unit/test_child -q` — 299 passed.
+- `uv run ruff check .` — passed.
+- `uv run ruff format --check .` — 436 files already formatted.
+- `uv run mypy app` — 248 source files clean.
+- `git diff --check` — passed.
+- Real-provider fixture проходит через настоящий `OpenRouterProvider` с HTTP mock и проверяет structured response,
+  отсутствие child/generation/age/fact UUID в provider payload и сохранение только opaque model reference.
+- Отдельные integration/frontend тесты не добавлялись: Story не меняет API, worker lifecycle или frontend surface;
+  PostgreSQL persistence и async orchestration входят в S11.
+
+## Реализованный safety contract
+
+- Provider получает только section-local `owned-N` / `reference-N`, approved text и section metadata без PII/lineage UUID.
+- Свободный LLM-текст не публикуется: body обязан полностью состоять из claims, которые дословно совпадают с
+  deterministic approved rendering authoritative Guidance Facts.
+- На сервере opaque refs переводятся обратно в authoritative fact IDs перед child-safety validation и persistence.
+- Пустые по owned facts секции фиксируются как `not_applicable` без provider call; остальные секции повторяются
+  независимо и не запускают deterministic calculation повторно.
+- Assembly проверяет lineage, section status, prompt/input/output hashes, provider allowlist, opaque model reference,
+  error metadata, section order и age snapshot reference.
+- Независимый specification review: **PASS**. Финальный code-quality/security review: **APPROVED**.
 
 ## Зависимости
 

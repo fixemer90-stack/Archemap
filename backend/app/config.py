@@ -14,6 +14,8 @@ _ENV_FILES = (_BACKEND_ROOT / ".env", _REPOSITORY_ROOT / ".env")
 
 MonitorMinutes = Annotated[int, Field(ge=1, le=1440)]
 MonitorIntervalSeconds = Annotated[int, Field(ge=30, le=3600)]
+PositiveSeconds = Annotated[int, Field(ge=1, le=86400)]
+GenerationAttempts = Annotated[int, Field(ge=1, le=20)]
 
 
 class Settings(BaseSettings):
@@ -99,6 +101,11 @@ class Settings(BaseSettings):
 
     # ── Child report rollout ───────────────────────────────────────────
     CHILD_REPORT_ENABLED: bool = False
+    CHILD_GENERATION_MAX_ATTEMPTS: GenerationAttempts = 3
+    CHILD_GENERATION_LEASE_SECONDS: PositiveSeconds = 900
+    CHILD_GENERATION_RETRY_BASE_SECONDS: PositiveSeconds = 30
+    CHILD_GENERATION_DISPATCH_LEASE_SECONDS: PositiveSeconds = 120
+    CHILD_GENERATION_RECONCILE_INTERVAL_SECONDS: MonitorIntervalSeconds = 60
 
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: str = ""
     OTEL_SERVICE_NAME: str = "archemap-api"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
+from uuid import UUID
 
 from pydantic import ValidationError
 
@@ -55,13 +56,20 @@ def assemble_child_report_payload(
     *,
     guidance_facts: ChildGuidanceFacts,
     segment_rows: Sequence[models.ChildSegmentGeneration],
+    artifact_generation_id: UUID | None = None,
 ) -> dict[str, Any]:
     """Assemble verified rows in contract order without rerunning deterministic calculations."""
 
     input_by_key = {item.section_key: item for item in build_child_section_inputs(guidance_facts)}
+    output_generation_id = artifact_generation_id or guidance_facts.generation_id
+    allowed_generation_ids = (
+        {guidance_facts.generation_id}
+        if artifact_generation_id is None
+        else {guidance_facts.generation_id, artifact_generation_id}
+    )
     row_by_key: dict[str, models.ChildSegmentGeneration] = {}
     for row in segment_rows:
-        if row.child_profile_id != guidance_facts.child_id or row.generation_id != guidance_facts.generation_id:
+        if row.child_profile_id != guidance_facts.child_id or row.generation_id not in allowed_generation_ids:
             raise ChildNarrativeValidationError("segment lineage mismatch")
         if row.section_key not in input_by_key:
             raise ChildNarrativeValidationError("unknown segment section")
@@ -102,13 +110,24 @@ def assemble_child_report_payload(
             section_generations.append({"section_key": section_key, "status": "not_applicable", **metadata})
             continue
         if segment_row.status == "failed":
+            failed_attempts = segment_row.diagnostics.get("attempts")
+            disabled = segment_row.error_code == "child_narrative_disabled"
+            valid_attempts = type(failed_attempts) is int and (
+                (failed_attempts == 0 and metadata["provider"] == "disabled")
+                if disabled
+                else 1 <= failed_attempts <= section_input.maximum_attempts
+            )
             if (
                 segment_row.content is not None
                 or segment_row.evidence_refs
                 or segment_row.error_code
-                not in {"child_narrative_validation_failure", "child_narrative_provider_failure"}
-                or type(segment_row.diagnostics.get("attempts")) is not int
-                or not 1 <= segment_row.diagnostics["attempts"] <= section_input.maximum_attempts
+                not in {
+                    "child_narrative_disabled",
+                    "child_narrative_validation_failure",
+                    "child_narrative_provider_failure",
+                    "child_narrative_provider_outcome_unknown",
+                }
+                or not valid_attempts
                 or not _error_type_is_valid(segment_row.diagnostics.get("error_type"))
                 or "output" in segment_row.diagnostics
                 or "output_hash" in segment_row.diagnostics
@@ -143,7 +162,8 @@ def assemble_child_report_payload(
     status = "ready" if not failed_sections and not missing_sections else "partial"
     return {
         "contract_version": "child_report_narrative_v1",
-        "generation_id": str(guidance_facts.generation_id),
+        "generation_id": str(output_generation_id),
+        "source_generation_id": str(guidance_facts.generation_id),
         "child_id": str(guidance_facts.child_id),
         "age_snapshot_id": str(guidance_facts.age_snapshot_id),
         "core_report_version": guidance_facts.core_report_version,

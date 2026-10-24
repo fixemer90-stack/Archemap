@@ -8,7 +8,9 @@ import json
 import re
 from collections.abc import Mapping
 from typing import Any, Final, Literal, Protocol, cast
+from uuid import UUID
 
+import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.modules.child import models
@@ -16,6 +18,7 @@ from app.modules.child.guidance_facts import LOW_CONFIDENCE_THRESHOLD, ChildGuid
 from app.modules.child.prompts.v1 import SECTION_METADATA, build_child_section_prompt
 from app.modules.child.quality import SECTION_CONTRACTS, SectionContract, guidance_prompt_content
 from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandidate, validate_child_narrative
+from app.modules.llm.exceptions import LLMTimeoutError
 
 CHILD_PROMPT_VERSION: Final = "child-section-prompt-v1"
 CHILD_SECTION_INPUT_VERSION: Final = "child_section_render_input_v1"
@@ -74,7 +77,7 @@ _AVOID_TEXT: Final = {
     "expect_behavior_above_current_age_stage": "ожидать поведения выше текущего возрастного этапа",
     "escalate_without_observation": "усиливать воздействие без предварительного наблюдения",
 }
-_ALLOWED_PROVIDER_NAMES: Final = frozenset({"mock", "openrouter", "deepseek"})
+_ALLOWED_PROVIDER_NAMES: Final = frozenset({"mock", "openrouter", "deepseek", "disabled"})
 _MODEL_REFERENCE_PATTERN: Final = re.compile(r"model-sha256:[0-9a-f]{64}")
 _ERROR_TYPES: Final = frozenset({"validation_error", "provider_error"})
 
@@ -194,6 +197,22 @@ class StructuredChildSegmentProviderAdapter:
             schema=ChildSegmentOutput,
         )
         return response.model_dump(mode="json")
+
+
+class DisabledChildSegmentProvider:
+    """Controlled production provider used when narrative generation is disabled."""
+
+    provider_name = "disabled"
+    model_name = _model_reference("child-narrative-disabled-v1")
+
+    async def generate_segment(
+        self,
+        *,
+        prompt: str,
+        section_input: ChildSectionRenderInput,
+    ) -> dict[str, Any]:
+        del prompt, section_input
+        raise RuntimeError("child narrative provider is disabled")
 
 
 class MockChildSegmentProvider:
@@ -390,10 +409,12 @@ def _segment_row(
     evidence_refs: list[str],
     error_code: str | None,
     diagnostics: dict[str, Any],
+    lifecycle_token: UUID | None = None,
+    artifact_generation_id: UUID | None = None,
 ) -> models.ChildSegmentGeneration:
     return models.ChildSegmentGeneration(
         child_profile_id=guidance_facts.child_id,
-        generation_id=guidance_facts.generation_id,
+        generation_id=artifact_generation_id or guidance_facts.generation_id,
         section_key=section_input.section_key,
         status=status,
         prompt_version=prompt_version,
@@ -401,7 +422,50 @@ def _segment_row(
         content=content,
         evidence_refs=evidence_refs,
         error_code=error_code,
+        lifecycle_token=lifecycle_token,
         diagnostics=diagnostics,
+    )
+
+
+def build_child_segment_intent(
+    *,
+    provider: ChildSegmentProvider,
+    section_input: ChildSectionRenderInput,
+    guidance_facts: ChildGuidanceFacts,
+    lifecycle_token: UUID,
+    prompt_version: str = CHILD_PROMPT_VERSION,
+    artifact_generation_id: UUID | None = None,
+) -> models.ChildSegmentGeneration:
+    """Build a durable provider-call intent before the external side effect."""
+
+    canonical = _canonical_section_input(
+        guidance_facts=guidance_facts,
+        section_key=section_input.section_key,
+    )
+    if section_input != canonical or not canonical.owned_facts:
+        raise ChildNarrativeValidationError("provider intent requires a canonical non-empty section")
+    provider_name, model_name = _provider_identity(provider)
+    prompt = build_child_section_prompt(canonical)
+    return _segment_row(
+        guidance_facts=guidance_facts,
+        section_input=canonical,
+        status="in_progress",
+        prompt_version=prompt_version,
+        model_name=model_name,
+        content=None,
+        evidence_refs=[],
+        error_code=None,
+        lifecycle_token=lifecycle_token,
+        artifact_generation_id=artifact_generation_id,
+        diagnostics={
+            "provider": provider_name,
+            "model": model_name,
+            "prompt_version": prompt_version,
+            "retry_scope": canonical.retry_scope,
+            "prompt_hash": _stable_hash({"prompt": prompt}),
+            "input_hash": _stable_hash(canonical.model_dump(mode="json")),
+            "attempts": 0,
+        },
     )
 
 
@@ -411,6 +475,7 @@ async def run_child_segment_generation(
     section_input: ChildSectionRenderInput,
     guidance_facts: ChildGuidanceFacts,
     prompt_version: str = CHILD_PROMPT_VERSION,
+    artifact_generation_id: UUID | None = None,
 ) -> models.ChildSegmentGeneration:
     """Generate one independently retryable section and return a persistable row."""
 
@@ -441,54 +506,68 @@ async def run_child_segment_generation(
             evidence_refs=[],
             error_code=None,
             diagnostics=base_diagnostics | {"attempts": 0, "reason": "no_owned_facts"},
+            artifact_generation_id=artifact_generation_id,
         )
 
-    last_error_code = "child_narrative_validation_failure"
-    last_error_type = "validation_error"
-    for attempt in range(1, canonical.maximum_attempts + 1):
-        retry_prompt = prompt
-        if attempt > 1:
-            retry_prompt = (
-                f"{prompt}\n\nThe previous response failed bounded validation. "
-                "Return corrected JSON for this same section only. Select only approved_text values verbatim."
-            )
-        try:
-            raw = await provider.generate_segment(prompt=retry_prompt, section_input=canonical)
-            parsed = ChildSegmentOutput.model_validate(raw)
-            output = validate_segment_output(
-                output=parsed,
-                section_input=canonical,
-                guidance_facts=guidance_facts,
-            )
-            output_payload = output.model_dump(mode="json")
-            return _segment_row(
-                guidance_facts=guidance_facts,
-                section_input=canonical,
-                status="ready",
-                prompt_version=prompt_version,
-                model_name=model_name,
-                content=output.body,
-                evidence_refs=[
-                    _section_fact_id_map(
-                        guidance_facts=guidance_facts,
-                        section_key=canonical.section_key,
-                    )[reference]
-                    for reference in output.cited_fact_ids
-                ],
-                error_code=None,
-                diagnostics=base_diagnostics
-                | {
-                    "attempts": attempt,
-                    "output_hash": _stable_hash(output_payload),
-                    "output": output_payload,
-                },
-            )
-        except (ChildNarrativeValidationError, ValidationError):
-            last_error_code = "child_narrative_validation_failure"
-            last_error_type = "validation_error"
-        except Exception:  # provider boundary must fail closed without storing provider text
-            last_error_code = "child_narrative_provider_failure"
-            last_error_type = "provider_error"
+    if isinstance(provider, DisabledChildSegmentProvider):
+        return _segment_row(
+            guidance_facts=guidance_facts,
+            section_input=canonical,
+            status="failed",
+            prompt_version=prompt_version,
+            model_name=model_name,
+            content=None,
+            evidence_refs=[],
+            error_code="child_narrative_disabled",
+            diagnostics=base_diagnostics | {"attempts": 0, "error_type": "provider_error"},
+            artifact_generation_id=artifact_generation_id,
+        )
+
+    try:
+        raw = await provider.generate_segment(prompt=prompt, section_input=canonical)
+        parsed = ChildSegmentOutput.model_validate(raw)
+        output = validate_segment_output(
+            output=parsed,
+            section_input=canonical,
+            guidance_facts=guidance_facts,
+        )
+        output_payload = output.model_dump(mode="json")
+        return _segment_row(
+            guidance_facts=guidance_facts,
+            section_input=canonical,
+            status="ready",
+            prompt_version=prompt_version,
+            model_name=model_name,
+            content=output.body,
+            evidence_refs=[
+                _section_fact_id_map(
+                    guidance_facts=guidance_facts,
+                    section_key=canonical.section_key,
+                )[reference]
+                for reference in output.cited_fact_ids
+            ],
+            error_code=None,
+            diagnostics=base_diagnostics
+            | {"attempts": 1, "output_hash": _stable_hash(output_payload), "output": output_payload},
+            artifact_generation_id=artifact_generation_id,
+        )
+    except (ChildNarrativeValidationError, ValidationError):
+        error_code = "child_narrative_validation_failure"
+        error_type = "validation_error"
+    except Exception as exc:  # fail closed without storing provider text
+        # Adapters wrap HTTP transport failures. A response may have been lost
+        # after remote acceptance, so neither automatic nor manual recall is safe.
+        cause: BaseException | None = exc
+        seen: set[int] = set()
+        ambiguous = False
+        while cause is not None and id(cause) not in seen:
+            seen.add(id(cause))
+            if isinstance(cause, (LLMTimeoutError, TimeoutError, httpx.TransportError)):
+                ambiguous = True
+                break
+            cause = cause.__cause__ or cause.__context__
+        error_code = "child_narrative_provider_outcome_unknown" if ambiguous else "child_narrative_provider_failure"
+        error_type = "provider_error"
 
     return _segment_row(
         guidance_facts=guidance_facts,
@@ -498,12 +577,9 @@ async def run_child_segment_generation(
         model_name=model_name,
         content=None,
         evidence_refs=[],
-        error_code=last_error_code,
-        diagnostics=base_diagnostics
-        | {
-            "attempts": canonical.maximum_attempts,
-            "error_type": last_error_type,
-        },
+        error_code=error_code,
+        diagnostics=base_diagnostics | {"attempts": 1, "error_type": error_type},
+        artifact_generation_id=artifact_generation_id,
     )
 
 

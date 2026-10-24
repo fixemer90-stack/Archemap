@@ -6,12 +6,12 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from math import isfinite
 from typing import Any, TypeVar, cast
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import case, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +44,17 @@ from app.modules.child.scoring.types import (
     ParentStyleDimension,
 )
 from app.modules.child.scoring.validation import validate_dimension_breakdown
+from app.modules.child.status import (
+    AGE_TERMINAL_STATUSES,
+    CLAIMABLE_STATUSES,
+    FULL_ACTIVE_STATUSES,
+    FULL_TERMINAL_STATUSES,
+    ChildGenerationEventCode,
+    ChildGenerationOperation,
+    ChildGenerationStatus,
+    require_transition,
+    terminal_failure_status,
+)
 from app.modules.child.synastry import _rule_for_pair, build_synastry_evidence
 from app.modules.profiles.models import PersonProfile
 from app.reference_data.child.child_needs_v1 import (
@@ -858,14 +869,40 @@ class ChildChartVersionCreateResult:
 
 
 @dataclass(frozen=True)
+class ChildGenerationLineage:
+    parent_chart_id: UUID
+    child_chart_version_id: UUID
+    questionnaire_session_id: UUID
+    age_snapshot_id: UUID
+
+
+@dataclass(frozen=True)
 class ChildGenerationCreateResult:
     generation: models.ChildGeneration
     created: bool
 
 
 @dataclass(frozen=True)
+class ChildGenerationClaim:
+    generation: models.ChildGeneration
+    claim_token: UUID
+
+
+@dataclass(frozen=True)
+class ChildGenerationReconcileResult:
+    requeued_generation_ids: tuple[UUID, ...]
+    terminal_generation_ids: tuple[UUID, ...]
+
+
+@dataclass(frozen=True)
 class ChildReportCreateResult:
     report: models.ChildReport
+    created: bool
+
+
+@dataclass(frozen=True)
+class ChildReportAssemblyCreateResult:
+    assembly: models.ChildReportAssembly
     created: bool
 
 
@@ -978,6 +1015,40 @@ class ChildReportGraph:
 class ChildRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    def record_generation_event(
+        self,
+        *,
+        generation_id: UUID,
+        event_code: ChildGenerationEventCode,
+        status_from: str | None,
+        status_to: str | None,
+        attempt_number: int,
+        occurred_at: datetime,
+        error_code: str | None = None,
+        task_correlation: str | None = None,
+    ) -> models.ChildGenerationEvent:
+        if attempt_number < 0:
+            raise ValueError("generation event attempt is invalid")
+        for status in (status_from, status_to):
+            if status is not None:
+                ChildGenerationStatus(status)
+        if error_code is not None and (len(error_code) > 80 or not error_code.replace("_", "").isalnum()):
+            raise ValueError("generation event error code is unsafe")
+        if task_correlation is not None and len(task_correlation) > 120:
+            raise ValueError("generation task correlation is unsafe")
+        event = models.ChildGenerationEvent(
+            generation_id=generation_id,
+            event_code=event_code.value,
+            status_from=status_from,
+            status_to=status_to,
+            attempt_number=attempt_number,
+            error_code=error_code,
+            task_correlation=task_correlation,
+            occurred_at=_server_now(occurred_at),
+        )
+        self.session.add(event)
+        return event
 
     async def _lock_child_lineage(self, child_profile_id: UUID) -> None:
         """Serialize mutable child inputs and derived immutable lineage on one key."""
@@ -1134,6 +1205,71 @@ class ChildRepository:
             raise ChildIdempotencyTargetMismatchError("Idempotency key already used for another child target")
         return ChildProfileCreateResult(child=existing, created=False)
 
+    async def resolve_current_generation_lineage(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        questionnaire_session_id: UUID,
+    ) -> ChildGenerationLineage:
+        """Resolve a coherent server-owned current lineage without trusting chart identifiers."""
+
+        child = await self._require_owned_child(
+            child_profile_id=child_profile_id,
+            owner_user_id=owner_user_id,
+            fresh=True,
+        )
+        if child.status != "active":
+            raise ChildLineageMismatchError("Child resource is unavailable")
+        questionnaire = await self.session.scalar(
+            select(models.ChildQuestionnaireSession).where(
+                models.ChildQuestionnaireSession.id == questionnaire_session_id,
+                models.ChildQuestionnaireSession.child_profile_id == child_profile_id,
+                models.ChildQuestionnaireSession.owner_user_id == owner_user_id,
+                models.ChildQuestionnaireSession.status == "completed",
+            )
+        )
+        if questionnaire is None:
+            raise ChildLineageMismatchError("Generation questionnaire is unavailable")
+        current_age_snapshot_id = await self.session.scalar(
+            select(models.ChildAgeSnapshot.id)
+            .where(models.ChildAgeSnapshot.child_profile_id == child_profile_id)
+            .order_by(
+                models.ChildAgeSnapshot.as_of_date.desc(),
+                models.ChildAgeSnapshot.created_at.desc(),
+                models.ChildAgeSnapshot.id.desc(),
+            )
+            .limit(1)
+        )
+        if current_age_snapshot_id is None or questionnaire.age_snapshot_id != current_age_snapshot_id:
+            raise ChildLineageMismatchError("Generation questionnaire age snapshot is stale")
+        parent_chart_id = await self.session.scalar(
+            select(NatalChart.id)
+            .where(
+                NatalChart.profile_id == child.parent_profile_id,
+                NatalChart.user_id == owner_user_id,
+            )
+            .order_by(NatalChart.created_at.desc(), NatalChart.id.desc())
+            .limit(1)
+        )
+        child_chart = await self.session.scalar(
+            select(models.ChildChartVersion)
+            .where(models.ChildChartVersion.child_profile_id == child_profile_id)
+            .order_by(models.ChildChartVersion.version.desc(), models.ChildChartVersion.id.desc())
+            .limit(1)
+            .execution_options(populate_existing=True)
+        )
+        if parent_chart_id is None or child_chart is None:
+            raise ChildLineageMismatchError("Current chart lineage is unavailable")
+        if child_chart.birth_time_confidence != child.birth_time_confidence:
+            raise ChildLineageMismatchError("Current child chart confidence is stale")
+        return ChildGenerationLineage(
+            parent_chart_id=parent_chart_id,
+            child_chart_version_id=child_chart.id,
+            questionnaire_session_id=questionnaire.id,
+            age_snapshot_id=questionnaire.age_snapshot_id,
+        )
+
     async def create_generation_idempotently(
         self,
         *,
@@ -1143,12 +1279,16 @@ class ChildRepository:
         child_chart_version_id: UUID,
         operation: str,
         idempotency_key: str,
+        questionnaire_session_id: UUID | None = None,
         source_report_id: UUID | None = None,
+        operation_payload: dict[str, Any] | None = None,
     ) -> ChildGenerationCreateResult:
         child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
         )
+        if child.status != "active":
+            raise ChildLineageMismatchError("Child resource is unavailable")
         await self._require_parent_chart_owner(
             parent_chart_id=parent_chart_id,
             parent_profile_id=child.parent_profile_id,
@@ -1158,6 +1298,17 @@ class ChildRepository:
             child_chart_version_id=child_chart_version_id,
             child_profile_id=child_profile_id,
         )
+        if questionnaire_session_id is not None:
+            questionnaire = await self.session.scalar(
+                select(models.ChildQuestionnaireSession).where(
+                    models.ChildQuestionnaireSession.id == questionnaire_session_id,
+                    models.ChildQuestionnaireSession.child_profile_id == child_profile_id,
+                    models.ChildQuestionnaireSession.owner_user_id == owner_user_id,
+                    models.ChildQuestionnaireSession.status == "completed",
+                )
+            )
+            if questionnaire is None:
+                raise ChildLineageMismatchError("Generation questionnaire is unavailable")
         if source_report_id is not None:
             source_child_id = await self.session.scalar(
                 select(models.ChildReport.child_profile_id).where(models.ChildReport.id == source_report_id)
@@ -1173,11 +1324,22 @@ class ChildRepository:
                 owner_user_id=owner_user_id,
                 parent_chart_id=parent_chart_id,
                 child_chart_version_id=child_chart_version_id,
+                questionnaire_session_id=questionnaire_session_id,
                 generation_id=uuid.uuid4(),
                 operation=operation,
                 idempotency_key=idempotency_key,
-                status="queued",
+                status=(
+                    ChildGenerationStatus.AGE_UPDATE_QUEUED.value
+                    if operation == ChildGenerationOperation.AGE_UPDATE.value
+                    else (
+                        ChildGenerationStatus.NARRATIVE_RETRY_WAITING.value
+                        if operation == ChildGenerationOperation.NARRATIVE_RETRY.value
+                        else ChildGenerationStatus.QUEUED.value
+                    )
+                ),
+                report_id=(source_report_id if operation == ChildGenerationOperation.NARRATIVE_RETRY.value else None),
                 source_report_id=source_report_id,
+                operation_payload=operation_payload or {},
                 diagnostics={},
             )
             .on_conflict_do_nothing(constraint="uq_child_generations_owner_operation_idempotency")
@@ -1185,6 +1347,14 @@ class ChildRepository:
         )
         inserted = (await self.session.execute(statement)).scalar_one_or_none()
         if inserted is not None:
+            self.record_generation_event(
+                generation_id=inserted.generation_id,
+                event_code=ChildGenerationEventCode.ACCEPTED,
+                status_from=None,
+                status_to=inserted.status,
+                attempt_number=0,
+                occurred_at=datetime.now(UTC),
+            )
             return ChildGenerationCreateResult(generation=inserted, created=True)
 
         existing = await self.session.scalar(
@@ -1200,12 +1370,690 @@ class ChildRepository:
             existing.child_profile_id,
             existing.parent_chart_id,
             existing.child_chart_version_id,
+            existing.questionnaire_session_id,
             existing.source_report_id,
+            existing.operation_payload,
         )
-        expected = (child_profile_id, parent_chart_id, child_chart_version_id, source_report_id)
+        expected = (
+            child_profile_id,
+            parent_chart_id,
+            child_chart_version_id,
+            questionnaire_session_id,
+            source_report_id,
+            operation_payload or {},
+        )
         if target != expected:
             raise ChildIdempotencyTargetMismatchError("Generation idempotency key was reused for another target")
         return ChildGenerationCreateResult(generation=existing, created=False)
+
+    async def claim_generation_dispatch(
+        self,
+        *,
+        generation_id: UUID,
+        now: datetime,
+        lease_duration: timedelta,
+    ) -> str | None:
+        current = _server_now(now)
+        task_id = f"child-generation-{generation_id}"
+        claimed = (
+            await self.session.execute(
+                update(models.ChildGeneration)
+                .where(
+                    models.ChildGeneration.generation_id == generation_id,
+                    models.ChildGeneration.status.in_([status.value for status in CLAIMABLE_STATUSES]),
+                    (models.ChildGeneration.next_retry_at.is_(None))
+                    | (models.ChildGeneration.next_retry_at <= current),
+                    (models.ChildGeneration.celery_task_id.is_(None))
+                    | (models.ChildGeneration.dispatch_expires_at.is_(None))
+                    | (models.ChildGeneration.dispatch_expires_at < current),
+                )
+                .values(
+                    celery_task_id=task_id,
+                    dispatched_at=current,
+                    dispatch_expires_at=current + lease_duration,
+                )
+                .returning(models.ChildGeneration)
+            )
+        ).scalar_one_or_none()
+        if claimed is None:
+            return None
+        self.record_generation_event(
+            generation_id=claimed.generation_id,
+            event_code=ChildGenerationEventCode.DISPATCH_CLAIMED,
+            status_from=claimed.status,
+            status_to=claimed.status,
+            attempt_number=claimed.attempt_count,
+            occurred_at=current,
+            task_correlation=task_id,
+        )
+        return task_id
+
+    async def record_generation_dispatch_outcome(
+        self,
+        *,
+        generation_id: UUID,
+        task_id: str,
+        succeeded: bool,
+        now: datetime,
+    ) -> None:
+        current = _server_now(now)
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.generation_id == generation_id,
+                models.ChildGeneration.celery_task_id == task_id,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Generation dispatch lost its claim")
+        if not succeeded:
+            generation.celery_task_id = None
+            generation.dispatched_at = None
+            generation.dispatch_expires_at = None
+        self.record_generation_event(
+            generation_id=generation_id,
+            event_code=(
+                ChildGenerationEventCode.DISPATCH_SUCCEEDED if succeeded else ChildGenerationEventCode.DISPATCH_FAILED
+            ),
+            status_from=generation.status,
+            status_to=generation.status,
+            attempt_number=generation.attempt_count,
+            occurred_at=current,
+            error_code=None if succeeded else "broker_dispatch_failed",
+            task_correlation=task_id,
+        )
+
+    async def claim_generation(
+        self,
+        *,
+        generation_id: UUID,
+        task_id: str,
+        now: datetime,
+        lease_duration: timedelta,
+    ) -> ChildGenerationClaim | None:
+        """Atomically claim queued work and fence later transitions with a token."""
+
+        current = _server_now(now)
+        token = uuid.uuid4()
+        claimed = (
+            await self.session.execute(
+                update(models.ChildGeneration)
+                .where(
+                    models.ChildGeneration.generation_id == generation_id,
+                    models.ChildGeneration.status.in_([status.value for status in CLAIMABLE_STATUSES]),
+                    (models.ChildGeneration.next_retry_at.is_(None))
+                    | (models.ChildGeneration.next_retry_at <= current),
+                )
+                .values(
+                    status=case(
+                        (
+                            models.ChildGeneration.operation == ChildGenerationOperation.AGE_UPDATE.value,
+                            ChildGenerationStatus.AGE_UPDATE_RUNNING.value,
+                        ),
+                        (
+                            (models.ChildGeneration.operation == ChildGenerationOperation.NARRATIVE_RETRY.value)
+                            | (models.ChildGeneration.status == ChildGenerationStatus.NARRATIVE_RETRY_WAITING.value),
+                            ChildGenerationStatus.GENERATING_SECTIONS.value,
+                        ),
+                        else_=ChildGenerationStatus.CALCULATING_PAIR.value,
+                    ),
+                    celery_task_id=task_id,
+                    dispatched_at=None,
+                    dispatch_expires_at=None,
+                    attempt_count=models.ChildGeneration.attempt_count + 1,
+                    claim_token=token,
+                    claimed_at=current,
+                    heartbeat_at=current,
+                    lease_expires_at=current + lease_duration,
+                    next_retry_at=None,
+                    last_error_code=None,
+                )
+                .returning(models.ChildGeneration)
+            )
+        ).scalar_one_or_none()
+        if claimed is None:
+            return None
+        claimed_from = (
+            ChildGenerationStatus.AGE_UPDATE_QUEUED.value
+            if claimed.operation == ChildGenerationOperation.AGE_UPDATE.value
+            else (
+                ChildGenerationStatus.NARRATIVE_RETRY_WAITING.value
+                if claimed.report_id is not None
+                else ChildGenerationStatus.QUEUED.value
+            )
+        )
+        self.record_generation_event(
+            generation_id=claimed.generation_id,
+            event_code=ChildGenerationEventCode.WORKER_CLAIMED,
+            status_from=claimed_from,
+            status_to=claimed.status,
+            attempt_number=claimed.attempt_count,
+            occurred_at=current,
+            task_correlation=task_id,
+        )
+        return ChildGenerationClaim(generation=claimed, claim_token=token)
+
+    async def heartbeat_generation(
+        self,
+        *,
+        generation_id: UUID,
+        claim_token: UUID,
+        now: datetime,
+        lease_duration: timedelta,
+    ) -> bool:
+        current = _server_now(now)
+        updated = await self.session.scalar(
+            update(models.ChildGeneration)
+            .where(
+                models.ChildGeneration.generation_id == generation_id,
+                models.ChildGeneration.claim_token == claim_token,
+                models.ChildGeneration.status.in_(
+                    [status.value for status in FULL_ACTIVE_STATUSES] + [ChildGenerationStatus.AGE_UPDATE_RUNNING.value]
+                ),
+            )
+            .values(heartbeat_at=current, lease_expires_at=current + lease_duration)
+            .returning(models.ChildGeneration.generation_id)
+        )
+        return updated is not None
+
+    async def release_generation_for_retry(
+        self,
+        *,
+        generation_id: UUID,
+        claim_token: UUID,
+        now: datetime,
+        retry_base_seconds: int,
+        max_attempts: int,
+        error_code: str,
+    ) -> models.ChildGeneration:
+        current = _server_now(now)
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.generation_id == generation_id,
+                models.ChildGeneration.claim_token == claim_token,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Generation retry lost its claim")
+        if generation.attempt_count >= max_attempts:
+            return await self.fail_claimed_generation(
+                generation_id=generation_id,
+                claim_token=claim_token,
+                now=current,
+                error_code="generation_attempts_exhausted",
+            )
+        status_before = generation.status
+        delay = retry_base_seconds * (2 ** max(generation.attempt_count - 1, 0))
+        released = (
+            await self.session.execute(
+                update(models.ChildGeneration)
+                .where(
+                    models.ChildGeneration.generation_id == generation_id,
+                    models.ChildGeneration.claim_token == claim_token,
+                )
+                .values(
+                    status=(
+                        ChildGenerationStatus.AGE_UPDATE_QUEUED.value
+                        if generation.operation == ChildGenerationOperation.AGE_UPDATE.value
+                        else (
+                            ChildGenerationStatus.NARRATIVE_RETRY_WAITING.value
+                            if generation.report_id is not None or generation.source_report_id is not None
+                            else ChildGenerationStatus.QUEUED.value
+                        )
+                    ),
+                    celery_task_id=None,
+                    dispatched_at=None,
+                    dispatch_expires_at=None,
+                    claim_token=None,
+                    lease_expires_at=None,
+                    heartbeat_at=current,
+                    next_retry_at=current + timedelta(seconds=delay),
+                    last_error_code=error_code,
+                )
+                .returning(models.ChildGeneration)
+            )
+        ).scalar_one_or_none()
+        if released is None:
+            raise ChildLineageMismatchError("Generation retry lost its claim")
+        self.record_generation_event(
+            generation_id=released.generation_id,
+            event_code=ChildGenerationEventCode.RETRY_RELEASED,
+            status_from=status_before,
+            status_to=released.status,
+            attempt_number=released.attempt_count,
+            occurred_at=current,
+            error_code=error_code,
+            task_correlation=generation.celery_task_id,
+        )
+        return released
+
+    async def transition_generation(
+        self,
+        *,
+        generation_id: UUID,
+        claim_token: UUID,
+        expected_status: ChildGenerationStatus,
+        target_status: ChildGenerationStatus,
+        now: datetime,
+        report_id: UUID | None = None,
+        error_code: str | None = None,
+    ) -> models.ChildGeneration:
+        require_transition(expected_status.value, target_status.value)
+        current = _server_now(now)
+        values: dict[str, Any] = {
+            "status": target_status.value,
+            "heartbeat_at": current,
+            "last_error_code": error_code,
+        }
+        if report_id is not None:
+            values["report_id"] = report_id
+        if target_status in FULL_TERMINAL_STATUSES | AGE_TERMINAL_STATUSES:
+            values.update(
+                finished_at=current,
+                claim_token=None,
+                lease_expires_at=None,
+                next_retry_at=None,
+            )
+        transitioned = (
+            await self.session.execute(
+                update(models.ChildGeneration)
+                .where(
+                    models.ChildGeneration.generation_id == generation_id,
+                    models.ChildGeneration.claim_token == claim_token,
+                    models.ChildGeneration.status == expected_status.value,
+                )
+                .values(**values)
+                .returning(models.ChildGeneration)
+            )
+        ).scalar_one_or_none()
+        if transitioned is None:
+            raise ChildLineageMismatchError("Generation transition lost its claim or expected status")
+        self.record_generation_event(
+            generation_id=transitioned.generation_id,
+            event_code=ChildGenerationEventCode.STATUS_TRANSITIONED,
+            status_from=expected_status.value,
+            status_to=target_status.value,
+            attempt_number=transitioned.attempt_count,
+            occurred_at=current,
+            error_code=error_code,
+            task_correlation=transitioned.celery_task_id,
+        )
+        return transitioned
+
+    async def fail_claimed_generation(
+        self,
+        *,
+        generation_id: UUID,
+        claim_token: UUID,
+        now: datetime,
+        error_code: str,
+    ) -> models.ChildGeneration:
+        generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.generation_id == generation_id,
+                models.ChildGeneration.claim_token == claim_token,
+            )
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Generation failure lost its claim")
+        target = (
+            ChildGenerationStatus.AGE_UPDATE_FAILED
+            if generation.operation == ChildGenerationOperation.AGE_UPDATE.value
+            else terminal_failure_status(report_id_present=generation.report_id is not None)
+        )
+        expected = ChildGenerationStatus(generation.status)
+        age_failure_is_valid = (
+            target is ChildGenerationStatus.AGE_UPDATE_FAILED and expected is ChildGenerationStatus.AGE_UPDATE_RUNNING
+        )
+        narrative_failure_is_valid = target is ChildGenerationStatus.NARRATIVE_FAILED and expected in {
+            ChildGenerationStatus.DETERMINISTIC_READY,
+            ChildGenerationStatus.GENERATING_SECTIONS,
+        }
+        deterministic_failure_is_valid = target is ChildGenerationStatus.FAILED and expected in {
+            ChildGenerationStatus.QUEUED,
+            ChildGenerationStatus.CALCULATING_PAIR,
+        }
+        if not age_failure_is_valid and not narrative_failure_is_valid and not deterministic_failure_is_valid:
+            raise ChildLineageMismatchError("Generation failure status is inconsistent with publication state")
+        current = _server_now(now)
+        failed = (
+            await self.session.execute(
+                update(models.ChildGeneration)
+                .where(
+                    models.ChildGeneration.generation_id == generation_id,
+                    models.ChildGeneration.claim_token == claim_token,
+                    models.ChildGeneration.status == expected.value,
+                )
+                .values(
+                    status=target.value,
+                    last_error_code=error_code,
+                    finished_at=current,
+                    heartbeat_at=current,
+                    claim_token=None,
+                    lease_expires_at=None,
+                    next_retry_at=None,
+                )
+                .returning(models.ChildGeneration)
+            )
+        ).scalar_one_or_none()
+        if failed is None:
+            raise ChildLineageMismatchError("Generation failure lost its claim")
+        self.record_generation_event(
+            generation_id=failed.generation_id,
+            event_code=ChildGenerationEventCode.TERMINAL_FAILED,
+            status_from=expected.value,
+            status_to=target.value,
+            attempt_number=failed.attempt_count,
+            occurred_at=current,
+            error_code=error_code,
+            task_correlation=failed.celery_task_id,
+        )
+        return failed
+
+    async def allocate_report_version(self, *, child_profile_id: UUID) -> int:
+        await self._lock_child_lineage(child_profile_id)
+        latest = await self.session.scalar(
+            select(func.max(models.ChildReport.version)).where(models.ChildReport.child_profile_id == child_profile_id)
+        )
+        return int(latest or 0) + 1
+
+    async def list_segment_generations(
+        self, *, child_profile_id: UUID, generation_id: UUID
+    ) -> tuple[models.ChildSegmentGeneration, ...]:
+        rows = (
+            await self.session.execute(
+                select(models.ChildSegmentGeneration)
+                .where(
+                    models.ChildSegmentGeneration.child_profile_id == child_profile_id,
+                    models.ChildSegmentGeneration.generation_id == generation_id,
+                )
+                .order_by(models.ChildSegmentGeneration.section_key)
+                .execution_options(populate_existing=True)
+            )
+        ).scalars()
+        return tuple(rows.all())
+
+    async def claim_segment_intent(
+        self,
+        *,
+        row: models.ChildSegmentGeneration,
+        claim_token: UUID,
+    ) -> str:
+        if row.status != "in_progress" or row.lifecycle_token != claim_token:
+            raise ValueError("segment intent is invalid")
+        report_id = await self.session.scalar(
+            select(func.coalesce(models.ChildGeneration.source_report_id, models.ChildGeneration.report_id)).where(
+                models.ChildGeneration.generation_id == row.generation_id,
+                models.ChildGeneration.child_profile_id == row.child_profile_id,
+            )
+        )
+        if report_id is None:
+            raise ChildLineageMismatchError("Provider intent has no published source report")
+        # The lock is held through the intent INSERT and its checkpoint commit.
+        # Every full/retry worker uses the SAME report/section key. The committed
+        # in_progress row then remains the fence while no DB lock is held during
+        # network I/O, including worker death before terminal persistence.
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-provider-section:{report_id}:{row.section_key}"},
+        )
+        sibling_intent = await self.session.scalar(
+            select(models.ChildSegmentGeneration.id)
+            .join(
+                models.ChildGeneration,
+                models.ChildGeneration.generation_id == models.ChildSegmentGeneration.generation_id,
+            )
+            .where(
+                func.coalesce(models.ChildGeneration.source_report_id, models.ChildGeneration.report_id) == report_id,
+                models.ChildSegmentGeneration.section_key == row.section_key,
+                models.ChildSegmentGeneration.generation_id != row.generation_id,
+                (models.ChildSegmentGeneration.status.in_(("in_progress", "ready")))
+                | (models.ChildSegmentGeneration.error_code == "child_narrative_provider_outcome_unknown"),
+            )
+            .limit(1)
+        )
+        if sibling_intent is not None:
+            # Fail closed rather than mutate/reuse another immutable generation.
+            # Known rejections remain retryable; known completions cannot be billed
+            # again by siblings. Existing lifecycle backoff bounds blocked retries.
+            raise ChildLineageMismatchError("Source report section has a fenced provider intent")
+        values = {
+            "id": row.id or uuid.uuid4(),
+            "child_profile_id": row.child_profile_id,
+            "generation_id": row.generation_id,
+            "section_key": row.section_key,
+            "status": row.status,
+            "prompt_version": row.prompt_version,
+            "model": row.model,
+            "content": None,
+            "evidence_refs": [],
+            "error_code": None,
+            "lifecycle_token": claim_token,
+            "diagnostics": row.diagnostics,
+        }
+        inserted = (
+            await self.session.execute(
+                pg_insert(models.ChildSegmentGeneration)
+                .values(**values)
+                .on_conflict_do_nothing(constraint="uq_child_segment_generation_section")
+                .returning(models.ChildSegmentGeneration.section_key)
+            )
+        ).scalar_one_or_none()
+        if inserted is not None:
+            return "claimed"
+        existing = await self.session.scalar(
+            select(models.ChildSegmentGeneration).where(
+                models.ChildSegmentGeneration.generation_id == row.generation_id,
+                models.ChildSegmentGeneration.section_key == row.section_key,
+            )
+        )
+        if existing is None:
+            raise RuntimeError("Segment intent conflict could not be reloaded")
+        if existing.status == "retry_waiting":
+            if (
+                existing.prompt_version != row.prompt_version
+                or existing.model != row.model
+                or existing.diagnostics.get("prompt_hash") != row.diagnostics.get("prompt_hash")
+                or existing.diagnostics.get("input_hash") != row.diagnostics.get("input_hash")
+            ):
+                raise ChildLineageMismatchError("Segment retry intent does not match its pinned input")
+            existing.status = "in_progress"
+            existing.error_code = None
+            existing.lifecycle_token = claim_token
+            existing.diagnostics = dict(row.diagnostics)
+            await self.session.flush()
+            return "claimed"
+        if existing.status == "in_progress":
+            existing.status = "failed"
+            existing.error_code = "child_narrative_provider_outcome_unknown"
+            existing.lifecycle_token = claim_token
+            existing.diagnostics = dict(existing.diagnostics) | {
+                "attempts": 1,
+                "error_type": "provider_error",
+            }
+            await self.session.flush()
+            return "outcome_unknown"
+        return existing.status
+
+    async def mark_segment_retry_waiting(
+        self,
+        *,
+        generation_id: UUID,
+        section_key: str,
+        claim_token: UUID,
+        diagnostics: dict[str, Any],
+    ) -> models.ChildSegmentGeneration:
+        row = await self.session.scalar(
+            update(models.ChildSegmentGeneration)
+            .where(
+                models.ChildSegmentGeneration.generation_id == generation_id,
+                models.ChildSegmentGeneration.section_key == section_key,
+                models.ChildSegmentGeneration.status == "in_progress",
+                models.ChildSegmentGeneration.lifecycle_token == claim_token,
+            )
+            .values(
+                status="retry_waiting",
+                error_code="child_narrative_provider_failure",
+                diagnostics=diagnostics,
+            )
+            .returning(models.ChildSegmentGeneration)
+        )
+        if row is None:
+            raise ChildLineageMismatchError("Segment retry release lost its provider intent")
+        return row
+
+    async def finalize_segment_retry_exhausted(
+        self,
+        *,
+        generation_id: UUID,
+        section_key: str,
+    ) -> models.ChildSegmentGeneration:
+        row = await self.session.scalar(
+            update(models.ChildSegmentGeneration)
+            .where(
+                models.ChildSegmentGeneration.generation_id == generation_id,
+                models.ChildSegmentGeneration.section_key == section_key,
+                models.ChildSegmentGeneration.status == "retry_waiting",
+            )
+            .values(status="failed", lifecycle_token=None)
+            .returning(models.ChildSegmentGeneration)
+        )
+        if row is None:
+            raise ChildLineageMismatchError("Segment retry exhaustion lost its durable intent")
+        return row
+
+    async def persist_terminal_segment(
+        self,
+        *,
+        row: models.ChildSegmentGeneration,
+        claim_token: UUID | None = None,
+    ) -> models.ChildSegmentGeneration:
+        if row.status not in {"ready", "not_applicable", "failed"}:
+            raise ValueError("segment row is not terminal")
+        values = {
+            "id": row.id or uuid.uuid4(),
+            "child_profile_id": row.child_profile_id,
+            "generation_id": row.generation_id,
+            "section_key": row.section_key,
+            "status": row.status,
+            "prompt_version": row.prompt_version,
+            "model": row.model,
+            "content": row.content,
+            "evidence_refs": row.evidence_refs,
+            "error_code": row.error_code,
+            "lifecycle_token": claim_token,
+            "diagnostics": row.diagnostics,
+        }
+        conflict_where = (
+            models.ChildSegmentGeneration.status == "__never_update_terminal__"
+            if claim_token is None
+            else (
+                (models.ChildSegmentGeneration.status == "in_progress")
+                & (models.ChildSegmentGeneration.lifecycle_token == claim_token)
+            )
+        )
+        persisted = (
+            await self.session.execute(
+                pg_insert(models.ChildSegmentGeneration)
+                .values(**values)
+                .on_conflict_do_update(
+                    constraint="uq_child_segment_generation_section",
+                    set_={
+                        key: value for key, value in values.items() if key not in {"id", "generation_id", "section_key"}
+                    },
+                    where=conflict_where,
+                )
+                .returning(models.ChildSegmentGeneration)
+            )
+        ).scalar_one_or_none()
+        if persisted is not None:
+            return persisted
+        existing = await self.session.scalar(
+            select(models.ChildSegmentGeneration).where(
+                models.ChildSegmentGeneration.generation_id == row.generation_id,
+                models.ChildSegmentGeneration.section_key == row.section_key,
+            )
+        )
+        if existing is None:
+            raise RuntimeError("Segment conflict could not be reloaded")
+        return existing
+
+    async def reconcile_stuck_generations(
+        self,
+        *,
+        now: datetime,
+        max_attempts: int,
+        retry_base_seconds: int = 30,
+        limit: int = 100,
+    ) -> ChildGenerationReconcileResult:
+        current = _server_now(now)
+        stuck = tuple(
+            (
+                await self.session.execute(
+                    select(models.ChildGeneration)
+                    .where(
+                        models.ChildGeneration.status.in_(
+                            [status.value for status in FULL_ACTIVE_STATUSES]
+                            + [ChildGenerationStatus.AGE_UPDATE_RUNNING.value]
+                        ),
+                        models.ChildGeneration.lease_expires_at.is_not(None),
+                        models.ChildGeneration.lease_expires_at < current,
+                    )
+                    .order_by(models.ChildGeneration.lease_expires_at, models.ChildGeneration.id)
+                    .limit(limit)
+                    .with_for_update(skip_locked=True)
+                    .execution_options(populate_existing=True)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        requeued: list[UUID] = []
+        terminal: list[UUID] = []
+        for generation in stuck:
+            status_before = generation.status
+            task_correlation = generation.celery_task_id
+            if generation.attempt_count >= max_attempts:
+                generation.status = (
+                    ChildGenerationStatus.AGE_UPDATE_FAILED.value
+                    if generation.operation == ChildGenerationOperation.AGE_UPDATE.value
+                    else terminal_failure_status(report_id_present=generation.report_id is not None).value
+                )
+                generation.finished_at = current
+                generation.last_error_code = "generation_attempts_exhausted"
+                terminal.append(generation.generation_id)
+                event_code = ChildGenerationEventCode.RECONCILIATION_EXHAUSTED
+            else:
+                generation.status = (
+                    ChildGenerationStatus.AGE_UPDATE_QUEUED.value
+                    if generation.operation == ChildGenerationOperation.AGE_UPDATE.value
+                    else (
+                        ChildGenerationStatus.NARRATIVE_RETRY_WAITING.value
+                        if generation.report_id is not None or generation.source_report_id is not None
+                        else ChildGenerationStatus.QUEUED.value
+                    )
+                )
+                generation.next_retry_at = current + timedelta(
+                    seconds=retry_base_seconds * (2 ** max(generation.attempt_count - 1, 0))
+                )
+                generation.celery_task_id = None
+                generation.last_error_code = "stale_generation_requeued"
+                requeued.append(generation.generation_id)
+                event_code = ChildGenerationEventCode.RECONCILIATION_REQUEUED
+            generation.claim_token = None
+            generation.lease_expires_at = None
+            generation.heartbeat_at = current
+            self.record_generation_event(
+                generation_id=generation.generation_id,
+                event_code=event_code,
+                status_from=status_before,
+                status_to=generation.status,
+                attempt_number=generation.attempt_count,
+                occurred_at=current,
+                error_code=generation.last_error_code,
+                task_correlation=task_correlation,
+            )
+        await self.session.flush()
+        return ChildGenerationReconcileResult(tuple(requeued), tuple(terminal))
 
     async def create_parent_style_profile(
         self,
@@ -2211,6 +3059,74 @@ class ChildRepository:
             raise ChildIdempotencyTargetMismatchError("Report idempotency key was reused for another target")
         return ChildReportCreateResult(report=existing, created=False)
 
+    async def create_report_assembly_idempotently(
+        self,
+        *,
+        child_profile_id: UUID,
+        generation_id: UUID,
+        source_generation_id: UUID,
+        report_id: UUID,
+        status: str,
+        contract_version: str,
+        payload: dict[str, Any],
+    ) -> ChildReportAssemblyCreateResult:
+        if status not in {"ready", "narrative_failed"}:
+            raise ValueError("report assembly status is invalid")
+        report_lineage = await self.session.scalar(
+            select(models.ChildReport.id).where(
+                models.ChildReport.id == report_id,
+                models.ChildReport.child_profile_id == child_profile_id,
+                models.ChildReport.generation_id == source_generation_id,
+            )
+        )
+        artifact_generation = await self.session.scalar(
+            select(models.ChildGeneration).where(
+                models.ChildGeneration.child_profile_id == child_profile_id,
+                models.ChildGeneration.generation_id == generation_id,
+            )
+        )
+        if report_lineage is None or artifact_generation is None:
+            raise ChildLineageMismatchError("Report assembly lineage is invalid")
+        if generation_id != source_generation_id and (
+            artifact_generation.operation != ChildGenerationOperation.NARRATIVE_RETRY.value
+            or artifact_generation.source_report_id != report_id
+            or artifact_generation.operation_payload.get("source_generation_id") != str(source_generation_id)
+        ):
+            raise ChildLineageMismatchError("Retry assembly source lineage is invalid")
+        statement = (
+            pg_insert(models.ChildReportAssembly)
+            .values(
+                id=uuid.uuid4(),
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+                source_generation_id=source_generation_id,
+                report_id=report_id,
+                status=status,
+                contract_version=contract_version,
+                payload=payload,
+            )
+            .on_conflict_do_nothing(constraint="uq_child_report_assemblies_generation")
+            .returning(models.ChildReportAssembly)
+        )
+        inserted = (await self.session.execute(statement)).scalar_one_or_none()
+        if inserted is not None:
+            return ChildReportAssemblyCreateResult(assembly=inserted, created=True)
+        existing = await self.session.scalar(
+            select(models.ChildReportAssembly).where(models.ChildReportAssembly.generation_id == generation_id)
+        )
+        if existing is None:
+            raise RuntimeError("Report assembly conflict could not be reloaded")
+        if (
+            existing.child_profile_id,
+            existing.source_generation_id,
+            existing.report_id,
+            existing.status,
+            existing.contract_version,
+            existing.payload,
+        ) != (child_profile_id, source_generation_id, report_id, status, contract_version, payload):
+            raise ChildIdempotencyTargetMismatchError("Report assembly generation was reused for another payload")
+        return ChildReportAssemblyCreateResult(assembly=existing, created=False)
+
     async def create_age_guidance_idempotently(
         self,
         *,
@@ -2294,6 +3210,7 @@ class ChildRepository:
         payload: dict[str, Any],
         now: datetime | None = None,
         age_rules_version: str = AGE_RULES_VERSION,
+        pinned_age_snapshot_id: UUID | None = None,
     ) -> ChildAgeUpdateResult:
         """Append age snapshot/guidance lineage without touching the core report."""
 
@@ -2350,12 +3267,24 @@ class ChildRepository:
         if report is None:
             raise ChildLineageMismatchError("Age update report does not belong to the child")
 
-        snapshot_result = await self.create_age_snapshot_idempotently(
-            owner_user_id=owner_user_id,
-            child_profile_id=child_profile_id,
-            now=now,
-            age_rules_version=age_rules_version,
-        )
+        if pinned_age_snapshot_id is None:
+            snapshot_result = await self.create_age_snapshot_idempotently(
+                owner_user_id=owner_user_id,
+                child_profile_id=child_profile_id,
+                now=now,
+                age_rules_version=age_rules_version,
+            )
+        else:
+            pinned_snapshot = await self.session.scalar(
+                select(models.ChildAgeSnapshot).where(
+                    models.ChildAgeSnapshot.id == pinned_age_snapshot_id,
+                    models.ChildAgeSnapshot.child_profile_id == child_profile_id,
+                    models.ChildAgeSnapshot.age_rules_version == age_rules_version,
+                )
+            )
+            if pinned_snapshot is None:
+                raise ChildLineageMismatchError("Pinned age snapshot does not belong to the child")
+            snapshot_result = ChildAgeSnapshotCreateResult(snapshot=pinned_snapshot, created=False)
         latest_version = await self.session.scalar(
             select(func.max(models.ChildReportAgeGuidance.version)).where(
                 models.ChildReportAgeGuidance.report_id == report_id

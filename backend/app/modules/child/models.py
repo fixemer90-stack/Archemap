@@ -506,6 +506,7 @@ class ChildSegmentGeneration(BaseModel):
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     evidence_refs: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    lifecycle_token: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     diagnostics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
 
@@ -556,6 +557,43 @@ class ChildReport(BaseModel):
     prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
     report_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     presentation_manifest: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class ChildReportAssembly(BaseModel):
+    __tablename__ = "child_report_assemblies"
+    __table_args__ = (
+        UniqueConstraint("generation_id", name="uq_child_report_assemblies_generation"),
+        ForeignKeyConstraint(
+            ["child_profile_id", "report_id"],
+            ["child_reports.child_profile_id", "child_reports.id"],
+            name="fk_child_report_assemblies_report_lineage",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "generation_id"],
+            ["child_generations.child_profile_id", "child_generations.generation_id"],
+            name="fk_child_report_assemblies_generation_lineage",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "source_generation_id"],
+            ["child_generations.child_profile_id", "child_generations.generation_id"],
+            name="fk_child_report_assemblies_source_generation_lineage",
+            ondelete="CASCADE",
+        ),
+    )
+
+    child_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_CHILD_PROFILE_FK, ondelete="CASCADE"), nullable=False, index=True
+    )
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey(_REPORT_FK, ondelete="CASCADE"), nullable=False, index=True
+    )
+    generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    source_generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    contract_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
 
 class ChildReportAgeGuidance(BaseModel):
@@ -637,6 +675,14 @@ class ChildGeneration(BaseModel):
             name="fk_child_generations_chart_lineage",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["child_profile_id", "questionnaire_session_id"],
+            ["child_questionnaire_sessions.child_profile_id", "child_questionnaire_sessions.id"],
+            name="fk_child_generations_questionnaire_lineage",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_child_generations_status_lease", "status", "lease_expires_at"),
+        Index("ix_child_generations_status_retry", "status", "next_retry_at"),
     )
 
     child_profile_id: Mapped[uuid.UUID] = mapped_column(
@@ -651,14 +697,51 @@ class ChildGeneration(BaseModel):
     child_chart_version_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey(_CHILD_CHART_FK, ondelete="RESTRICT"), nullable=False, index=True
     )
+    questionnaire_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("child_questionnaire_sessions.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     operation: Mapped[str] = mapped_column(String(40), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
     report_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     source_report_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    operation_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     celery_task_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dispatch_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    claim_token: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     diagnostics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class ChildGenerationEvent(BaseModel):
+    __tablename__ = "child_generation_events"
+
+    generation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("child_generations.generation_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_code: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    status_from: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status_to: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    task_correlation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
+    )
 
 
 class ImmutableChildArtifactError(RuntimeError):
@@ -675,7 +758,9 @@ IMMUTABLE_CHILD_ARTIFACT_MODELS = (
     ChildContextResolution,
     ChildGuidanceFacts,
     ChildReport,
+    ChildReportAssembly,
     ChildReportAgeGuidance,
+    ChildGenerationEvent,
 )
 
 CHILD_DOMAIN_ARTIFACT_MODELS = (
@@ -691,9 +776,28 @@ CHILD_DOMAIN_ARTIFACT_MODELS = (
     ChildGuidanceFacts,
     ChildSegmentGeneration,
     ChildReport,
+    ChildReportAssembly,
     ChildReportAgeGuidance,
     ChildGeneration,
 )
+
+
+def _reject_segment_mutation_after_publication(*args: object) -> None:
+    target = args[-1] if args else None
+    if not isinstance(target, ChildSegmentGeneration):
+        return
+    state = inspect(target)
+    history = state.attrs.status.history
+    old_status = history.deleted[0] if history.deleted else target.status
+    allowed = old_status in {"in_progress", "retry_waiting"} and target.status in {
+        "in_progress",
+        "retry_waiting",
+        "ready",
+        "not_applicable",
+        "failed",
+    }
+    if not allowed:
+        raise ImmutableChildArtifactError("Published Child segment is immutable")
 
 
 def _reject_immutable_artifact_mutation(*_: object) -> None:
@@ -703,6 +807,9 @@ def _reject_immutable_artifact_mutation(*_: object) -> None:
 for _immutable_model in IMMUTABLE_CHILD_ARTIFACT_MODELS:
     event.listen(_immutable_model, "before_update", _reject_immutable_artifact_mutation)
     event.listen(_immutable_model, "before_delete", _reject_immutable_artifact_mutation)
+
+event.listen(ChildSegmentGeneration, "before_update", _reject_segment_mutation_after_publication)
+event.listen(ChildSegmentGeneration, "before_delete", _reject_immutable_artifact_mutation)
 
 
 def _reject_completed_questionnaire_session_update(_mapper: object, connection: Connection, target: object) -> None:

@@ -56,6 +56,10 @@ app.conf.update(
             "task": "career.monitor_pipeline",
             "schedule": 300.0,
         },
+        "reconcile-child-generations": {
+            "task": "child.reconcile_generations",
+            "schedule": float(settings.CHILD_GENERATION_RECONCILE_INTERVAL_SECONDS),
+        },
         "dispatch-birth-data-refinements": {
             "task": "profiles.dispatch_birth_data_refinements",
             "schedule": 60.0,

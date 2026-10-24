@@ -13,6 +13,7 @@ from app.modules.billing.router import router as billing_router
 from app.modules.career.router import router as career_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.charts.router import router as charts_router
+from app.modules.child.router import router as child_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.router import router as payments_router
 from app.modules.profiles.router import router as profiles_router
@@ -41,5 +42,6 @@ api_router.include_router(profiles_router)
 api_router.include_router(charts_router)
 api_router.include_router(astrotype_v2_router)
 api_router.include_router(career_router)
+api_router.include_router(child_router)
 api_router.include_router(rules_router)
 api_router.include_router(reports_router)

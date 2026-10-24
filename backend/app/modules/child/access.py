@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from app.modules.child.contracts import CHILD_ENTITLEMENT_PRODUCT
+from app.modules.child.contracts import CHILD_ENTITLEMENT_PRODUCT, CHILD_REPORT_TYPE
 
 
 class _EntitlementReader(Protocol):
@@ -22,6 +22,17 @@ class ChildAccessDecision:
     allowed: bool
     source: str | None = None
     reason: str | None = None
+
+    def to_payload(self) -> dict[str, str]:
+        if self.allowed:
+            return {"access_state": "active", "report_type": CHILD_REPORT_TYPE}
+        return {
+            "access_state": "locked",
+            "report_type": CHILD_REPORT_TYPE,
+            "required_level": "plus",
+            "reason": "plus_required",
+            "upgrade_url": "/billing",
+        }
 
 
 class ChildAccessPolicy:

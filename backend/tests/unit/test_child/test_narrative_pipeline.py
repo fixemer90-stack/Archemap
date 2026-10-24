@@ -203,7 +203,7 @@ async def test_forged_section_input_is_rejected_before_provider_call() -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_section_retries_independently_and_records_safe_metadata() -> None:
+async def test_failed_section_makes_one_provider_attempt_for_durable_lifecycle_retry() -> None:
     facts = _facts()
     section_input = _input(facts)
 
@@ -220,14 +220,15 @@ async def test_failed_section_retries_independently_and_records_safe_metadata() 
     provider = RetryProvider()
     row = await run_child_segment_generation(provider=provider, section_input=section_input, guidance_facts=facts)
 
-    assert provider.calls == 2
-    assert row.status == "ready"
+    assert provider.calls == 1
+    assert row.status == "failed"
     assert row.prompt_version == CHILD_PROMPT_VERSION
     assert row.model == provider.model_name
     assert row.diagnostics["provider"] == provider.provider_name
-    assert row.diagnostics["attempts"] == 2
+    assert row.diagnostics["attempts"] == 1
     assert row.diagnostics["retry_scope"] == "same_section_only"
-    assert {"prompt_hash", "input_hash", "output_hash"} <= set(row.diagnostics)
+    assert {"prompt_hash", "input_hash"} <= set(row.diagnostics)
+    assert "output_hash" not in row.diagnostics
     assert "prompt" not in row.diagnostics
     assert "display_name" not in str(row.diagnostics)
 

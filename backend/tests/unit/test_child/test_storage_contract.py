@@ -26,13 +26,16 @@ EXPECTED_TABLES = {
     "child_guidance_facts",
     "child_segment_generations",
     "child_reports",
+    "child_report_assemblies",
     "child_report_age_guidance",
     "child_generations",
+    "child_generation_events",
 }
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION = ROOT / "alembic" / "versions" / "a2b3c4d5e6f7_add_child_report_foundation.py"
 AGE_SNAPSHOT_MIGRATION = ROOT / "alembic" / "versions" / "b3c4d5e6f7a8_include_age_snapshot_input_hash.py"
 PARENT_STYLE_VERSION_MIGRATION = ROOT / "alembic" / "versions" / "c4d5e6f7a8b9_version_child_parent_style_profiles.py"
+GENERATION_LIFECYCLE_MIGRATION = ROOT / "alembic" / "versions" / "a8b9c0d1e2f3_add_child_generation_lifecycle.py"
 
 
 def test_child_domain_schemas_enforce_birth_time_score_and_lineage_contracts() -> None:
@@ -116,8 +119,21 @@ def test_orm_declares_isolated_child_entities_and_complete_lineage() -> None:
     )
 
     for table_name, model in mapped.items():
-        if table_name != "child_profiles":
+        if table_name not in {"child_profiles", "child_generation_events"}:
             assert "child_profile_id" in model.__table__.columns, table_name
+
+    event = cast(Table, models.ChildGenerationEvent.__table__)
+    assert {
+        "generation_id",
+        "event_code",
+        "status_from",
+        "status_to",
+        "attempt_number",
+        "error_code",
+        "task_correlation",
+        "occurred_at",
+    } <= set(event.columns.keys())
+    assert {"payload", "message", "child_profile_id"}.isdisjoint(event.columns.keys())
 
     generation = cast(Table, models.ChildGeneration.__table__)
     assert {
@@ -129,6 +145,10 @@ def test_orm_declares_isolated_child_entities_and_complete_lineage() -> None:
         "operation",
         "idempotency_key",
         "status",
+        "operation_payload",
+        "claim_token",
+        "lease_expires_at",
+        "dispatch_expires_at",
     } <= set(generation.columns.keys())
     assert any(
         {column.name for column in constraint.columns} == {"owner_user_id", "operation", "idempotency_key"}
@@ -187,7 +207,7 @@ def test_parent_style_version_migration_is_additive_and_has_fail_safe_downgrade(
 
 def test_child_foundation_migration_is_additive_reversible_and_legacy_safe() -> None:
     source = MIGRATION.read_text(encoding="utf-8")
-    for table in EXPECTED_TABLES:
+    for table in EXPECTED_TABLES - {"child_report_assemblies", "child_generation_events"}:
         assert table in source
 
     upgrade = source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
@@ -209,6 +229,25 @@ def test_child_foundation_migration_is_additive_reversible_and_legacy_safe() -> 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.down_revision == "f1a2b3c4d5e6"
+
+
+def test_generation_lifecycle_migration_owns_final_assembly_and_fencing_columns() -> None:
+    source = GENERATION_LIFECYCLE_MIGRATION.read_text(encoding="utf-8")
+    upgrade = source.split("def upgrade()", 1)[1].split("def downgrade()", 1)[0]
+
+    assert "child_report_assemblies" in upgrade
+    assert "lifecycle_token" in upgrade
+    assert "operation_payload" in upgrade
+    assert "dispatch_expires_at" in upgrade
+    assert "child_generation_events" in upgrade
+    assert "trg_child_report_assemblies_immutable" in upgrade
+    assert "trg_child_generation_events_immutable" in upgrade
+    assert "trg_child_segment_generations_immutable" in upgrade
+    assert "guard_child_segment_generation_mutation" in upgrade
+    assert "drop_table" not in upgrade
+    downgrade = source.split("def downgrade()", 1)[1]
+    assert "Refusing lossy downgrade" in downgrade
+    assert downgrade.index("Refusing lossy downgrade") < downgrade.index("op.drop_index")
 
 
 def test_age_snapshot_constraint_fix_is_additive_and_refuses_lossy_downgrade() -> None:

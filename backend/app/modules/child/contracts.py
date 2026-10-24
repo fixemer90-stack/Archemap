@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, TypeVar
 
 from app.modules.catalog.service import CatalogService
 
@@ -37,6 +39,22 @@ CHILD_ACCESS_MATRIX: dict[str, ChildAccessRule] = {
     "age_snapshots": ChildAccessRule(),
     "pdf": ChildAccessRule(),
 }
+
+_ChildHandler = TypeVar("_ChildHandler", bound=Callable[..., Any])
+
+
+def child_access_operation(operation: str) -> Callable[[_ChildHandler], _ChildHandler]:
+    """Attach the canonical Child access operation contract to a route handler."""
+
+    if operation not in CHILD_ACCESS_MATRIX:
+        raise ValueError(f"Unknown Child access operation: {operation}")
+
+    def decorate(handler: _ChildHandler) -> _ChildHandler:
+        handler.__dict__["child_access_operation"] = operation
+        return handler
+
+    return decorate
+
 
 CHILD_LOCKED_RESPONSE_FIELDS = frozenset(
     {

@@ -71,26 +71,28 @@ Questionnaire response содержит `questionnaire_version`, `age_stage`, `r
 | GET    | `/api/v1/child/reports/{report_id}/age-snapshots` | История age snapshots                             |
 | GET    | `/api/v1/child/reports/{report_id}/pdf`           | Скачать PDF для pinned snapshot                   |
 
-Пример create:
+Пример реализованного S11 create (остальной HTTP lifecycle surface выше — target S12/S14):
 
 ```json
 {
-  "child_id": "uuid",
-  "questionnaire_session_id": "uuid",
-  "locale": "ru-RU"
+  "child_profile_id": "uuid",
+  "questionnaire_session_id": "uuid"
 }
 ```
 
-Ответ:
+Parent/child chart IDs, owner, age snapshot и operation payload клиентом не задаются. Сервер проверяет active child, completed/current questionnaire и выбирает текущую chart lineage до создания generation. Paid access gate выполняется до загрузки protected lineage.
+
+Ответ `202 Accepted`:
 
 ```json
 {
   "generation_id": "uuid",
-  "report_id": "uuid",
-  "status": "queued",
-  "poll_after_ms": 1500
+  "report_id": null,
+  "status": "queued"
 }
 ```
+
+`report_id` появляется после deterministic publication; повтор того же accepted request возвращает прежний generation ID и его текущие status/report ID. Polling endpoint и `poll_after_ms` ещё не реализованы в S11.
 
 ## State machine
 
@@ -105,6 +107,8 @@ child_profile_ready
 → ready | narrative_failed | failed
 ```
 
+Transient post-report failure: `generating_sections → narrative_retry_waiting → generating_sections`. `next_retry_at` и exponential backoff durable; всё время ожидания сохраняется `report_id` и доступен опубликованный deterministic report. После исчерпания попыток — `narrative_failed`, не plain `queued`. Сбой до публикации может повторить `queued → calculating_pair`. Outcome-unknown provider intent не вызывает повторный external call. Отключённый LLM даёт terminal `child_narrative_disabled` без fake-ready narrative и без retry loop.
+
 Age state:
 
 ```text
@@ -116,22 +120,23 @@ age_snapshot_current
 
 ### Клиентское поведение
 
-| Status                        | Что рендерить                                                |
-| ----------------------------- | ------------------------------------------------------------ |
-| `queued` / `calculating_pair` | progress без вымышленных результатов                         |
-| `deterministic_ready`         | полноценный deterministic summary и section skeleton         |
-| `generating_sections`         | готовые sections progressive, остальные loading              |
-| `ready`                       | полный report                                                |
-| `narrative_failed`            | deterministic report + retry action                          |
-| `age_snapshot_stale`          | core report + датированный прошлый age block + update action |
-| `failed`                      | безопасная ошибка без частичного неподтверждённого prose     |
-| `locked`                      | access CTA без protected child fields                        |
+| Status                        | Что рендерить                                                  |
+| ----------------------------- | -------------------------------------------------------------- |
+| `queued` / `calculating_pair` | progress без вымышленных результатов                           |
+| `deterministic_ready`         | полноценный deterministic summary и section skeleton           |
+| `generating_sections`         | готовые sections progressive, остальные loading                |
+| `ready`                       | полный report                                                  |
+| `narrative_failed`            | deterministic report + retry action                            |
+| `narrative_retry_waiting`     | deterministic report + готовые sections; повтор после deadline |
+| `age_snapshot_stale`          | core report + датированный прошлый age block + update action   |
+| `failed`                      | безопасная ошибка без частичного неподтверждённого prose       |
+| `locked`                      | access CTA без protected child fields                          |
 
 ## Regenerate semantics
 
 `scope`:
 
-- `failed_sections` — повторить только failed narrative sections;
+- `failed_sections` — повторить failed narrative sections и отсутствующие sections после раннего exhaustion; scope сохраняется с source segment pins и canonical hashes missing inputs. Outcome-unknown sections не вызываются повторно, в том числе через другой retry той же report lineage;
 - `narrative_all` — новая narrative version из тех же Guidance Facts;
 - `full_pair` — новая core version при изменившихся inputs/rules.
 

@@ -284,7 +284,9 @@ age_snapshot_current
 
 - retry narrative не пересчитывает deterministic foundation;
 - age update не мутирует core report;
-- provider failure сохраняет deterministic result;
+- provider failure сохраняет deterministic result; transient failure использует durable exponential backoff в `narrative_retry_waiting`, не скрывая опубликованный report;
+- provider intent фиксируется до external call; outcome-unknown после crash не вызывается повторно;
+- отключённый LLM сохраняет sections как unavailable/failed (`child_narrative_disabled`), без mock-ready prose и автоматического retry loop;
 - status transitions durable и auditable.
 
 ## 15. FR-E22.12 — API, ownership и access

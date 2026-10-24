@@ -100,10 +100,12 @@ Age update не меняет core pair scores и narrative. Пересчёт pai
 
 ### Narrative provider failure
 
-- status: `narrative_failed`;
-- deterministic report остаётся доступным;
-- retry запускает только отсутствующие/failed sections;
-- chart, dimensions и answers повторно не вычисляются.
+- transient status: `narrative_retry_waiting` с persisted `next_retry_at` и exponential backoff; после исчерпания попыток: `narrative_failed`;
+- deterministic report и уже готовые sections остаются доступными, без возврата в plain `queued`;
+- retry запускает только незавершённые sections; manual failed-section retry фиксирует source segment identities/hashes и Guidance Facts hash;
+- provider intent фиксируется commit до external call; outcome-unknown после crash не вызывается повторно;
+- chart, dimensions и answers повторно не вычисляются;
+- отключённый LLM сразу даёт явный `child_narrative_disabled`, без fake-ready prose и бесполезного retry loop.
 
 ### Age update failure
 

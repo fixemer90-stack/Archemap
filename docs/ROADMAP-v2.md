@@ -74,7 +74,7 @@ v2 foundation is not:
 | E8     | Account-level report access      | ⬜ Target docs ready     | Keep the basic report available to every account and require active Plus for all other reports.                    | `docs/features/E8-account-level-report-access/FEATURE.md`          |
 | E19    | Career Report                    | ⬜ Target docs ready     | Build an evidence-backed professional report from v2 natal data, user answers and deterministic Career Dimensions. | `docs/features/E19-career-report/FEATURE.md`                       |
 | E21    | Cohesive light theme             | ⬜ Target docs ready     | Add a warm, token-driven light theme across every active web surface before restoring the theme selector.          | `docs/features/E21-light-theme/FEATURE.md`                         |
-| E22    | Child Report                     | ⬜ Target docs ready     | Build an age-aware parent-child interaction guide with strict birth-time, privacy and child-safety boundaries.      | `docs/features/E22-child-report/FEATURE.md`                        |
+| E22    | Child Report                     | 🟡 S01–S11 implemented   | Build an age-aware parent-child interaction guide with strict birth-time, privacy and child-safety boundaries.      | `docs/features/E22-child-report/FEATURE.md`                        |
 
 ---
 

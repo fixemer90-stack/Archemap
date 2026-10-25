@@ -1,0 +1,294 @@
+.child-surface {
+  --child-accent: var(--product-child, #91bea1);
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 0 72px;
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.child-surface > * + * {
+  margin-top: 32px;
+}
+.child-surface h1,
+.child-surface h2 {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.child-surface h1 {
+  font-size: clamp(38px, 5vw, 64px);
+  letter-spacing: -0.02em;
+}
+.child-surface h2 {
+  font-size: clamp(28px, 3vw, 36px);
+}
+.child-surface h3 {
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.child-surface p {
+  max-width: 72ch;
+}
+.child-hero {
+  padding: 24px 0;
+}
+.child-hero > * + * {
+  margin-top: 20px;
+}
+.child-hero > p:last-child {
+  color: var(--text-secondary);
+  max-width: 64ch;
+}
+.child-eyebrow {
+  color: var(--child-accent);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+.child-muted {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.child-panel {
+  padding: clamp(20px, 4vw, 40px);
+  border: 1px solid var(--border-default);
+  border-radius: 24px;
+  background: var(--surface-card, var(--surface-elevated));
+  min-width: 0;
+}
+.child-panel > * + * {
+  margin-top: 20px;
+}
+.child-notice {
+  padding: 18px 22px;
+  border-left: 2px solid var(--child-accent);
+  border-radius: 0 12px 12px 0;
+  background: color-mix(in srgb, var(--child-accent) 8%, transparent);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.child-notice a {
+  display: inline-block;
+  margin-top: 12px;
+  text-decoration: underline;
+  color: var(--text-primary);
+}
+.child-stack {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.child-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+.child-section-heading,
+.child-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+}
+.child-person {
+  text-align: left;
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  padding: 24px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  background: var(--surface-elevated);
+  cursor: pointer;
+  min-width: 0;
+}
+.child-person[aria-pressed="true"] {
+  border-color: var(--child-accent);
+  background: color-mix(
+    in srgb,
+    var(--child-accent) 8%,
+    var(--surface-elevated)
+  );
+}
+.child-person strong {
+  font-size: 22px;
+}
+.child-person-mark {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-default);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--child-accent);
+}
+.child-selected {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.child-primary,
+.child-secondary {
+  padding: 12px 22px;
+  border: 1px solid var(--child-accent);
+  border-radius: 999px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.5;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  width: fit-content;
+  max-width: 100%;
+}
+.child-primary {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.child-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.child-surface button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.child-surface :is(button, a, input, select, summary):focus-visible {
+  outline: 3px solid var(--interactive, #8da8ff);
+  outline-offset: 4px;
+}
+.child-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.child-fieldset legend {
+  font-size: 18px;
+  font-weight: 600;
+  padding-bottom: 12px;
+}
+.child-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.child-choice:has(input:checked) {
+  border-color: var(--child-accent);
+  background: color-mix(in srgb, var(--child-accent) 7%, transparent);
+}
+.child-choice input {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--child-accent);
+}
+.child-review > div {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.child-review dt {
+  font-weight: 600;
+}
+.child-review dd {
+  color: var(--text-secondary);
+}
+.child-form label:not(.child-choice) {
+  display: grid;
+  gap: 8px;
+}
+.child-form :is(input:not([type="checkbox"]):not([type="radio"]), select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+}
+.child-surface details {
+  border-top: 1px solid var(--border-default);
+  padding-top: 16px;
+}
+.child-surface summary {
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 44px;
+}
+.child-report-nav {
+  display: grid;
+  gap: 8px;
+}
+.child-report-nav a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.child-report-section {
+  scroll-margin-top: 24px;
+}
+.child-report-body {
+  white-space: pre-line;
+}
+@media (max-width: 520px) {
+  .child-surface {
+    padding-top: 8px;
+  }
+  .child-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .child-actions > * {
+    width: 100%;
+  }
+  .child-panel {
+    border-radius: 16px;
+  }
+  .child-person {
+    padding: 20px;
+  }
+}
+@media print {
+  .child-surface {
+    color: #17142a;
+    max-width: none;
+    padding: 0;
+  }
+  .child-surface .child-muted {
+    color: #333;
+  }
+  .child-surface :is(button, nav, .child-no-print) {
+    display: none !important;
+  }
+  .child-panel {
+    background: white;
+    border: 1px solid #bbb;
+    break-inside: avoid;
+    box-shadow: none;
+  }
+  .child-hero {
+    padding: 0;
+  }
+  .child-surface h1 {
+    font-size: 36px;
+  }
+  .child-surface h2 {
+    font-size: 28px;
+  }
+}

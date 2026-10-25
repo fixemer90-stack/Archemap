@@ -14,7 +14,8 @@ export default function DashboardLayout({
   const isStandaloneReport =
     pathname.startsWith("/report/v2/") ||
     pathname === "/products/career" ||
-    pathname.startsWith("/products/career/report/");
+    pathname.startsWith("/products/career/report/") ||
+    pathname.startsWith("/reports/child/");
 
   if (isStandaloneReport) {
     return (

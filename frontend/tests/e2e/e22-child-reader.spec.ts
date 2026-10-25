@@ -168,9 +168,21 @@ test("reader keeps persisted guidance through narrative failure and pins dated P
 
 for (const access of [401, 402, 404, 503]) {
   test(`access ${access} never exposes child report data`, async ({ page }) => {
+    // Next's route announcer can coexist with the product's own alert. Keep
+    // that framework condition deterministic instead of relying on CI timing.
+    await page.addInitScript(() => {
+      window.addEventListener("DOMContentLoaded", () => {
+        const announcer = document.createElement("div");
+        announcer.setAttribute("role", "alert");
+        announcer.textContent = "Framework route announcement";
+        document.body.append(announcer);
+      });
+    });
     await mockE22Child(page, { access });
     await page.goto("/reports/child/report-a");
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(
+      page.locator(".child-surface").getByRole("alert"),
+    ).toBeVisible();
     await expect(page.locator("[data-child-section]")).toHaveCount(0);
     await expect(page.getByText("Миша", { exact: true })).toHaveCount(0);
     if (access === 402)
@@ -178,7 +190,9 @@ for (const access of [401, 402, 404, 503]) {
         page.getByRole("link", { name: "Посмотреть Plus" }),
       ).toBeVisible();
     await page.goto("/products/child");
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(
+      page.locator(".child-surface").getByRole("alert"),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Выбрать Миша" }),
     ).toHaveCount(0);

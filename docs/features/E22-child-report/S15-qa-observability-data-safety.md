@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В процессе — staging native-mock flow, application backup/restore, rollback и collector/scrape подтверждены; alert delivery и полные provider budgets остаются открытыми.
+🟡 В процессе — staging native-mock flow, application backup/restore, rollback, collector/scrape и автоматические Telegram firing/resolved подтверждены; полные provider budgets остаются открытыми.
 
 ## Контекст
 
@@ -47,7 +47,9 @@ Unit tests отдельных формул недостаточны. Нужны 
 
 Runtime `06b72c0f06c6f50a1831d407ec1350eb2f9e7bf8`, CI `40211412900`: все 7 jobs success. Реальный staging application dump восстановлен и сопоставлен: 66 tables, 56 nonempty, schema/rows равны, источник не изменён. Native Self сохранён complete (6 ready sections); Child exact/approximate/unknown прошли API→broker→worker→browser/PDF/export с owner/foreign/free/expired и same-owner sibling negative checks. Реальные archive/export/purge отдельной успешной synthetic fixture сохранили sibling, parent report, account и hashes четырёх account/billing tables.
 
-Flag-off drill сохранил reader/PDF и все 21 protected table; три generation mutations дали private 503, затем флаг восстановлен во всех четырёх consumers и full-pair снова ready. Collector/Prometheus действительно получают Child instruments; scrape up. Есть native observation без новых failures/stuck jobs, но это не доказательство real-provider p95/token/currency budgets. Child alert rules и active Alertmanagers отсутствуют: firing/delivery/resolution не доказаны. Критерий budgets выше остаётся открытым.
+Flag-off drill сохранил reader/PDF и все 21 protected table; три generation mutations дали private 503, затем флаг восстановлен во всех четырёх consumers и full-pair снова ready. Collector/Prometheus действительно получают Child instruments; scrape up. Есть native observation без новых failures/stuck jobs, но это не доказательство real-provider p95/token/currency budgets. Критерий budgets выше остаётся открытым.
+
+Alerting source `40f3fb1b4aca2f39a48553689feaca893c2ceb2c`, exact-SHA CI `40235132422`: все 8 jobs success, включая native promtool/amtool gate. Изолированно запущен private Alertmanager и пересоздан только staging Prometheus; application runtime остался `06b72c0`, 17 защищённых container identities не изменились. Реальный probe прошёл pending → firing после 62.294404 секунды при `for: 1m` → inactive. Native Telegram notifier завершил две отправки (firing/resolved), без failed requests; временное правило удалено и отсутствие прочитано обратно. Два постоянных Child rules загружены и inactive; active Alertmanager — один. Health/Basic Auth/noindex, metrics UI и сохранённые Self/Child повторно прочитаны успешно. Это delivery evidence, не provider-budget evidence.
 
 Подробные opaque IDs, RED/GREEN, независимые reviews и границы acceptance: [staging remediation evidence](../../reviews/2026-10-25/E22-S15-staging-remediation.md). Production/canary не выполнялись; accepted staging marker не продвинут.
 

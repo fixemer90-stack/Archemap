@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В процессе — native staging flow и rollback подтверждены; полный runbook acceptance, alert/budget и production/canary gates остаются открытыми.
+🟡 В процессе — native staging flow, rollback и автоматические Telegram firing/resolved подтверждены; полный runbook acceptance, budgets и production/canary gates остаются открытыми.
 
 ## Контекст
 
@@ -48,7 +48,9 @@
 
 Rollback проверен на этом exact runtime: три легитимные write-операции получили private/no-store 503, reader/PDF и все 21 table row/hash сохранились. Флаг прочитан false, затем восстановлен в `finally` и прочитан true во всех четырёх consumers. Новая full-pair generation после восстановления стала ready. Проверялось прекращение новой admission; in-flight external calls не прерывались. Opaque artifact IDs и результаты без child PII: [staging remediation evidence](../../reviews/2026-10-25/E22-S15-staging-remediation.md).
 
-Верхний staging-smoke checkbox не закрыт автоматически: native flow не доказывает каждый шаг полного runbook, например late-expiry UI/stale-input matrices и полные budget/alert-delivery gates. Выполнение новым оператором отдельно не доказано. Alert rules/active Alertmanagers для Child отсутствуют; production/canary не разрешены и не выполнялись. Accepted staging marker оставлен прежним; native functional PASS не равен принятому rollout.
+Верхний staging-smoke checkbox не закрыт автоматически: native flow не доказывает каждый шаг полного runbook, например late-expiry UI/stale-input matrices и полные budget gates. Выполнение новым оператором отдельно не доказано. Production/canary не разрешены и не выполнялись. Accepted staging marker оставлен прежним; native functional PASS не равен принятому rollout.
+
+Инфраструктурный slice `40f3fb1b4aca2f39a48553689feaca893c2ceb2c` прошёл exact-SHA CI `40235132422` (8/8) и отдельный staging rollout без перезапуска приложения/production. Реальный Prometheus → Alertmanager → существующий Telegram drill подтвердил pending, literal `for: 1m`, firing, две завершённые notifier отправки без ошибок и normal resolution после ложного expression; probe затем удалён. Все 17 защищённых container identities сохранились. Source приложения остаётся `06b72c0`, source alerting — `40f3fb1`; эти идентичности не подменяют accepted marker. Подробности и private evidence paths — в том же staging remediation evidence.
 
 ## Зависимости
 

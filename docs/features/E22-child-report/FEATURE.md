@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S14 завершены, опубликованы и проверены CI. S15–S16: native staging flow, application backup/restore, collector/scrape и rollback подтверждены; полные budgets, автоматическая доставка алертов и production/canary gates остаются открытыми. Accepted staging marker не продвинут.
+🟡 В работе — S01–S14 завершены, опубликованы и проверены CI. S15–S16: native staging flow, application backup/restore, collector/scrape, rollback и автоматические Telegram firing/resolved подтверждены. Полные budgets, оставшиеся runbook scenarios и production/canary gates остаются открытыми. Accepted staging marker не продвинут.
 
 ## Цель
 

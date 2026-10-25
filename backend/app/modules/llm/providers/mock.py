@@ -7,9 +7,72 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2, SectionRenderInputV2
 from app.modules.report_narratives.schemas import NarrativeInput
 
 StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
+
+
+def _v2_mock_payload(section: SectionRenderInputV2) -> dict[str, object]:
+    """Render only supplied owned themes; this is labelled demo prose, not LLM quality evidence."""
+    moves = {
+        "psychological_mechanism": (
+            "Внутренний механизм рассматривается здесь как способ связывать переживание с выбором действия. "
+            "В демонстрационном режиме мы не добавляем новых выводов о человеке: используем только переданное "
+            "описание этой темы и сохраняем его ограниченный смысл, без обещания универсальной точности."
+        ),
+        "lived_manifestation": (
+            "В повседневной жизни описание можно сопоставить с конкретной ситуацией, а не принимать за неизменное "
+            "правило поведения. Полезно различать само наблюдение и его объяснение: одинаковый внешний поступок "
+            "может иметь разные причины, поэтому контекст остаётся необходимым условием аккуратного прочтения."
+        ),
+        "inner_tension": (
+            "Внутреннее напряжение не означает обязательный конфликт или недостаток личности. Речь идёт о "
+            "возможной полярности между привычным способом реагировать и другим доступным выбором. Тестовый "
+            "текст сохраняет эту неопределённость и не превращает описание темы в диагноз или прогноз событий."
+        ),
+        "protective_strategy": (
+            "Защитная стратегия рассматривается без обвинения: под давлением человек может выбирать более "
+            "привычную реакцию, потому что она понятнее в данный момент. Для проверки смысла важно замечать "
+            "условия появления реакции и отличать полезную защиту от автоматического повторения знакомого сценария."
+        ),
+        "immature_expression": (
+            "Автоматическое выражение темы имеет смысл обсуждать через наблюдаемое действие, а не через оценку "
+            "человека целиком. В этом демонстрационном описании нет требования немедленно менять себя: сначала "
+            "можно определить ситуацию, заметить собственный ответ и проверить, "
+            "действительно ли предложенное объяснение подходит."
+        ),
+        "mature_expression": (
+            "Зрелое выражение предполагает возможность выбирать ответ с учётом ситуации и собственных ограничений. "
+            "Это не обещание идеального поведения и не сравнение с другими людьми. Переданная тема служит "
+            "точкой для наблюдения, а решение о её применимости остаётся за самим читателем."
+        ),
+        "integration_question": (
+            "Для самопроверки полезно вернуться к конкретному эпизоду и отделить факты от привычной интерпретации. "
+            "Можно заметить, что помогло сохранить свободу выбора, а что усилило напряжение. Вопрос ниже относится "
+            "только к переданной теме; дополнительные биографические детали "
+            "или неподтверждённые объяснения не добавляются."
+        ),
+    }
+    paragraphs = [
+        "Демонстрационный текст локального mock-провайдера. Это проверка структуры отчёта, не результат реальной LLM."
+    ]
+    for field, explanation in moves.items():
+        values = [
+            value.replace(theme.title, "эта тема") for theme in section.owned_themes if (value := getattr(theme, field))
+        ]
+        paragraphs.append(explanation + " " + " ".join(values))
+    return {
+        "contract_version": "report_segment_output_v2",
+        "section_id": section.section_id,
+        "title": section.section_title,
+        "body": "\n\n".join(paragraphs),
+        "covered_theme_ids": [theme.id for theme in section.owned_themes],
+        "evidence_ids": list(section.evidence_ids),
+        "continuation_complete": True,
+        "continuation_cursor": None,
+        "notes": ["native mock; no network; not real-provider quality evidence"],
+    }
 
 
 class MockLLMProvider:
@@ -18,14 +81,24 @@ class MockLLMProvider:
     model_name = "mock-self-v1"
     supports_staged_pipeline = True
 
+    def __init__(self, *, allow_v2_mock: bool = True) -> None:
+        self._allow_v2_mock = allow_v2_mock
+
     async def generate_structured(
         self,
         *,
         prompt: str,
-        narrative_input: NarrativeInput,
+        narrative_input: NarrativeInput | SectionRenderInputV2,
         schema: type[StructuredSchemaT],
     ) -> StructuredSchemaT:
         del prompt
+
+        if isinstance(narrative_input, SectionRenderInputV2):
+            if not self._allow_v2_mock:
+                raise ValueError("Native Self v2 mock is unavailable in production")
+            if schema is not ReportSegmentOutputV2:
+                raise TypeError("Self v2 mock requires its segment output contract")
+            return schema.model_validate(_v2_mock_payload(narrative_input))
 
         schema_name = schema.__name__
         synthesis = narrative_input.deep_natal_synthesis

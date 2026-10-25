@@ -53,7 +53,7 @@ def get_llm_provider(app_settings: Settings | None = None) -> LLMProvider:
         return DisabledLLMProvider()
 
     if current_settings.LLM_PROVIDER == "mock":
-        return MockLLMProvider()
+        return MockLLMProvider(allow_v2_mock=current_settings.APP_ENV in {"development", "staging"})
 
     if current_settings.LLM_PROVIDER == "openrouter":
         if not current_settings.LLM_API_KEY:

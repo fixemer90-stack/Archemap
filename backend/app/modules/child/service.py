@@ -20,6 +20,7 @@ from app.modules.child.narrative import (
     CHILD_PROMPT_VERSION,
     ChildSegmentProvider,
     DisabledChildSegmentProvider,
+    MockChildSegmentProvider,
     StructuredChildSegmentProviderAdapter,
     build_child_section_inputs,
     build_child_segment_intent,
@@ -69,7 +70,12 @@ class ChildGenerationRunResult:
 def configured_child_provider() -> ChildSegmentProvider:
     """Build the configured bounded provider adapter."""
 
-    if not settings.LLM_ENABLED or settings.LLM_PROVIDER == "mock":
+    if not settings.LLM_ENABLED:
+        return DisabledChildSegmentProvider()
+    if settings.LLM_PROVIDER == "mock":
+        # Explicit staging/development fixture only; production remains fail-closed.
+        if settings.APP_ENV in {"development", "staging"}:
+            return MockChildSegmentProvider()
         return DisabledChildSegmentProvider()
     # Child owns retries durably; never hide another POST inside one intent.
     provider = get_llm_provider(settings.model_copy(update={"LLM_MAX_RETRIES": 0}))

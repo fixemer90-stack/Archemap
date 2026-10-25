@@ -13,14 +13,17 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("_setup_database")]
 
 
 @pytest.mark.parametrize("confidence", ["exact", "unknown", "approximate"])
+@pytest.mark.parametrize("enabled", [False, True])
 async def test_http_real_birth_chart_reaches_disabled_narrative_not_transient_failure(
-    db_session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch, confidence: str
+    db_session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch, confidence: str, enabled: bool
 ) -> None:
     seed, _ = await _seed_claimable_full_pipeline(db_session, idempotency_key="real-chart-foundation")
     await _grant_direct_child_access(db_session, user_id=seed.owner_id)
     app.dependency_overrides[get_current_user] = lambda: seed.owner_id
     monkeypatch.setattr("app.modules.child.router.settings.CHILD_REPORT_ENABLED", True)
-    monkeypatch.setattr("app.modules.child.service.settings.LLM_ENABLED", False)
+    monkeypatch.setattr("app.modules.child.service.settings.APP_ENV", "staging")
+    monkeypatch.setattr("app.modules.child.service.settings.LLM_ENABLED", enabled)
+    monkeypatch.setattr("app.modules.child.service.settings.LLM_PROVIDER", "mock")
     monkeypatch.setattr("app.modules.child.router.dispatch_child_generation", lambda **_: "test-dispatch")
     monkeypatch.setattr(worker, "async_session_factory", async_sessionmaker(db_session.bind, expire_on_commit=False))
     response = await client.post(
@@ -65,8 +68,8 @@ async def test_http_real_birth_chart_reaches_disabled_narrative_not_transient_fa
     result = await worker._generate_child_report_async(
         generation_id=accepted.json()["generation_id"], task_id="real-chart-worker"
     )
-    assert result["status"] == "narrative_failed", result
-    assert result["provider_calls"] == 0
+    assert result["status"] == ("ready" if enabled else "narrative_failed"), result
+    assert (result["provider_calls"] > 0) if enabled else (result["provider_calls"] == 0)
     assert result["report_id"] is not None
     reader = await client.get(f"/api/v1/child/reports/{result['report_id']}")
     assert reader.status_code == 200, reader.text

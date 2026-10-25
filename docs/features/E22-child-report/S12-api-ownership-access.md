@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано и независимо одобрено — R1–R6 закрыты; полный backend 1276 passed, повторный real API/worker/browser smoke зелёный. Backend commit `f02b23b`. Ожидается публикация и exact-SHA CI.
+✅ Завершено — R1–R6 независимо одобрены; полный backend 1276 passed, повторный real API/worker/browser smoke зелёный. Backend `f02b23b` опубликован; source CI `39f43c3` / run `40177715171`: 7/7 jobs success. Production rollout не заявлен.
 
 ## Контекст
 

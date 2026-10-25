@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S11 завершены; S12–S14 реализованы, runtime-проверены и независимо одобрены, ожидают exact-SHA CI. S15–S16: локальный QA/tooling готов, staging/production/live gates открыты.
+🟡 В работе — S01–S14 завершены, опубликованы и проверены CI. S15–S16: локальный QA/tooling готов; staging budgets, deployed telemetry, rollback и production/canary gates открыты, rollout не выполнялся.
 
 ## Цель
 
@@ -157,9 +157,9 @@ Child Report помогает взрослому понять:
 | S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ✅ Завершено |
 | S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ✅ Завершено |
 | S11 | [Async generation lifecycle](./S11-async-generation-lifecycle.md)                             | ✅ Завершено |
-| S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | 🟡 В работе  |
-| S13 | [Child management и questionnaire UX](./S13-child-management-questionnaire-ux.md)             | 🟡 В работе  |
-| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | 🟡 В работе  |
+| S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | ✅ Завершено |
+| S13 | [Child management и questionnaire UX](./S13-child-management-questionnaire-ux.md)             | ✅ Завершено |
+| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | ✅ Завершено |
 | S15 | [QA, observability и data safety](./S15-qa-observability-data-safety.md)                      | 🟡 В работе  |
 | S16 | [Rollout runbook и live evidence](./S16-rollout-runbook-live-evidence.md)                     | 🟡 В работе  |
 

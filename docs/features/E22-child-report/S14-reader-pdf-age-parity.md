@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Реализовано и независимо одобрено (`deleg_e6a8ff8b`); локальные browser/runtime/quality gates зелёные. Публикация и exact-SHA CI ещё не закрыты, production rollout не заявлен.
+✅ Завершено — независимо одобрено (`deleg_e6a8ff8b`), browser/runtime/quality gates зелёные. Опубликовано в main; source CI `39f43c3` / run `40177715171`: 7/7 jobs success. Production rollout не заявлен.
 
 ## Контекст
 

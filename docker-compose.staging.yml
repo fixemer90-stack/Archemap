@@ -60,6 +60,8 @@ services:
       - ./deploy/prometheus.staging.yaml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/prometheus-birth-data-refinement.rules.yaml:/etc/prometheus/rules/birth-data-refinement.yaml:ro
       - ./deploy/prometheus-subscriptions.rules.yaml:/etc/prometheus/rules/subscriptions.yaml:ro
+      - ./deploy/prometheus-child.rules.yaml:/etc/prometheus/rules/child.yaml:ro
+      - ${CHILD_ALERT_PROBE_DIR:-./.staging-alert-probes}:/etc/prometheus/child-alert-probes:ro
       - prometheus_staging_data:/prometheus
     depends_on:
       otel-collector:
@@ -69,6 +71,35 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [default]
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yaml
+      - --storage.path=/alertmanager
+      - --cluster.listen-address=
+    volumes:
+      - ./deploy/alertmanager-child.staging.yaml:/etc/alertmanager/alertmanager.yaml:ro
+      # Missing runtime files must fail closed, not become auto-created directories.
+      - type: bind
+        source: ${CHILD_ALERT_SECRETS_DIR:-./.staging-secrets}/telegram_token
+        target: /run/secrets/telegram_token
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CHILD_ALERT_SECRETS_DIR:-./.staging-secrets}/telegram_chat_id
+        target: /run/secrets/telegram_chat_id
+        read_only: true
+        bind:
+          create_host_path: false
+      - alertmanager_staging_data:/alertmanager
 
   backend:
     build:
@@ -251,6 +282,7 @@ volumes:
   postgres_staging_data:
   redis_staging_data:
   prometheus_staging_data:
+  alertmanager_staging_data:
 
 networks:
   edge:

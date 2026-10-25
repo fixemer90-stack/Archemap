@@ -210,6 +210,8 @@ def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> No
         "./deploy/prometheus.staging.yaml:/etc/prometheus/prometheus.yml:ro",
         "./deploy/prometheus-birth-data-refinement.rules.yaml:/etc/prometheus/rules/birth-data-refinement.yaml:ro",
         "./deploy/prometheus-subscriptions.rules.yaml:/etc/prometheus/rules/subscriptions.yaml:ro",
+        "./deploy/prometheus-child.rules.yaml:/etc/prometheus/rules/child.yaml:ro",
+        "${CHILD_ALERT_PROBE_DIR:-./.staging-alert-probes}:/etc/prometheus/child-alert-probes:ro",
         "prometheus_staging_data:/prometheus",
     ]
     assert "ports" not in prometheus
@@ -238,7 +240,10 @@ def test_staging_exposes_a_basic_auth_protected_career_metrics_dashboard() -> No
             "static_configs": [{"targets": ["otel-collector:9464"]}],
         }
     ]
-    assert prometheus_config["rule_files"] == ["/etc/prometheus/rules/*.yaml"]
+    assert prometheus_config["rule_files"] == [
+        "/etc/prometheus/rules/*.yaml",
+        "/etc/prometheus/child-alert-probes/*.yaml",
+    ]
 
     gateway = services["gateway"]
     assert gateway["depends_on"]["prometheus"] == {"condition": "service_healthy"}

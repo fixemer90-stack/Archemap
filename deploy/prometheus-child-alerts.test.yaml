@@ -1,0 +1,229 @@
+# Offline synthetic series only. This is NOT a loaded rule or a live probe.
+# From deploy/: promtool test rules prometheus-child-alerts.test.yaml
+# Synthetic source labels must be stripped from all expected alert labels.
+rule_files:
+  - prometheus-child.rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: zero-failures-and-zero-observations
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="failed"}'
+        values: "0+0x12"
+      - series: 'child_worker_duration_seconds_bucket{le="120"}'
+        values: "0+0x12"
+      - series: 'child_worker_duration_seconds_bucket{le="240"}'
+        values: "0+0x12"
+      - series: 'child_worker_duration_seconds_bucket{le="+Inf"}'
+        values: "0+0x12"
+    alert_rule_test:
+      - {
+          eval_time: 3m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 12m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - { eval_time: 3m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+      - { eval_time: 12m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+
+  - name: ready-and-nonworker-failures-do-not-alert
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="ready"}'
+        values: "0+10x12"
+      - series: 'child_worker_operations_total{operation="provider",outcome="failed"}'
+        values: "0+10x12"
+    alert_rule_test:
+      - {
+          eval_time: 3m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 12m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - { eval_time: 12m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+
+  - name: healthy-observed-duration
+    interval: 1m
+    input_series:
+      - series: 'child_worker_duration_seconds_bucket{le="60",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+10x12"
+      - series: 'child_worker_duration_seconds_bucket{le="120",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+10x12"
+      - series: 'child_worker_duration_seconds_bucket{le="240",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+10x12"
+      - series: 'child_worker_duration_seconds_bucket{le="+Inf",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+10x12"
+    alert_rule_test:
+      - { eval_time: 3m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+      - { eval_time: 12m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+
+  - name: first-observed-nonzero-failure-counter
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="worker_failure",child_id="synthetic-must-not-propagate"}'
+        values: "1+0x8"
+    alert_rule_test:
+      - {
+          eval_time: 0m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - eval_time: 1m
+        alertname: ChildWorkerTerminalFailures
+        exp_alerts:
+          - exp_labels:
+              { environment: staging, feature: child, severity: warning }
+            exp_annotations:
+              summary: STAGING E22 Child worker terminal failures detected
+      - {
+          eval_time: 6m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+
+  - name: terminal-narrative_failed
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="narrative_failed",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0 1+0x11"
+    alert_rule_test:
+      - {
+          eval_time: 0m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 1m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - eval_time: 2m
+        alertname: ChildWorkerTerminalFailures
+        exp_alerts:
+          - exp_labels:
+              { environment: staging, feature: child, severity: warning }
+            exp_annotations:
+              summary: STAGING E22 Child worker terminal failures detected
+      - {
+          eval_time: 8m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+
+  - name: terminal-failed
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="failed",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0 1+0x11"
+    alert_rule_test:
+      - {
+          eval_time: 0m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 1m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - eval_time: 2m
+        alertname: ChildWorkerTerminalFailures
+        exp_alerts:
+          - exp_labels:
+              { environment: staging, feature: child, severity: warning }
+            exp_annotations:
+              summary: STAGING E22 Child worker terminal failures detected
+      - {
+          eval_time: 8m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+
+  - name: terminal-age_update_failed
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="age_update_failed",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0 1+0x11"
+    alert_rule_test:
+      - {
+          eval_time: 0m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 1m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - eval_time: 2m
+        alertname: ChildWorkerTerminalFailures
+        exp_alerts:
+          - exp_labels:
+              { environment: staging, feature: child, severity: warning }
+            exp_annotations:
+              summary: STAGING E22 Child worker terminal failures detected
+      - {
+          eval_time: 8m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+
+  - name: terminal-worker_failure
+    interval: 1m
+    input_series:
+      - series: 'child_worker_operations_total{operation="worker",outcome="worker_failure",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0 1+0x11"
+    alert_rule_test:
+      - {
+          eval_time: 0m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 1m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+      - eval_time: 2m
+        alertname: ChildWorkerTerminalFailures
+        exp_alerts:
+          - exp_labels:
+              { environment: staging, feature: child, severity: warning }
+            exp_annotations:
+              summary: STAGING E22 Child worker terminal failures detected
+      - {
+          eval_time: 8m,
+          alertname: ChildWorkerTerminalFailures,
+          exp_alerts: [],
+        }
+
+  - name: duration-high-then-resolved
+    interval: 1m
+    input_series:
+      - series: 'child_worker_duration_seconds_bucket{le="60",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+0x12"
+      - series: 'child_worker_duration_seconds_bucket{le="120",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+0x12"
+      - series: 'child_worker_duration_seconds_bucket{le="240",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+10x5 50+0x6"
+      - series: 'child_worker_duration_seconds_bucket{le="+Inf",exported_job="child-worker",child_id="synthetic-must-not-propagate"}'
+        values: "0+10x5 50+0x6"
+    alert_rule_test:
+      - { eval_time: 0m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+      - { eval_time: 2m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }
+      - eval_time: 3m
+        alertname: ChildWorkerDurationHigh
+        exp_alerts:
+          - exp_labels:
+              { environment: staging, feature: child, severity: warning }
+            exp_annotations:
+              summary: STAGING E22 Child worker duration p95 exceeds 120 seconds
+      - { eval_time: 12m, alertname: ChildWorkerDurationHigh, exp_alerts: [] }

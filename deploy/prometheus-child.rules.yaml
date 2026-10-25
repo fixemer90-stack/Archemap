@@ -1,0 +1,31 @@
+# Staging Prometheus scrapes only its isolated collector. Do not assume job/exported_job labels.
+# Aggregate away source labels; rule labels and summaries contain no Child identifiers.
+# No stuck gauge, provider budget, token or cost signal is available in this slice.
+groups:
+  - name: child-staging
+    rules:
+      - alert: ChildWorkerTerminalFailures
+        # A first OTEL observation can already be 1: increase() alone misses it.
+        # Treat a newly observed nonzero series as a failure for a bounded 5m window.
+        expr: >-
+          sum(increase(child_worker_operations_total{operation="worker",outcome=~"narrative_failed|failed|age_update_failed|worker_failure"}[5m])) > 0
+          or sum(child_worker_operations_total{operation="worker",outcome=~"narrative_failed|failed|age_update_failed|worker_failure"}
+          unless child_worker_operations_total{operation="worker",outcome=~"narrative_failed|failed|age_update_failed|worker_failure"} offset 5m) > 0
+        for: 1m
+        labels:
+          environment: staging
+          feature: child
+          severity: warning
+        annotations:
+          summary: STAGING E22 Child worker terminal failures detected
+      - alert: ChildWorkerDurationHigh
+        expr: >-
+          histogram_quantile(0.95, sum by (le) (rate(child_worker_duration_seconds_bucket[5m]))) > 120
+          and sum(rate(child_worker_duration_seconds_bucket{le="+Inf"}[5m])) > 0
+        for: 2m
+        labels:
+          environment: staging
+          feature: child
+          severity: warning
+        annotations:
+          summary: STAGING E22 Child worker duration p95 exceeds 120 seconds

@@ -214,6 +214,33 @@ jobs:
       - name: Validate AsyncAPI spec
         run: npx @asyncapi/cli validate contracts/asyncapi.yaml
 
+  # ── Native Child alert configuration (no delivery credentials) ──────────
+  validate-child-alerting:
+    name: Validate Child Alerting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Promtool semantic rule cases
+        run: |
+          docker run --rm --network=none --entrypoint=/bin/promtool \
+            -v "$GITHUB_WORKSPACE/deploy:/work:ro" -w /work \
+            prom/prometheus:v2.53.1 test rules prometheus-child-alerts.test.yaml
+      - name: Amtool private-file receiver schema
+        run: |
+          fixture_dir="$(mktemp -d "$RUNNER_TEMP/child-alerting.XXXXXXXX")"
+          trap 'rm -rf "$fixture_dir"' EXIT
+          printf '%s\n' 'synthetic-no-auth' > "$fixture_dir/telegram_token"
+          printf '%s\n' '1' > "$fixture_dir/telegram_chat_id"
+          chmod 644 "$fixture_dir/telegram_token" "$fixture_dir/telegram_chat_id"
+          docker run --rm --network=none --user=65534:65534 --read-only \
+            --cap-drop=ALL --security-opt=no-new-privileges:true --entrypoint=/bin/amtool \
+            -v "$GITHUB_WORKSPACE/deploy:/work:ro" \
+            -v "$fixture_dir/telegram_token:/run/secrets/telegram_token:ro" \
+            -v "$fixture_dir/telegram_chat_id:/run/secrets/telegram_chat_id:ro" \
+            prom/alertmanager:v0.34.1 check-config /work/alertmanager-child.staging.yaml
+
   # ── Security Audit ──────────────────────────────────────────────────────
   security-audit:
     name: Security Audit
@@ -255,7 +282,14 @@ jobs:
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, validate-contracts, security-audit]
+    needs:
+      [
+        test-backend,
+        test-frontend,
+        validate-contracts,
+        validate-child-alerting,
+        security-audit,
+      ]
     steps:
       - uses: actions/checkout@v7
 

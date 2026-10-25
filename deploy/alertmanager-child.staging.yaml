@@ -1,0 +1,27 @@
+# Staging Child only. Secret file contents are provisioned privately by the operator.
+# Never render annotations, arbitrary labels, provider errors or report identifiers.
+route:
+  receiver: "null"
+  group_by: [alertname]
+  group_wait: 5s
+  group_interval: 10s
+  repeat_interval: 4h
+  routes:
+    - receiver: child-telegram
+      matchers:
+        - 'environment="staging"'
+        - 'feature="child"'
+      continue: false
+
+receivers:
+  - name: "null"
+  - name: child-telegram
+    telegram_configs:
+      - bot_token_file: /run/secrets/telegram_token
+        chat_id_file: /run/secrets/telegram_chat_id
+        send_resolved: true
+        parse_mode: ""
+        http_config:
+          follow_redirects: false
+        message: >-
+          STAGING E22 Child: {{ if eq .Status "firing" }}FIRING{{ else }}RESOLVED{{ end }}; {{ if eq .GroupLabels.alertname "ChildWorkerTerminalFailures" }}worker terminal failures{{ else if eq .GroupLabels.alertname "ChildWorkerDurationHigh" }}worker duration high{{ else if eq .GroupLabels.alertname "ChildAlertDeliveryProbe" }}alert delivery probe{{ else }}unclassified Child alert{{ end }}.

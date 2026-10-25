@@ -312,7 +312,7 @@ def test_staging_prometheus_loads_refinement_rules() -> None:
         "./deploy/prometheus-birth-data-refinement.rules.yaml:/etc/prometheus/rules/birth-data-refinement.yaml:ro"
         in prometheus["volumes"]
     )
-    assert config["rule_files"] == ["/etc/prometheus/rules/*.yaml"]
+    assert config["rule_files"] == ["/etc/prometheus/rules/*.yaml", "/etc/prometheus/child-alert-probes/*.yaml"]
 
 
 def _resolve_compose_flag(expression: str, environment: Mapping[str, str]) -> str:

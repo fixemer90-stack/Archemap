@@ -53,6 +53,8 @@ Thumbs.db
 .env.staging
 .env.*.local
 deploy/staging-basic-auth.caddy
+.staging-secrets/
+.staging-alert-probes/
 
 # ── Docker ──────────────────────────────────────────────────────────────────
 docker-compose.override.yml

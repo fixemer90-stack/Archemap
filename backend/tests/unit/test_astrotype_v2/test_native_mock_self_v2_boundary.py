@@ -88,13 +88,8 @@ async def test_native_mock_completes_real_v2_segment_with_only_input_grounding(
     assert repeated.payload == segment.payload
 
 
-@pytest.mark.parametrize("section_index", range(6))
-async def test_native_mock_accepts_cached_themes_without_optional_depth_fields(
-    canonical_inputs: list[SectionRenderInputV2], monkeypatch: pytest.MonkeyPatch, section_index: int
-) -> None:
-    monkeypatch.setattr(socket, "create_connection", _no_network)
-    monkeypatch.setattr(socket.socket, "connect", _no_network)
-    payload = canonical_inputs[section_index].to_payload()
+def _thin_input(section: SectionRenderInputV2) -> SectionRenderInputV2:
+    payload = section.to_payload()
     for theme in [*payload["owned_themes"], *payload["reference_themes"]]:
         for field in (
             "psychological_mechanism",
@@ -106,7 +101,16 @@ async def test_native_mock_accepts_cached_themes_without_optional_depth_fields(
             "integration_question",
         ):
             theme.pop(field, None)
-    section = SectionRenderInputV2.model_validate(payload)
+    return SectionRenderInputV2.model_validate(payload)
+
+
+@pytest.mark.parametrize("section_index", range(6))
+async def test_native_mock_accepts_cached_themes_without_optional_depth_fields(
+    canonical_inputs: list[SectionRenderInputV2], monkeypatch: pytest.MonkeyPatch, section_index: int
+) -> None:
+    monkeypatch.setattr(socket, "create_connection", _no_network)
+    monkeypatch.setattr(socket.socket, "connect", _no_network)
+    section = _thin_input(canonical_inputs[section_index])
     config = Settings(APP_ENV="staging", LLM_ENABLED=True, LLM_PROVIDER="mock")
     provider = StructuredSegmentProviderAdapter(
         provider=get_llm_provider(config), provider_name="mock", model_name="mock-self-v1"
@@ -119,6 +123,49 @@ async def test_native_mock_accepts_cached_themes_without_optional_depth_fields(
     assert output.covered_theme_ids == [theme.id for theme in section.owned_themes]
     assert "Демонстрационный текст локального mock-провайдера" in output.body
     assert "not real-provider quality evidence" in output.notes[0]
+
+
+async def test_native_mock_assembles_all_thin_cached_sections_without_duplicate_bodies(
+    canonical_inputs: list[SectionRenderInputV2], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.astrotype_v2 import models
+    from app.modules.astrotype_v2.report_assembler import assemble_natal_report_v2
+
+    monkeypatch.setattr(socket, "create_connection", _no_network)
+    monkeypatch.setattr(socket.socket, "connect", _no_network)
+    inputs = [_thin_input(section) for section in canonical_inputs]
+    chart_id, outline_id = inputs[0].chart_id, uuid.uuid4()
+    provider = StructuredSegmentProviderAdapter(
+        provider=get_llm_provider(Settings(APP_ENV="staging", LLM_ENABLED=True, LLM_PROVIDER="mock")),
+        provider_name="mock",
+        model_name="mock-self-v1",
+    )
+    segments = [
+        await run_segment_generation_v2(provider=provider, section_input=s, outline_id=outline_id) for s in inputs
+    ]
+    report = assemble_natal_report_v2(
+        chart_id=chart_id,
+        synthesis_row=models.NatalSynthesis(
+            chart_id=chart_id,
+            facts_version="facts:v2.0",
+            source_version="v2.0",
+            payload={"dominant_themes": [t.model_dump(mode="json") for s in inputs for t in s.owned_themes]},
+        ),
+        outline_row=models.ReportOutline(
+            id=outline_id,
+            chart_id=chart_id,
+            section_keys=[s.section_id for s in inputs],
+            outline={"sections": [{"id": s.section_id, "title": s.section_title} for s in inputs]},
+            source_version="v2.0",
+        ),
+        infographic_row=models.NatalInfographicData(chart_id=chart_id, calculation_layer={}, source_version="v2.0"),
+        segment_rows=segments,
+        version=1,
+    )
+    assert report.status == "complete"
+    assert len(report.narrative_sections) == 6
+    assert len({" ".join(s.body.lower().split()) for s in report.narrative_sections}) == 6
+    assert set(report.evidence_index) == {e for s in inputs for e in s.evidence_ids}
 
 
 async def test_native_mock_rejects_incompatible_v2_schema(canonical_inputs: list[SectionRenderInputV2]) -> None:

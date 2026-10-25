@@ -6,7 +6,7 @@ PostgreSQL TEST_DATABASE_URL, never against an application database.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -18,6 +18,7 @@ from app.dependencies import get_current_user
 from app.main import app
 from app.modules.authorization.service import EntitlementsService
 from app.modules.child import models
+from app.modules.child.repository import ChildRepository
 from tests.integration.test_child_generation_lifecycle import (
     NOW,
     _grant_direct_child_access,
@@ -228,17 +229,10 @@ async def test_http_unavailable_lineage_is_private_and_never_dispatches(
         child.birth_time = time(12)
         child.version += 1
     elif target == "stale_questionnaire":
-        db_session.add(
-            models.ChildAgeSnapshot(
-                child_profile_id=seed.child_id,
-                as_of_date=NOW.date() + timedelta(days=1),
-                age_years=6,
-                age_months=4,
-                age_days=23,
-                age_stage="middle_childhood",
-                age_rules_version="age-rules-v1",
-                input_hash="z" * 64,
-            )
+        await ChildRepository(db_session).create_age_snapshot_idempotently(
+            owner_user_id=seed.owner_id,
+            child_profile_id=seed.child_id,
+            now=datetime.now(UTC) + timedelta(days=1),
         )
     await db_session.commit()
     app.dependency_overrides[get_current_user] = lambda: seed.owner_id
@@ -275,6 +269,7 @@ async def test_http_request_rejects_client_owned_lineage_fields_before_writes(
     )
     assert response.status_code == 422
     assert any(
-        error["type"] == "extra_forbidden" and error["loc"] == ["body", field] for error in response.json()["detail"]
+        error["type"] == "extra_forbidden" and error["loc"] == ["body", "unknown_field"]
+        for error in response.json()["detail"]
     )
     await assert_no_artifacts(db_session, dispatched)

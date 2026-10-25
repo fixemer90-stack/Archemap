@@ -6,7 +6,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -181,20 +181,27 @@ async def accept_full_generation(
     """Commit queued work and return without running deterministic or provider stages inline."""
 
     repository = ChildRepository(session)
-    lineage = await repository.resolve_current_generation_lineage(
+    result = await repository.resolve_full_generation_replay(
         owner_user_id=owner_user_id,
         child_profile_id=child_profile_id,
         questionnaire_session_id=questionnaire_session_id,
-    )
-    result = await repository.create_generation_idempotently(
-        owner_user_id=owner_user_id,
-        child_profile_id=child_profile_id,
-        parent_chart_id=lineage.parent_chart_id,
-        child_chart_version_id=lineage.child_chart_version_id,
-        questionnaire_session_id=lineage.questionnaire_session_id,
-        operation=ChildGenerationOperation.FULL_REPORT.value,
         idempotency_key=idempotency_key,
     )
+    if result is None:
+        lineage = await repository.resolve_current_generation_lineage(
+            owner_user_id=owner_user_id,
+            child_profile_id=child_profile_id,
+            questionnaire_session_id=questionnaire_session_id,
+        )
+        result = await repository.create_generation_idempotently(
+            owner_user_id=owner_user_id,
+            child_profile_id=child_profile_id,
+            parent_chart_id=lineage.parent_chart_id,
+            child_chart_version_id=lineage.child_chart_version_id,
+            questionnaire_session_id=lineage.questionnaire_session_id,
+            operation=ChildGenerationOperation.FULL_REPORT.value,
+            idempotency_key=idempotency_key,
+        )
     await session.commit()
 
     task_id = result.generation.celery_task_id
@@ -341,8 +348,9 @@ async def accept_narrative_retry_generation(
     idempotency_key: str,
     dispatcher: ChildGenerationDispatcher,
     now: datetime | None = None,
+    scope: Literal["failed_sections", "narrative_all"] = "failed_sections",
 ) -> ChildGenerationAccepted:
-    """Accept a delayed retry pinned to an existing deterministic report and facts."""
+    """Accept a pinned failed-only retry or an explicit new narrative version."""
 
     del dispatcher  # reconciliation publishes retries only after durable backoff
     await _require_active_child(
@@ -365,7 +373,10 @@ async def accept_narrative_retry_generation(
             models.ChildGeneration.child_profile_id == child_profile_id,
         )
     )
-    if source_generation is None or source_generation.status != ChildGenerationStatus.NARRATIVE_FAILED.value:
+    allowed_source_statuses = {ChildGenerationStatus.NARRATIVE_FAILED.value}
+    if scope == "narrative_all":
+        allowed_source_statuses.add(ChildGenerationStatus.READY.value)
+    if source_generation is None or source_generation.status not in allowed_source_statuses:
         raise ChildLineageMismatchError("Source narrative generation is not retryable")
     unknown_retry = await session.scalar(
         select(models.ChildSegmentGeneration.id)
@@ -397,7 +408,9 @@ async def accept_narrative_retry_generation(
                 select(models.ChildSegmentGeneration)
                 .where(
                     models.ChildSegmentGeneration.generation_id == source_generation.generation_id,
-                    models.ChildSegmentGeneration.status == "failed",
+                    models.ChildSegmentGeneration.status.in_(
+                        ["failed", "ready", "not_applicable"] if scope == "narrative_all" else ["failed"]
+                    ),
                 )
                 .order_by(models.ChildSegmentGeneration.section_key, models.ChildSegmentGeneration.id)
             )
@@ -443,6 +456,7 @@ async def accept_narrative_retry_generation(
             "guidance_input_hash": _guidance_facts_input_hash(facts_row),
             "failed_section_pins": failed_section_pins,
             "missing_section_pins": missing_section_pins,
+            **({"scope": scope} if scope == "narrative_all" else {}),
         },
     )
     if result.created:
@@ -802,6 +816,9 @@ async def run_claimed_narrative_retry(
         source_report_version = payload["source_report_version"]
         guidance_facts_id = UUID(str(payload["guidance_facts_id"]))
         failed_section_pins = payload.get("failed_section_pins")
+        retry_scope = payload.get("scope", "failed_sections")
+        if retry_scope not in {"failed_sections", "narrative_all"}:
+            raise RuntimeError("Pinned narrative scope is invalid")
         if (
             generation.source_report_id != source_report_id
             or type(source_report_version) is not int
@@ -872,10 +889,19 @@ async def run_claimed_narrative_retry(
             if source_row is None or _source_segment_pin(source_row) != pinned_values:
                 raise RuntimeError("Pinned narrative source segment is unavailable or changed")
             section_key = pin.get("section_key")
-            if not isinstance(section_key, str) or section_key in pinned_source_by_key or source_row.status != "failed":
+            allowed_pin_statuses = (
+                {"failed", "ready", "not_applicable"} if retry_scope == "narrative_all" else {"failed"}
+            )
+            if (
+                not isinstance(section_key, str)
+                or section_key in pinned_source_by_key
+                or source_row.status not in allowed_pin_statuses
+            ):
                 raise RuntimeError("Pinned narrative retry scope is invalid")
             pinned_source_by_key[section_key] = source_row
-        if set(pinned_source_by_key) != {row.section_key for row in source_segments if row.status == "failed"}:
+        if set(pinned_source_by_key) != {
+            row.section_key for row in source_segments if retry_scope == "narrative_all" or row.status == "failed"
+        }:
             raise RuntimeError("Pinned narrative retry scope is incomplete")
         section_inputs = build_child_section_inputs(guidance_facts)
         missing_section_pins = [

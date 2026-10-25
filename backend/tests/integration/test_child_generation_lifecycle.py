@@ -16,6 +16,7 @@ from app.main import app
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.authorization.models import Entitlement
 from app.modules.child import models
+from app.modules.child.age_resolver import resolve_child_age
 from app.modules.child.narrative import ChildSectionRenderInput, MockChildSegmentProvider
 from app.modules.child.questionnaire import AnswerInput, questions_for_age_stage
 from app.modules.child.questionnaire_persistence import ChildQuestionnaireRepository
@@ -102,17 +103,19 @@ async def _seed_claimable_full_pipeline(
     db: AsyncSession,
     *,
     idempotency_key: str,
+    snapshot_as_of: datetime = NOW,
 ) -> tuple[LifecycleSeed, models.ChildGeneration]:
     owner, child, generation, _ = await _persist_interaction(db)
+    resolved_age = resolve_child_age(birth_date=child.birth_date, as_of=snapshot_as_of, timezone_name=child.timezone)
     age = models.ChildAgeSnapshot(
         child_profile_id=child.id,
-        as_of_date=NOW.date(),
-        age_years=5,
-        age_months=5,
-        age_days=0,
-        age_stage="3-6",
-        age_rules_version="child-age-mvp-1",
-        input_hash="l" * 64,
+        as_of_date=resolved_age.as_of_date,
+        age_years=resolved_age.age_years,
+        age_months=resolved_age.age_months,
+        age_days=resolved_age.age_days,
+        age_stage=resolved_age.age_stage,
+        age_rules_version=resolved_age.age_rules_version,
+        input_hash=resolved_age.input_hash,
     )
     db.add(age)
     await db.flush()
@@ -128,7 +131,7 @@ async def _seed_claimable_full_pipeline(
         questionnaire_session_id=draft.session.id,
         answers=tuple(
             AnswerInput(question_key=question.key, option=question.options[0].code)
-            for question in questions_for_age_stage("3-6")
+            for question in questions_for_age_stage(resolved_age.age_stage)
         ),
     )
     questionnaire = (
@@ -228,15 +231,16 @@ async def _seed_lifecycle(db: AsyncSession) -> LifecycleSeed:
     )
     db.add(chart)
     await db.flush()
+    resolved_age = resolve_child_age(birth_date=child.birth_date, as_of=datetime.now(UTC), timezone_name=child.timezone)
     age = models.ChildAgeSnapshot(
         child_profile_id=child.id,
-        as_of_date=date(2026, 10, 23),
-        age_years=6,
-        age_months=4,
-        age_days=22,
-        age_stage="middle_childhood",
-        age_rules_version="age-rules-v1",
-        input_hash="a" * 64,
+        as_of_date=resolved_age.as_of_date,
+        age_years=resolved_age.age_years,
+        age_months=resolved_age.age_months,
+        age_days=resolved_age.age_days,
+        age_stage=resolved_age.age_stage,
+        age_rules_version=resolved_age.age_rules_version,
+        input_hash=resolved_age.input_hash,
     )
     db.add(age)
     await db.flush()
@@ -539,17 +543,10 @@ async def test_generation_acceptance_rejects_stale_questionnaire_age_lineage_bef
     db_session: AsyncSession,
 ) -> None:
     seed = await _seed_lifecycle(db_session)
-    db_session.add(
-        models.ChildAgeSnapshot(
-            child_profile_id=seed.child_id,
-            as_of_date=NOW.date() + timedelta(days=1),
-            age_years=6,
-            age_months=4,
-            age_days=23,
-            age_stage="middle_childhood",
-            age_rules_version="age-rules-v1",
-            input_hash="z" * 64,
-        )
+    await ChildRepository(db_session).create_age_snapshot_idempotently(
+        owner_user_id=seed.owner_id,
+        child_profile_id=seed.child_id,
+        now=datetime.now(UTC) + timedelta(days=1),
     )
     await db_session.commit()
 

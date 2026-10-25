@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from math import isfinite
 from typing import Any, TypeVar, cast
 from uuid import UUID
@@ -25,7 +26,12 @@ from app.modules.astrotype_v2.models import (
     NatalPlanetPosition,
 )
 from app.modules.child import models
-from app.modules.child.age_resolver import AGE_RULES_VERSION, ChildAgeResolution, resolve_child_age
+from app.modules.child.age_resolver import (
+    AGE_RULES_VERSION,
+    ChildAgeResolution,
+    age_snapshot_is_current,
+    resolve_child_age,
+)
 from app.modules.child.birth_data import child_birth_data_hash
 from app.modules.child.chart_adapter import ChildChartBuild, ChildChartInput, child_chart_input_hash
 from app.modules.child.child_needs import build_child_need_rows, score_child_needs
@@ -268,10 +274,9 @@ def _is_unique_string_list(value: object, *, allow_empty: bool) -> bool:
 
 
 def _numbers_close(value: object, expected: float, *, tolerance: float) -> bool:
-    return (
-        _is_finite_number(value, minimum=-1.0, maximum=100.0)
-        and abs(float(cast(int | float, value)) - expected) <= tolerance
-    )
+    return _is_finite_number(value, minimum=-1.0, maximum=100.0) and abs(
+        Decimal(str(cast(int | float, value))) - Decimal(str(expected))
+    ) <= Decimal(str(tolerance))
 
 
 def _valid_parent_style_evidence(value: object, *, direction: str) -> bool:
@@ -1205,6 +1210,64 @@ class ChildRepository:
             raise ChildIdempotencyTargetMismatchError("Idempotency key already used for another child target")
         return ChildProfileCreateResult(child=existing, created=False)
 
+    async def resolve_full_generation_replay(
+        self,
+        *,
+        owner_user_id: UUID,
+        child_profile_id: UUID,
+        questionnaire_session_id: UUID,
+        idempotency_key: str,
+    ) -> ChildGenerationCreateResult | None:
+        """Serialize acceptance and replay the immutable public target before defaults."""
+
+        await self._lock_generation_idempotency(
+            owner_user_id=owner_user_id,
+            operation=ChildGenerationOperation.FULL_REPORT.value,
+            idempotency_key=idempotency_key,
+        )
+        child = await self._require_owned_child(
+            child_profile_id=child_profile_id, owner_user_id=owner_user_id, fresh=True
+        )
+        if child.status != "active":
+            raise ChildLineageMismatchError("Child resource is unavailable")
+        questionnaire_id = await self.session.scalar(
+            select(models.ChildQuestionnaireSession.id).where(
+                models.ChildQuestionnaireSession.id == questionnaire_session_id,
+                models.ChildQuestionnaireSession.child_profile_id == child_profile_id,
+                models.ChildQuestionnaireSession.owner_user_id == owner_user_id,
+            )
+        )
+        if questionnaire_id is None:
+            raise ChildLineageMismatchError("Generation questionnaire is unavailable")
+        existing = await self.session.scalar(
+            select(models.ChildGeneration)
+            .where(
+                models.ChildGeneration.owner_user_id == owner_user_id,
+                models.ChildGeneration.operation == ChildGenerationOperation.FULL_REPORT.value,
+                models.ChildGeneration.idempotency_key == idempotency_key,
+            )
+            .execution_options(populate_existing=True)
+        )
+        if existing is None:
+            # Resolve new defaults under the shared correction/snapshot lock,
+            # always after the owner/operation/idempotency lock.
+            await self._lock_child_lineage(child_profile_id)
+            return None
+        if (
+            existing.child_profile_id,
+            existing.questionnaire_session_id,
+            existing.source_report_id,
+            existing.operation_payload,
+        ) != (child_profile_id, questionnaire_session_id, None, {}):
+            raise ChildIdempotencyTargetMismatchError("Generation idempotency key was reused for another target")
+        return ChildGenerationCreateResult(generation=existing, created=False)
+
+    async def _lock_generation_idempotency(self, *, owner_user_id: UUID, operation: str, idempotency_key: str) -> None:
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"child-generation-idempotency:{owner_user_id}:{operation}:{idempotency_key}"},
+        )
+
     async def resolve_current_generation_lineage(
         self,
         *,
@@ -1231,6 +1294,30 @@ class ChildRepository:
         )
         if questionnaire is None:
             raise ChildLineageMismatchError("Generation questionnaire is unavailable")
+        snapshot = await self.session.scalar(
+            select(models.ChildAgeSnapshot)
+            .where(
+                models.ChildAgeSnapshot.id == questionnaire.age_snapshot_id,
+                models.ChildAgeSnapshot.child_profile_id == child_profile_id,
+            )
+            .execution_options(populate_existing=True)
+        )
+        try:
+            current_age = resolve_child_age(
+                birth_date=child.birth_date,
+                as_of=datetime.now(UTC),
+                timezone_name=child.timezone,
+                age_rules_version=AGE_RULES_VERSION,
+            )
+        except ValueError as exc:
+            raise ChildLineageMismatchError("Current child age is unavailable") from exc
+        if snapshot is None or not age_snapshot_is_current(
+            snapshot_as_of_date=snapshot.as_of_date,
+            snapshot_rules_version=snapshot.age_rules_version,
+            snapshot_input_hash=snapshot.input_hash,
+            current=current_age,
+        ):
+            raise ChildLineageMismatchError("Generation questionnaire age snapshot is stale")
         current_age_snapshot_id = await self.session.scalar(
             select(models.ChildAgeSnapshot.id)
             .where(models.ChildAgeSnapshot.child_profile_id == child_profile_id)
@@ -1283,6 +1370,9 @@ class ChildRepository:
         source_report_id: UUID | None = None,
         operation_payload: dict[str, Any] | None = None,
     ) -> ChildGenerationCreateResult:
+        await self._lock_generation_idempotency(
+            owner_user_id=owner_user_id, operation=operation, idempotency_key=idempotency_key
+        )
         child = await self._require_owned_child(
             child_profile_id=child_profile_id,
             owner_user_id=owner_user_id,
@@ -1780,8 +1870,15 @@ class ChildRepository:
     ) -> str:
         if row.status != "in_progress" or row.lifecycle_token != claim_token:
             raise ValueError("segment intent is invalid")
+        provider_report = case(
+            (
+                models.ChildGeneration.operation == ChildGenerationOperation.FULL_REPORT.value,
+                models.ChildGeneration.report_id,
+            ),
+            else_=func.coalesce(models.ChildGeneration.source_report_id, models.ChildGeneration.report_id),
+        )
         report_id = await self.session.scalar(
-            select(func.coalesce(models.ChildGeneration.source_report_id, models.ChildGeneration.report_id)).where(
+            select(provider_report).where(
                 models.ChildGeneration.generation_id == row.generation_id,
                 models.ChildGeneration.child_profile_id == row.child_profile_id,
             )
@@ -1796,6 +1893,14 @@ class ChildRepository:
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {"lock_key": f"child-provider-section:{report_id}:{row.section_key}"},
         )
+        # A deliberate narrative_all request creates a new narrative version.
+        # It may supersede known ready prose, never an in-progress/unknown call.
+        operation_payload = await self.session.scalar(
+            select(models.ChildGeneration.operation_payload).where(
+                models.ChildGeneration.generation_id == row.generation_id
+            )
+        )
+        narrative_all = isinstance(operation_payload, dict) and operation_payload.get("scope") == "narrative_all"
         sibling_intent = await self.session.scalar(
             select(models.ChildSegmentGeneration.id)
             .join(
@@ -1803,10 +1908,12 @@ class ChildRepository:
                 models.ChildGeneration.generation_id == models.ChildSegmentGeneration.generation_id,
             )
             .where(
-                func.coalesce(models.ChildGeneration.source_report_id, models.ChildGeneration.report_id) == report_id,
+                provider_report == report_id,
                 models.ChildSegmentGeneration.section_key == row.section_key,
                 models.ChildSegmentGeneration.generation_id != row.generation_id,
-                (models.ChildSegmentGeneration.status.in_(("in_progress", "ready")))
+                models.ChildSegmentGeneration.status.in_(
+                    ("in_progress",) if narrative_all else ("in_progress", "ready")
+                )
                 | (models.ChildSegmentGeneration.error_code == "child_narrative_provider_outcome_unknown"),
             )
             .limit(1)

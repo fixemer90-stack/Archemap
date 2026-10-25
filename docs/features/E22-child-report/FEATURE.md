@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S14 завершены, опубликованы и проверены CI. S15–S16: локальный QA/tooling готов; staging budgets, deployed telemetry, rollback и production/canary gates открыты, rollout не выполнялся.
+🟡 В работе — S01–S14 завершены, опубликованы и проверены CI. S15–S16: native staging flow, application backup/restore, collector/scrape и rollback подтверждены; полные budgets, автоматическая доставка алертов и production/canary gates остаются открытыми. Accepted staging marker не продвинут.
 
 ## Цель
 

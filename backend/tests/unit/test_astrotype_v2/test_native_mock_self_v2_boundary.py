@@ -88,6 +88,39 @@ async def test_native_mock_completes_real_v2_segment_with_only_input_grounding(
     assert repeated.payload == segment.payload
 
 
+@pytest.mark.parametrize("section_index", range(6))
+async def test_native_mock_accepts_cached_themes_without_optional_depth_fields(
+    canonical_inputs: list[SectionRenderInputV2], monkeypatch: pytest.MonkeyPatch, section_index: int
+) -> None:
+    monkeypatch.setattr(socket, "create_connection", _no_network)
+    monkeypatch.setattr(socket.socket, "connect", _no_network)
+    payload = canonical_inputs[section_index].to_payload()
+    for theme in [*payload["owned_themes"], *payload["reference_themes"]]:
+        for field in (
+            "psychological_mechanism",
+            "lived_manifestation",
+            "inner_tension",
+            "protective_strategy",
+            "immature_expression",
+            "mature_expression",
+            "integration_question",
+        ):
+            theme.pop(field, None)
+    section = SectionRenderInputV2.model_validate(payload)
+    config = Settings(APP_ENV="staging", LLM_ENABLED=True, LLM_PROVIDER="mock")
+    provider = StructuredSegmentProviderAdapter(
+        provider=get_llm_provider(config), provider_name="mock", model_name="mock-self-v1"
+    )
+    segment = await run_segment_generation_v2(provider=provider, section_input=section, outline_id=uuid.uuid4())
+    assert segment.status == "ready"
+    output = ReportSegmentOutputV2.model_validate(segment.payload["response"])
+    assert validate_segment_output_v2(output=output, section_input=section) == output
+    assert output.evidence_ids == section.evidence_ids
+    assert output.covered_theme_ids == [theme.id for theme in section.owned_themes]
+    assert "Демонстрационный текст локального mock-провайдера" in output.body
+    assert "not real-provider quality evidence" in output.notes[0]
+
+
 async def test_native_mock_rejects_incompatible_v2_schema(canonical_inputs: list[SectionRenderInputV2]) -> None:
     with pytest.raises(TypeError, match="segment output contract"):
         await MockLLMProvider().generate_structured(prompt="", narrative_input=canonical_inputs[0], schema=BaseModel)

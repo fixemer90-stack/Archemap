@@ -1,6 +1,6 @@
 # SRS-E22: Astrotype Child Report
 
-Статус: целевой контракт готов; S01–S10 завершены, S11–S16 не начаты
+Статус: S01–S11 завершены; S12–S14 реализованы и независимо одобрены, ожидают exact-SHA CI; S15–S16 локально реализованы, staging/production gates открыты
 
 Feature: `docs/features/E22-child-report/FEATURE.md`
 

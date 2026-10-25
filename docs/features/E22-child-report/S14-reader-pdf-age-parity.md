@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Реализовано и независимо одобрено (`deleg_e6a8ff8b`); локальные browser/runtime/quality gates зелёные. Публикация и exact-SHA CI ещё не закрыты, production rollout не заявлен.
 
 ## Контекст
 
@@ -28,14 +28,16 @@ Reader должен быть narrative-first, показывать progressive d
 
 ## Критерии приёмки
 
-- [ ] Порядок и content web/PDF совпадают.
-- [ ] PDF содержит core/report/age version metadata.
-- [ ] Reader полезен в deterministic_ready/narrative_failed.
-- [ ] Age stale state честно датирован.
-- [ ] Нет fixed labels/diagnostic language в UI chrome.
-- [ ] Mobile, print и accessibility verification проходят.
+- [x] Порядок и content web/PDF совпадают.
+- [x] PDF содержит core/report/age version metadata.
+- [x] Reader полезен в deterministic_ready/narrative_failed.
+- [x] Age stale state честно датирован.
+- [x] Нет fixed labels/diagnostic language в UI chrome.
+- [x] Mobile, print и accessibility verification проходят.
 
 ## Verification
+
+Текущие review findings, выполненные проверки и незакрытые gates: [единый evidence report](../../reviews/2026-10-25/E22-S12-S16.md). Операционные процедуры: [rollout/rollback runbook](../../deployment/child-report-rollout.md). Локальные PASS не закрывают staging budgets, live telemetry, deployed SHA или canary.
 
 - Добавить targeted unit/integration/frontend tests из критериев Story.
 - Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.

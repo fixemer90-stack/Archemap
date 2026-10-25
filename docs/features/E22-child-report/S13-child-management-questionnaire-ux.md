@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Реализовано и независимо одобрено (`deleg_e6a8ff8b`); локальные browser/runtime/quality gates зелёные. Публикация и exact-SHA CI ещё не закрыты, production rollout не заявлен.
 
 ## Контекст
 
@@ -28,14 +28,16 @@
 
 ## Критерии приёмки
 
-- [ ] Любое действие показывает выбранного child record.
-- [ ] Unknown time является полноценным UX path.
-- [ ] Birth-data edit предупреждает о новой lineage.
-- [ ] Draft изолирован между детьми.
-- [ ] Keyboard/mobile/accessibility checks проходят.
-- [ ] UI не вычисляет age/access/scores самостоятельно.
+- [x] Любое действие показывает выбранного child record.
+- [x] Unknown time является полноценным UX path.
+- [x] Birth-data edit предупреждает о новой lineage.
+- [x] Draft изолирован между детьми.
+- [x] Keyboard/mobile/accessibility checks проходят.
+- [x] UI не вычисляет age/access/scores самостоятельно.
 
 ## Verification
+
+Текущие review findings, выполненные проверки и незакрытые gates: [единый evidence report](../../reviews/2026-10-25/E22-S12-S16.md). Операционные процедуры: [rollout/rollback runbook](../../deployment/child-report-rollout.md). Локальные PASS не закрывают staging budgets, live telemetry, deployed SHA или canary.
 
 - Добавить targeted unit/integration/frontend tests из критериев Story.
 - Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.

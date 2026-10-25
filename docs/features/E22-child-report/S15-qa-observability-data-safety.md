@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 В процессе — локальные инструменты и проверки реализованы; staging/production/canary gates остаются открытыми.
 
 ## Контекст
 
@@ -28,14 +28,16 @@ Unit tests отдельных формул недостаточны. Нужны 
 
 ## Критерии приёмки
 
-- [ ] Exact/approximate/unknown и age boundaries покрыты.
-- [ ] Negative safety corpus блокируется.
-- [ ] Foreign/locked leakage tests зелёные.
-- [ ] Backup/restore и row-count/checksum доказаны.
-- [ ] Logs/metrics scan не находит name/DOB/answers/prose.
+- [x] Exact/approximate/unknown и age boundaries покрыты.
+- [x] Negative safety corpus блокируется.
+- [x] Foreign/locked leakage tests зелёные.
+- [x] Локальный synthetic backup/restore: populated history во всех 17 Child tables, schema/row-count/JSON-checksum equality и неизменность источника доказаны; это не application/staging backup.
+- [x] Локальные logs/SDK-metrics privacy tests не находят name/DOB/answers/prose; deployed collector/scrape/alert delivery остаются live gate, не доказаны unit tests.
 - [ ] Latency/cost/stuck-job budgets измерены на staging.
 
 ## Verification
+
+Текущие review findings, выполненные проверки и незакрытые gates: [единый evidence report](../../reviews/2026-10-25/E22-S12-S16.md). Операционные процедуры: [rollout/rollback runbook](../../deployment/child-report-rollout.md). Локальные PASS не закрывают staging budgets, live telemetry, deployed SHA или canary.
 
 - Добавить targeted unit/integration/frontend tests из критериев Story.
 - Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.

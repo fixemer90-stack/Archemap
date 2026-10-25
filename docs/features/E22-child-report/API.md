@@ -12,13 +12,14 @@
 
 ## Child records
 
-| Method | Endpoint                            | Назначение                               |
-| ------ | ----------------------------------- | ---------------------------------------- |
-| GET    | `/api/v1/child/children`            | Список child records владельца           |
-| POST   | `/api/v1/child/children`            | Создать child record                     |
-| GET    | `/api/v1/child/children/{child_id}` | Прочитать record                         |
-| PATCH  | `/api/v1/child/children/{child_id}` | Изменить context или birth data          |
-| DELETE | `/api/v1/child/children/{child_id}` | Архивировать/удалить по privacy contract |
+| Method | Endpoint                                   | Назначение                                     |
+| ------ | ------------------------------------------ | ---------------------------------------------- |
+| GET    | `/api/v1/child/children`                   | Список child records владельца                 |
+| POST   | `/api/v1/child/children`                   | Создать child record                           |
+| GET    | `/api/v1/child/children/{child_id}`        | Прочитать record                               |
+| PATCH  | `/api/v1/child/children/{child_id}`        | Изменить context или birth data                |
+| DELETE | `/api/v1/child/children/{child_id}`        | Архивировать/удалить по privacy contract       |
+| GET    | `/api/v1/child/children/{child_id}/export` | Приватный JSON export владельцу, включая архив |
 
 Пример создания:
 
@@ -47,6 +48,10 @@
 
 `child_gender` optional и не участвует в scoring.
 
+### Private export
+
+`GET children/{child_id}/export` возвращает attachment JSON `child-export-1` с полным owned Child graph в одном PostgreSQL snapshot, включая lifecycle/events/assemblies и archived child. Нужны canonical authenticated owner и paid Child access; отключение admission flag не блокирует это чтение. Foreign/deletion-pending — private 404. Ответ `Cache-Control: private, no-store`; production требует HTTPS. Credentials/worker claim/lifecycle tokens удаляются рекурсивно. Обычные ошибки Child API также no-store; 422 не отражает значения или произвольные имена неизвестных полей.
+
 ## Questionnaire
 
 | Method | Endpoint                                                   | Назначение                            |
@@ -71,7 +76,7 @@ Questionnaire response содержит `questionnaire_version`, `age_stage`, `r
 | GET    | `/api/v1/child/reports/{report_id}/age-snapshots` | История age snapshots                             |
 | GET    | `/api/v1/child/reports/{report_id}/pdf`           | Скачать PDF для pinned snapshot                   |
 
-Пример реализованного S11 create (остальной HTTP lifecycle surface выше — target S12/S14):
+Create использует server-owned lineage; HTTP surface реализован в S12/S14, aggregate review остаётся отдельным gate:
 
 ```json
 {

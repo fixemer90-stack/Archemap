@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе — S01–S11 завершены; S12–S16 не начаты
+🟡 В работе — S01–S11 завершены; S12–S14 реализованы, runtime-проверены и независимо одобрены, ожидают exact-SHA CI. S15–S16: локальный QA/tooling готов, staging/production/live gates открыты.
 
 ## Цель
 
@@ -132,14 +132,14 @@ Child Report помогает взрослому понять:
 - [x] Ни один вывод не строится из одного астрологического фактора и не маркирует ребёнка бинарным trait.
 - [x] Age Resolver календарно корректен, не принимает будущую DOB/возраст `>=18` и создаёт versioned snapshots с server-derived local `as_of_date`.
 - [x] Core report не мутирует при взрослении ребёнка; age update создаёт отдельную snapshot/guidance lineage.
-- [ ] Guidance Facts являются единственным content input LLM и не содержат unrestricted raw chart/answers.
-- [ ] Child-safety validators запрещают диагнозы, фатальные прогнозы, fixed labels, blame, unsafe discipline и unsupported advice.
-- [ ] Narrative failure сохраняет доступный `deterministic_ready` report.
-- [ ] Два ребёнка одного владельца не смешивают chart, answers, scores, generations, cache или artifacts.
-- [ ] Foreign-owner IDs не раскрывают существование child record/report; locked payload не содержит protected fields.
-- [ ] Create/complete/regenerate/age-update idempotent и retry-safe.
-- [ ] Web и PDF используют одинаковые section order, safety-filtered payload и pinned `age_snapshot_id`.
-- [ ] Export/delete/retention contract для данных ребёнка проверен integration tests.
+- [x] Guidance Facts являются единственным content input LLM и не содержат unrestricted raw chart/answers.
+- [x] Child-safety validators запрещают диагнозы, фатальные прогнозы, fixed labels, blame, unsafe discipline и unsupported advice.
+- [x] Narrative failure сохраняет доступный `deterministic_ready` report.
+- [x] Два ребёнка одного владельца не смешивают chart, answers, scores, generations, cache или artifacts.
+- [x] Foreign-owner IDs не раскрывают существование child record/report; locked payload не содержит protected fields.
+- [x] Create/complete/regenerate/age-update idempotent и retry-safe.
+- [x] Web и PDF используют одинаковые section order, safety-filtered payload и pinned `age_snapshot_id`.
+- [x] Export/delete/retention contract для данных ребёнка проверен integration tests.
 - [ ] Staging smoke покрывает exact/approximate/unknown time, multiple children, locked/foreign access, provider failure и PDF parity.
 
 ## Stories
@@ -157,11 +157,11 @@ Child Report помогает взрослому понять:
 | S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ✅ Завершено |
 | S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ✅ Завершено |
 | S11 | [Async generation lifecycle](./S11-async-generation-lifecycle.md)                             | ✅ Завершено |
-| S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | ⬜ Не начато |
-| S13 | [Child management и questionnaire UX](./S13-child-management-questionnaire-ux.md)             | ⬜ Не начато |
-| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | ⬜ Не начато |
-| S15 | [QA, observability и data safety](./S15-qa-observability-data-safety.md)                      | ⬜ Не начато |
-| S16 | [Rollout runbook и live evidence](./S16-rollout-runbook-live-evidence.md)                     | ⬜ Не начато |
+| S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | 🟡 В работе  |
+| S13 | [Child management и questionnaire UX](./S13-child-management-questionnaire-ux.md)             | 🟡 В работе  |
+| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | 🟡 В работе  |
+| S15 | [QA, observability и data safety](./S15-qa-observability-data-safety.md)                      | 🟡 В работе  |
+| S16 | [Rollout runbook и live evidence](./S16-rollout-runbook-live-evidence.md)                     | 🟡 В работе  |
 
 ## Порядок реализации
 

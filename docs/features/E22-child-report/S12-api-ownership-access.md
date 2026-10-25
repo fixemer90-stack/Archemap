@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Реализовано и независимо одобрено — R1–R6 закрыты; полный backend 1276 passed, повторный real API/worker/browser smoke зелёный. Backend commit `f02b23b`. Ожидается публикация и exact-SHA CI.
 
 ## Контекст
 
@@ -28,14 +28,16 @@
 
 ## Критерии приёмки
 
-- [ ] Все documented routes зарегистрированы и покрыты.
-- [ ] Owner/Plus/expired/foreign/deleted/mismatch matrix зелёная.
-- [ ] Locked payload не содержит protected fields/URLs.
-- [ ] Idempotency headers исполняются server-side.
-- [ ] Foreign resources не различимы по status/body/timing class.
-- [ ] OpenAPI соответствует runtime schemas.
+- [x] Все documented routes зарегистрированы и покрыты.
+- [x] Owner/Plus/expired/foreign/deleted/mismatch matrix зелёная.
+- [x] Locked payload не содержит protected fields/URLs.
+- [x] Idempotency headers исполняются server-side.
+- [x] Foreign resources не различимы по status/body/timing class.
+- [x] OpenAPI соответствует runtime schemas.
 
 ## Verification
+
+Текущие review findings, выполненные проверки и незакрытые gates: [единый evidence report](../../reviews/2026-10-25/E22-S12-S16.md). Операционные процедуры: [rollout/rollback runbook](../../deployment/child-report-rollout.md). Локальные PASS не закрывают staging budgets, live telemetry, deployed SHA или canary.
 
 - Добавить targeted unit/integration/frontend tests из критериев Story.
 - Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.

@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 В процессе — локальные инструменты и проверки реализованы; staging/production/canary gates остаются открытыми.
 
 ## Контекст
 
@@ -35,6 +35,8 @@
 - [ ] Feature остаётся незакрытой до production/canary evidence по принятой rollout policy.
 
 ## Verification
+
+Текущие review findings, выполненные проверки и незакрытые gates: [единый evidence report](../../reviews/2026-10-25/E22-S12-S16.md). Операционные процедуры: [rollout/rollback runbook](../../deployment/child-report-rollout.md). Локальные PASS не закрывают staging budgets, live telemetry, deployed SHA или canary.
 
 - Добавить targeted unit/integration/frontend tests из критериев Story.
 - Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.

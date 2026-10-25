@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from time import monotonic
 from typing import Any
 
 from app.config import settings
@@ -11,6 +12,7 @@ from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.child import models
 from app.modules.child.dispatch import dispatch_child_generation
+from app.modules.child.observability import child_telemetry, observe_child_provider
 from app.modules.child.repository import ChildRepository
 from app.modules.child.service import (
     configured_child_provider,
@@ -35,6 +37,26 @@ def generate_child_report(self: Any, *, generation_id: str) -> dict[str, Any]:
 
 
 async def _generate_child_report_async(*, generation_id: str, task_id: str) -> dict[str, Any]:
+    started = monotonic()
+    with child_telemetry.lifecycle():
+        try:
+            result = await _run_child_report_async(generation_id=generation_id, task_id=task_id)
+        except Exception:
+            child_telemetry.record(
+                operation="worker",
+                outcome="worker_failure",
+                duration_seconds=monotonic() - started,
+            )
+            raise
+        child_telemetry.record(
+            operation="worker",
+            outcome=result["status"],
+            duration_seconds=monotonic() - started,
+        )
+        return result
+
+
+async def _run_child_report_async(*, generation_id: str, task_id: str) -> dict[str, Any]:
     generation_uuid = uuid.UUID(generation_id)
     lease = timedelta(seconds=settings.CHILD_GENERATION_LEASE_SECONDS)
     async with async_session_factory() as session:
@@ -57,13 +79,13 @@ async def _generate_child_report_async(*, generation_id: str, task_id: str) -> d
             result = await run_claimed_narrative_retry(
                 session,
                 claim=claim,
-                provider=configured_child_provider(),
+                provider=observe_child_provider(configured_child_provider(), operation=claim.generation.operation),
             )
         else:
             result = await run_claimed_full_generation(
                 session,
                 claim=claim,
-                provider=configured_child_provider(),
+                provider=observe_child_provider(configured_child_provider(), operation=claim.generation.operation),
             )
         return {
             "generation_id": str(result.generation_id),

@@ -143,6 +143,183 @@ def test_smoke_records_real_transport_status_and_truthful_failure(
     assert result["deployed_sha_verified"] is False
 
 
+def test_smoke_gateway_auth_isolated_per_actor_on_real_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GATEWAY_USER", "operator")
+    monkeypatch.setenv("GATEWAY_PASSWORD", "gateway-private")
+    monkeypatch.setenv("OPS_TOKEN", "actor-one.jwt")
+    monkeypatch.setenv("OTHER_TOKEN", "actor-two.jwt")
+    password_env_name = "GATEWAY_PASSWORD"
+    cases = disabled_cases()
+    cases[1]["token_env"] = "OTHER_TOKEN"
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200 if request.method == "GET" else 503,
+            json={"report_id": "opaque"} if request.method == "GET" else {"detail": "Child Report is not enabled"},
+            headers={"Set-Cookie": "access_token=response-poison; Path=/"},
+        )
+
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        auth=("ambient", "wrong"),
+        cookies={"access_token": "client-poison", "unrelated": "private"},
+        headers={"Cookie": "header-poison=private", "Authorization": "Bearer ambient"},
+    ) as client:
+        result = smoke(
+            base_url="https://stage.invalid",
+            cases=cases,
+            phase="disabled",
+            sha="a" * 40,
+            client=client,
+            gateway_user_env="GATEWAY_USER",
+            gateway_password_env=password_env_name,
+        )
+    assert result["passed"]
+    assert [request.headers["authorization"] for request in requests] == [
+        "Basic b3BlcmF0b3I6Z2F0ZXdheS1wcml2YXRl",
+    ] * 2
+    assert [request.headers["cookie"] for request in requests] == [
+        "access_token=actor-one.jwt",
+        "access_token=actor-two.jwt",
+    ]
+    assert all(len(request.headers.get_list("authorization")) == 1 for request in requests)
+    assert not any(secret in json.dumps(result) for secret in ("gateway-private", "actor-one.jwt", "actor-two.jwt"))
+
+
+@pytest.mark.parametrize(
+    "user,password",
+    [
+        (None, "PASS_ENV"),
+        ("USER_ENV", None),
+        ("USER_ENV", "PASS_ENV"),
+        ("", "PASS_ENV"),
+        ("not-an-env-name", "PASS_ENV"),
+    ],
+)
+def test_gateway_misconfiguration_never_sends_requests(
+    monkeypatch: pytest.MonkeyPatch, user: str | None, password: str | None
+) -> None:
+    monkeypatch.delenv("USER_ENV", raising=False)
+    monkeypatch.delenv("PASS_ENV", raising=False)
+
+    def forbidden(request: httpx.Request) -> httpx.Response:
+        pytest.fail("misconfigured credentials must fail before transport")
+
+    with httpx.Client(transport=httpx.MockTransport(forbidden)) as client, pytest.raises(ValueError) as error:
+        smoke(
+            base_url="https://stage.invalid",
+            cases=disabled_cases(),
+            phase="disabled",
+            sha="a" * 40,
+            client=client,
+            gateway_user_env=user,
+            gateway_password_env=password,
+        )
+    assert "private" not in str(error.value)
+
+
+def test_legacy_bearer_overrides_ambient_client_auth_and_cookies(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPS_TOKEN", "actor.jwt")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer actor.jwt"
+        assert request.headers["Cookie"] == ""
+        return (
+            httpx.Response(503, json={"detail": "Child Report is not enabled"})
+            if request.method == "POST"
+            else httpx.Response(200, json={"report_id": "opaque"})
+        )
+
+    with httpx.Client(
+        transport=httpx.MockTransport(handler), auth=("ambient", "private"), cookies={"access_token": "wrong"}
+    ) as client:
+        assert smoke(
+            base_url="https://stage.invalid", cases=disabled_cases(), phase="disabled", sha="a" * 40, client=client
+        )["passed"]
+
+
+@pytest.mark.parametrize("symlink", [False, True])
+def test_smoke_cli_refuses_existing_report_before_transport(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    symlink: bool,
+) -> None:
+    import sys
+
+    from scripts import child_rollout_smoke as rollout
+
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text("retained evidence")
+    report = tmp_path / "report.json" if symlink else baseline
+    if symlink:
+        report.symlink_to(baseline)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("[]")
+    called = []
+
+    def fake_smoke(**kwargs: Any) -> dict[str, Any]:
+        called.append(True)
+        return {"passed": True}
+
+    monkeypatch.setattr(rollout, "smoke", fake_smoke)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "smoke",
+            "--base-url",
+            "https://stage.invalid",
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(report),
+            "--sha",
+            "a" * 40,
+        ],
+    )
+    with pytest.raises(SystemExit) as exc:
+        rollout.main()
+    assert exc.value.code == 1
+    assert baseline.read_text() == "retained evidence"
+    assert not called
+
+
+def test_smoke_cli_creates_private_new_evidence_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    from scripts import child_rollout_smoke as rollout
+
+    report = tmp_path / "private" / "result.json"
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("[]")
+    monkeypatch.setattr(rollout, "smoke", lambda **kwargs: {"passed": True})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "smoke",
+            "--base-url",
+            "https://stage.invalid",
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(report),
+            "--sha",
+            "a" * 40,
+        ],
+    )
+    with pytest.raises(SystemExit) as exc:
+        rollout.main()
+    assert exc.value.code == 0
+    assert report.stat().st_mode & 0o777 == 0o600
+    assert report.parent.stat().st_mode & 0o777 == 0o700
+
+
 @pytest.mark.parametrize("name", ["exact", "approximate", "unknown", "two_child", "provider_failure", "flag_off_read"])
 def test_successful_smoke_probe_requires_resource_identity_not_just_any_assertion(name: str) -> None:
     body = {

@@ -116,6 +116,8 @@ def smoke(
     sha: str,
     client: httpx.Client,
     allow_local_http: bool = False,
+    gateway_user_env: str | None = None,
+    gateway_password_env: str | None = None,
 ) -> dict[str, Any]:
     parsed = urlsplit(base_url)
     if (
@@ -135,6 +137,17 @@ def smoke(
     names = [case["name"] for case in cases]
     if len(names) != len(set(names)) or set(names) != required:
         raise ValueError("scenario inventory must exactly match selected rollout phase")
+    gateway_auth = None
+    if gateway_user_env is not None or gateway_password_env is not None:
+        if not gateway_user_env or not gateway_password_env:
+            raise ValueError("both gateway environment names are required")
+        if not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) for key in (gateway_user_env, gateway_password_env)):
+            raise ValueError("invalid gateway environment names")
+        username = os.environ.get(gateway_user_env, "")
+        password = os.environ.get(gateway_password_env, "")
+        if not username.strip() or not password.strip():
+            raise ValueError("missing gateway authentication environment")
+        gateway_auth = httpx.BasicAuth(username, password)
     results = []
     for case in cases:
         path = case["path"]
@@ -142,7 +155,7 @@ def smoke(
         # Only the canonical PDF snapshot query is allowed; never credentials or redirects.
         validate_path(case)
         token = os.environ.get(case["token_env"], "")
-        if not token:
+        if not token or not re.fullmatch(r"[A-Za-z0-9._~-]+", token):
             raise ValueError("missing authentication environment variable")
         passed = False
         status = None
@@ -150,7 +163,12 @@ def smoke(
             response = client.request(
                 method,
                 base_url.rstrip("/") + path,
-                headers={"Authorization": f"Bearer {token}", "Idempotency-Key": "child-flagoff-smoke"},
+                headers={
+                    "Authorization": "" if gateway_auth else f"Bearer {token}",
+                    "Cookie": f"access_token={token}" if gateway_auth else "",
+                    "Idempotency-Key": "child-flagoff-smoke",
+                },
+                auth=gateway_auth,
                 json=case.get("body") if method == "POST" else None,
                 follow_redirects=False,
             )
@@ -179,8 +197,12 @@ def main() -> None:
     parser.add_argument("--sha", required=True)
     parser.add_argument("--phase", choices=["enabled", "disabled"], default="enabled")
     parser.add_argument("--allow-local-http", action="store_true")
+    parser.add_argument("--gateway-user-env", help="Environment variable NAME containing gateway username")
+    parser.add_argument("--gateway-password-env", help="Environment variable NAME containing gateway password")
     args = parser.parse_args()
     try:
+        if args.report.exists() or args.report.is_symlink():
+            raise ValueError("private report already exists")
         with httpx.Client(timeout=30, trust_env=False) as client:
             result = smoke(
                 base_url=args.base_url,
@@ -189,10 +211,13 @@ def main() -> None:
                 sha=args.sha,
                 client=client,
                 allow_local_http=args.allow_local_http,
+                gateway_user_env=args.gateway_user_env,
+                gateway_password_env=args.gateway_password_env,
             )
-        args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(result, indent=2) + "\n")
-        args.report.chmod(0o600)
+        args.report.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        fd = os.open(args.report, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as stream:
+            stream.write(json.dumps(result, indent=2) + "\n")
     except (ValueError, KeyError, TypeError, OSError):
         parser.exit(1, "FAIL: invalid/private manifest, authentication, transport or output; inspect privately\n")
     parser.exit(0 if result["passed"] else 1, "PASS\n" if result["passed"] else "FAIL: see sanitized report\n")

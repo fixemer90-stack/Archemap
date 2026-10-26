@@ -30,7 +30,7 @@
 - [ ] Runbook исполним новым оператором без скрытых шагов.
 - [ ] Staging smoke покрывает все обязательные сценарии.
 - [ ] Canary не начинается при safety/access failures.
-- [x] Rollback прекращает generation и сохраняет artifacts.
+- [x] Rollback прекращает новую generation admission и сохраняет artifacts; принятая in-flight работа не прерывается.
 - [x] Live evidence содержит exact SHA/IDs/results без child PII.
 - [ ] Feature остаётся незакрытой до production/canary evidence по принятой rollout policy.
 
@@ -48,9 +48,15 @@
 
 Rollback проверен на этом exact runtime: три легитимные write-операции получили private/no-store 503, reader/PDF и все 21 table row/hash сохранились. Флаг прочитан false, затем восстановлен в `finally` и прочитан true во всех четырёх consumers. Новая full-pair generation после восстановления стала ready. Проверялось прекращение новой admission; in-flight external calls не прерывались. Opaque artifact IDs и результаты без child PII: [staging remediation evidence](../../reviews/2026-10-25/E22-S15-staging-remediation.md).
 
-Верхний staging-smoke checkbox не закрыт автоматически: native flow не доказывает каждый шаг полного runbook, например late-expiry UI/stale-input matrices и полные budget gates. Выполнение новым оператором отдельно не доказано. Production/canary не разрешены и не выполнялись. Accepted staging marker оставлен прежним; native functional PASS не равен принятому rollout.
+Верхний staging-smoke checkbox не закрыт автоматически: native flow не доказывает каждый шаг полного runbook и полные budget gates. Выполнение новым оператором отдельно не доказано. Production/canary не разрешены и не выполнялись. Accepted staging marker оставлен прежним; native functional PASS не равен принятому rollout.
 
 Инфраструктурный slice `40f3fb1b4aca2f39a48553689feaca893c2ceb2c` прошёл exact-SHA CI `40235132422` (8/8) и отдельный staging rollout без перезапуска приложения/production. Реальный Prometheus → Alertmanager → существующий Telegram drill подтвердил pending, literal `for: 1m`, firing, две завершённые notifier отправки без ошибок и normal resolution после ложного expression; probe затем удалён. Все 17 защищённых container identities сохранились. Source приложения остаётся `06b72c0`, source alerting — `40f3fb1`; эти идентичности не подменяют accepted marker. Подробности и private evidence paths — в том же staging remediation evidence.
+
+## Late-expiry, stale-input и operator readiness — 2026-10-26
+
+На unchanged app `06b72c0` реальные browser/API проверки прошли без API mocks: signed expired JWT после загрузки draft/autosave, confirmation и ready reader дал 401, сохранил загруженное содержимое и отключил записи. В каждом denied-action окне все 21 protected table hashes сохранились. Отдельная synthetic fixture прошла ready → открытая confirmation review → публичная correction birth date → старый questionnaire с новым report key: private/no-store 404, без новых generation/events/artifacts. Прежний принятый ключ вернул исходные generation/report; ранее выпущенный отчёт и parent не изменились. Сравнение начинается после намеренной correction, не скрывает саму смену исходных данных.
+
+Независимый document-only audit `deleg_d9d6d989` нашёл шесть operator blockers. Исправлены dual-auth transport и read-only state helper; уточнены pinned Compose/migration boundary, acquisition/manifests, trigger recipes и backup SOP в [operator procedures](../../deployment/child-operator-procedures.md). Настоящий CLI через public HTTPS/Basic Auth + actor cookie прошёл все восемь enabled cases, включая C-owned resource после expiry; 21 таблица не изменилась во время CLI. Численные budgets/approval record и независимое полное исполнение runbook по-прежнему отсутствуют: эти checkbox не закрыты документацией или запуском автора. Новый helper также реально прочитал и сопоставил полный public application manifest; это read-only equality, не новая restore rehearsal. Private evidence: `/opt/astrotype-staging/evidence/6114db2cdbd2e5f64fec858c8133fd2b054c181a/`.
 
 ## Зависимости
 

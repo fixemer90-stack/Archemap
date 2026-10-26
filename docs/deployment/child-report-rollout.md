@@ -8,6 +8,8 @@ Use synthetic adult/child fixtures on staging. Do not put child names, DOBs, ans
 
 ## Preconditions
 
+The [operator procedures](./child-operator-procedures.md) define the two shells, private-directory initialization, approved fixture/credential acquisition, complete manifests, safe expiry/stale/failure triggers, application backup/restore SOP and explicit acceptance gate matrix. Missing approval, numeric budgets or fixture provisioning is a STOP condition, not a hidden default.
+
 1. Choose and record the exact 40-character reviewed commit SHA, environment, operator, approved window, previous SHA/image IDs and rollback decision owner. Require a clean checkout at that SHA and green exact-SHA CI; do not substitute a green older run.
 2. Verify an application backup/restore under the deployment's existing private backup policy. The local `scripts.child_backup_restore` CLI deliberately refuses application/remote databases: its proof applies only to synthetic QA databases on loopback port 55434, role `e22test`, names `e22_qa_test`/`e22_qa_restore`. It requires populated child/generation/report history and refuses a nonempty restore target. Never weaken those guards to back up production.
 3. Confirm schema head, PostgreSQL health, Redis/broker health, worker registration of `child.generate_report`, scheduler registration of `child.reconcile_generations`, and readiness through the real HTTPS frontend/proxy. Preserve existing volumes and account/billing data. Do not run destructive pytest fixtures on any application database.
@@ -21,25 +23,36 @@ Use synthetic adult/child fixtures on staging. Do not put child names, DOBs, ans
 
 There is no `NEXT_PUBLIC_CHILD_REPORT_ENABLED` implementation. Do not invent a browser-only kill switch. The backend catalog/access decision is authoritative. A frontend code/build-time configuration change still requires a new build/image, not merely container environment changes.
 
-Example staging commands, from a clean approved checkout:
+Example staging commands, on the approved staging Docker host after all mutation prerequisites pass. `CHECKOUT` is the clean reviewed Git checkout; `RELEASE_DIR` is its separately checksum-verified release archive. Supply the approved values; do not derive a project from the checkout basename:
 
 ```sh
 export TARGET_SHA='<approved full SHA>'
-export COMPOSE_FILE=docker-compose.staging.yml
-export ENV_FILE=.env.staging
-
-git rev-parse HEAD
-git status --short
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --quiet
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build backend worker scheduler refinement-monitor frontend
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d backend worker scheduler refinement-monitor frontend
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T backend python -m alembic current
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T backend python -c 'from app.config import settings; print("child_enabled", settings.CHILD_REPORT_ENABLED)'
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T worker python -c 'from app.config import settings; print("child_enabled", settings.CHILD_REPORT_ENABLED)'
+: "${CHECKOUT:?absolute reviewed Git checkout}"
+export RELEASE_DIR="/opt/astrotype-staging/releases/$TARGET_SHA"
+export CHILD_ALERT_SECRETS_DIR=/opt/astrotype-staging/secrets/child-alertmanager
+export CHILD_ALERT_PROBE_DIR=/opt/astrotype-staging/alert-probes/child
+test "$(git -C "$CHECKOUT" rev-parse HEAD)" = "$TARGET_SHA"
+test -z "$(git -C "$CHECKOUT" status --porcelain)"
+compose() {
+  docker compose -p astrotype-staging --project-directory "$RELEASE_DIR" \
+    --env-file "$RELEASE_DIR/.env.staging" -f "$RELEASE_DIR/docker-compose.staging.yml" "$@"
+}
+compose config --quiet
+# Before build/up: privately compare rendered PostgreSQL/Redis/Prometheus volume
+# names with live inspect mounts, require existing approved bind sources and
+# correct private networks. See the identity guard in the operator procedures.
+compose build backend worker scheduler refinement-monitor frontend
+compose up -d --no-deps backend worker scheduler refinement-monitor frontend
+compose ps
+compose exec -T backend python -m alembic current
+for service in backend worker scheduler refinement-monitor; do
+  compose exec -T "$service" python -c 'from app.config import settings; print("child_enabled", settings.CHILD_REPORT_ENABLED)'
+done
 ```
 
 Use `.env.production`/`docker-compose.prod.yml` only in a separately approved production window after staging passes. Do not use the development Compose file on a public deployment. Record actual container image IDs and compare the running application source checksums with the approved commit; a requested SHA supplied to the smoke CLI is not deployed-SHA verification.
+
+Staging backend startup runs `alembic upgrade head` automatically before Uvicorn. Therefore `up backend` is a migration boundary: the application backup/restore and flag-off admission gates must precede it. Do not treat startup as read-only, and do not rerun a lost rollout response blindly. These are application rollout examples, not instructions to restart the unchanged application for an operator-tooling/docs-only update.
 
 ## Fixture acquisition and full staging exercise
 
@@ -80,6 +93,8 @@ Example entry shape (substitute real private opaque IDs, not literal placeholder
   --base-url https://staging.astrotype.ru \
   --manifest "$PRIVATE_DIR/child-enabled.json" \
   --sha "$TARGET_SHA" --phase enabled \
+  --gateway-user-env CHILD_GATEWAY_USER \
+  --gateway-password-env CHILD_GATEWAY_PASSWORD \
   --report "$PRIVATE_DIR/child-enabled-result.json"
 ```
 
@@ -118,6 +133,8 @@ The disabled manifest contains EXACTLY `flag_off_read` and `flag_off_write`. Rea
   --base-url https://staging.astrotype.ru \
   --manifest "$PRIVATE_DIR/child-disabled.json" \
   --sha "$TARGET_SHA" --phase disabled \
+  --gateway-user-env CHILD_GATEWAY_USER \
+  --gateway-password-env CHILD_GATEWAY_PASSWORD \
   --report "$PRIVATE_DIR/child-disabled-result.json"
 ```
 

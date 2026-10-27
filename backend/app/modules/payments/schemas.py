@@ -90,6 +90,7 @@ class BillingAccessResponse(BaseModel):
 
     account_tier: str
     access_state: str
+    child_enabled: bool = False
     accessible_products: list[str] = Field(default_factory=list)
     subscription: BillingSubscriptionSummary | None = None
     entitlements: list[BillingEntitlementSummary]

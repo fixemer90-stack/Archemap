@@ -224,6 +224,37 @@ async def test_billing_access_state_is_free_without_payments_or_entitlements() -
     assert state.entitlements == []
 
 
+def test_billing_access_response_defaults_child_availability_to_false() -> None:
+    state = BillingAccessResponse(account_tier="free", access_state="free", entitlements=[], latest_payment=None)
+
+    assert state.child_enabled is False
+    assert state.model_dump()["child_enabled"] is False
+
+
+@pytest.mark.parametrize("initial_enabled", [False, True])
+async def test_billing_access_child_availability_is_per_call_without_paid_access(
+    monkeypatch: pytest.MonkeyPatch, initial_enabled: bool
+) -> None:
+    db = _BillingStateDb([], [])
+    service = PaymentsService(db)  # type: ignore[arg-type]
+    user_id = uuid4()
+
+    for enabled in (initial_enabled, not initial_enabled, initial_enabled):
+        monkeypatch.setattr("app.config.settings.CHILD_REPORT_ENABLED", enabled)
+        db.results = [_ListScalarResult([]), _ListScalarResult([]), _ListScalarResult([])]
+
+        state = await service.get_billing_access_state(user_id=user_id)
+
+        assert state.child_enabled is enabled
+        assert state.model_dump()["child_enabled"] is enabled
+        assert state.account_tier == "free"
+        assert state.access_state == "free"
+        assert state.accessible_products == []
+        assert state.entitlements == []
+        assert state.subscription is None
+        assert state.latest_payment is None
+
+
 async def test_billing_access_state_reports_checkout_pending_from_latest_payment() -> None:
     payment = _payment_attempt("pending")
     service = PaymentsService(_BillingStateDb([payment], []))  # type: ignore[arg-type]

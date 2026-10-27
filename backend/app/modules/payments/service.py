@@ -11,6 +11,7 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.authorization.models import Entitlement
 from app.modules.authorization.service import AccountTierService, EntitlementsService
@@ -244,6 +245,7 @@ class PaymentsService:
         return BillingAccessResponse(
             account_tier=account_tier,
             access_state=access_state,
+            child_enabled=settings.CHILD_REPORT_ENABLED,
             accessible_products=sorted(accessible_products),
             subscription=(
                 BillingSubscriptionSummary(

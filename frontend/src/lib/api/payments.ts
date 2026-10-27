@@ -60,6 +60,7 @@ export type BillingAccessResponse = {
   account_tier: "free" | "plus" | string;
   access_state: BillingAccessState;
   accessible_products: string[];
+  child_enabled?: boolean;
   subscription: BillingSubscriptionSummary | null;
   entitlements: BillingEntitlementSummary[];
   latest_payment: BillingPaymentSummary | null;

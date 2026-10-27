@@ -81,7 +81,8 @@ export function Sidebar() {
     (state) => state.setMobileSidebarOpen,
   );
   const logout = useAuthStore((state) => state.logout);
-  const { access, isPlusActive, isLoadingAccess } = useBillingAccess();
+  const { access, isPlusActive, isLoadingAccess, isChildEnabled } =
+    useBillingAccess();
 
   useEffect(() => {
     setMobileSidebarOpen(false);
@@ -125,6 +126,7 @@ export function Sidebar() {
 
   const sharedPanelProps = {
     pathname,
+    isChildEnabled,
     isPlusActive,
     isLoadingAccess,
     activeUntil,
@@ -192,6 +194,7 @@ function SidebarPanel({
   mobile = false,
   isPlusActive,
   isLoadingAccess,
+  isChildEnabled,
   activeUntil,
   handleLogout,
 }: {
@@ -200,6 +203,7 @@ function SidebarPanel({
   mobile?: boolean;
   isPlusActive: boolean;
   isLoadingAccess: boolean;
+  isChildEnabled: boolean;
   activeUntil: string | null;
   handleLogout: () => void;
 }) {
@@ -308,7 +312,11 @@ function SidebarPanel({
           {productItems.map((item) => (
             <SidebarLink
               key={item.href}
-              item={item}
+              item={
+                item.href === "/products/child"
+                  ? { ...item, disabled: !isChildEnabled }
+                  : item
+              }
               active={pathname === item.href}
               labelClass={labelClass}
               itemAlignment={itemAlignment}

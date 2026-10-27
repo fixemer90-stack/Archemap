@@ -148,6 +148,7 @@ export default function DashboardPage() {
     isLoadingAccess,
     accessError,
     hasProductAccess,
+    isChildEnabled,
   } = useBillingAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -394,7 +395,16 @@ export default function DashboardPage() {
           </h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {products.map((product) => {
+          {products.map((configuredProduct) => {
+            const product =
+              configuredProduct.id === "child" && isChildEnabled
+                ? {
+                    ...configuredProduct,
+                    status: "available",
+                    description:
+                      "Как лучше понимать взаимодействие с ребёнком: поддержка, границы и действия с учётом возраста.",
+                  }
+                : configuredProduct;
             const isPlusLocked =
               product.accessClass === "plus_only" &&
               !hasProductAccess(product.id);

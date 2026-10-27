@@ -56,6 +56,7 @@ export function useBillingAccess() {
     access,
     isLoadingAccess,
     accessError,
+    isChildEnabled: access?.child_enabled === true,
     isPlusActive:
       access?.access_state === "plus_active" ||
       access?.access_state === "cancel_scheduled",

@@ -60,6 +60,9 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(surface.path, { waitUntil: "domcontentloaded" });
       await expect(page.locator("html")).toHaveClass(new RegExp(theme));
       await expect(page.locator(surface.ready).first()).toBeVisible();
+      await expect(
+        page.getByText("Проверяем сессию...", { exact: true }),
+      ).toHaveCount(0);
       if ("quickThemeSwitch" in surface && surface.quickThemeSwitch) {
         const quickThemeSwitch = page.locator('[data-theme-toggle="quick"]');
         await expect(quickThemeSwitch).toBeVisible();

@@ -58,6 +58,12 @@ Rollback проверен на этом exact runtime: три легитимны
 
 Независимый document-only audit `deleg_d9d6d989` нашёл шесть operator blockers. Исправлены dual-auth transport и read-only state helper; уточнены pinned Compose/migration boundary, acquisition/manifests, trigger recipes и backup SOP в [operator procedures](../../deployment/child-operator-procedures.md). Настоящий CLI через public HTTPS/Basic Auth + actor cookie прошёл все восемь enabled cases, включая C-owned resource после expiry; 21 таблица не изменилась во время CLI. Численные budgets/approval record и независимое полное исполнение runbook по-прежнему отсутствуют: эти checkbox не закрыты документацией или запуском автора. Новый helper также реально прочитал и сопоставил полный public application manifest; это read-only equality, не новая restore rehearsal. Private evidence: `/opt/astrotype-staging/evidence/6114db2cdbd2e5f64fec858c8133fd2b054c181a/`.
 
+## Исправление входа из кабинета — 2026-10-27
+
+Текущая runtime identity: API/frontend `562de0a979fcb39ca1e3f662300ce0614201a84b` (CI `40564647794`, 8/8 success); workers — прежний `06b72c0f06c6f50a1831d407ec1350eb2f9e7bf8`, alert infra — прежний `40f3fb1b4aca2f39a48553689feaca893c2ceb2c`. Исправлены жёстко disabled Child в sidebar и coming-soon карточка кабинета; доступность теперь берётся из backend billing metadata, отдельно от paid access. Предыдущие direct-link smoke этот дефект не покрывали.
+
+Реальный desktop/mobile sidebar click без API mocks подтвердил видимый активный Child, правильный Plus CTA и сохранённый 402 для synthetic actor без paid grant. Новый paid generation не выполнялся. Перезапущены только staging API/frontend из off-host built exact-SHA образов: 270 API source files сверены, все 66 public tables/schema сохранились, 17 остальных containers и production/accepted markers не изменились. Provider остаётся mock. Evidence и границы — [entrypoint remediation](../../reviews/2026-10-27/E22-Child-entrypoints.md); private artifacts — `/opt/astrotype-staging/evidence/562de0a979fcb39ca1e3f662300ce0614201a84b/`. Глобальные checkbox S16 выше остаются открытыми по прежним причинам.
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

@@ -2,7 +2,7 @@
 
 ## Статус
 
-✅ Завершено — независимо одобрено (`deleg_e6a8ff8b`), browser/runtime/quality gates зелёные. Опубликовано в main; source CI `39f43c3` / run `40177715171`: 7/7 jobs success. Production rollout не заявлен.
+✅ Завершено. Пользовательский вход исправлен и выложен на staging 2026-10-27: API/frontend source `562de0a979fcb39ca1e3f662300ce0614201a84b`, CI `40564647794` — 8/8 success. Native desktop/mobile sidebar click-through проверен без API mocks; 83 browser tests PASS / 1 existing skip. Доступность продукта отделена от paid entitlement: без него карточка показывает Plus CTA, Child API сохраняет 402. Предыдущие management/questionnaire проверки остаются доказанными. [Remediation/evidence](../../reviews/2026-10-27/E22-Child-entrypoints.md). Production rollout не заявлен.
 
 ## Контекст
 
@@ -34,6 +34,7 @@
 - [x] Draft изолирован между детьми.
 - [x] Keyboard/mobile/accessibility checks проходят.
 - [x] UI не вычисляет age/access/scores самостоятельно.
+- [x] При server-owned Child availability `true` раздел доступен из desktop/mobile меню и карточки кабинета; paid gate сохраняется, false/legacy/failed metadata не включают продукт.
 
 ## Verification
 

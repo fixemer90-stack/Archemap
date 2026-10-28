@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В процессе — native staging flow, rollback и автоматические Telegram firing/resolved подтверждены; полный runbook acceptance, budgets и production/canary gates остаются открытыми.
+🟡 В процессе — staging flow/rollback/alerts и production global release `8869103` подтверждены. Численные budgets отложены владельцем для этого релиза; полное независимое исполнение runbook и оставшаяся формальная приёмка не закрыты. Production выложен, но не выдаётся за процентный canary или новое real-provider generation evidence.
 
 ## Контекст
 
@@ -63,6 +63,14 @@ Rollback проверен на этом exact runtime: три легитимны
 Текущая runtime identity: API/frontend `562de0a979fcb39ca1e3f662300ce0614201a84b` (CI `40564647794`, 8/8 success); workers — прежний `06b72c0f06c6f50a1831d407ec1350eb2f9e7bf8`, alert infra — прежний `40f3fb1b4aca2f39a48553689feaca893c2ceb2c`. Исправлены жёстко disabled Child в sidebar и coming-soon карточка кабинета; доступность теперь берётся из backend billing metadata, отдельно от paid access. Предыдущие direct-link smoke этот дефект не покрывали.
 
 Реальный desktop/mobile sidebar click без API mocks подтвердил видимый активный Child, правильный Plus CTA и сохранённый 402 для synthetic actor без paid grant. Новый paid generation не выполнялся. Перезапущены только staging API/frontend из off-host built exact-SHA образов: 270 API source files сверены, все 66 public tables/schema сохранились, 17 остальных containers и production/accepted markers не изменились. Provider остаётся mock. Evidence и границы — [entrypoint remediation](../../reviews/2026-10-27/E22-Child-entrypoints.md); private artifacts — `/opt/astrotype-staging/evidence/562de0a979fcb39ca1e3f662300ce0614201a84b/`. Глобальные checkbox S16 выше остаются открытыми по прежним причинам.
+
+## Production global release — 2026-10-28
+
+Владелец явно разрешил production и отложил лимиты: «выкладывай, лимиты решим потом». Разрешение и исключение записаны до переключения. Source `886910321d1efcb189b8a2296dd5c947146e8b4f` прошёл CI `40568791382` (8/8), семь миграций применены до `a8b9c0d1e2f3`, Child включён во всех четырёх backend consumers. Свежий production backup 49 tables / 40 nonempty восстановлен в disposable DB и сопоставлен; 48 non-revision legacy tables сохранили данные в frozen migration window. Source identity 270 Python files проверена в каждом consumer, реальные DeepSeek/model и refinement settings сохранены, public health 200, original Caddy config восстановлен.
+
+Native desktop/mobile sidebar click без API mocks подтвердил production Child и canonical 402 для нового synthetic Free adult. Никаких paid grants/payments/Child records этой fixture и платных тестовых генераций не создавалось. Production имеет отдельные private collector/Prometheus/Alertmanager; real firing/resolved delivery завершил две отправки без ошибок, probe удалён. Семнадцать прочих containers и staging markers сохранились. `.deploy-sha`/`.deploy-release` записаны и прочитаны после smoke.
+
+Это global release по явному разрешению, не процентный canary и не исполнение всего runbook независимым новым оператором. Budgets остаются неизмеренными; checkbox выше не закрываются исключением. Подробные результаты, private evidence и новая operational Compose entrypoint: [production evidence](../../reviews/2026-10-28/E22-production-rollout.md).
 
 ## Зависимости
 

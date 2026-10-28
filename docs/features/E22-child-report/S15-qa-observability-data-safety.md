@@ -53,6 +53,10 @@ Alerting source `40f3fb1b4aca2f39a48553689feaca893c2ceb2c`, exact-SHA CI `402351
 
 Подробные opaque IDs, RED/GREEN, независимые reviews и границы acceptance: [staging remediation evidence](../../reviews/2026-10-25/E22-S15-staging-remediation.md). Production/canary не выполнялись; accepted staging marker не продвинут.
 
+## Production и отложенные budgets — 2026-10-28
+
+Production source `886910321d1efcb189b8a2296dd5c947146e8b4f` выложен после явного разрешения владельца и исключения «выкладывай, лимиты решим потом». Это не закрывает budget checkbox: численные p95/token/currency/stuck-job budgets не объявлены измеренными. Сохранён реальный DeepSeek, новых платных тестовых генераций не было. Fresh production backup/restore доказал equality 49 tables / 40 nonempty, frozen migration comparison сохранил данные всех 48 non-revision legacy tables. Отдельные production telemetry/alerts и native Telegram firing/resolved проверены, native Free browser gate сохранил 402. Полный release record и границы: [production evidence](../../reviews/2026-10-28/E22-production-rollout.md).
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

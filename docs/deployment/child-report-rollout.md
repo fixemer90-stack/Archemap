@@ -2,9 +2,15 @@
 
 ## Status and authority
 
-Local implementation/QA is not permission to deploy. Production/canary is NOT verified by this document. E22 remains open until S15 staging budgets and S16 live gates have real evidence and an operator approves the target/window. Never execute deployment, paid-provider calls, account changes or database maintenance from this runbook without authorization for that environment.
+Local implementation/QA is not permission to deploy. This template alone does not verify production/canary; executed proof belongs to the release-specific evidence record. E22 remains open until S15 staging budgets and S16 live gates have real evidence and an operator approves the target/window. Never execute deployment, paid-provider calls, account changes or database maintenance from this runbook without authorization for that environment.
 
 Use synthetic adult/child fixtures on staging. Do not put child names, DOBs, answers, prose, credentials or complete exports into tickets, CI artifacts or this repository. Private manifests contain opaque IDs; store them with mode `0600`, outside the checkout. Tokens belong in environment variables, not command arguments or JSON manifests. Export/download URLs are authenticated, never public shares.
+
+## Executed production release — 2026-10-28
+
+Production source `886910321d1efcb189b8a2296dd5c947146e8b4f` was explicitly authorized. The owner then deferred this release's numeric budget STOP with «выкладывай, лимиты решим потом». This is a recorded release-specific exception, not measured budgets, a percentage canary, paid-provider quality proof, or a blanket waiver for future rollouts. Backup/restore, exact revision/source, frozen legacy-data comparison, operational readiness and native access checks were retained and executed. Existing real DeepSeek was preserved; no new paid test generation was run.
+
+Active production release is selected by `/opt/astrotype/.deploy-release`, not by the old source directory. Use its pinned Compose files/overlays as documented in [production release evidence](../reviews/2026-10-28/E22-production-rollout.md). The deployment marker was advanced only after readback and native desktop/mobile smoke. S15/S16 remaining acceptance work stays open; the normal preconditions below still apply unless a future owner decision explicitly changes them.
 
 ## Preconditions
 

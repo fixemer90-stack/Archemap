@@ -2,9 +2,11 @@
 
 ## Статус
 
-🟡 В работе — S01–S14 завершены, опубликованы и проверены CI. S15–S16: native staging flow, application backup/restore, collector/scrape, rollback и автоматические Telegram firing/resolved подтверждены. Полные budgets, оставшиеся runbook scenarios и production/canary gates остаются открытыми. Accepted staging marker не продвинут.
+🟡 В работе — S01–S14 опубликованы и проверены функционально/CI, но открыт P1 BUG-50 по содержательному качеству narrative. Production global release `8869103` выполнен с явным owner-исключением для отложенных budgets; отсутствие production permission не является блокером. S15–S16 остаются открытыми для количественных budgets/window и полного независимого operator-run. Native staging flow, backup/restore, collector/scrape, rollback и staging/production Telegram firing/resolved подтверждены; это не доказательство полезности текста. Accepted staging marker не продвинут; production marker продвинут после runtime proof.
 
 ## Цель
+
+> Открытый P1: [BUG-50 — содержательное качество Child](../../reviews/2026-10-28/BUG-50-child-content-quality.md). Выявлены повторяющиеся общие пояснения и потеря тематических фактов при техническом `ready`. Исторические функциональные проверки не закрывают этот дефект; исправление и проверка затронутого production-артефакта в работе.
 
 Создать вспомогательный отчёт для взрослого caregiver, который объясняет взаимодействие конкретной пары `родитель ↔ ребёнок` и предлагает возрастно-уместные действия взрослого. Отчёт не описывает ребёнка как фиксированную личность, не предсказывает его судьбу и не заменяет медицинскую, психологическую или педагогическую помощь.
 
@@ -154,12 +156,12 @@ Child Report помогает взрослому понять:
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ✅ Завершено |
 | S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ✅ Завершено |
 | S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ✅ Завершено |
-| S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ✅ Завершено |
-| S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ✅ Завершено |
+| S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | 🟡 BUG-50    |
+| S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | 🟡 BUG-50    |
 | S11 | [Async generation lifecycle](./S11-async-generation-lifecycle.md)                             | ✅ Завершено |
 | S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | ✅ Завершено |
 | S13 | [Child management и questionnaire UX](./S13-child-management-questionnaire-ux.md)             | ✅ Завершено |
-| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | ✅ Завершено |
+| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | 🟡 BUG-50    |
 | S15 | [QA, observability и data safety](./S15-qa-observability-data-safety.md)                      | 🟡 В работе  |
 | S16 | [Rollout runbook и live evidence](./S16-rollout-runbook-live-evidence.md)                     | 🟡 В работе  |
 

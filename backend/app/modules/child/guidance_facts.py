@@ -27,6 +27,7 @@ from app.modules.child.repository import ChildLineageMismatchError, ChildReposit
 from app.modules.child.scoring.types import InteractionDimension
 
 GUIDANCE_FACTS_CONTRACT_VERSION: Final = "child-guidance-facts-v1"
+CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION: Final = "child-guidance-facts-v2"
 LOW_CONFIDENCE_THRESHOLD: Final = 0.5
 _STRONG_MATCH_THRESHOLD: Final = 65.0
 _FRICTION_THRESHOLD: Final = 35.0
@@ -55,6 +56,16 @@ class GuidanceInteractionScore:
 
 
 @dataclass(frozen=True, slots=True)
+class GuidanceProfileScore:
+    source_kind: str
+    dimension: str
+    score: float
+    confidence: float
+    scoring_version: str
+    evidence_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ChildGuidanceFacts:
     contract_version: str
     parent_profile_id: UUID
@@ -72,9 +83,15 @@ class ChildGuidanceFacts:
     confidence_markers: tuple[Mapping[str, Any], ...]
     evidence_registry: Mapping[str, Mapping[str, Any]]
     input_hash: str
+    source_profiles: tuple[Mapping[str, Any], ...] = ()
 
     def to_payload(self) -> dict[str, Any]:
         return {
+            **(
+                {"source_profiles": _thaw(self.source_profiles)}
+                if self.contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+                else {}
+            ),
             "contract_version": self.contract_version,
             "parent_profile_id": str(self.parent_profile_id),
             "child_id": str(self.child_id),
@@ -158,10 +175,43 @@ def build_guidance_facts(
     age_snapshot: ResolverAgeSnapshot,
     resolution: ContextResolution,
     interaction_scores: tuple[GuidanceInteractionScore, ...],
+    profile_scores: tuple[GuidanceProfileScore, ...] = (),
+    contract_version: str = GUIDANCE_FACTS_CONTRACT_VERSION,
 ) -> ChildGuidanceFacts:
     """Build the only bounded content contract allowed into Child Report prompts."""
 
     context_reference = f"context_resolution:{resolution.input_hash}"
+    if contract_version not in {GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION}:
+        raise ValueError("Unsupported Guidance Facts contract")
+    if profile_scores and contract_version == GUIDANCE_FACTS_CONTRACT_VERSION:
+        raise ValueError("Source profiles require the current content contract")
+    if contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+        profile_scores = (
+            *profile_scores,
+            *(
+                GuidanceProfileScore(
+                    "interaction",
+                    score.dimension,
+                    score.score,
+                    score.confidence,
+                    score.scoring_version,
+                    score.evidence_refs,
+                )
+                for score in interaction_scores
+            ),
+        )
+    source_profiles: tuple[dict[str, Any], ...] = tuple(
+        {
+            "id": f"profile:{score.source_kind}:{score.dimension}",
+            "source_kind": score.source_kind,
+            "dimension": score.dimension,
+            "score": score.score,
+            "confidence": score.confidence,
+            "scoring_version": score.scoring_version,
+            "evidence_refs": list(score.evidence_refs),
+        }
+        for score in sorted(profile_scores, key=lambda item: (item.source_kind, item.dimension))
+    )
     strong_matches = tuple(
         _score_fact(score, prefix="strong_match")
         for score in sorted(interaction_scores, key=lambda item: item.dimension)
@@ -172,7 +222,11 @@ def build_guidance_facts(
         for score in sorted(interaction_scores, key=lambda item: item.dimension)
         if score.confidence >= MIN_SCORE_CONFIDENCE and score.score <= _FRICTION_THRESHOLD
     )
-    parent_strengths = tuple(_entry_fact(entry, prefix="parent_strength") for entry in resolution.natural_strengths)
+    parent_strengths = (
+        tuple(_entry_fact(entry, prefix="parent_strength") for entry in resolution.natural_strengths)
+        if contract_version == GUIDANCE_FACTS_CONTRACT_VERSION
+        else ()  # v2 parent resources are primary parent-style source profiles, not pair matches.
+    )
     compensation_areas = tuple(_entry_fact(entry, prefix="compensation") for entry in resolution.compensation_areas)
     actionable_entries = (
         *resolution.natural_strengths,
@@ -198,6 +252,7 @@ def build_guidance_facts(
         for entry in resolution.potential_friction
     )
     serialized_facts = (
+        *source_profiles,
         *strong_matches,
         *friction_points,
         *parent_strengths,
@@ -244,6 +299,16 @@ def build_guidance_facts(
                 "resolver_entry_ids": [],
                 "reason_codes": [],
             }
+    for fact in source_profiles:
+        if fact["source_kind"] == "interaction":
+            continue  # The original authoritative interaction registry entry owns this score.
+        for reference in fact["evidence_refs"]:
+            if reference in evidence_registry:
+                raise ValueError("Source profile evidence must have unique semantic ownership")
+            evidence_registry[reference] = {
+                "source_type": "source_profile",
+                **{key: fact[key] for key in ("source_kind", "dimension", "score", "confidence", "scoring_version")},
+            }
     for entry in resolution.all_entries():
         for reference in entry.source_refs or (context_reference,):
             metadata = evidence_registry.setdefault(
@@ -264,7 +329,12 @@ def build_guidance_facts(
             reason_codes.sort()
 
     unhashed_payload: dict[str, Any] = {
-        "contract_version": GUIDANCE_FACTS_CONTRACT_VERSION,
+        **(
+            {"source_profiles": list(source_profiles)}
+            if contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+            else {}
+        ),
+        "contract_version": contract_version,
         "parent_profile_id": str(parent_profile_id),
         "child_id": str(child_id),
         "core_report_version": core_report_version,
@@ -285,11 +355,11 @@ def build_guidance_facts(
     input_hash = _canonical_hash(unhashed_payload)
     evidence_registry[f"guidance_contract:{input_hash}"] = {
         "source_type": "guidance_contract",
-        "contract_version": GUIDANCE_FACTS_CONTRACT_VERSION,
+        "contract_version": contract_version,
         "input_hash": input_hash,
     }
     return ChildGuidanceFacts(
-        contract_version=GUIDANCE_FACTS_CONTRACT_VERSION,
+        contract_version=contract_version,
         parent_profile_id=parent_profile_id,
         child_id=child_id,
         generation_id=generation_id,
@@ -305,6 +375,7 @@ def build_guidance_facts(
         confidence_markers=cast(tuple[Mapping[str, Any], ...], _freeze(confidence_markers)),
         evidence_registry=cast(Mapping[str, Mapping[str, Any]], _freeze(evidence_registry)),
         input_hash=input_hash,
+        source_profiles=cast(tuple[Mapping[str, Any], ...], _freeze(source_profiles)),
     )
 
 
@@ -388,6 +459,7 @@ class ChildGuidanceFactsRepository:
             confidence_markers=cast(tuple[Mapping[str, Any], ...], _freeze(payload["confidence_markers"])),
             evidence_registry=cast(Mapping[str, Mapping[str, Any]], _freeze(registry)),
             input_hash=str(contract_metadata["input_hash"]),
+            source_profiles=cast(tuple[Mapping[str, Any], ...], _freeze(payload.get("source_profiles", []))),
         )
 
     async def create_or_load(
@@ -400,8 +472,23 @@ class ChildGuidanceFactsRepository:
     ) -> GuidanceFactsCreateResult:
         await self.session.execute(
             text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
-            {"key": f"child-guidance:{child_profile_id}:{generation_id}:{GUIDANCE_FACTS_CONTRACT_VERSION}"},
+            {"key": f"child-guidance:{child_profile_id}:{generation_id}"},
         )
+        # A generation has one immutable content policy. Repairs require a new
+        # full-report generation, never an implicit reinterpretation of v1.
+        stored_versions = (
+            await self.session.scalars(
+                select(models.ChildGuidanceFacts.contract_version).where(
+                    models.ChildGuidanceFacts.generation_id == generation_id,
+                    models.ChildGuidanceFacts.child_profile_id == child_profile_id,
+                )
+            )
+        ).all()
+        if len(stored_versions) > 1:
+            raise ChildLineageMismatchError("Guidance Facts version lineage is ambiguous")
+        contract_version = stored_versions[0] if stored_versions else CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+        if contract_version not in {GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION}:
+            raise ChildLineageMismatchError("Unsupported persisted Guidance Facts version")
         resolution_row = await ChildContextResolutionRepository(self.session).load(
             owner_user_id=owner_user_id,
             child_profile_id=child_profile_id,
@@ -464,6 +551,34 @@ class ChildGuidanceFactsRepository:
             )
             for row in score_rows
         )
+        profile_scores: list[GuidanceProfileScore] = []
+        if contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+            repository = ChildRepository(self.session)
+            parent = await repository.load_parent_style_profile(
+                owner_user_id=owner_user_id,
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+            )
+            needs = await repository.load_child_need_profile(
+                owner_user_id=owner_user_id,
+                child_profile_id=child_profile_id,
+                generation_id=generation_id,
+            )
+            for kind, prefix, rows in (
+                ("parent_style", "child_parent_style_scores", parent.scores),
+                ("child_needs", "child_need_scores", needs.scores),
+            ):
+                profile_scores.extend(
+                    GuidanceProfileScore(
+                        source_kind=kind,
+                        dimension=row.dimension,
+                        score=float(row.score),
+                        confidence=float(row.confidence),
+                        scoring_version=row.scoring_version,
+                        evidence_refs=(f"{prefix}:{row.id}:{row.scoring_version}",),
+                    )
+                    for row in rows
+                )
         facts = build_guidance_facts(
             parent_profile_id=child.parent_profile_id,
             child_id=child_profile_id,
@@ -472,6 +587,8 @@ class ChildGuidanceFactsRepository:
             age_snapshot=age_snapshot,
             resolution=resolution,
             interaction_scores=scores,
+            profile_scores=tuple(profile_scores),
+            contract_version=contract_version,
         )
         from app.modules.child.quality import validate_guidance_facts
 
@@ -482,7 +599,7 @@ class ChildGuidanceFactsRepository:
             select(models.ChildGuidanceFacts)
             .where(
                 models.ChildGuidanceFacts.generation_id == generation_id,
-                models.ChildGuidanceFacts.contract_version == GUIDANCE_FACTS_CONTRACT_VERSION,
+                models.ChildGuidanceFacts.contract_version == contract_version,
             )
             .with_for_update(read=True)
             .execution_options(populate_existing=True)
@@ -502,7 +619,7 @@ class ChildGuidanceFactsRepository:
             child_profile_id=child_profile_id,
             generation_id=generation_id,
             age_snapshot_id=age.id,
-            contract_version=GUIDANCE_FACTS_CONTRACT_VERSION,
+            contract_version=contract_version,
             core_report_version=core_report_version,
             payload=full_payload,
             evidence_registry=evidence_registry,

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.child import models
 from app.modules.child.age_resolver import AgeStage
-from app.modules.child.assembly import assemble_child_report_payload
+from app.modules.child.assembly import assemble_child_report_payload, assess_child_report_quality
 from app.modules.child.context_resolver import _AGE_ACTIONS
 from app.modules.child.guidance_facts import ChildGuidanceFacts, ChildGuidanceFactsRepository
 from app.modules.child.narrative import _ACTION_TEXT, ChildNarrativeValidationError, build_child_section_inputs
@@ -105,6 +105,12 @@ def compose_child_report_presentation(
         "title": "Как поддерживать контакт с ребёнком",
         "introduction": INTRODUCTION,
         "status": generation_status,
+        "quality": assess_child_report_quality(
+            sections=assembled["sections"],
+            omitted_sections=assembled["omitted_sections"],
+            failed_sections=assembled["failed_sections"],
+            missing_sections=assembled["missing_sections"],
+        ),
         "metadata": {
             "report_id": str(report.id),
             "child_id": str(facts.child_id),
@@ -128,6 +134,19 @@ def compose_child_report_presentation(
         "technical_basis": {
             "note": "Сохранённые расчёты и наблюдения помогают проверить основания рекомендаций.",
             "confidence_markers": [dict(item) for item in facts.confidence_markers],
+            **(
+                {
+                    "source_indicators": [
+                        {
+                            key: item[key]
+                            for key in ("source_kind", "dimension", "score", "confidence", "scoring_version")
+                        }
+                        for item in facts.source_profiles
+                    ]
+                }
+                if facts.source_profiles
+                else {}
+            ),
         },
     }
 

@@ -28,10 +28,24 @@ async def test_persisted_child_presentation_keeps_ready_report_and_rejects_unlin
     await db_session.commit()
     result = await run_claimed_full_generation(db_session, claim=claim, provider=CountingProvider(), now=NOW)
     assert result.report_id is not None
+    report = await db_session.get(models.ChildReport, result.report_id)
+    assert report is not None and report.prompt_version == "child-section-prompt-v2"
+    facts_row = await db_session.scalar(
+        select(models.ChildGuidanceFacts).where(
+            models.ChildGuidanceFacts.generation_id == generation.generation_id,
+        )
+    )
+    assert facts_row is not None and facts_row.contract_version == "child-guidance-facts-v2"
+    assert len(facts_row.payload["source_profiles"]) == 26
     manifest = await build_child_report_presentation(
         db_session, owner_user_id=seed.owner_id, report_id=result.report_id
     )
     assert manifest["status"] == "ready"
+    assert manifest["quality"]["status"] in {"ready", "limited"}
+    by_key = {item["key"]: item for item in manifest["sections"]}
+    assert "стиля взрослого" in by_key["parent_style"]["body"]
+    assert "возможных потребностей" in by_key["child_interaction_needs"]["body"]
+    assert "похвала и признание" in by_key["praise_recognition"]["body"]
     core_age_id = manifest["metadata"]["age_snapshot_id"]
     assert manifest["age"]["age_snapshot_id"] == core_age_id
     assert len(manifest["sections"]) == 15

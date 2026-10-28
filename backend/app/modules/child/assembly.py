@@ -9,9 +9,8 @@ from uuid import UUID
 from pydantic import ValidationError
 
 from app.modules.child import models
-from app.modules.child.guidance_facts import ChildGuidanceFacts
+from app.modules.child.guidance_facts import CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION, ChildGuidanceFacts
 from app.modules.child.narrative import (
-    CHILD_PROMPT_VERSION,
     ChildNarrativeValidationError,
     ChildSegmentOutput,
     _error_type_is_valid,
@@ -20,6 +19,7 @@ from app.modules.child.narrative import (
     _section_fact_id_map,
     _stable_hash,
     build_child_section_inputs,
+    prompt_version_for_input,
     validate_segment_output,
 )
 from app.modules.child.prompts.v1 import SECTION_METADATA, build_child_section_prompt
@@ -35,7 +35,8 @@ def _verify_generation_metadata(
         raise ChildNarrativeValidationError("segment diagnostics are invalid")
     provider = diagnostics.get("provider")
     model = diagnostics.get("model")
-    if row.prompt_version != CHILD_PROMPT_VERSION or diagnostics.get("prompt_version") != CHILD_PROMPT_VERSION:
+    expected_version = prompt_version_for_input(section_input)
+    if row.prompt_version != expected_version or diagnostics.get("prompt_version") != expected_version:
         raise ChildNarrativeValidationError("segment prompt version mismatch")
     if not _provider_name_is_valid(provider):
         raise ChildNarrativeValidationError("segment provider metadata is missing")
@@ -50,6 +51,45 @@ def _verify_generation_metadata(
     if diagnostics.get("prompt_hash") != expected_prompt_hash:
         raise ChildNarrativeValidationError("segment prompt hash mismatch")
     return {"provider": provider, "model": model, "prompt_version": row.prompt_version}
+
+
+def assess_child_report_quality(
+    *,
+    sections: Sequence[Mapping[str, Any]],
+    omitted_sections: Sequence[str],
+    failed_sections: Sequence[str],
+    missing_sections: Sequence[str],
+) -> dict[str, Any]:
+    """Product coverage and exact semantic-rendering reuse, independent of job completion.
+
+    This does not claim to detect every paraphrase. Repeated approved claims or
+    bodies across sections are actionable duplication without a length heuristic.
+    """
+    owners: dict[str, set[str]] = {}
+    for section in sections:
+        key = str(section["section_key"])
+        texts = [
+            str(section["body"]),
+            *[str(claim["text"]) for claim in section.get("claims", ()) if isinstance(claim, Mapping)],
+        ]
+        for text in texts:
+            normalized = " ".join(text.casefold().replace("\u0451", "\u0435").split())
+            if normalized:
+                owners.setdefault(normalized, set()).add(key)
+    repeated = set().union(*(keys for keys in owners.values() if len(keys) > 1))
+    reasons = []
+    if omitted_sections:
+        reasons.append("insufficient_section_evidence")
+    if repeated:
+        reasons.append("repeated_section_content")
+    if failed_sections or missing_sections:
+        reasons.append("incomplete_narrative")
+    return {
+        "status": "limited" if reasons else "ready",
+        "reason_codes": reasons,
+        "omitted_sections": list(omitted_sections),
+        "repeated_sections": [key for key in SECTION_METADATA if key in repeated],
+    }
 
 
 def assemble_child_report_payload(
@@ -160,14 +200,27 @@ def assemble_child_report_payload(
         section_generations.append({"section_key": section_key, "status": "ready", **metadata})
 
     status = "ready" if not failed_sections and not missing_sections else "partial"
+    current = guidance_facts.contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
     return {
-        "contract_version": "child_report_narrative_v1",
+        **(
+            {
+                "quality": assess_child_report_quality(
+                    sections=sections,
+                    omitted_sections=omitted_sections,
+                    failed_sections=failed_sections,
+                    missing_sections=missing_sections,
+                )
+            }
+            if current
+            else {}
+        ),
+        "contract_version": "child_report_narrative_v2" if current else "child_report_narrative_v1",
         "generation_id": str(output_generation_id),
         "source_generation_id": str(guidance_facts.generation_id),
         "child_id": str(guidance_facts.child_id),
         "age_snapshot_id": str(guidance_facts.age_snapshot_id),
         "core_report_version": guidance_facts.core_report_version,
-        "prompt_version": CHILD_PROMPT_VERSION,
+        "prompt_version": prompt_version_for_input(next(iter(input_by_key.values()))),
         "status": status,
         "section_order": list(SECTION_METADATA),
         "sections": sections,

@@ -11,7 +11,13 @@ from typing import Any, Final
 
 from app.modules.child.contracts import CHILD_SAFETY_CONTRACT
 from app.modules.child.guidance_facts import LOW_CONFIDENCE_THRESHOLD, ChildGuidanceFacts
-from app.modules.child.quality import SECTION_CONTRACTS, SectionContract, validate_guidance_facts
+from app.modules.child.quality import (
+    SectionContract,
+    fact_families,
+    fact_matches_section,
+    section_contracts,
+    validate_guidance_facts,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,7 +271,7 @@ _SUPPORTED_SAFETY_MARKERS: Final = frozenset({"adult_action_framing", "evidence_
 
 def _fact_index(payload: Mapping[str, Any]) -> dict[str, tuple[str, Mapping[str, Any]]]:
     index: dict[str, tuple[str, Mapping[str, Any]]] = {}
-    for family in _FACT_FAMILIES:
+    for family in fact_families(str(payload.get("contract_version"))):
         rows = payload.get(family)
         if not isinstance(rows, list):
             continue
@@ -303,7 +309,7 @@ def validate_child_narrative(
     if age_stage in _UNDER_TWELVE_STAGES and any(pattern.search(normalized) for pattern in _AGE_UNSAFE_PATTERNS):
         categories.append("age_inappropriate_advice")
 
-    contract = SECTION_CONTRACTS.get(candidate.section_key)
+    contract = section_contracts(guidance_facts.contract_version).get(candidate.section_key)
     referenced: list[tuple[str, Mapping[str, Any]]] = []
     if contract is None:
         categories.append("unknown_section")
@@ -327,12 +333,25 @@ def validate_child_narrative(
             or resolved[0] not in (contract.owned_fact_families | contract.reference_fact_families)
             or (
                 resolved[0] in contract.owned_fact_families
-                and not _matches_section_topic(resolved[1], contract=contract)
+                and not fact_matches_section(
+                    resolved[1],
+                    section_key=candidate.section_key,
+                    version=guidance_facts.contract_version,
+                    contract=contract,
+                    family=resolved[0],
+                )
             )
         ):
             categories.append("section_fact_ownership")
     if contract is not None and not any(
-        family in contract.owned_fact_families and _matches_section_topic(fact, contract=contract)
+        family in contract.owned_fact_families
+        and fact_matches_section(
+            fact,
+            section_key=candidate.section_key,
+            version=guidance_facts.contract_version,
+            contract=contract,
+            family=family,
+        )
         for family, fact in referenced
     ):
         categories.append("section_fact_ownership")

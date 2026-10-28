@@ -17,13 +17,13 @@ from app.modules.child import models
 from app.modules.child.assembly import assemble_child_report_payload
 from app.modules.child.guidance_facts import ChildGuidanceFactsRepository
 from app.modules.child.narrative import (
-    CHILD_PROMPT_VERSION,
     ChildSegmentProvider,
     DisabledChildSegmentProvider,
     MockChildSegmentProvider,
     StructuredChildSegmentProviderAdapter,
     build_child_section_inputs,
     build_child_segment_intent,
+    prompt_version_for_input,
     run_child_segment_generation,
 )
 from app.modules.child.prompts.v1 import SECTION_METADATA
@@ -625,7 +625,7 @@ async def run_claimed_full_generation(
                 scoring_version=INTERACTION_SCORING_VERSION,
                 reference_version=INTERACTION_REFERENCE_VERSION,
                 questionnaire_version=questionnaire.questionnaire_version,
-                prompt_version=CHILD_PROMPT_VERSION,
+                prompt_version=prompt_version_for_input(build_child_section_inputs(guidance_facts)[0]),
                 report_payload=_deterministic_report_payload(
                     generation=generation,
                     guidance_facts=guidance_facts,

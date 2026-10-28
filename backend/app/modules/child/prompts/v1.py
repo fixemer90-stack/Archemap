@@ -31,6 +31,14 @@ SECTION_METADATA: Final[dict[str, tuple[str, str]]] = {
 def build_child_section_prompt(section_input: ChildSectionRenderInput) -> str:
     """Build one bounded prompt without raw chart, answers, or PII."""
 
+    if section_input.contract_version == "child_section_render_input_v2":
+        from app.modules.child.prompts.v2 import build_child_section_prompt_v2
+
+        return build_child_section_prompt_v2(section_input)
+    return _build_legacy_section_prompt(section_input)
+
+
+def _build_legacy_section_prompt(section_input: ChildSectionRenderInput) -> str:
     payload = json.dumps(section_input.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
     return f"""Write one Child Report section in Russian.
 Use only the owned_facts and bounded reference_facts in the provided JSON.

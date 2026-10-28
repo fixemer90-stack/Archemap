@@ -14,13 +14,18 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.modules.child import models
-from app.modules.child.guidance_facts import LOW_CONFIDENCE_THRESHOLD, ChildGuidanceFacts
+from app.modules.child.guidance_facts import (
+    CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
+    LOW_CONFIDENCE_THRESHOLD,
+    ChildGuidanceFacts,
+)
 from app.modules.child.prompts.v1 import SECTION_METADATA, build_child_section_prompt
-from app.modules.child.quality import SECTION_CONTRACTS, SectionContract, guidance_prompt_content
+from app.modules.child.quality import fact_matches_section, guidance_prompt_content, section_contracts
 from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandidate, validate_child_narrative
 from app.modules.llm.exceptions import LLMTimeoutError
 
 CHILD_PROMPT_VERSION: Final = "child-section-prompt-v1"
+CURRENT_CHILD_PROMPT_VERSION: Final = "child-section-prompt-v2"
 CHILD_SECTION_INPUT_VERSION: Final = "child_section_render_input_v1"
 CHILD_SEGMENT_OUTPUT_VERSION: Final = "child_segment_output_v1"
 _DIMENSION_LABELS: Final = {
@@ -82,6 +87,14 @@ _MODEL_REFERENCE_PATTERN: Final = re.compile(r"model-sha256:[0-9a-f]{64}")
 _ERROR_TYPES: Final = frozenset({"validation_error", "provider_error"})
 
 
+def prompt_version_for_input(section_input: ChildSectionRenderInput) -> str:
+    return (
+        CURRENT_CHILD_PROMPT_VERSION
+        if section_input.contract_version == "child_section_render_input_v2"
+        else CHILD_PROMPT_VERSION
+    )
+
+
 def _provider_name_is_valid(value: object) -> bool:
     return type(value) is str and value in _ALLOWED_PROVIDER_NAMES
 
@@ -118,7 +131,7 @@ class ChildSectionFact(BaseModel):
 class ChildSectionRenderInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: Literal["child_section_render_input_v1"]
+    contract_version: Literal["child_section_render_input_v1", "child_section_render_input_v2"]
     section_key: str
     section_title: str
     section_purpose: str
@@ -240,10 +253,10 @@ class MockChildSegmentProvider:
         ).model_dump(mode="json")
 
 
-def _matches_owned_scope(fact: Mapping[str, Any], *, contract: SectionContract) -> bool:
-    if not contract.owned_topics and not contract.owned_dimensions:
-        return True
-    return fact.get("topic") in contract.owned_topics or fact.get("dimension") in contract.owned_dimensions
+def _ordered_families(families: frozenset[str], *, version: str) -> tuple[str, ...]:
+    # v2 introduces multi-family sections: set iteration would change local IDs
+    # and persisted prompt/input hashes across worker interpreter restarts.
+    return tuple(sorted(families)) if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else tuple(families)
 
 
 def _approved_text(family: str, fact: Mapping[str, Any]) -> str:
@@ -261,12 +274,256 @@ def _approved_text(family: str, fact: Mapping[str, Any]) -> str:
     return f"{prefix} {action}."
 
 
-def _section_fact(*, local_id: str, family: str, fact: Mapping[str, Any]) -> ChildSectionFact:
+_PROFILE_LABELS = {
+    "emotional_responsiveness": "эмоциональная отзывчивость взрослого",
+    "structure": "структура, предлагаемая взрослым",
+    "control_tendency": "контроль со стороны взрослого",
+    "flexibility": "гибкость взрослого",
+    "communication_style": "стиль объяснения взрослого",
+    "protection": "защита и поддержка взрослого",
+    "autonomy_support": "поддержка самостоятельности взрослым",
+    "consistency": "последовательность взрослого",
+    "reassurance": "поддержка и ободрение",
+    "predictability": "предсказуемость",
+    "autonomy": "самостоятельность",
+    "verbal_explanation": "словесные объяснения",
+    "physical_sensory_calm": "спокойная сенсорная обстановка",
+    "exploration": "исследование нового",
+    "recognition": "похвала и признание усилий",
+    "personal_space": "личное пространство",
+    "transition_time": "время на переходы",
+    "variety": "разнообразие",
+}
+
+
+_PROFILE_SCALE_CONTEXT = {
+    # Russian renderings of the pinned scale poles, not new recommendations.
+    "emotional_responsiveness": (
+        "Шкала сопоставляет сдержанный отклик взрослого и более быстрый эмоциональный отклик с ободрением."
+    ),
+    "structure": (
+        "Шкала идёт от более свободной организации к явно заданному распорядку и правилам; "
+        "высокий показатель не означает лучшего воспитания."
+    ),
+    "control_tendency": (
+        "Шкала различает менее директивное участие и стремление взрослого удерживать управление; "
+        "ни один полюс не является оценкой качества родительства."
+    ),
+    "flexibility": "Шкала сопоставляет приверженность плану и адаптацию взрослого к изменению темпа и обстоятельств.",
+    "communication_style": (
+        "Шкала различает краткое объяснение через действие и более подробный словесный диалог взрослого."
+    ),
+    "protection": "Шкала сопоставляет наблюдение с дистанции и готовность взрослого активно защищать и вмешиваться.",
+    "autonomy_support": (
+        "Шкала различает близкое сопровождение взрослого и предоставление выбора с поддержкой самостоятельных попыток."
+    ),
+    "consistency": (
+        "Шкала сопоставляет изменяющийся по обстоятельствам отклик взрослого "
+        "и более повторяемый, устойчивый порядок действий."
+    ),
+    "reassurance": (
+        "Шкала различает спокойную доступность взрослого и более частое явное эмоциональное ободрение в контакте."
+    ),
+    "predictability": (
+        "Шкала сопоставляет спонтанный ход общения и устойчивый распорядок с заранее понятными ожиданиями."
+    ),
+    "autonomy": (
+        "Шкала различает совместные решения с близкой помощью взрослого и значимый выбор с самостоятельными попытками."
+    ),
+    "verbal_explanation": (
+        "Шкала сопоставляет короткие подсказки и показ на примере с подробным объяснением и диалогом."
+    ),
+    "physical_sensory_calm": (
+        "Шкала различает более интенсивную стимуляцию и контакт в спокойной обстановке с меньшей сенсорной нагрузкой."
+    ),
+    "exploration": "Шкала сопоставляет знакомый путь с сопровождением и пространство для исследования и проб.",
+    "recognition": (
+        "Шкала различает меньшую потребность в явной обратной связи и ясное признание усилий и вклада; "
+        "это не мера способностей и не требование заслуживать одобрение."
+    ),
+    "personal_space": (
+        "Шкала сопоставляет непрерывное совместное участие и защищённое личное пространство для восстановления."
+    ),
+    "transition_time": "Шкала различает быстрые переключения и постепенные переходы с предварительным предупреждением.",
+    "variety": "Шкала сопоставляет повторение в устойчивом ритме и разнообразие занятий и подходов.",
+}
+
+
+def _profile_text(fact: Mapping[str, Any], *, section_key: str) -> str:
+    kind = str(fact["source_kind"])
+    dimension = str(fact["dimension"])
+    label = _DIMENSION_LABELS[dimension] if kind == "interaction" else _PROFILE_LABELS[dimension]
+    source = {
+        "parent_style": "стиля взрослого",
+        "child_needs": "возможных потребностей в контакте",
+        "interaction": "взаимодействия",
+    }[kind]
+    score, confidence = float(fact["score"]), float(fact["confidence"])
+    if section_key == "parent_strengths":
+        return (
+            f"Возможно, взрослый может проверить как ресурс собственную сторону взаимодействия: {label}. "
+            "Расчёт стиля взрослого выделяет эту сторону, но не доказывает, что она помогает конкретному ребёнку. "
+            f"{_PROFILE_SCALE_CONTEXT[dimension]} "
+            "Опору имеет смысл считать рабочей только после сопоставления с реальным контактом, а не по одному расчёту."
+        )
+    uncertainty = (
+        "Оснований для направленного вывода недостаточно."
+        if confidence < 0.4
+        else "Расчёт находится между полюсами шкалы и не даёт оснований выбрать один способ как устойчиво подходящий."
+        if 35 < score < 65
+        else "Это расчётная гипотеза, а не подтверждённое наблюдение."
+    )
+    scale_context = _PROFILE_SCALE_CONTEXT.get(dimension, "") if kind != "interaction" else ""
+    if confidence >= 0.4 and not 35 < score < 65:
+        pole = "второй" if score >= 65 else "первый"
+        uncertainty = f"В расчётной модели заметнее {pole} полюс; это гипотеза для проверки, не наблюдаемый факт."
+    return (
+        f"Возможно, взрослый может использовать расчёт {source} как вопрос для наблюдения: {label}. "
+        f"{scale_context} {uncertainty} "
+        "Это не оценка способностей и не фиксированная черта ребёнка; сопоставляйте гипотезу с повседневным контактом."
+    )
+
+
+_TOPIC_CONTEXT = {
+    "soothing": "поддержки и успокоения",
+    "boundaries": "границ и правил",
+    "communication": "объяснений взрослого",
+    "transitions": "смены занятий и темпа переходов",
+    "autonomy": "помощи и самостоятельности",
+    "current_age": "текущего возрастного этапа",
+}
+_REASON_CONTEXT = {
+    "selected_observation_missing": "Для этой темы нет выбранного наблюдения; вывод пока делать нельзя.",
+    "observed_context_is_variable": "Наблюдения зависят от обстоятельств; один эпизод нельзя считать правилом.",
+    "evidence_not_directionally_conclusive": (
+        "Расчёт и наблюдение не дают однозначного основания для направленного вывода."
+    ),
+    "observation_confirms_interaction_expectation": (
+        "Наблюдение согласуется с расчётной гипотезой, но не устанавливает постоянную черту."
+    ),
+    "observation_opposes_interaction_expectation": (
+        "Наблюдение расходится с расчётной гипотезой; ориентир нужно проверять в реальном контакте."
+    ),
+    "interaction_above_strength_threshold": (
+        "Расчёт показывает возможную опору для контакта, а не доказанный навык взрослого."
+    ),
+    "interaction_below_friction_threshold": "Расчёт выделяет возможное напряжение, а не вину ребёнка или взрослого.",
+    "friction_requires_conscious_adult_adjustment": (
+        "Расчёт предлагает проверить реакцию взрослого в этой зоне напряжения."
+    ),
+}
+
+
+_AGE_STAGE_LABELS = {
+    "0-1": "до одного года",
+    "1-3": "от 1 до 3 лет",
+    "3-6": "от 3 до 6 лет",
+    "6-9": "от 6 до 9 лет",
+    "9-12": "от 9 до 12 лет",
+    "12-15": "от 12 до 15 лет",
+    "15-18": "от 15 до 18 лет",
+}
+_UNCERTAINTY_TOPIC_ACTIONS = {
+    "soothing": (
+        "сначала наблюдать, как ребёнок возвращается к спокойствию "
+        "и что предшествует этому, до выбора способа поддержки",
+        "отмечать, в каких обстоятельствах один и тот же способ поддержки сопровождается разной реакцией ребёнка",
+        "проверить небольшое изменение привычного способа поддержки "
+        "и наблюдать, как ребёнок возвращается к спокойствию",
+    ),
+    "boundaries": (
+        "сначала наблюдать реакцию на объяснение правила, прежде чем выбирать способ его предъявления",
+        "сопоставлять обстоятельства разных реакций на одно правило, не считая отдельный протест постоянным свойством",
+        "проверить небольшое изменение в формулировке правила и наблюдать, как меняется реакция при его объяснении",
+    ),
+    "communication": (
+        "сначала наблюдать, как собственный способ объяснения соотносится с пониманием ребёнка",
+        "отмечать, когда привычное объяснение оказывается понятным, а когда требуется уточнение",
+        "проверить небольшое изменение способа объяснения и наблюдать, что ребёнок понял и что нужно уточнить",
+    ),
+    "transitions": (
+        "сначала наблюдать, как проходит смена занятий и в какой момент возникает затруднение",
+        "сопоставлять условия лёгких и трудных переключений, не делая вывод по одной смене занятия",
+        "проверить небольшое изменение подготовки к смене занятия и наблюдать, как проходит переключение",
+    ),
+    "autonomy": (
+        "сначала наблюдать, как ребёнок участвует в посильном деле с помощью взрослого и без неё",
+        "отмечать, при каких условиях ребёнок просит помощь, а при каких пробует сам, не превращая это в ярлык",
+        "проверить небольшое изменение в объёме помощи в посильном деле и наблюдать, как меняется участие ребёнка",
+    ),
+}
+_UNCERTAINTY_ACTION_INDEX = {
+    "adult_observes_before_choosing_guidance": 0,
+    "adult_tracks_context_before_generalizing": 1,
+    "adult_tests_small_adjustment_and_observes": 2,
+}
+
+
+def _current_approved_text(family: str, fact: Mapping[str, Any], *, section_key: str, age_stage: str) -> str:
+    if family == "source_profiles":
+        return _profile_text(fact, section_key=section_key)
+    if section_key == "how_to_use":
+        return (
+            "Взрослый может читать этот отчёт как набор проверяемых ориентиров, а не описание характера ребёнка. "
+            f"Рекомендации привязаны к возрастному этапу {_AGE_STAGE_LABELS[age_stage]}; "
+            "не переносите их на другие этапы автоматически. "
+            "Различайте расчётные гипотезы, наблюдения и неопределённость; "
+            "отсутствие раздела не означает отсутствие потребности."
+        )
+    if family == "strong_matches":
+        dimension = _DIMENSION_LABELS[str(fact["dimension"])]
+        return (
+            f"Взрослый может проверить возможную опору для контакта: {dimension}. "
+            "Расчёт взаимодействия выделяет здесь совпадение; это не доказательство наблюдаемого успеха. "
+            "Ориентируйтесь на то, поддерживает ли такой способ реальное общение."
+        )
+    if family == "friction_points":
+        dimension = _DIMENSION_LABELS[str(fact["dimension"])]
+        return (
+            f"Взрослый может внимательнее наблюдать {dimension}. "
+            "Расчёт взаимодействия отмечает возможное напряжение, а не свойство ребёнка или вину взрослого. "
+            "Проверяйте, в каких обстоятельствах возникает трудность, прежде чем делать устойчивый вывод."
+        )
+    text = _approved_text(family, fact)
+    action_code = str(fact.get("action_code"))
+    if action_code == "adult_reuses_working_interaction_pattern":
+        dimension = _DIMENSION_LABELS[str(fact["dimension"])]
+        return (
+            "Если в повседневном контакте способ помогает, взрослый может спокойно повторять его, "
+            f"проверяя {dimension}. "
+            "Расчёт выделяет возможную опору, но не устанавливает, что этот способ уже проверен в вашей семье."
+        )
+    if family == "recommended_actions" and action_code in _UNCERTAINTY_ACTION_INDEX:
+        action = _UNCERTAINTY_TOPIC_ACTIONS[str(fact["topic"])][_UNCERTAINTY_ACTION_INDEX[action_code]]
+        prefix = (
+            "Возможно, взрослый может" if float(fact["confidence"]) < LOW_CONFIDENCE_THRESHOLD else "Взрослый может"
+        )
+        return f"{prefix} {action}. {_REASON_CONTEXT[str(fact['reason_code'])]}"
+    context = _TOPIC_CONTEXT.get(str(fact.get("topic"))) or _DIMENSION_LABELS.get(str(fact.get("dimension")))
+    reason = _REASON_CONTEXT.get(str(fact.get("reason_code")), "")
+    if context:
+        text = f"В теме {context}: {text}"
+    if reason:
+        text = f"{text} {reason}"
+    return text
+
+
+def _section_fact(
+    *,
+    local_id: str,
+    family: str,
+    fact: Mapping[str, Any],
+    section_key: str = "",
+    version: str = "",
+    age_stage: str = "",
+) -> ChildSectionFact:
     confidence = float(fact["confidence"])
     return ChildSectionFact(
         id=local_id,
         family=family,
-        approved_text=_approved_text(family, fact),
+        approved_text=_current_approved_text(family, fact, section_key=section_key, age_stage=age_stage)
+        if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+        else _approved_text(family, fact),
         conditional=confidence < LOW_CONFIDENCE_THRESHOLD,
     )
 
@@ -281,28 +538,48 @@ def build_child_section_inputs(guidance_facts: ChildGuidanceFacts) -> list[Child
 
     payload = guidance_prompt_content(guidance_facts)
     inputs: list[ChildSectionRenderInput] = []
-    for section_key, contract in SECTION_CONTRACTS.items():
+    for section_key, contract in section_contracts(guidance_facts.contract_version).items():
         title, purpose = SECTION_METADATA[section_key]
         owned_raw = [
             (family, raw)
-            for family in contract.owned_fact_families
+            for family in _ordered_families(contract.owned_fact_families, version=guidance_facts.contract_version)
             for raw in _family_facts(payload, family)
-            if _matches_owned_scope(raw, contract=contract)
+            if fact_matches_section(
+                raw, section_key=section_key, version=guidance_facts.contract_version, contract=contract, family=family
+            )
         ]
         reference_raw = [
-            (family, raw) for family in contract.reference_fact_families for raw in _family_facts(payload, family)
+            (family, raw)
+            for family in _ordered_families(contract.reference_fact_families, version=guidance_facts.contract_version)
+            for raw in _family_facts(payload, family)
         ]
         owned = [
-            _section_fact(local_id=f"owned-{index}", family=family, fact=fact)
+            _section_fact(
+                local_id=f"owned-{index}",
+                family=family,
+                fact=fact,
+                section_key=section_key,
+                version=guidance_facts.contract_version,
+                age_stage=guidance_facts.age_stage,
+            )
             for index, (family, fact) in enumerate(owned_raw, start=1)
         ]
         references = [
-            _section_fact(local_id=f"reference-{index}", family=family, fact=fact)
+            _section_fact(
+                local_id=f"reference-{index}",
+                family=family,
+                fact=fact,
+                section_key=section_key,
+                version=guidance_facts.contract_version,
+                age_stage=guidance_facts.age_stage,
+            )
             for index, (family, fact) in enumerate(reference_raw, start=1)
         ]
         inputs.append(
             ChildSectionRenderInput(
-                contract_version=CHILD_SECTION_INPUT_VERSION,
+                contract_version="child_section_render_input_v2"
+                if guidance_facts.contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+                else CHILD_SECTION_INPUT_VERSION,
                 section_key=section_key,
                 section_title=title,
                 section_purpose=purpose,
@@ -324,15 +601,19 @@ def _canonical_section_input(*, guidance_facts: ChildGuidanceFacts, section_key:
 
 def _section_fact_id_map(*, guidance_facts: ChildGuidanceFacts, section_key: str) -> dict[str, str]:
     payload = guidance_prompt_content(guidance_facts)
-    contract = SECTION_CONTRACTS[section_key]
+    contract = section_contracts(guidance_facts.contract_version)[section_key]
     owned = [
         str(raw["id"])
-        for family in contract.owned_fact_families
+        for family in _ordered_families(contract.owned_fact_families, version=guidance_facts.contract_version)
         for raw in _family_facts(payload, family)
-        if _matches_owned_scope(raw, contract=contract)
+        if fact_matches_section(
+            raw, section_key=section_key, version=guidance_facts.contract_version, contract=contract, family=family
+        )
     ]
     references = [
-        str(raw["id"]) for family in contract.reference_fact_families for raw in _family_facts(payload, family)
+        str(raw["id"])
+        for family in _ordered_families(contract.reference_fact_families, version=guidance_facts.contract_version)
+        for raw in _family_facts(payload, family)
     ]
     return {
         **{f"owned-{index}": fact_id for index, fact_id in enumerate(owned, start=1)},
@@ -433,7 +714,7 @@ def build_child_segment_intent(
     section_input: ChildSectionRenderInput,
     guidance_facts: ChildGuidanceFacts,
     lifecycle_token: UUID,
-    prompt_version: str = CHILD_PROMPT_VERSION,
+    prompt_version: str | None = None,
     artifact_generation_id: UUID | None = None,
 ) -> models.ChildSegmentGeneration:
     """Build a durable provider-call intent before the external side effect."""
@@ -444,6 +725,10 @@ def build_child_segment_intent(
     )
     if section_input != canonical or not canonical.owned_facts:
         raise ChildNarrativeValidationError("provider intent requires a canonical non-empty section")
+    expected_version = prompt_version_for_input(canonical)
+    if prompt_version is not None and prompt_version != expected_version:
+        raise ChildNarrativeValidationError("prompt version does not match stored content contract")
+    prompt_version = expected_version
     provider_name, model_name = _provider_identity(provider)
     prompt = build_child_section_prompt(canonical)
     return _segment_row(
@@ -474,7 +759,7 @@ async def run_child_segment_generation(
     provider: ChildSegmentProvider,
     section_input: ChildSectionRenderInput,
     guidance_facts: ChildGuidanceFacts,
-    prompt_version: str = CHILD_PROMPT_VERSION,
+    prompt_version: str | None = None,
     artifact_generation_id: UUID | None = None,
 ) -> models.ChildSegmentGeneration:
     """Generate one independently retryable section and return a persistable row."""
@@ -482,6 +767,10 @@ async def run_child_segment_generation(
     canonical = _canonical_section_input(guidance_facts=guidance_facts, section_key=section_input.section_key)
     if section_input != canonical:
         raise ChildNarrativeValidationError("section input is not canonical")
+    expected_version = prompt_version_for_input(canonical)
+    if prompt_version is not None and prompt_version != expected_version:
+        raise ChildNarrativeValidationError("prompt version does not match stored content contract")
+    prompt_version = expected_version
     provider_name, model_name = _provider_identity(provider)
     prompt = build_child_section_prompt(canonical)
     input_payload = canonical.model_dump(mode="json")

@@ -14,14 +14,22 @@ from uuid import UUID
 from app.modules.child.age_resolver import AGE_RULES_VERSION
 from app.modules.child.context_resolver import CONTEXT_ACTION_CODES, CONTEXT_REASON_CODES, RESOLVER_VERSION
 from app.modules.child.guidance_facts import (
+    CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
     GUIDANCE_AVOID_PATTERN_CODES,
     GUIDANCE_FACTS_CONTRACT_VERSION,
     LOW_CONFIDENCE_THRESHOLD,
     ChildGuidanceFacts,
 )
 from app.modules.child.questionnaire import ANSWER_VERSION
-from app.modules.child.scoring.types import InteractionDimension, InteractionPattern
+from app.modules.child.scoring.types import (
+    ChildNeedDimension,
+    InteractionDimension,
+    InteractionPattern,
+    ParentStyleDimension,
+)
+from app.reference_data.child.child_needs_v1 import CHILD_NEEDS_SCORING_VERSION
 from app.reference_data.child.interaction_v1 import INTERACTION_SCORING_VERSION
+from app.reference_data.child.parent_style_v1 import PARENT_STYLE_SCORING_VERSION
 
 _ALLOWED_PAYLOAD_FIELDS: Final = frozenset(
     {
@@ -66,6 +74,9 @@ _FACT_FAMILIES: Final = (
     "avoid_patterns",
 )
 _FACT_FIELDS: Final[dict[str, frozenset[str]]] = {
+    "source_profiles": frozenset(
+        {"id", "source_kind", "dimension", "score", "confidence", "scoring_version", "evidence_refs"}
+    ),
     "strong_matches": frozenset({"id", "dimension", "score", "confidence", "pattern", "evidence_refs"}),
     "friction_points": frozenset({"id", "dimension", "score", "confidence", "pattern", "evidence_refs"}),
     "parent_strengths": frozenset(
@@ -90,6 +101,7 @@ _FACT_FIELDS: Final[dict[str, frozenset[str]]] = {
     "avoid_patterns": frozenset({"id", "dimension", "pattern_code", "target", "confidence", "evidence_refs"}),
 }
 _REGISTRY_FIELDS: Final[dict[str, frozenset[str]]] = {
+    "source_profile": frozenset({"source_type", "source_kind", "dimension", "score", "confidence", "scoring_version"}),
     "age_snapshot": frozenset(
         {"source_type", "source_id", "age_stage", "rules_version", "resolver_entry_ids", "reason_codes"}
     ),
@@ -269,6 +281,112 @@ class GuidanceQualityIssue:
     path: str
 
 
+def fact_families(version: str) -> tuple[str, ...]:
+    return (
+        (*_FACT_FAMILIES, "source_profiles") if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else _FACT_FAMILIES
+    )
+
+
+def section_contracts(version: str) -> dict[str, SectionContract]:
+    if version != CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+        return SECTION_CONTRACTS
+    return {
+        **SECTION_CONTRACTS,
+        "how_to_use": _section("recommended_actions", topics=("current_age",)),
+        "parent_style": _section("source_profiles"),
+        "child_interaction_needs": _section("source_profiles"),
+        "parent_strengths": _section("source_profiles"),
+        "soothing_support": _section(
+            "recommended_actions", "source_profiles", topics=("soothing",), dimensions=("soothing_compatibility",)
+        ),
+        "boundaries_rules": _section(
+            "recommended_actions", "source_profiles", topics=("boundaries",), dimensions=("boundary_fit",)
+        ),
+        "autonomy": _section(
+            "recommended_actions", "source_profiles", topics=("autonomy",), dimensions=("autonomy_balance",)
+        ),
+        "explanation_learning": _section(
+            "recommended_actions",
+            "source_profiles",
+            topics=("communication", "learning"),
+            dimensions=("communication_fit", "learning_interaction"),
+        ),
+        "praise_recognition": _section("source_profiles"),
+        "conscious_adjustments": _section("compensation_areas", "source_profiles", "recommended_actions"),
+        "conflict_cycle": _section("avoid_patterns", dimensions=("conflict_pattern",)),
+        "not_personal": _section("avoid_patterns", dimensions=("autonomy_balance", "emotional_attunement")),
+    }
+
+
+def fact_matches_section(
+    fact: Mapping[str, Any], *, section_key: str, version: str, contract: SectionContract, family: str
+) -> bool:
+    if (
+        version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+        and section_key == "conscious_adjustments"
+        and family == "recommended_actions"
+    ):
+        return fact.get("topic") == "transitions"
+    if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION and "source_kind" in fact:
+        kind, dimension = fact.get("source_kind"), fact.get("dimension")
+        if section_key == "parent_style":
+            return kind == "parent_style"
+        if section_key == "parent_strengths":
+            return kind == "parent_style" and float(fact["score"]) >= 65 and float(fact["confidence"]) >= 0.4
+        if section_key == "child_interaction_needs":
+            return kind == "child_needs" and dimension in {"reassurance", "exploration", "personal_space", "variety"}
+        if section_key == "praise_recognition":
+            return kind == "child_needs" and dimension == "recognition"
+        if section_key == "conscious_adjustments":
+            return (kind == "interaction" and 35 < float(fact["score"]) < 65) or (
+                kind == "child_needs" and dimension == "transition_time"
+            )
+        topic_dimensions = {
+            "soothing_support": "physical_sensory_calm",
+            "boundaries_rules": "predictability",
+            "autonomy": "autonomy",
+            "explanation_learning": "verbal_explanation",
+        }
+        if section_key in topic_dimensions:
+            return kind == "child_needs" and dimension == topic_dimensions[section_key]
+        return False
+    return (
+        not (contract.owned_topics or contract.owned_dimensions)
+        or fact.get("topic") in contract.owned_topics
+        or fact.get("dimension") in contract.owned_dimensions
+    )
+
+
+_PROFILE_SOURCES = {
+    "parent_style": (
+        frozenset(item.value for item in ParentStyleDimension),
+        PARENT_STYLE_SCORING_VERSION,
+        "child_parent_style_scores",
+    ),
+    "child_needs": (
+        frozenset(item.value for item in ChildNeedDimension),
+        CHILD_NEEDS_SCORING_VERSION,
+        "child_need_scores",
+    ),
+    "interaction": (_INTERACTION_DIMENSIONS, INTERACTION_SCORING_VERSION, "child_interaction_scores"),
+}
+
+
+def _profile_values_valid(value: Mapping[str, Any]) -> bool:
+    kind = value.get("source_kind")
+    if not isinstance(kind, str) or kind not in _PROFILE_SOURCES:
+        return False
+    dimensions, version, _ = _PROFILE_SOURCES[kind]
+    dimension = value.get("dimension")
+    return (
+        isinstance(dimension, str)
+        and dimension in dimensions
+        and value.get("scoring_version") == version
+        and _valid_number(value.get("score"), minimum=0, maximum=100)
+        and _valid_number(value.get("confidence"), minimum=0, maximum=1)
+    )
+
+
 class GuidanceFactsQualityError(ValueError):
     def __init__(self, issues: Sequence[GuidanceQualityIssue]) -> None:
         self.issues = tuple(issues)
@@ -320,6 +438,10 @@ def _fact_schema_is_valid(family: str, fact: Mapping[str, Any]) -> bool:
         return False
     if not _valid_string_list(fact.get("evidence_refs"), maximum=_MAX_EVIDENCE_REFS) or not fact["evidence_refs"]:
         return False
+    if family == "source_profiles":
+        return (
+            _profile_values_valid(fact) and fact["id"] == f"profile:{fact.get('source_kind')}:{fact.get('dimension')}"
+        )
     if family in {"strong_matches", "friction_points"}:
         return (
             fact.get("dimension") in _INTERACTION_DIMENSIONS
@@ -379,7 +501,10 @@ def _guidance_payload_hash(payload: Mapping[str, Any]) -> str | None:
         return None
     context = context_entries[0]
     try:
-        unhashed_payload = {field: payload[field] for field in _ALLOWED_PAYLOAD_FIELDS if field != "evidence_registry"}
+        fields = _ALLOWED_PAYLOAD_FIELDS | (
+            {"source_profiles"} if payload.get("contract_version") == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else set()
+        )
+        unhashed_payload = {field: payload[field] for field in fields if field != "evidence_registry"}
         unhashed_payload["evidence_registry"] = {
             reference: metadata
             for reference, metadata in registry.items()
@@ -437,10 +562,16 @@ def _registry_metadata_is_valid(reference: object, metadata: Mapping[str, Any]) 
     if source_type == "guidance_contract":
         input_hash = metadata.get("input_hash")
         return (
-            metadata.get("contract_version") == GUIDANCE_FACTS_CONTRACT_VERSION
+            metadata.get("contract_version")
+            in (GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION)
             and _is_sha256(input_hash)
             and reference == f"guidance_contract:{input_hash}"
         )
+    if source_type == "source_profile":
+        if not _profile_values_valid(metadata):
+            return False
+        _, version, prefix = _PROFILE_SOURCES[metadata["source_kind"]]
+        return _versioned_uuid_reference(reference, prefix=prefix, version=version)
     if source_type == "interaction_score":
         return (
             _versioned_uuid_reference(
@@ -569,6 +700,15 @@ def _resolver_fact_semantics_are_valid(family: str, fact: Mapping[str, Any], *, 
 
 def _evidence_supports_fact(family: str, fact: Mapping[str, Any], metadata: Mapping[str, Any]) -> bool:
     source_type = metadata.get("source_type")
+    if family == "source_profiles":
+        if fact.get("source_kind") == "interaction":
+            return source_type == "interaction_score" and all(
+                metadata.get(key) == fact.get(key) for key in ("dimension", "score", "confidence", "scoring_version")
+            )
+        return source_type == "source_profile" and all(
+            metadata.get(key) == fact.get(key)
+            for key in ("source_kind", "dimension", "score", "confidence", "scoring_version")
+        )
     if family in {"strong_matches", "friction_points"}:
         return (
             source_type == "interaction_score"
@@ -602,17 +742,21 @@ def _evidence_supports_fact(family: str, fact: Mapping[str, Any], metadata: Mapp
 def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> None:
     payload = facts.to_payload() if isinstance(facts, ChildGuidanceFacts) else dict(facts)
     issues = _find_forbidden_fields(payload)
+    version = payload.get("contract_version")
+    allowed_fields = _ALLOWED_PAYLOAD_FIELDS | (
+        {"source_profiles"} if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else set()
+    )
     payload_fields = {field for field in payload if isinstance(field, str)}
     for field in payload:
         if not isinstance(field, str):
             issues.append(GuidanceQualityIssue("unexpected_payload_field", f"$.{field!r}"))
-    for field in sorted(payload_fields - _ALLOWED_PAYLOAD_FIELDS):
+    for field in sorted(payload_fields - allowed_fields):
         if field.lower() not in _FORBIDDEN_PAYLOAD_FIELDS:
             issues.append(GuidanceQualityIssue("unexpected_payload_field", f"$.{field}"))
-    for field in sorted(_ALLOWED_PAYLOAD_FIELDS - payload_fields):
+    for field in sorted(allowed_fields - payload_fields):
         issues.append(GuidanceQualityIssue("missing_payload_field", f"$.{field}"))
 
-    if payload.get("contract_version") != GUIDANCE_FACTS_CONTRACT_VERSION:
+    if version not in (GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION):
         issues.append(GuidanceQualityIssue("invalid_contract_version", "$.contract_version"))
     for field in ("parent_profile_id", "child_id", "age_snapshot_id"):
         try:
@@ -639,6 +783,10 @@ def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> No
             issues.append(GuidanceQualityIssue("invalid_evidence_metadata", path))
             continue
         source_type = str(metadata["source_type"])
+        if source_type == "source_profile" and version != CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+            issues.append(GuidanceQualityIssue("invalid_evidence_metadata", path))
+        if source_type == "guidance_contract" and metadata.get("contract_version") != version:
+            issues.append(GuidanceQualityIssue("invalid_evidence_metadata", path))
         source_types.add(source_type)
         registry_by_type.setdefault(source_type, []).append(metadata)
     if not {"age_snapshot", "context_resolution", "guidance_contract"} <= source_types:
@@ -680,7 +828,7 @@ def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> No
         issues.append(GuidanceQualityIssue("invalid_confidence_markers", "$.confidence_markers"))
 
     fact_ids: set[str] = set()
-    for family in _FACT_FAMILIES:
+    for family in fact_families(str(version)):
         facts_in_family = payload.get(family)
         if not isinstance(facts_in_family, list) or len(facts_in_family) > _MAX_FACTS_PER_FAMILY:
             issues.append(GuidanceQualityIssue("invalid_fact_family", f"$.{family}"))

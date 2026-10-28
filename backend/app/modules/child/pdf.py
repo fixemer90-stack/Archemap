@@ -49,6 +49,14 @@ def render_child_report_html(presentation: dict[str, Any]) -> str:
             f"{numerical_age}{prose}{notice}" + (f"<ul>{actions}</ul>" if actions else "") + confidence + "</section>"
         )
     dated = f"Возрастной блок зафиксирован на {escape(age['as_of_date'])}."
+    quality_notice = ""
+    quality = presentation.get("quality")
+    if isinstance(quality, dict) and quality.get("status") == "limited":
+        quality_notice = (
+            '<aside data-quality-status="limited">Часть разделов не имеет достаточных оснований '
+            "или повторяет другие разделы. Используйте доступные ориентиры с учётом этих ограничений; "
+            "техническое завершение отчёта не означает полноту рекомендаций.</aside>"
+        )
     if age["stale"]:
         dated += " Это сохранённая версия; актуальный возрастной блок можно обновить отдельно от основного отчёта."
     return f"""<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
@@ -65,7 +73,7 @@ section {{ margin:8mm 0; }} h2,.eyebrow {{ break-after:avoid; }} p,li {{ widows:
 li {{ margin:2mm 0; }} footer {{ margin-top:8mm; padding-top:4mm; border-top:1px solid #d9d3e1; font-size:9pt; }}
 </style></head><body><header><div class="eyebrow">ASTROTYPE · ВЗАИМОДЕЙСТВИЕ</div>
 <h1>{escape(presentation["title"])}</h1><p>{escape(presentation["introduction"])}</p></header>
-<aside>{dated}</aside>{"".join(blocks)}
+<aside>{dated}</aside>{quality_notice}{"".join(blocks)}
 <footer>{escape(presentation["technical_basis"]["note"])}</footer></body></html>"""
 
 

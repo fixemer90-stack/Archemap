@@ -45,8 +45,15 @@ export interface ChildGeneration {
   status: string;
   poll_after_ms?: number;
 }
+export interface ChildContentQuality {
+  status: "ready" | "limited";
+  reason_codes: string[];
+  omitted_sections: string[];
+  repeated_sections: string[];
+}
 export interface ChildPresentation {
   contract_version: "child_report_presentation_v1";
+  quality?: ChildContentQuality;
   title: string;
   introduction: string;
   metadata: {

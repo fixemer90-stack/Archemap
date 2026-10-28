@@ -114,6 +114,7 @@ export async function mockE22Child(
   options: {
     access?: number;
     readerStatus?: string;
+    readerQuality?: "ready" | "limited";
     poll?: boolean;
     ageFailure?: boolean;
   } = {},
@@ -312,6 +313,23 @@ export async function mockE22Child(
           title: "Как поддерживать контакт с ребёнком",
           introduction:
             "Этот отчёт — ориентир для взрослого, а не оценка ребёнка.",
+          ...(options.readerQuality
+            ? {
+                quality: {
+                  status: options.readerQuality,
+                  reason_codes:
+                    options.readerQuality === "limited"
+                      ? ["cross_section_duplicate_prose"]
+                      : [],
+                  omitted_sections:
+                    options.readerQuality === "limited" ? ["parent_style"] : [],
+                  repeated_sections:
+                    options.readerQuality === "limited"
+                      ? ["how_to_use", "child_interaction_needs"]
+                      : [],
+                },
+              }
+            : {}),
           metadata: {
             core_report_version: 1,
             age_snapshot_id: state.ageUpdated

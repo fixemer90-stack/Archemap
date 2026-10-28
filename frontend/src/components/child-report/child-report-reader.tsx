@@ -165,7 +165,23 @@ export function ChildReportReader({ reportId }: { reportId: string }) {
             <p>{content.introduction}</p>
           </header>
           <div className="child-notice">
-            <ChildGenerationCopy status={report.status} />
+            {report.status === "ready" &&
+            content.quality?.status === "limited" ? (
+              <div
+                role="status"
+                aria-label="Ограничения содержания отчёта"
+                className="child-stack"
+              >
+                <p>Содержание отчёта ограничено</p>
+                <p>
+                  Сохранённые разделы доступны, но часть тем пока не раскрыта
+                  достаточно содержательно. Не стоит воспринимать этот результат
+                  как полный разбор взаимодействия.
+                </p>
+              </div>
+            ) : (
+              <ChildGenerationCopy status={report.status} />
+            )}
             {operation && generation && !childTerminal(generation.status) && (
               <p role="status">
                 {operation === "age"

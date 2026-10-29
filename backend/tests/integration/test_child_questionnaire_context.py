@@ -919,7 +919,7 @@ async def test_guidance_facts_persist_from_locked_context_sources_idempotently(d
     created = next(result for result in results if result.created is True)
     replay = next(result for result in results if result.created is False)
     assert replay.artifact.id == created.artifact.id
-    assert created.artifact.contract_version == "child-guidance-facts-v2"
+    assert created.artifact.contract_version == "child-guidance-facts-v3"
     assert len(created.artifact.payload["source_profiles"]) == 26
     assert created.artifact.payload["child_id"] == str(child.id)
     assert created.artifact.payload["age_snapshot_id"] == str(age.id)

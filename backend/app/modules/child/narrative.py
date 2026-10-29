@@ -15,8 +15,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.modules.child import models
 from app.modules.child.guidance_facts import (
-    CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
+    GUIDANCE_FACTS_CONTRACT_V2,
     LOW_CONFIDENCE_THRESHOLD,
+    SOURCE_PROFILE_CONTRACT_VERSIONS,
     ChildGuidanceFacts,
 )
 from app.modules.child.prompts.v1 import SECTION_METADATA, build_child_section_prompt
@@ -25,7 +26,17 @@ from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandi
 from app.modules.llm.exceptions import LLMTimeoutError
 
 CHILD_PROMPT_VERSION: Final = "child-section-prompt-v1"
-CURRENT_CHILD_PROMPT_VERSION: Final = "child-section-prompt-v2"
+CURRENT_CHILD_PROMPT_VERSION: Final = "child-section-prompt-v3"
+_PROMPT_VERSIONS: Final = {
+    "child_section_render_input_v1": CHILD_PROMPT_VERSION,
+    "child_section_render_input_v2": "child-section-prompt-v2",
+    "child_section_render_input_v3": CURRENT_CHILD_PROMPT_VERSION,
+}
+_INPUT_VERSIONS: Final = {
+    "child-guidance-facts-v1": "child_section_render_input_v1",
+    GUIDANCE_FACTS_CONTRACT_V2: "child_section_render_input_v2",
+    "child-guidance-facts-v3": "child_section_render_input_v3",
+}
 CHILD_SECTION_INPUT_VERSION: Final = "child_section_render_input_v1"
 CHILD_SEGMENT_OUTPUT_VERSION: Final = "child_segment_output_v1"
 _DIMENSION_LABELS: Final = {
@@ -88,11 +99,32 @@ _ERROR_TYPES: Final = frozenset({"validation_error", "provider_error"})
 
 
 def prompt_version_for_input(section_input: ChildSectionRenderInput) -> str:
-    return (
-        CURRENT_CHILD_PROMPT_VERSION
-        if section_input.contract_version == "child_section_render_input_v2"
-        else CHILD_PROMPT_VERSION
-    )
+    return _PROMPT_VERSIONS[section_input.contract_version]
+
+
+def _provider_usage_is_valid(value: object) -> bool:
+    """Validate optional v3 accounting before publication, total over hostile JSON."""
+    if not isinstance(value, dict):
+        return False
+    counters = {"http_attempts", "responses_with_usage", "responses_without_usage"}
+    tokens = {"prompt_tokens", "completion_tokens", "total_tokens"}
+    cache = {"prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}
+    if not counters <= value.keys() or value.keys() - (counters | tokens | cache):
+        return False
+    if any(type(number) is not int or not 0 <= number <= 2**63 - 1 for number in value.values()):
+        return False
+    if value["responses_with_usage"] + value["responses_without_usage"] > value["http_attempts"]:
+        return False
+    if value["responses_with_usage"] == 0:
+        return value.keys() == counters  # No measured tokens is not measured zero tokens.
+    if not tokens <= value.keys() or value["total_tokens"] != value["prompt_tokens"] + value["completion_tokens"]:
+        return False
+    if cache.intersection(value):
+        return (
+            cache <= value.keys()
+            and value["prompt_cache_hit_tokens"] + value["prompt_cache_miss_tokens"] == value["prompt_tokens"]
+        )
+    return True
 
 
 def _provider_name_is_valid(value: object) -> bool:
@@ -131,7 +163,9 @@ class ChildSectionFact(BaseModel):
 class ChildSectionRenderInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    contract_version: Literal["child_section_render_input_v1", "child_section_render_input_v2"]
+    contract_version: Literal[
+        "child_section_render_input_v1", "child_section_render_input_v2", "child_section_render_input_v3"
+    ]
     section_key: str
     section_title: str
     section_purpose: str
@@ -256,7 +290,7 @@ class MockChildSegmentProvider:
 def _ordered_families(families: frozenset[str], *, version: str) -> tuple[str, ...]:
     # v2 introduces multi-family sections: set iteration would change local IDs
     # and persisted prompt/input hashes across worker interpreter restarts.
-    return tuple(sorted(families)) if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else tuple(families)
+    return tuple(sorted(families)) if version in SOURCE_PROFILE_CONTRACT_VERSIONS else tuple(families)
 
 
 def _approved_text(family: str, fact: Mapping[str, Any]) -> str:
@@ -518,12 +552,20 @@ def _section_fact(
     age_stage: str = "",
 ) -> ChildSectionFact:
     confidence = float(fact["confidence"])
+    if version == "child-guidance-facts-v3":
+        from app.modules.child.content_v3 import approved_text_v3
+
+        text = approved_text_v3(
+            family, fact, section_key=section_key, age_stage=age_stage, first_owned=local_id == "owned-1"
+        )
+    elif version == GUIDANCE_FACTS_CONTRACT_V2:
+        text = _current_approved_text(family, fact, section_key=section_key, age_stage=age_stage)
+    else:
+        text = _approved_text(family, fact)
     return ChildSectionFact(
         id=local_id,
         family=family,
-        approved_text=_current_approved_text(family, fact, section_key=section_key, age_stage=age_stage)
-        if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
-        else _approved_text(family, fact),
+        approved_text=text,
         conditional=confidence < LOW_CONFIDENCE_THRESHOLD,
     )
 
@@ -577,9 +619,7 @@ def build_child_section_inputs(guidance_facts: ChildGuidanceFacts) -> list[Child
         ]
         inputs.append(
             ChildSectionRenderInput(
-                contract_version="child_section_render_input_v2"
-                if guidance_facts.contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
-                else CHILD_SECTION_INPUT_VERSION,
+                contract_version=_INPUT_VERSIONS[guidance_facts.contract_version],
                 section_key=section_key,
                 section_title=title,
                 section_purpose=purpose,
@@ -776,7 +816,7 @@ async def run_child_segment_generation(
     input_payload = canonical.model_dump(mode="json")
     prompt_hash = _stable_hash({"prompt": prompt})
     input_hash = _stable_hash(input_payload)
-    base_diagnostics = {
+    base_diagnostics: dict[str, Any] = {
         "provider": provider_name,
         "model": model_name,
         "prompt_version": prompt_version,
@@ -813,7 +853,18 @@ async def run_child_segment_generation(
         )
 
     try:
-        raw = await provider.generate_segment(prompt=prompt, section_input=canonical)
+        if canonical.contract_version == "child_section_render_input_v3":
+            from app.modules.llm.usage import capture_provider_usage
+
+            with capture_provider_usage() as usage:
+                try:
+                    raw = await provider.generate_segment(prompt=prompt, section_input=canonical)
+                finally:
+                    # Include observed attempts on failures too; missing token
+                    # usage stays absent, never a fabricated zero-token result.
+                    base_diagnostics["provider_usage"] = usage.to_payload()
+        else:
+            raw = await provider.generate_segment(prompt=prompt, section_input=canonical)
         parsed = ChildSegmentOutput.model_validate(raw)
         output = validate_segment_output(
             output=parsed,

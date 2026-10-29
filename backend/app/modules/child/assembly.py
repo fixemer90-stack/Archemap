@@ -9,13 +9,14 @@ from uuid import UUID
 from pydantic import ValidationError
 
 from app.modules.child import models
-from app.modules.child.guidance_facts import CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION, ChildGuidanceFacts
+from app.modules.child.guidance_facts import SOURCE_PROFILE_CONTRACT_VERSIONS, ChildGuidanceFacts
 from app.modules.child.narrative import (
     ChildNarrativeValidationError,
     ChildSegmentOutput,
     _error_type_is_valid,
     _model_name_is_valid,
     _provider_name_is_valid,
+    _provider_usage_is_valid,
     _section_fact_id_map,
     _stable_hash,
     build_child_section_inputs,
@@ -33,6 +34,21 @@ def _verify_generation_metadata(
     diagnostics = row.diagnostics
     if not isinstance(diagnostics, Mapping):
         raise ChildNarrativeValidationError("segment diagnostics are invalid")
+    if (
+        section_input.contract_version == "child_section_render_input_v3"
+        and (
+            "provider_usage" in diagnostics
+            or (
+                row.status in {"ready", "failed"}
+                and diagnostics.get("attempts") != 0
+                # A recovered durable intent has no transport observations:
+                # absence is unknown accounting, never measured zero usage.
+                and not (row.status == "failed" and row.error_code == "child_narrative_provider_outcome_unknown")
+            )
+        )
+        and not _provider_usage_is_valid(diagnostics.get("provider_usage"))
+    ):
+        raise ChildNarrativeValidationError("segment provider usage is invalid")
     provider = diagnostics.get("provider")
     model = diagnostics.get("model")
     expected_version = prompt_version_for_input(section_input)
@@ -59,6 +75,7 @@ def assess_child_report_quality(
     omitted_sections: Sequence[str],
     failed_sections: Sequence[str],
     missing_sections: Sequence[str],
+    contract_version: str = "child_report_narrative_v3",
 ) -> dict[str, Any]:
     """Product coverage and exact semantic-rendering reuse, independent of job completion.
 
@@ -77,6 +94,10 @@ def assess_child_report_quality(
             if normalized:
                 owners.setdefault(normalized, set()).add(key)
     repeated = set().union(*(keys for keys in owners.values() if len(keys) > 1))
+    if contract_version == "child_report_narrative_v3":
+        from app.modules.child.content_quality import repeated_content_scopes
+
+        repeated.update(repeated_content_scopes(sections))
     reasons = []
     if omitted_sections:
         reasons.append("insufficient_section_evidence")
@@ -200,7 +221,7 @@ def assemble_child_report_payload(
         section_generations.append({"section_key": section_key, "status": "ready", **metadata})
 
     status = "ready" if not failed_sections and not missing_sections else "partial"
-    current = guidance_facts.contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+    current = guidance_facts.contract_version in SOURCE_PROFILE_CONTRACT_VERSIONS
     return {
         **(
             {
@@ -209,12 +230,21 @@ def assemble_child_report_payload(
                     omitted_sections=omitted_sections,
                     failed_sections=failed_sections,
                     missing_sections=missing_sections,
+                    contract_version=(
+                        "child_report_narrative_v3"
+                        if guidance_facts.contract_version == "child-guidance-facts-v3"
+                        else "child_report_narrative_v2"
+                    ),
                 )
             }
             if current
             else {}
         ),
-        "contract_version": "child_report_narrative_v2" if current else "child_report_narrative_v1",
+        "contract_version": {
+            "child-guidance-facts-v1": "child_report_narrative_v1",
+            "child-guidance-facts-v2": "child_report_narrative_v2",
+            "child-guidance-facts-v3": "child_report_narrative_v3",
+        }[guidance_facts.contract_version],
         "generation_id": str(output_generation_id),
         "source_generation_id": str(guidance_facts.generation_id),
         "child_id": str(guidance_facts.child_id),

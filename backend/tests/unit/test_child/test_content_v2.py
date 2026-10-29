@@ -19,7 +19,7 @@ from app.modules.child.narrative import build_child_section_inputs
 from app.modules.child.quality import validate_guidance_facts
 
 
-def _middle_facts() -> ChildGuidanceFacts:
+def _middle_facts(*, contract_version: str = "child-guidance-facts-v2") -> ChildGuidanceFacts:
     from uuid import uuid4
 
     from tests.unit.test_child.test_context_resolver import _answers, _scores
@@ -68,7 +68,7 @@ def _middle_facts() -> ChildGuidanceFacts:
             )
             for item in base.source_profiles
         ),
-        contract_version=CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
+        contract_version=contract_version,
     )
 
 
@@ -115,7 +115,9 @@ async def test_middle_topics_survive_validated_generation_with_distinct_reading_
         assert any(fact.family == "source_profiles" for fact in inputs[key].owned_facts)
 
 
-def _current_facts(*, parent_score: float = 57.0) -> ChildGuidanceFacts:
+def _current_facts(
+    *, parent_score: float = 57.0, parent_confidence: float = 0.7, contract_version: str = "child-guidance-facts-v2"
+) -> ChildGuidanceFacts:
     legacy = _facts()
     action = next(item for item in legacy.recommended_actions if item["topic"] == "current_age")
     age_entry = {
@@ -139,7 +141,7 @@ def _current_facts(*, parent_score: float = 57.0) -> ChildGuidanceFacts:
         age_snapshot=ResolverAgeSnapshot(legacy.age_snapshot_id, "3-6", date(2026, 10, 22), "child-age-mvp-1"),
         resolution=resolution,
         interaction_scores=(),
-        contract_version=CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
+        contract_version=contract_version,
         profile_scores=(
             *(
                 GuidanceProfileScore(
@@ -183,7 +185,7 @@ def _current_facts(*, parent_score: float = 57.0) -> ChildGuidanceFacts:
                 "parent_style",
                 "structure",
                 parent_score,
-                0.7,
+                parent_confidence,
                 "parent-style-mvp-2",
                 ("child_parent_style_scores:11111111-1111-4111-8111-111111111111:parent-style-mvp-2",),
             ),
@@ -290,7 +292,7 @@ def test_v2_does_not_relabel_pair_strength_as_a_primary_parent_strength() -> Non
                 "boundary_fit", 78, 0.82, "natural_match", "child-interaction-mvp-1", tuple(raw["evidence_refs"])
             ),
         ),
-        contract_version=CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
+        contract_version="child-guidance-facts-v2",
     )
     validate_guidance_facts(current)
     assert legacy.parent_strengths
@@ -365,7 +367,9 @@ async def test_legacy_assembly_stays_readable_but_repetition_is_not_product_read
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("stored_version", [None, "child-guidance-facts-v1"])
+@pytest.mark.parametrize(
+    "stored_version", [None, "child-guidance-facts-v1", "child-guidance-facts-v2", "child-guidance-facts-v3"]
+)
 async def test_writer_uses_authoritative_profiles_for_new_contract_but_rebuilds_legacy_semantics(
     monkeypatch: pytest.MonkeyPatch,
     stored_version: str | None,
@@ -442,16 +446,18 @@ async def test_writer_uses_authoritative_profiles_for_new_contract_but_rebuilds_
     )
     expected = stored_version or CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
     assert result.artifact.contract_version == expected
-    assert ("source_profiles" in result.artifact.payload) is (stored_version is None)
+    source_profiles_expected = stored_version != "child-guidance-facts-v1"
+    assert ("source_profiles" in result.artifact.payload) is source_profiles_expected
     for loader in loaders:
-        assert loader.await_count == (1 if stored_version is None else 0)
+        assert loader.await_count == int(source_profiles_expected)
 
 
+@pytest.mark.parametrize("contract_version", ["child-guidance-facts-v2", "child-guidance-facts-v3"])
 @pytest.mark.parametrize("mutation", ["source_kind", "score", "dimension", "policy_version", "raw_answer"])
-def test_current_facts_reject_semantic_forgery_even_with_recomputed_hash(mutation: str) -> None:
+def test_current_facts_reject_semantic_forgery_even_with_recomputed_hash(mutation: str, contract_version: str) -> None:
     from app.modules.child.quality import GuidanceFactsQualityError, _guidance_payload_hash
 
-    payload = _current_facts().to_payload()
+    payload = _current_facts(contract_version=contract_version).to_payload()
     fact = payload["source_profiles"][0]
     if mutation == "policy_version":
         metadata = next(
@@ -486,13 +492,14 @@ def test_current_facts_reject_semantic_forgery_even_with_recomputed_hash(mutatio
 
 
 @pytest.mark.asyncio
-async def test_current_sections_reject_cross_source_citations_and_invented_prose() -> None:
+@pytest.mark.parametrize("contract_version", ["child-guidance-facts-v2", "child-guidance-facts-v3"])
+async def test_current_sections_reject_cross_source_citations_and_invented_prose(contract_version: str) -> None:
     from tests.unit.test_child.test_narrative_pipeline import _output
 
     from app.modules.child.narrative import ChildNarrativeValidationError, validate_segment_output
     from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandidate, validate_child_narrative
 
-    facts = _current_facts()
+    facts = _current_facts(contract_version=contract_version)
     inputs = {item.section_key: item for item in build_child_section_inputs(facts)}
     parent_id = next(item["id"] for item in facts.source_profiles if item["source_kind"] == "parent_style")
     with pytest.raises(ChildSafetyViolation) as rejected:

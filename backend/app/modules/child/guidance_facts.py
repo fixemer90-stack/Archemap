@@ -27,7 +27,11 @@ from app.modules.child.repository import ChildLineageMismatchError, ChildReposit
 from app.modules.child.scoring.types import InteractionDimension
 
 GUIDANCE_FACTS_CONTRACT_VERSION: Final = "child-guidance-facts-v1"
-CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION: Final = "child-guidance-facts-v2"
+GUIDANCE_FACTS_CONTRACT_V2: Final = "child-guidance-facts-v2"
+GUIDANCE_FACTS_CONTRACT_V3: Final = "child-guidance-facts-v3"
+CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION: Final = GUIDANCE_FACTS_CONTRACT_V3
+SOURCE_PROFILE_CONTRACT_VERSIONS: Final = (GUIDANCE_FACTS_CONTRACT_V2, GUIDANCE_FACTS_CONTRACT_V3)
+SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS: Final = (GUIDANCE_FACTS_CONTRACT_VERSION, *SOURCE_PROFILE_CONTRACT_VERSIONS)
 LOW_CONFIDENCE_THRESHOLD: Final = 0.5
 _STRONG_MATCH_THRESHOLD: Final = 65.0
 _FRICTION_THRESHOLD: Final = 35.0
@@ -89,7 +93,7 @@ class ChildGuidanceFacts:
         return {
             **(
                 {"source_profiles": _thaw(self.source_profiles)}
-                if self.contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+                if self.contract_version in SOURCE_PROFILE_CONTRACT_VERSIONS
                 else {}
             ),
             "contract_version": self.contract_version,
@@ -181,11 +185,11 @@ def build_guidance_facts(
     """Build the only bounded content contract allowed into Child Report prompts."""
 
     context_reference = f"context_resolution:{resolution.input_hash}"
-    if contract_version not in {GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION}:
+    if contract_version not in SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS:
         raise ValueError("Unsupported Guidance Facts contract")
     if profile_scores and contract_version == GUIDANCE_FACTS_CONTRACT_VERSION:
         raise ValueError("Source profiles require the current content contract")
-    if contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+    if contract_version in SOURCE_PROFILE_CONTRACT_VERSIONS:
         profile_scores = (
             *profile_scores,
             *(
@@ -329,11 +333,7 @@ def build_guidance_facts(
             reason_codes.sort()
 
     unhashed_payload: dict[str, Any] = {
-        **(
-            {"source_profiles": list(source_profiles)}
-            if contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
-            else {}
-        ),
+        **({"source_profiles": list(source_profiles)} if contract_version in SOURCE_PROFILE_CONTRACT_VERSIONS else {}),
         "contract_version": contract_version,
         "parent_profile_id": str(parent_profile_id),
         "child_id": str(child_id),
@@ -487,7 +487,7 @@ class ChildGuidanceFactsRepository:
         if len(stored_versions) > 1:
             raise ChildLineageMismatchError("Guidance Facts version lineage is ambiguous")
         contract_version = stored_versions[0] if stored_versions else CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
-        if contract_version not in {GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION}:
+        if contract_version not in SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS:
             raise ChildLineageMismatchError("Unsupported persisted Guidance Facts version")
         resolution_row = await ChildContextResolutionRepository(self.session).load(
             owner_user_id=owner_user_id,
@@ -552,7 +552,7 @@ class ChildGuidanceFactsRepository:
             for row in score_rows
         )
         profile_scores: list[GuidanceProfileScore] = []
-        if contract_version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+        if contract_version in SOURCE_PROFILE_CONTRACT_VERSIONS:
             repository = ChildRepository(self.session)
             parent = await repository.load_parent_style_profile(
                 owner_user_id=owner_user_id,

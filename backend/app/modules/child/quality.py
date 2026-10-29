@@ -14,10 +14,10 @@ from uuid import UUID
 from app.modules.child.age_resolver import AGE_RULES_VERSION
 from app.modules.child.context_resolver import CONTEXT_ACTION_CODES, CONTEXT_REASON_CODES, RESOLVER_VERSION
 from app.modules.child.guidance_facts import (
-    CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION,
     GUIDANCE_AVOID_PATTERN_CODES,
-    GUIDANCE_FACTS_CONTRACT_VERSION,
     LOW_CONFIDENCE_THRESHOLD,
+    SOURCE_PROFILE_CONTRACT_VERSIONS,
+    SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS,
     ChildGuidanceFacts,
 )
 from app.modules.child.questionnaire import ANSWER_VERSION
@@ -282,13 +282,15 @@ class GuidanceQualityIssue:
 
 
 def fact_families(version: str) -> tuple[str, ...]:
-    return (
-        (*_FACT_FAMILIES, "source_profiles") if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else _FACT_FAMILIES
-    )
+    if version not in SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS:
+        raise ValueError("Unsupported Guidance Facts contract")
+    return (*_FACT_FAMILIES, "source_profiles") if version in SOURCE_PROFILE_CONTRACT_VERSIONS else _FACT_FAMILIES
 
 
 def section_contracts(version: str) -> dict[str, SectionContract]:
-    if version != CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+    if version not in SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS:
+        raise ValueError("Unsupported Guidance Facts contract")
+    if version not in SOURCE_PROFILE_CONTRACT_VERSIONS:
         return SECTION_CONTRACTS
     return {
         **SECTION_CONTRACTS,
@@ -322,12 +324,12 @@ def fact_matches_section(
     fact: Mapping[str, Any], *, section_key: str, version: str, contract: SectionContract, family: str
 ) -> bool:
     if (
-        version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION
+        version in SOURCE_PROFILE_CONTRACT_VERSIONS
         and section_key == "conscious_adjustments"
         and family == "recommended_actions"
     ):
         return fact.get("topic") == "transitions"
-    if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION and "source_kind" in fact:
+    if version in SOURCE_PROFILE_CONTRACT_VERSIONS and "source_kind" in fact:
         kind, dimension = fact.get("source_kind"), fact.get("dimension")
         if section_key == "parent_style":
             return kind == "parent_style"
@@ -338,9 +340,13 @@ def fact_matches_section(
         if section_key == "praise_recognition":
             return kind == "child_needs" and dimension == "recognition"
         if section_key == "conscious_adjustments":
-            return (kind == "interaction" and 35 < float(fact["score"]) < 65) or (
-                kind == "child_needs" and dimension == "transition_time"
-            )
+            return (
+                kind == "interaction"
+                and (
+                    35 < float(fact["score"]) < 65
+                    or (version == "child-guidance-facts-v3" and float(fact["confidence"]) < 0.4)
+                )
+            ) or (kind == "child_needs" and dimension == "transition_time")
         topic_dimensions = {
             "soothing_support": "physical_sensory_calm",
             "boundaries_rules": "predictability",
@@ -502,7 +508,7 @@ def _guidance_payload_hash(payload: Mapping[str, Any]) -> str | None:
     context = context_entries[0]
     try:
         fields = _ALLOWED_PAYLOAD_FIELDS | (
-            {"source_profiles"} if payload.get("contract_version") == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else set()
+            {"source_profiles"} if payload.get("contract_version") in SOURCE_PROFILE_CONTRACT_VERSIONS else set()
         )
         unhashed_payload = {field: payload[field] for field in fields if field != "evidence_registry"}
         unhashed_payload["evidence_registry"] = {
@@ -562,8 +568,7 @@ def _registry_metadata_is_valid(reference: object, metadata: Mapping[str, Any]) 
     if source_type == "guidance_contract":
         input_hash = metadata.get("input_hash")
         return (
-            metadata.get("contract_version")
-            in (GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION)
+            metadata.get("contract_version") in SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS
             and _is_sha256(input_hash)
             and reference == f"guidance_contract:{input_hash}"
         )
@@ -744,7 +749,7 @@ def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> No
     issues = _find_forbidden_fields(payload)
     version = payload.get("contract_version")
     allowed_fields = _ALLOWED_PAYLOAD_FIELDS | (
-        {"source_profiles"} if version == CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION else set()
+        {"source_profiles"} if version in SOURCE_PROFILE_CONTRACT_VERSIONS else set()
     )
     payload_fields = {field for field in payload if isinstance(field, str)}
     for field in payload:
@@ -756,8 +761,9 @@ def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> No
     for field in sorted(allowed_fields - payload_fields):
         issues.append(GuidanceQualityIssue("missing_payload_field", f"$.{field}"))
 
-    if version not in (GUIDANCE_FACTS_CONTRACT_VERSION, CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION):
+    if version not in SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS:
         issues.append(GuidanceQualityIssue("invalid_contract_version", "$.contract_version"))
+        raise GuidanceFactsQualityError(tuple(dict.fromkeys(issues)))
     for field in ("parent_profile_id", "child_id", "age_snapshot_id"):
         try:
             UUID(str(payload.get(field)))
@@ -783,7 +789,7 @@ def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> No
             issues.append(GuidanceQualityIssue("invalid_evidence_metadata", path))
             continue
         source_type = str(metadata["source_type"])
-        if source_type == "source_profile" and version != CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION:
+        if source_type == "source_profile" and version not in SOURCE_PROFILE_CONTRACT_VERSIONS:
             issues.append(GuidanceQualityIssue("invalid_evidence_metadata", path))
         if source_type == "guidance_contract" and metadata.get("contract_version") != version:
             issues.append(GuidanceQualityIssue("invalid_evidence_metadata", path))

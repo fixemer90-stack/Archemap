@@ -20,11 +20,15 @@ from app.modules.child.repository import ChildLineageMismatchError
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("version", ["legacy", "current"])
+@pytest.mark.parametrize("version", ["legacy", "current", "v3"])
 async def test_child_web_pdf_manifest_preserves_order_and_only_validated_narrative(version: str) -> None:
     from tests.unit.test_child.test_content_v2 import _middle_facts
 
-    facts = _facts() if version == "legacy" else _middle_facts()
+    facts = (
+        _facts()
+        if version == "legacy"
+        else _middle_facts(contract_version="child-guidance-facts-v3" if version == "v3" else "child-guidance-facts-v2")
+    )
     report = models.ChildReport(
         id=uuid4(),
         child_profile_id=facts.child_id,
@@ -93,6 +97,13 @@ async def test_child_web_pdf_manifest_preserves_order_and_only_validated_narrati
     assert presentation["quality"]["omitted_sections"]
     assert 'data-quality-status="limited"' in html
     assert "Часть разделов" in html
+    omitted = [item for item in presentation["sections"] if item["status"] == "not_applicable"]
+    assert omitted
+    for item in omitted:
+        block = html.split(f'data-section-key="{item["key"]}">', 1)[1].split("</section>", 1)[0]
+        assert "Для отдельного пояснения пока недостаточно устойчивых оснований." in block
+    if version == "v3":
+        assert html.count("Это не оценка способностей и не фиксированная черта ребёнка") == 1
     assert "insufficient_section_evidence" not in html
     legacy_without_quality = {key: value for key, value in presentation.items() if key != "quality"}
     assert "data-quality-status" not in render_child_report_html(legacy_without_quality)

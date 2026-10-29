@@ -34,7 +34,11 @@ def render_child_report_html(presentation: dict[str, Any]) -> str:
         prose = "".join(f"<p>{escape(part)}</p>" for part in str(body).split("\n\n")) if body else ""
         actions = "".join(f"<li>{escape(action)}</li>" for action in section.get("actions", []))
         notice = ""
-        if not body and section["status"] in {"failed", "pending", "in_progress", "retry_waiting"}:
+        if not body and section["status"] == "not_applicable":
+            # Match the browser's explicit empty-evidence explanation without
+            # replacing any immutable narrative body or deterministic actions.
+            notice = '<p class="muted">Для отдельного пояснения пока недостаточно устойчивых оснований.</p>'
+        elif not body and section["status"] in {"failed", "pending", "in_progress", "retry_waiting"}:
             notice = '<p class="muted">Развёрнутое пояснение пока недоступно. Сохранённые ориентиры приведены ниже.</p>'
         numerical_age = (
             f"<p>Возраст на дату {escape(age['as_of_date'])}</p>"

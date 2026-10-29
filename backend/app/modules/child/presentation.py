@@ -110,6 +110,7 @@ def compose_child_report_presentation(
             omitted_sections=assembled["omitted_sections"],
             failed_sections=assembled["failed_sections"],
             missing_sections=assembled["missing_sections"],
+            contract_version=assembled["contract_version"],
         ),
         "metadata": {
             "report_id": str(report.id),

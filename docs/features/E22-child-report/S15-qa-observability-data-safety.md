@@ -57,6 +57,10 @@ Alerting source `40f3fb1b4aca2f39a48553689feaca893c2ceb2c`, exact-SHA CI `402351
 
 Production source `886910321d1efcb189b8a2296dd5c947146e8b4f` выложен после явного разрешения владельца и исключения «выкладывай, лимиты решим потом». Это не закрывает budget checkbox: численные p95/token/currency/stuck-job budgets не объявлены измеренными. Сохранён реальный DeepSeek, новых платных тестовых генераций не было. Fresh production backup/restore доказал equality 49 tables / 40 nonempty, frozen migration comparison сохранил данные всех 48 non-revision legacy tables. Отдельные production telemetry/alerts и native Telegram firing/resolved проверены, native Free browser gate сохранил 402. Полный release record и границы: [production evidence](../../reviews/2026-10-28/E22-production-rollout.md).
 
+## Production BUG-50 repair — 2026-10-29
+
+Source `3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9`, exact CI `40782166066` (8/8), новая core version 3: одна полная DeepSeek generation, 11 section calls/по одной попытке, lifecycle 39.120948 s. Persisted/API/native desktop/mobile/PDF readback прошёл, включая независимый родительский readback; 66-table backup/restore и сохранение старых 109 Child rows подтверждены. Это один sample без записанных token/currency totals, не p95 и не закрытие budget checkbox. Четыре обоснованных omissions дают `limited`; стандартные caveat/uncertainty sentences всё ещё повторяются. Подробности и remaining gates: [BUG-50 evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

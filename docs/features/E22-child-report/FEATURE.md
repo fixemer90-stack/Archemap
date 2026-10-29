@@ -2,11 +2,11 @@
 
 ## Статус
 
-🟡 В работе — S01–S14 опубликованы и проверены функционально/CI, но открыт P1 BUG-50 по содержательному качеству narrative. Production global release `8869103` выполнен с явным owner-исключением для отложенных budgets; отсутствие production permission не является блокером. S15–S16 остаются открытыми для количественных budgets/window и полного независимого operator-run. Native staging flow, backup/restore, collector/scrape, rollback и staging/production Telegram firing/resolved подтверждены; это не доказательство полезности текста. Accepted staging marker не продвинут; production marker продвинут после runtime proof.
+🟡 В работе — production source `3e3ee67` и одна полная real-DeepSeek регенерация затронутого Child проверены end-to-end. Тематический collapse исправлен, но BUG-50 остаётся открытым из-за sentence-level boilerplate; технический `ready` не равен содержательному принятию. S15–S16 открыты для количественных budgets/window, полного independent operator-run и оставшихся runbook-сценариев. Предыдущий global release `8869103` выполнен с явным owner-исключением для отложенных budgets; это не измеренные budgets. Native staging flow, backup/restore, collector/scrape, rollback и Telegram firing/resolved подтверждены. Accepted staging marker не продвинут; production active marker `3e3ee67` проверен после runtime proof.
 
 ## Цель
 
-> Открытый P1: [BUG-50 — содержательное качество Child](../../reviews/2026-10-28/BUG-50-child-content-quality.md). Выявлены повторяющиеся общие пояснения и потеря тематических фактов при техническом `ready`. Исторические функциональные проверки не закрывают этот дефект; исправление и проверка затронутого production-артефакта в работе.
+> Открытый P1: [BUG-50 — содержательное качество Child](../../reviews/2026-10-28/BUG-50-child-content-quality.md). Production `3e3ee67` и одна real-DeepSeek регенерация проверены: 11 различных bodies/35 claims вместо тематического collapse; старые артефакты сохранены. Однако стандартная оговорка повторяется 26 раз, uncertainty sentence — 18; содержательное принятие не завершено. Полные S15 budgets и S16 independent operator-run остаются открытыми.
 
 Создать вспомогательный отчёт для взрослого caregiver, который объясняет взаимодействие конкретной пары `родитель ↔ ребёнок` и предлагает возрастно-уместные действия взрослого. Отчёт не описывает ребёнка как фиксированную личность, не предсказывает его судьбу и не заменяет медицинскую, психологическую или педагогическую помощь.
 
@@ -142,7 +142,7 @@ Child Report помогает взрослому понять:
 - [x] Create/complete/regenerate/age-update idempotent и retry-safe.
 - [x] Web и PDF используют одинаковые section order, safety-filtered payload и pinned `age_snapshot_id`.
 - [x] Export/delete/retention contract для данных ребёнка проверен integration tests.
-- [ ] Staging smoke покрывает exact/approximate/unknown time, multiple children, locked/foreign access, provider failure и PDF parity.
+- [x] Staging smoke покрывает exact/approximate/unknown time, multiple children, locked/foreign access, provider failure и PDF parity. Provider failure здесь — сохранённый native disabled-sentinel сценарий, не real upstream outage/cost test; см. S15/S16 historical evidence. Это не закрывает новый BUG-50 quality gate.
 
 ## Stories
 

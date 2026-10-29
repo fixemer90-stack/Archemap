@@ -2,7 +2,7 @@
 
 ## Статус
 
-В работе. GitHub: `fixemer90-stack/Archemap#50`, P1. Пользователь разрешил исправление. Production-артефакты ещё не исправлены; исторические функциональные smoke не являются доказательством содержательной полезности отчёта.
+В работе. GitHub: `fixemer90-stack/Archemap#50`, P1. Исправление source-aware v2 выложено в production `3e3ee67`; одна разрешённая полная real-DeepSeek генерация создала core version 3, artifact/API/desktop/mobile/PDF проверены оператором и повторно родительским агентом. Исходный collapse устранён, но сохраняется повторение стандартных оговорок внутри различных claims; полного содержательного принятия и закрытия BUG-50 пока нет.
 
 Публичные сведения обезличены: идентификаторы владельца, ребёнка, отчётов, birth data, ответы анкеты и сырые payload не включены.
 
@@ -42,12 +42,12 @@
 - [x] Поддержанные parent/child/interaction факты сохраняют содержательные различия до narrative output.
 - [x] Ownership соответствует назначению разделов; нет потери тематического действия из-за несвязанного owned-family условия.
 - [x] Сохранены отрицательные safety/privacy/lineage проверки и совместимость исторических контрактов.
-- [x] Отдельный quality verdict обнаруживает повторяющиеся/неполезные результаты без произвольного требования заполнить все разделы.
+- [ ] Отдельный quality verdict обнаруживает повторяющиеся/неполезные результаты без произвольного требования заполнить все разделы. Текущий v2 ловит полные повторяющиеся claims/bodies, но не выявляет подтверждённое многократное повторение caveat-предложений внутри разных claims.
 - [x] Reader и PDF честно показывают ограничения качества, не раскрывают внутренние reason codes и не запускают новые платные попытки автоматически.
 - [x] Targeted и широкие unit/integration/static/browser проверки пройдены на свежем diff; DB tests используют только disposable PostgreSQL/Redis.
 - [x] Независимые spec/security/code-quality reviews выполнены, замечания устранены.
-- [ ] Изменения опубликованы; точный CI проверен до runtime rollout.
-- [ ] После безопасного rollout проверен реальный восстановленный artifact/API/reader/PDF; новые provider-вызовы выполняются только в разрешённом объёме.
+- [x] Изменения опубликованы; точный CI проверен до runtime rollout.
+- [x] После безопасного rollout проверен реальный восстановленный artifact/API/reader/PDF; новые provider-вызовы выполняются только в разрешённом объёме. Это сквозная проверка результата, не принятие остаточных редакционных повторов.
 
 ## Проверки
 
@@ -79,4 +79,20 @@
 - Независимый read-only spec/security/code review `deleg_f3a0619a`, task 2 — **APPROVED**, **57 passed** pure units и 18 граничных profile-сценариев без ошибок. Он предшествовал последнему точечному transition-исправлению; это изменение дополнительно проверено родительским агентом и persisted regression.
 - Reader и PDF получают одинаковую quality-проекцию. Проверка повторов нормализует точные approved text/body повторы; универсальное распознавание парафраз не заявляется. Обоснованные пропуски остаются допустимыми и честно обозначаются.
 
-CI и production repair будут дополнены фактическими результатами. Исправление всего BUG-50 пока не заявляется завершённым; новых production provider-вызовов и перезаписи исторических артефактов не было.
+### Production repair и независимый readback — 2026-10-29
+
+- Разрешение: после запроса на выкладку и одну полную платную регенерацию владелец поручил «заканчивай тогда S22 и проверяй баг»; в контексте это E22 Child. Выполнена **одна** принятая полная генерация, **11 real DeepSeek section calls**, по одной попытке. Дополнительных diagnostic/provider-generations не было.
+- Exact source/runtime: `3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9`, CI `40782166066` — **8/8 success** до упаковки. Образы из clean git archive, source identity **308 Python files** в каждом из четырёх consumers, migration delta **0**, head `a8b9c0d1e2f3`. API/worker/scheduler/frontend operational readiness и public HTTPS health — PASS.
+- Production preflight, drain и frozen backup/restore: **66 public tables**, schema/rows равны, источник не изменён; временная restore DB удалена с identity guard и отсутствие прочитано обратно. Backup/rollback images сохранены. Остальные **17 containers**, PostgreSQL/Redis/Caddy и staging identities сохранены; maintenance снят, Caddy config равен baseline.
+- Новый **core version 3**, `child-guidance-facts-v2` / `child_report_narrative_v2`, lifecycle `ready`, **39.120948 s**. **11/11 различных bodies**, **35/35 различных claims**, исходная одинаковая общая рекомендация исчезла. Четыре обоснованных пропуска: `natural_contact`, `friction_zones`, `conflict_cycle`, `not_personal`; failed/missing sections отсутствуют. Product quality честно `limited`, не безусловное принятие текста.
+- Старые core versions 1/2 и все **109 preexisting owned Child rows** сохранили hashes/значения. Questionnaire предыдущей local date предварительно обновлён через канонические API с сохранением всех восьми structured answers, прежнего stage/question keys и immutable completed session. Первый admission 404 не создал generation; idempotency key сохранён до единственного 202.
+- Public API, native browser **1440×1000 / 390×844**, без API mocks: 15 section headings, все 11 точных bodies, четыре пояснения omission, limited notice, отсутствие raw reason codes/безусловного ready/overflow/page errors и Child mutations. Нативная PDF-ссылка сработала в обоих viewports.
+- API/browser PDF bytes совпали: **7 pages, 27,348 bytes**, SHA256 `1379394ce70802b331ad4f4b2083fa48dd15d949fac3e2f14650b34c671fdd53`. Все 11 bodies и 15 headings сохранены. PDF показывает общую limitation copy; индивидуальные fallback-пояснения четырёх пропусков, имеющиеся в web, в PDF отсутствуют. Это не потеря сохранённых bodies, но не следует объявлять идентичность всех fallback-надписей.
+- Родительский агент выполнил свежий read-only `readback-v2.py`: **PASS**, заново проверены running source/images/provider/markers/readiness, backup, отсутствие restore DB, старые строки, точный repair key и paid accounting. Повторный независимый разбор полученного public payload подтвердил **11 уникальных bodies**, caveat **26 повторов**, middle-range uncertainty **18 повторов**. Representative reader/PDF screenshots осмотрены; текст не обрезан, но формульное повторение заметно.
+- Private evidence: `/opt/astrotype-production/evidence/3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9/`; active release выбран `.deploy-release`, observability overlays остаются под прежним `8869103` evidence, new images override — под `3e3ee67`. Полные идентификаторы/данные/токены не публикуются.
+
+### Остаточная причина и граница закрытия
+
+`narrative.py::_profile_text` добавляет одинаковую общую child-safety оговорку к каждому source-profile claim, а одинаковую uncertainty-фразу — к каждому middle-range показателю. Prompt/validator затем требуют точное approved rendering. Поэтому уникальность целого claim/body скрывает повторение составных предложений: это upstream rendering/quality gap, не доказанный сбой провайдера. Не исправлять глобальным удалением оговорок на read-side, ослаблением conditional safety, произвольными length gates или перезаписью исторических rows. Требуется версионированный section-aware content/quality контракт с сохранением конкретной неопределённости, grounded evidence и legacy read/retry; затем проверка нового результата.
+
+Одна согласованная платная регенерация израсходована. Ещё одна production генерация и statistical budget/load qualification не выполнены; токены/цена успешного вызова не записаны, p95 из одного sample не заявляется. BUG-50 и полный E22 остаются открытыми.

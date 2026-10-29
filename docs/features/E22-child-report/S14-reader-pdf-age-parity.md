@@ -50,6 +50,12 @@ Reader должен быть narrative-first, показывать progressive d
 - Запустить repo-native lint/type/test gates только для затронутых областей, затем обязательные более широкие CI gates.
 - Записать фактические команды, результаты и runtime evidence в эту Story при реализации.
 
+## Production BUG-50 readback — 2026-10-29
+
+На source `3e3ee67` public API, native desktop 1440×1000/mobile 390×844 без mocks и PDF проверили один сохранённый core v3: 15 headings, все 11 bodies совпадают, четыре evidence-based omissions, limited notice без raw reason codes, без overflow/page errors и Child mutations. Нативные PDF-downloads обоих viewports совпали с API: 7 pages/27,348 bytes, SHA256 `1379394ce70802b331ad4f4b2083fa48dd15d949fac3e2f14650b34c671fdd53`; body parity PASS. Индивидуальные web fallback-пояснения omissions в PDF отсутствуют; в нём есть global limitation copy, headings/confidence notes. Это явная граница copy parity, не потеря сохранённых bodies.
+
+Upstream sentence-level boilerplate сохраняется; source-aware fix не является полным содержательным принятием. [BUG-50 evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md) остаётся открытым. Исторические immutable artifacts не переписаны.
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

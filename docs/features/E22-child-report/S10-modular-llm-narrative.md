@@ -9,7 +9,8 @@
 - [x] Обезличенный middle-score сценарий больше не сводится к одинаковым общим фразам и дублирующимся разделам.
 - [x] Содержательное раскрытие фактов сохраняет enforceable child-safety и не добавляет неподдержанные рекомендации.
 - [x] Версии prompt/input/validator/assembly согласованы; legacy read/retry не переинтерпретирует старые артефакты.
-- [ ] Полный pipeline и восстановленный пользовательский результат проверены, а не только технический `ready`.
+- [x] Полный pipeline и восстановленный пользовательский результат проверены, а не только технический `ready`: production core v3 на `3e3ee67`, 11 real-provider sections, persisted/API/native desktop/mobile/PDF readback. Проверка выявила остаточный дефект, а не безусловное принятие текста.
+- [ ] Повторяющиеся стандартные caveat/uncertainty sentences устранены versioned section-aware rendering без потери child-safety и локальной неопределённости; новый результат проверен. В v3 core-отчёте общая оговорка повторяется 26 раз, uncertainty sentence — 18; целые bodies/claims при этом различны.
 
 ## Контекст
 

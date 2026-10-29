@@ -32,7 +32,7 @@
 - [ ] Canary не начинается при safety/access failures.
 - [x] Rollback прекращает новую generation admission и сохраняет artifacts; принятая in-flight работа не прерывается.
 - [x] Live evidence содержит exact SHA/IDs/results без child PII.
-- [ ] Feature остаётся незакрытой до production/canary evidence по принятой rollout policy.
+- [x] Feature остаётся незакрытой до production/canary evidence по принятой rollout policy. Выполнен разрешённый global release вместо cohort canary; последующий production `3e3ee67` и один real-provider repair проверены. Это закрывает наличие rollout evidence, не остальные budget/operator/BUG-50 quality gates.
 
 ## Verification
 
@@ -48,7 +48,7 @@
 
 Rollback проверен на этом exact runtime: три легитимные write-операции получили private/no-store 503, reader/PDF и все 21 table row/hash сохранились. Флаг прочитан false, затем восстановлен в `finally` и прочитан true во всех четырёх consumers. Новая full-pair generation после восстановления стала ready. Проверялось прекращение новой admission; in-flight external calls не прерывались. Opaque artifact IDs и результаты без child PII: [staging remediation evidence](../../reviews/2026-10-25/E22-S15-staging-remediation.md).
 
-Верхний staging-smoke checkbox не закрыт автоматически: native flow не доказывает каждый шаг полного runbook и полные budget gates. Выполнение новым оператором отдельно не доказано. Production/canary не разрешены и не выполнялись. Accepted staging marker оставлен прежним; native functional PASS не равен принятому rollout.
+Исторический snapshot 2026-10-25: верхний staging-smoke checkbox не был закрыт автоматически, поскольку native flow не доказывает каждый шаг полного runbook и budgets. На тот момент production/canary не разрешались и не выполнялись. Позднейший явно разрешённый global production release записан ниже; полный independent operator-run/budgets по-прежнему не доказаны. Accepted staging marker не продвинут.
 
 Инфраструктурный slice `40f3fb1b4aca2f39a48553689feaca893c2ceb2c` прошёл exact-SHA CI `40235132422` (8/8) и отдельный staging rollout без перезапуска приложения/production. Реальный Prometheus → Alertmanager → существующий Telegram drill подтвердил pending, literal `for: 1m`, firing, две завершённые notifier отправки без ошибок и normal resolution после ложного expression; probe затем удалён. Все 17 защищённых container identities сохранились. Source приложения остаётся `06b72c0`, source alerting — `40f3fb1`; эти идентичности не подменяют accepted marker. Подробности и private evidence paths — в том же staging remediation evidence.
 
@@ -71,6 +71,12 @@ Rollback проверен на этом exact runtime: три легитимны
 Native desktop/mobile sidebar click без API mocks подтвердил production Child и canonical 402 для нового synthetic Free adult. Никаких paid grants/payments/Child records этой fixture и платных тестовых генераций не создавалось. Production имеет отдельные private collector/Prometheus/Alertmanager; real firing/resolved delivery завершил две отправки без ошибок, probe удалён. Семнадцать прочих containers и staging markers сохранились. `.deploy-sha`/`.deploy-release` записаны и прочитаны после smoke.
 
 Это global release по явному разрешению, не процентный canary и не исполнение всего runbook независимым новым оператором. Budgets остаются неизмеренными; checkbox выше не закрываются исключением. Подробные результаты, private evidence и новая operational Compose entrypoint: [production evidence](../../reviews/2026-10-28/E22-production-rollout.md).
+
+## Production repair и independent readback — 2026-10-29
+
+Active release `/opt/astrotype-production/releases/3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9`, CI `40782166066` (8/8), markers/source/image/readiness проверены. Migration delta 0; private 66-table backup/restore и frozen equality PASS, rollback images сохранены. Один разрешённый real-provider full repair создал core v3, 11 ready sections/четыре обоснованных omissions, 35 уникальных claims. Родительский read-only `readback-v2.py` заново подтвердил старые version/hash/109 owned rows, API/browser/PDF proof и paid accounting. Private evidence находится под `/opt/astrotype-production/evidence/3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9/`; observability overlays — под старым `8869103` evidence, images override — под новым.
+
+Это независимый post-deploy readback, **не** полноценное независимое исполнение всего S16 runbook. Open: numeric budgets/workload/window, дополнительные boundary/query-plan/accounting сценарии и negative safety/access STOP execution. Общий контентный verdict не принят: caveat sentence повторяется 26 раз, uncertainty — 18. BUG-50 и Feature не закрыты; [подробный evidence и root cause](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
 
 ## Зависимости
 

@@ -45,6 +45,7 @@ dev = [
     "pytest>=9.0.3,<10",
     "pytest-asyncio>=1.0,<2",
     "pytest-cov>=6,<8",
+    "pypdf>=6.21.2,<7",
     "respx>=0.22,<1",
     "httpx>=0.28,<1",
     "mypy>=1.13,<3",

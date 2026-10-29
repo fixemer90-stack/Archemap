@@ -17,6 +17,7 @@ from app.modules.llm.exceptions import (
     LLMProviderUnavailableError,
     LLMTimeoutError,
 )
+from app.modules.llm.usage import record_provider_attempt, record_provider_response
 from app.modules.report_narratives.schemas import NarrativeInput
 
 StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
@@ -60,6 +61,7 @@ class DeepSeekProvider:
         for attempt in range(self.max_retries + 1):
             try:
                 async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                    record_provider_attempt()
                     response = await client.post(
                         "https://api.deepseek.com/chat/completions",
                         headers=headers,
@@ -93,7 +95,9 @@ class DeepSeekProvider:
                 code="llm_provider_unavailable",
             )
 
-        return self._parse_response(response.json(), schema, narrative_input)
+        response_payload = response.json()
+        record_provider_response(response_payload)
+        return self._parse_response(response_payload, schema, narrative_input)
 
     def _parse_response(
         self,

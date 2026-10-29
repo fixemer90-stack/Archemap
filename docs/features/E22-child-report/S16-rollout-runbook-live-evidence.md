@@ -78,6 +78,12 @@ Active release `/opt/astrotype-production/releases/3e3ee67b68e9ea53cb6e467b5596d
 
 Это независимый post-deploy readback, **не** полноценное независимое исполнение всего S16 runbook. Open: numeric budgets/workload/window, дополнительные boundary/query-plan/accounting сценарии и negative safety/access STOP execution. Общий контентный verdict не принят: caveat sentence повторяется 26 раз, uncertainty — 18. BUG-50 и Feature не закрыты; [подробный evidence и root cause](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
 
+## Независимое operator execution — 2026-10-29/30
+
+На tooling `b8b724d` выполнены реальные native HTTPS/Basic Auth/cookie negative probes: **6/6 PASS**, включая canonical health/noindex, expired-owned 402 и foreign/nonexistent 404 с равными private/no-store bodies. Два стабильных read-интервала сохранили row/hash всех **21 protected tables**. Read-only foreign/missing query-plan shape совпал; по одному timing sample не доказывают p95/equivalent-load class. Все **22 container identities** сохранены, production health 200. Родитель повторно проверил checksum index и все **26 evidence files**, результаты и границы proof.
+
+Provisioned reusable client launcher `/home/balthier/.hermes/cache/scratch/e22_operator_launcher.py` и полные enabled/disabled manifests находятся в private evidence `/opt/astrotype-staging/evidence/operator-b8b724d-20261029T205956Z/`. Positive enabled запуск честно остановился **до session issuance/HTTP**: retained A/B/C больше не имеют действующего Child access. Не выполнялись grants/payments, app mutations, restarts, PDF-cache writes или provider calls. Нет active-owner foreign proof, archived/deletion_pending fixtures, freeze/broker drain, statistical budgets и полного unknown-outcome/browser/PDF replay. Это частичное реальное исполнение, не основание отметить full-run checkbox. Следующий operator должен явно согласовать только synthetic A/B provisioning (C оставить expired), maintenance/lifecycle fixture scope и quantitative workload/window; произвольные customer grants запрещены.
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

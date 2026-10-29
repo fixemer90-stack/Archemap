@@ -12,11 +12,39 @@ Production source `886910321d1efcb189b8a2296dd5c947146e8b4f` was explicitly auth
 
 Active production release is selected by `/opt/astrotype/.deploy-release`, not by the old source directory. Use its pinned Compose files/overlays as documented in [production release evidence](../reviews/2026-10-28/E22-production-rollout.md). The deployment marker was advanced only after readback and native desktop/mobile smoke. S15/S16 remaining acceptance work stays open; the normal preconditions below still apply unless a future owner decision explicitly changes them.
 
+### Current application follow-up — 2026-10-29
+
+Application source `3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9` is deployed with independent runtime readback. The [BUG-50 evidence record](../reviews/2026-10-28/BUG-50-child-content-quality.md) owns the latest repair/generation evidence. One authorized real DeepSeek full generation produced v3 with 11 distinct bodies, 35 distinct claims and four evidence-based omissions; eleven section calls each used one attempt, no terminal failure. Historical v1/v2 and 109 prior rows remain preserved. Sentence-level caveat/uncertainty repetition persists (26/18 occurrences), so quality remains limited and BUG-50/E22 remain open. Tokens/currency are unrecorded; one sample does not establish p95 or failure/unknown-outcome rates. The paid budget is exhausted: no further provider calls are authorized here. The owner's earlier global-release budget exception does not equal full acceptance or authorize another experiment.
+
+This is a composite deployment: retain the `886910321d1efcb189b8a2296dd5c947146e8b4f` production observability overlays and the **new** application's image override, in that order. Do not derive observability paths from the current marker as if all infrastructure moved with the application. On the approved production host this read-only entry point requires the active archive/override to have been independently matched to live containers; if files, marker or image identities differ, STOP and obtain the actual approved chain rather than recreating services:
+
+```bash
+set -euo pipefail
+APP_SHA=3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9
+INFRA_SHA=886910321d1efcb189b8a2296dd5c947146e8b4f
+RELEASE_DIR="$(cat /opt/astrotype/.deploy-release)"
+test "$(cat /opt/astrotype/.deploy-sha)" = "$APP_SHA"
+test "$RELEASE_DIR" = "/opt/astrotype-production/releases/$APP_SHA"
+INFRA_EVIDENCE="/opt/astrotype-production/evidence/$INFRA_SHA"
+APP_EVIDENCE="/opt/astrotype-production/evidence/$APP_SHA"
+for file in "$RELEASE_DIR/.env.production" "$RELEASE_DIR/docker-compose.prod.yml" \
+  "$INFRA_EVIDENCE/observability/compose.observability.json" \
+  "$INFRA_EVIDENCE/observability/app.telemetry.json" "$APP_EVIDENCE/images.override.json"; do
+  test -f "$file"
+done
+docker compose -p astrotype --project-directory "$RELEASE_DIR" \
+  --env-file "$RELEASE_DIR/.env.production" \
+  -f "$RELEASE_DIR/docker-compose.prod.yml" \
+  -f "$INFRA_EVIDENCE/observability/compose.observability.json" \
+  -f "$INFRA_EVIDENCE/observability/app.telemetry.json" \
+  -f "$APP_EVIDENCE/images.override.json" ps
+```
+
 ## Preconditions
 
 The [operator procedures](./child-operator-procedures.md) define the two shells, private-directory initialization, approved fixture/credential acquisition, complete manifests, safe expiry/stale/failure triggers, application backup/restore SOP and explicit acceptance gate matrix. Missing approval, numeric budgets or fixture provisioning is a STOP condition, not a hidden default.
 
-1. Choose and record the exact 40-character reviewed commit SHA, environment, operator, approved window, previous SHA/image IDs and rollback decision owner. Require a clean checkout at that SHA and green exact-SHA CI; do not substitute a green older run.
+1. For application deployment choose and record the exact 40-character reviewed `TARGET_SHA`, environment, operator, approved window, previous revisions/image IDs and rollback decision owner. Require a clean application build checkout at that SHA and green exact-SHA CI; do not substitute a green older run. Separately record `OPERATOR_SHA` for the tooling checkout and actual API/frontend/worker/scheduler/refinement-monitor/infra identities (or verified common `APP_SHA`). Read-only tooling updates require neither an application archive nor redeploy; see the operator procedures' independent tooling initialization.
 2. Verify an application backup/restore under the deployment's existing private backup policy. The local `scripts.child_backup_restore` CLI deliberately refuses application/remote databases: its proof applies only to synthetic QA databases on loopback port 55434, role `e22test`, names `e22_qa_test`/`e22_qa_restore`. It requires populated child/generation/report history and refuses a nonempty restore target. Never weaken those guards to back up production.
 3. Confirm schema head, PostgreSQL health, Redis/broker health, worker registration of `child.generate_report`, scheduler registration of `child.reconcile_generations`, and readiness through the real HTTPS frontend/proxy. Preserve existing volumes and account/billing data. Do not run destructive pytest fixtures on any application database.
 4. Verify proxy trust: HTTPS must reach the backend as an authenticated HTTPS request through the trusted reverse proxy. Production JSON export rejects an HTTP request. Never bypass this by trusting arbitrary client `X-Forwarded-Proto` headers.
@@ -29,16 +57,17 @@ The [operator procedures](./child-operator-procedures.md) define the two shells,
 
 There is no `NEXT_PUBLIC_CHILD_REPORT_ENABLED` implementation. Do not invent a browser-only kill switch. The backend catalog/access decision is authoritative. A frontend code/build-time configuration change still requires a new build/image, not merely container environment changes.
 
-Example staging commands, on the approved staging Docker host after all mutation prerequisites pass. `CHECKOUT` is the clean reviewed Git checkout; `RELEASE_DIR` is its separately checksum-verified release archive. Supply the approved values; do not derive a project from the checkout basename:
+Example **application deployment**, not read-only tooling setup: on the approved staging Docker host after all mutation prerequisites and the operator procedures' mandatory quiescence/drain pass. `APP_CHECKOUT` is the clean reviewed application build checkout; `RELEASE_DIR` is its separately checksum-verified release archive. Supply the approved values; do not derive a project from the checkout basename. The example defines a base-only staging Compose function; if the active staging record includes overlays, provision and use its entire pinned chain before proceeding, never drop them:
 
 ```sh
+set -eu
 export TARGET_SHA='<approved full SHA>'
-: "${CHECKOUT:?absolute reviewed Git checkout}"
+: "${APP_CHECKOUT:?absolute reviewed application Git checkout}"
 export RELEASE_DIR="/opt/astrotype-staging/releases/$TARGET_SHA"
 export CHILD_ALERT_SECRETS_DIR=/opt/astrotype-staging/secrets/child-alertmanager
 export CHILD_ALERT_PROBE_DIR=/opt/astrotype-staging/alert-probes/child
-test "$(git -C "$CHECKOUT" rev-parse HEAD)" = "$TARGET_SHA"
-test -z "$(git -C "$CHECKOUT" status --porcelain)"
+test "$(git -C "$APP_CHECKOUT" rev-parse HEAD)" = "$TARGET_SHA"
+test -z "$(git -C "$APP_CHECKOUT" status --porcelain)"
 compose() {
   docker compose -p astrotype-staging --project-directory "$RELEASE_DIR" \
     --env-file "$RELEASE_DIR/.env.staging" -f "$RELEASE_DIR/docker-compose.staging.yml" "$@"
@@ -47,7 +76,10 @@ compose config --quiet
 # Before build/up: privately compare rendered PostgreSQL/Redis/Prometheus volume
 # names with live inspect mounts, require existing approved bind sources and
 # correct private networks. See the identity guard in the operator procedures.
+# Define compose before the drain; do not run the following deployment lines
+# until the separate maintenance/drain procedure has completed.
 compose build backend worker scheduler refinement-monitor frontend
+test "${DRAIN_CONFIRMED:-false}" = true
 compose up -d --no-deps backend worker scheduler refinement-monitor frontend
 compose ps
 compose exec -T backend python -m alembic current
@@ -67,7 +99,7 @@ Staging backend startup runs `alembic upgrade head` automatically before Uvicorn
 3. For each child, GET `children/{id}/questionnaires/current`; record the returned session/age snapshot. Answer the server-returned questions using server-returned option codes, reload to prove autosave/resume, review and consent, then POST complete with one stable key. Complete must reject missing/invalid fields without partially sealing the draft.
 4. POST `/reports` with only `child_profile_id` and `questionnaire_session_id`, plus a stable `Idempotency-Key`. Poll the returned `generation_id`, not the child ID. Verify real broker/worker execution and persisted events; require useful deterministic content before prose and the configured terminal state. Repeat the identical accepted request after a new snapshot/chart exists: it must return the original accepted generation. A new key with stale questionnaire age must be rejected.
 5. Switch between two children and prove no cross-child answers, chart IDs, scores, generation IDs or report payload. Verify mismatched child/session, foreign owner, nonexistent, archived and deletion-pending resources. Free/expired denial must contain only the documented lock allowlist, never names, DOB, answers, prose, snapshots or artifact URLs. Foreign/missing use the same minimal owner query/status/body; inspect query plan/latency class under equivalent staging load, not a single wall-clock comparison.
-6. Exercise controlled provider failure without exposing exception/provider text. Useful deterministic content stays readable. A deliberate retry after terminal failure needs a NEW client key; an ambiguous transport retry preserves its OLD key. Unknown external outcome must not be recalled automatically. Verify provider intent/attempt accounting from persisted rows and telemetry, not only HTTP status. Never simulate a timeout against a paid provider unless its cost/unknown-outcome experiment was explicitly approved.
+6. Exercise controlled provider failure without exposing exception/provider text. Useful deterministic content stays readable. A deliberate retry after terminal failure needs a NEW client key; an ambiguous transport retry preserves its OLD key. Unknown external outcome must not be recalled automatically. Verify persisted generation/section diagnostics in `child_generations`, `child_generation_events` and `child_segment_generations` plus telemetry against the worker contract, not nonexistent provider-intent/attempt tables or only HTTP status. These rows do not themselves supply missing token/currency accounting. Never simulate a timeout against a paid provider unless its cost/unknown-outcome experiment was explicitly approved.
 7. Open the reader on desktop/tablet/mobile and use keyboard only through child selection, questionnaire review, reader disclosure and retry. Require no horizontal overflow, no serious/critical accessibility violations, no client errors and all 15 sections. Check late session expiry preserves already loaded read-only content while disabling writes/polling.
 8. Update a stale age block. Poll until `age_update_ready` or `age_update_failed`; both are terminal. Core report/version stays immutable. Export PDF with the reader's exact `age_snapshot_id`; compare section order/body/actions, numerical age, confidence notes and metadata with the same presentation. Read/export must not silently create another snapshot.
 9. Download authenticated JSON export, including an archived record; verify its complete owned Child graph, no sibling data and no worker/provider secrets. Delete only synthetic test fixtures via the documented archive/purge modes; verify account, billing, parent natal data and sibling child survive. Record the privacy-safe audit result, not the exported personal data.
@@ -75,7 +107,7 @@ Staging backend startup runs `alembic upgrade head` automatically before Uvicorn
 
 ## Automated read probes
 
-From `backend`, use a private JSON array manifest. The enabled inventory must be EXACTLY: `exact`, `approximate`, `unknown`, `two_child`, `locked`, `foreign`, `provider_failure`, `pdf`.
+From the `OPERATOR_SHA` checkout's `backend`, use a privately provisioned JSON array manifest and the approved credential launcher described in the operator procedures. Neither a complete manifest nor an executable launcher path is supplied by this template: absence is STOP, not an instruction to invent credentials/IDs. No application redeploy is required. The enabled inventory must be EXACTLY: `exact`, `approximate`, `unknown`, `two_child`, `locked`, `foreign`, `provider_failure`, `pdf`.
 
 Each entry has `name`, `path`, `token_env`. Successful JSON probes also require `equals`: JSON-pointer-to-expected-value assertions. The CLI enforces a nonempty `/id` assertion for exact/approximate/unknown/two-child records, `/generation_id` for provider-failure generation probes, and `/report_id` for flag-off report reads; a status-only assertion is rejected. `two_child` additionally requires nonempty `forbidden_values` containing the sibling's private identifiers. `exact`/`approximate`/`unknown` target the respective GET child record; `provider_failure` targets its failed narrative generation; `locked` uses an existing owned resource with Free/expired credentials; `foreign` uses another active owner's token against A's resource. `pdf` must use `/api/v1/child/reports/{report_id}/pdf?age_snapshot_id={canonical UUID}`. No other query, credentials in URLs, foreign URLs or redirects are allowed.
 
@@ -98,7 +130,7 @@ Example entry shape (substitute real private opaque IDs, not literal placeholder
 .venv/bin/python -m scripts.child_rollout_smoke \
   --base-url https://staging.astrotype.ru \
   --manifest "$PRIVATE_DIR/child-enabled.json" \
-  --sha "$TARGET_SHA" --phase enabled \
+  --sha "$OPERATOR_SHA" --phase enabled \
   --gateway-user-env CHILD_GATEWAY_USER \
   --gateway-password-env CHILD_GATEWAY_PASSWORD \
   --report "$PRIVATE_DIR/child-enabled-result.json"
@@ -130,7 +162,7 @@ The permanent rules cover observed worker terminal failures (`for: 1m`) and work
 
 ## Rollback drill and canary
 
-Before canary, set `CHILD_REPORT_ENABLED=false` in the selected environment file and recreate backend/worker/scheduler/refinement-monitor. Verify settings in API and worker. Do NOT stop PostgreSQL/Redis, drop tables, truncate events, delete artifacts, downgrade immutable lineage or clear durable provider intents. Preserve in-flight work and let fenced workers finish/reconcile; terminating an external call can create an unknown outcome.
+Before any flag change requiring process recreation, execute the operator procedures' **mandatory quiescence/drain**: freeze ingress and all producers, pause scheduler, let accepted work finish/reconcile with workers still alive, and prove every consumer's active/reserved/scheduled sets and consumed broker queues empty plus no unresolved persisted/provider outcome. Missing inspections or unknown outcomes are STOP. Only then set `CHILD_REPORT_ENABLED=false` in the selected environment file and recreate backend/worker/scheduler/refinement-monitor using the complete active Compose chain. Keep producers frozen through readiness/flag readback. Do NOT stop PostgreSQL/Redis, drop tables, truncate events, delete artifacts, downgrade immutable lineage or clear persisted generation/section diagnostics. A flag is an admission gate, not hot cancellation: recreating a busy worker does not preserve its call, and no finite Docker stop timeout may be used to kill it. Re-enable and image rollback require the same drain; if it cannot be established, leave consumers alive and escalate to the incident owner.
 
 The disabled manifest contains EXACTLY `flag_off_read` and `flag_off_write`. Read points at the previously published report with asserted report/child IDs. Write POSTs `/api/v1/child/reports` with a legitimate owned completed child/session pair so authentication/ownership/validation cannot mask the flag check. Expect 503, no new generation/events/segments, no enqueue/provider attempts, no billing/entitlement mutation. Reads, pinned PDF and export stay available. Compare persisted row counts and artifact hashes before/after; the HTTP probe alone does not establish no side effects.
 
@@ -138,17 +170,17 @@ The disabled manifest contains EXACTLY `flag_off_read` and `flag_off_write`. Rea
 .venv/bin/python -m scripts.child_rollout_smoke \
   --base-url https://staging.astrotype.ru \
   --manifest "$PRIVATE_DIR/child-disabled.json" \
-  --sha "$TARGET_SHA" --phase disabled \
+  --sha "$OPERATOR_SHA" --phase disabled \
   --gateway-user-env CHILD_GATEWAY_USER \
   --gateway-password-env CHILD_GATEWAY_PASSWORD \
   --report "$PRIVATE_DIR/child-disabled-result.json"
 ```
 
-Record successful rollback and re-enable only with the decision owner. Current flag is global, not a percentage/cohort switch: do not describe a global enable as canary. A restricted internal cohort needs separately approved ingress/account restrictions (without weakening canonical access checks); if no restriction is available, keep production off until an explicit global-release decision. Define observation window, sample size and stop conditions in the approved release record. Staging, rollout and canary remain incomplete until that record exists.
+Record successful rollback and re-enable only with the decision owner. Current flag is global, not a percentage/cohort switch: do not describe a global enable as canary. A restricted internal cohort needs separately approved ingress/account restrictions (without weakening canonical access checks); if no restriction is available, a future enable needs an explicit global-release decision. Production is already globally enabled by the recorded exception: this paragraph is not an instruction to turn it off or redeploy. Define observation window, sample size and stop conditions in the approved acceptance record. Full staging/canary/E22 acceptance remains incomplete; the completed global rollout is a separate proof class.
 
 ## Evidence record (required, not fabricated defaults)
 
-- Exact approved/deployed SHA, previous SHA, image IDs, clean-source/runtime checksum proof, timestamps/timezone, environment, operator and approver.
+- Exact `OPERATOR_SHA`, intended `TARGET_SHA`, actual application component/infra revisions and image IDs, previous identities, active Compose chain, clean-source/runtime checksum proof, timestamps/timezone, environment, operator and approver.
 - Private fixture registry: owner account IDs, child/session/generation/report/snapshot IDs, confidence path; no child PII or tokens.
 - Per-scenario HTTP/worker/persisted/browser/PDF outcomes, idempotency and two-child isolation assertions, row-count/hash comparisons and provider-call accounting.
 - Predefined budgets, measured distributions/sample size/load/cost, authoritative stale-job observations, collector scrape/rule evaluation and alert-delivery proof.

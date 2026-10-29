@@ -9,17 +9,17 @@ Two shells have different jobs:
 - Client checkout: reviewed clean Git checkout, `backend/.venv/bin/python`, HTTPS access to staging. Run `scripts.child_rollout_smoke` here.
 - Approved staging Docker host: SSH as the authorized operator, verified Docker project `astrotype-staging`. Run the stdlib-only `backend/scripts/child_runtime_state.py` here, from a reviewed operator checkout. Do not assume WSL's Docker daemon is the VPS daemon.
 
-Initialize a fresh private record; all variables below must be supplied by the approved release record, never guessed from the current directory:
+Initialize a fresh private read-only evidence record. `OPERATOR_SHA` identifies the reviewed tooling/docs checkout; it is **not** the deployed application revision. Record `APP_SHA` only if all application consumers share one verified revision; otherwise record separate API, frontend, worker, scheduler, refinement-monitor and infrastructure revisions/image IDs plus their active Compose file chain in the private release record. Composite deployments must not be flattened to the operator SHA. Read-only checks need neither a new release archive nor a build/redeploy. Supply the following from the approved operator record, never the current directory:
 
 ```bash
 set -euo pipefail
-: "${TARGET_SHA:?approved full source SHA}"
+: "${OPERATOR_SHA:?approved full tooling source SHA}"
 : "${CHECKOUT:?absolute reviewed Git checkout}"
 : "${PRIVATE_DIR:?new absolute private evidence directory outside checkout}"
-: "${RELEASE_DIR:?absolute SHA-specific staging release directory}"
-[[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
-[[ "$PRIVATE_DIR" = /* && "$RELEASE_DIR" = "/opt/astrotype-staging/releases/$TARGET_SHA" ]]
-test "$(git -C "$CHECKOUT" rev-parse HEAD)" = "$TARGET_SHA"
+[[ "$OPERATOR_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$CHECKOUT" = /* && "$PRIVATE_DIR" = /* ]]
+case "$PRIVATE_DIR/" in "$CHECKOUT/"*) exit 1 ;; esac
+test "$(git -C "$CHECKOUT" rev-parse HEAD)" = "$OPERATOR_SHA"
 test -z "$(git -C "$CHECKOUT" status --porcelain)"
 umask 077
 mkdir -m 700 "$PRIVATE_DIR"
@@ -27,9 +27,9 @@ export CHILD_ALERT_SECRETS_DIR=/opt/astrotype-staging/secrets/child-alertmanager
 export CHILD_ALERT_PROBE_DIR=/opt/astrotype-staging/alert-probes/child
 ```
 
-The release directory is a checksum-verified Git archive, not necessarily a Git checkout. Assert Git identity in `CHECKOUT`, then archive/checksum and compare deployed application source separately. Do not run `git rev-parse` in a directory without `.git` and infer release identity from a parent repository.
+For a separately authorized application rollout, `TARGET_SHA` is the intended application revision and `RELEASE_DIR` is its checksum-verified Git archive, not necessarily a Git checkout. Assert Git identity in the application build checkout, then archive/checksum and compare deployed application source separately. Do not run `git rev-parse` in a directory without `.git` and infer release identity from a parent repository. A read probe's `--sha` is a recorded label, not identity verification: use `OPERATOR_SHA` and retain independent runtime identities alongside its output.
 
-Before rendering, privately provision the approved staging `.env.staging`, staging gateway auth include and every required data bind in the new release. They are operator-owned inputs, not files to invent or copy from production. Before any `build/up`, execute this identity guard on the staging host; it never prints the rendered environment:
+Only for application rollout, privately provision the approved staging `.env.staging`, staging gateway auth include and every required data bind in the new release. They are operator-owned inputs, not files to invent or copy from production. The following base-file identity guard applies to the staging rollout example; an active deployment with overlays must use its recorded complete Compose chain instead. Missing release inputs/overlay inventory is STOP. Before any `build/up`, execute this identity guard on the staging host; it never prints the rendered environment:
 
 ```bash
 python3 - "$RELEASE_DIR" <<'PY'
@@ -72,6 +72,8 @@ Checkpoint each returned ID immediately in `$PRIVATE_DIR/fixtures.json`; never p
 Existing approved synthetic registry is private at `/opt/astrotype-staging/evidence/01e41a9d548e2510d2aa54295f76524e4b91881f/fixture-identities.json`. The colocated `session.py` issues bounded native sessions only for its verified synthetic identities; capture its output inside the private launcher, never run it to visible stdout. The colocated `grant.py` supports `grant/expired/restore` only for the registry's synthetic owner and records original grant fields. It is an operator fixture tool, not a general authorization API. A separate C-owned expired fixture and its allowlisted grant controller are retained under `/opt/astrotype-staging/evidence/6114db2cdbd2e5f64fec858c8133fd2b054c181a/locked-fixture/`. Those private paths are explicit provisioning dependencies; a fresh environment without them must provision equivalent synthetic identities under approval before claiming this inventory is runnable.
 
 ## Complete private manifests
+
+No complete reusable probe manifest or credential launcher path is established by this document. The fixture registry/session/grant paths above are not a launcher or a full scenario inventory. Before probes, the approved fixture operator must privately provide (1) enabled eight-case and disabled two-case JSON manifests with real owned IDs, pinned snapshots and retained failure fixture, (2) the exact launcher path/command and reviewed source identity that loads gateway credentials and bounded A/B/C sessions into the probe environment without printing them, (3) the separate locked-owner fixture/controller and (4) access/expiry authorization and cleanup ownership. Use `$PRIVATE_DIR/child-enabled.json` and `$PRIVATE_DIR/child-disabled.json` as newly provisioned output filenames, not claims that files already exist. STOP if any dependency, launcher invocation or allowlisted fixture is unavailable; do not invent a launcher path, run `session.py` visibly, self-grant access or execute placeholders. Even the enabled PDF GET may persist a cached artifact: only the state helper is strictly read-only; HTTP probes need their recorded fixture permission.
 
 Substitute the ledger's actual opaque IDs. These are templates, not executed example results. `locked-owned-child` belongs to C, whose access has expired; the foreign case uses active verified B against A's resource. The failed generation is a retained terminal fixture, not an invented ID.
 
@@ -164,22 +166,41 @@ python3 "$STATE" --container astrotype-staging-postgres-1 \
 
 ## Application backup/restore SOP
 
-This is for a separately approved staging maintenance window, not a command to execute during a read probe. On the approved host verify `astrotype-staging-postgres-1` project/service labels first. Record production identities/marker, staging writer identities and retained rollback images. Drain accepted mock work; no unknown external provider call may be interrupted. Never stop production, PostgreSQL or Redis.
+This is for a separately approved staging maintenance window, not a command to execute during a read probe. On the approved host verify `astrotype-staging-postgres-1` project/service labels first. Record production identities/marker, staging writer identities and retained rollback images. Complete the mandatory drain below first; no external provider call or unknown outcome may be interrupted. Never stop production, PostgreSQL or Redis.
 
-The following Bash sequence stops only currently running staging writers/frontend, creates a private nonempty custom archive, restores only into a uniquely created disposable DB, compares all public schema/table rows, rechecks the source, and restarts the originally running services. It deliberately retains the dump/manifests. Any failed comparison blocks rollout; inspect private artifacts before retrying. `CHECKOUT`, `PRIVATE_DIR` and `TARGET_SHA` are the validated values above, on this Docker host. No `--clean`, application drop or schema deletion is allowed.
+### Mandatory quiescence before consumer recreation or writer stop
+
+1. Record maintenance authorization, all producer/consumer identities, exact Celery node names and their consumed queues from the live approved Compose chain. Freeze new ingress writes using the existing approved maintenance controller (not an invented flag toggle that itself recreates consumers); prevent all other API/direct task producers, then stop the scheduler producer only. Keep workers and reconciliation available while accepted work finishes. If the maintenance controller or full producer inventory is unavailable, STOP without recreating anything.
+2. On the authorized host use the existing pinned `compose` function from the rollout runbook. Supply each exact node name from the recorded inventory, never a guessed wildcard. Run these read-only inspections for **both** worker services and any additional registered consumers. Capture output privately: Celery task diagnostics may contain identifiers/arguments.
+
+```bash
+set -euo pipefail
+: "${CELERY_NODE:?exact recorded Celery node name}"
+for inspection in ping active_queues active reserved scheduled; do
+  compose exec -T worker celery -A workers.celery_app.app inspect "$inspection" \
+    --destination "$CELERY_NODE" --timeout 10 --json \
+    > "$PRIVATE_DIR/drain-${CELERY_NODE}-${inspection}.json"
+done
+```
+
+3. Require replies from every expected node, empty `active`, `reserved` and `scheduled` sets, and zero pending messages on every recorded consumed broker queue, using the approved broker diagnostic. Inspect persisted `child_generations`, `child_generation_events` and `child_segment_generations` diagnostics for queued/running work and unresolved external outcomes; inspect other task families too. Celery replies alone do not establish broker emptiness or a settled provider outcome. Missing reply (including a busy solo worker), unknown queue inventory, queued work, scheduled work or an unknown provider outcome is STOP: let workers finish/reconcile or obtain a separate incident decision, never revoke/purge/re-enqueue to manufacture a drain.
+4. With producers still frozen, repeat the complete inspections and broker/persisted checks immediately before stopping/recreating consumers. Record a signed operator drain decision in the private release record and set `DRAIN_CONFIRMED=true` only after these checks pass. This variable is an explicit manual gate, not automated drain proof. Keep maintenance in place across the transition, read back readiness/flags and reconcile durable state before restoring producers/ingress. A stop timeout is not a drain strategy; never let Docker kill a worker with active/reserved/scheduled work or unresolved provider outcome. If state changes, clear confirmation and STOP.
+
+The following Bash sequence runs only after that drain, stops only currently running staging writers/frontend, creates a private nonempty custom archive, restores only into a uniquely created disposable DB, compares all public schema/table rows, rechecks the source, and restarts those services. The already paused scheduler must be recorded separately and resumed only after readiness and the maintenance owner's go decision; it is not restarted by this trap. It deliberately retains the dump/manifests. Any failed comparison blocks rollout; inspect private artifacts before retrying. `CHECKOUT`, `PRIVATE_DIR` and `OPERATOR_SHA` are the validated tooling values above, on this Docker host. No `--clean`, application drop or schema deletion is allowed.
 
 ```bash
 (
 set -euo pipefail
 umask 077
+test "${DRAIN_CONFIRMED:-false}" = true
 PG=astrotype-staging-postgres-1
 STATE="$CHECKOUT/backend/scripts/child_runtime_state.py"
 # This guard also proves the correct Docker daemon/project before stopping anything.
 python3 "$STATE" --container "$PG" --all-public --snapshot "$PRIVATE_DIR/pre-freeze-identity.json"
-RESTORE_DB="e22_restore_${TARGET_SHA:0:12}_$(date +%s)"
+RESTORE_DB="e22_restore_${OPERATOR_SHA:0:12}_$(date +%s)"
 created=false
 writers=()
-for service in backend worker scheduler refinement-monitor frontend; do
+for service in backend worker refinement-monitor frontend; do
   name="astrotype-staging-$service-1"
   if test "$(docker inspect -f '{{.State.Running}}' "$name")" = true; then writers+=("$name"); fi
 done
@@ -197,7 +218,8 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-if ((${#writers[@]})); then docker stop -t 90 "${writers[@]}"; fi
+# Infinite grace: never escalate a stop to SIGKILL if the drain was invalidated.
+if ((${#writers[@]})); then docker stop -t -1 "${writers[@]}"; fi
 python3 "$STATE" --container "$PG" --all-public --snapshot "$PRIVATE_DIR/application-before.json"
 # Require populated application history. Before the first Child migration,
 # legacy public tables suffice; when Child tables exist require their history.
@@ -253,13 +275,13 @@ Create `$PRIVATE_DIR/release-record.json` with operator/approver, approved targe
 
 The existing generation 120-second and PDF 15-second functional deadlines, and the alert's worker p95 threshold, are not an approved complete performance budget. Do not invent an approver or call unmeasured values zero. With mock, record paid calls as prohibited/zero but leave real-provider token/cost/quality unqualified. Real-provider qualification needs a separate explicit spend cap and permission.
 
-| Gate                                                                 | Current proof class                                                          | Closure authority                                                                          |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Native functional/browser/PDF/access/data safety/expiry/stale/replay | Mock-functional; recorded live outcomes on app `06b72c0`                     | Evidence review, not paid-model quality                                                    |
-| Collector/rules/native Telegram firing+resolved                      | Deployed operational proof on infra `40f3fb1`                                | Does not establish full budgets                                                            |
-| Numeric budgets/workload/observation                                 | Measured staging; approved record still missing                              | Named approver must set limits before the next acceptance enable; measurements must follow |
-| Real-provider cost/quality/unknown-outcome                           | Separately authorized qualification; not performed                           | Explicit provider/model/currency cap and owner approval                                    |
-| New-operator full execution                                          | Independent document review found prerequisites; full execution remains open | Actual independent operator records commands/results; code/doc presence is insufficient    |
-| Production/cohort canary/accepted marker                             | Not authorized/performed                                                     | Separate rollout decision only after required staging gates pass                           |
+| Gate                                                                 | Current proof class                                                                                              | Closure authority                                                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Native functional/browser/PDF/access/data safety/expiry/stale/replay | Mock-functional; recorded live outcomes on app `06b72c0`                                                         | Evidence review, not paid-model quality                                                    |
+| Collector/rules/native Telegram firing+resolved                      | Deployed operational proof on infra `40f3fb1`                                                                    | Does not establish full budgets                                                            |
+| Numeric budgets/workload/observation                                 | Measured staging; approved record still missing                                                                  | Named approver must set limits before the next acceptance enable; measurements must follow |
+| Real-provider cost/quality/unknown-outcome                           | One authorized real DeepSeek full generation on app `3e3ee67`; quality still limited, tokens/currency unrecorded | No more paid calls authorized; quality and accounting remain open                          |
+| New-operator full execution                                          | Independent document review found prerequisites; full execution remains open                                     | Actual independent operator records commands/results; code/doc presence is insufficient    |
+| Production/cohort canary/accepted marker                             | Global release authorized and deployed; latest app `3e3ee67`, independent runtime readback; not a cohort canary  | Release-specific owner budget exception is not full E22 acceptance                         |
 
-The earlier diagnostic enable before the complete budget/alert prerequisite remains a historical gate violation. Later successful tests do not retroactively approve it.
+Current production detail is in the [BUG-50 evidence record](../reviews/2026-10-28/BUG-50-child-content-quality.md). The new v3 artifact has 11 distinct bodies/35 distinct claims and four evidence-based omissions, no terminal failure, and eleven section calls with one attempt each. Standard caveat/uncertainty sentences still repeat 26/18 times: BUG-50 and E22 remain open. Historical v1/v2 artifacts and 109 prior rows were preserved. One sample cannot establish p95, a failure rate or unknown-outcome safety; currency/tokens are unrecorded, not zero. The paid budget is exhausted; this document authorizes no additional calls. The earlier diagnostic enable before the complete budget/alert prerequisite remains a historical gate violation. Later successful tests and the explicit global-release exception do not retroactively supply missing acceptance proof.

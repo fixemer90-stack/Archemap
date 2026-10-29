@@ -18,6 +18,13 @@ def _section(heading: str) -> str:
     return SOP.read_text().split(f"## {heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
+def _backup_script() -> str:
+    blocks: list[str] = re.findall(r"```bash\n(.*?)\n```", _section("Application backup/restore SOP"), re.S)
+    backups = [block for block in blocks if "pre-freeze-identity.json" in block and "application.dump" in block]
+    assert len(backups) == 1, "Select the unique backup lifecycle, not the preceding drain-inspection example"
+    return backups[0]
+
+
 @pytest.mark.parametrize(
     ("scenario", "status", "created"),
     [
@@ -34,10 +41,8 @@ def _section(heading: str) -> str:
 def test_backup_cleanup_finishes_before_caller_resumes(
     tmp_path: Path, scenario: str, status: int, created: bool
 ) -> None:
-    block = re.search(r"```bash\n(.*?)\n```", _section("Application backup/restore SOP"), re.S)
-    assert block is not None
     script = tmp_path / "maintenance.bash"
-    script.write_text(block[1] + "\n")
+    script.write_text(_backup_script() + "\n")
     events = tmp_path / "events"
     # Bash functions replace every external command in the extracted block.
     # PATH is deliberately empty: an un-stubbed executable must fail closed.
@@ -88,7 +93,8 @@ exit 0
             "HOME": str(tmp_path),
             "CHECKOUT": str(ROOT),
             "PRIVATE_DIR": str(tmp_path),
-            "TARGET_SHA": "a" * 40,
+            "OPERATOR_SHA": "a" * 40,
+            "DRAIN_CONFIRMED": "true",
             "SCRIPT": str(script),
             "EVENTS": str(events),
             "SCENARIO": scenario,
@@ -111,6 +117,38 @@ exit 0
     assert os.stat(tmp_path / "application.dump").st_size > 0
 
 
+@pytest.mark.parametrize("confirmation", [None, "false", "TRUE"])
+def test_backup_refuses_unconfirmed_drain_before_any_external_action(tmp_path: Path, confirmation: str | None) -> None:
+    events = tmp_path / "external-actions"
+    harness = r"""
+record() { printf '%s\n' "$1" >> "$EVENTS"; return 99; }
+docker() { record docker; }
+python3() { record python; }
+date() { record date; }
+sha256sum() { record checksum; }
+"""
+    env = {
+        "PATH": "",
+        "CHECKOUT": str(ROOT),
+        "PRIVATE_DIR": str(tmp_path),
+        "OPERATOR_SHA": "a" * 40,
+        "EVENTS": str(events),
+    }
+    if confirmation is not None:
+        env["DRAIN_CONFIRMED"] = confirmation
+    result = subprocess.run(  # noqa: S603 -- extracted documentation with synthetic command stubs
+        ["/bin/bash", "--noprofile", "--norc", "-c", harness + _backup_script()],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 1, result.stderr
+    assert not events.exists(), "Missing drain approval must stop before Docker, DB reads or backup commands"
+    assert not (tmp_path / "application.dump").exists()
+
+
 def test_initial_backup_guard_executes_against_legacy_only_inventory(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -120,9 +158,7 @@ def test_initial_backup_guard_executes_against_legacy_only_inventory(
 
     from scripts import child_runtime_state as state
 
-    block = re.search(r"```bash\n(.*?)\n```", _section("Application backup/restore SOP"), re.S)
-    assert block is not None
-    initial = next(line for line in block[1].splitlines() if "pre-freeze-identity.json" in line)
+    initial = next(line for line in _backup_script().splitlines() if "pre-freeze-identity.json" in line)
     argv = [
         value.replace("$PG", state.CONTAINER).replace("$PRIVATE_DIR", str(tmp_path))
         for value in shlex.split(initial)[2:]

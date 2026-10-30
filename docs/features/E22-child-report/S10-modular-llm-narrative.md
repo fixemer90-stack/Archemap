@@ -10,7 +10,8 @@
 - [x] Содержательное раскрытие фактов сохраняет enforceable child-safety и не добавляет неподдержанные рекомендации.
 - [x] Версии prompt/input/validator/assembly согласованы; legacy read/retry не переинтерпретирует старые артефакты.
 - [x] Полный pipeline и восстановленный пользовательский результат проверены, а не только технический `ready`: production core v3 на `3e3ee67`, 11 real-provider sections, persisted/API/native desktop/mobile/PDF readback. Проверка выявила остаточный дефект, а не безусловное принятие текста.
-- [ ] Повторяющиеся стандартные caveat/uncertainty sentences устранены versioned section-aware rendering без потери child-safety и локальной неопределённости; новый результат проверен. В v3 core-отчёте общая оговорка повторяется 26 раз, uncertainty sentence — 18; целые bodies/claims при этом различны.
+- [x] Повторяющиеся стандартные caveat/uncertainty sentences устранены versioned section-aware rendering без потери child-safety и локальной неопределённости; в десяти успешных production bodies core version 4 полных sentence-level повторов нет. Полная генерация при этом не принята из-за failed praise.
+- [ ] Новый citation contract проходит независимое review и real-provider acceptance без failed sections. Offline V4 использует проверенные per-claim IDs, но не переинтерпретирует pinned V3 retry; новые платные вызовы не разрешены.
 
 ## Контекст
 
@@ -66,6 +67,16 @@ Narrative должен быть подробным и человечным, но
 - Assembly проверяет lineage, section status, prompt/input/output hashes, provider allowlist, opaque model reference,
   error metadata, section order и age snapshot reference.
 - Независимый specification review: **PASS**. Финальный code-quality/security review: **APPROVED**.
+
+## Citation contract V4 — проверенный offline-кандидат
+
+Backend commit `0d600fe375b17c27ee37d20d358426b281e3048d` добавляет narrative input/prompt/assembly V4 и provider/canonical output V2, не меняя Guidance Facts V3. Provider не передаёт redundant `cited_fact_ids`: extra field запрещён. Сервер выводит ordered citations только после проверки уникальных per-claim IDs, полной approved rendering, conditional/body/section/title, coverage/ownership/lineage/safety. Stored derived list снова проверяется, а не чинится на чтении. Новый prompt требует целый `approved_text`, допускающий несколько предложений, и запрещает sentence splitting; legacy misleading example не добавляется.
+
+Новая full generation сохраняет prompt V4 в immutable report до provider work; resume использует этот pin. Narrative-only retry старого V3 остаётся V3, не получает новый контракт задним числом. V4 retry хранит дополнительный prompt pin; API/PDF выбирают по report version, не текущему alias. Frozen V1/V2/V3 fixtures и негативные duplicate/fragment/unsupported/missing/conditional/body/safety проверки сохранены.
+
+Родительский агент свежим запуском проверил **1280 unit tests**, whole-backend Ruff/format/mypy (**493 source files**) — PASS. Отдельно на owned disposable PostgreSQL с прочитанными `fsync/synchronous_commit/full_page_writes=on/on/on` повторены persisted V3/V4 praise retry, historical coexistence, canonical API и PDF — **5 passed**; после teardown ноль public tables, cluster остановлен. Implementer-прогон broader lifecycle/retry/API/PDF batch — **54 passed**; финальный повтор использовал только disposable `fsync=off` и не доказывает crash durability. Все provider fixtures in-process, `LLM_ENABLED=false`.
+
+Независимые spec и security reviews точного `0d600fe` запущены, verdict пока не записан. Candidate не опубликован/не выложен и не проверен реальным провайдером. Причина конкретного исходного отклонённого output остаётся неизвестной; removal redundant list не означает принятия split/duplicate claims. S10 и BUG-50 остаются открытыми для review/release/real-provider acceptance.
 
 ## Зависимости
 

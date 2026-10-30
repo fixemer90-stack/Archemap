@@ -92,6 +92,14 @@ Runtime/source/image/health/consumers/ingress, saved API/native desktop+mobile/P
 
 Это operational/readability/preservation proof, **не** успешная real-provider приёмка и не полное независимое исполнение S16. Все бюджеты согласованных full repairs и single praise retry исчерпаны; новых provider calls нет. BUG-50, S15–S16 и Feature остаются открытыми.
 
+## Production V4 parent acceptance — 2026-10-31
+
+Active release `/opt/astrotype-production/releases/cf3a4e6e999a6e5e70cd5ff1477207731db33bd8`, CI `41133238682` (8/8), migration delta 0. Одна явно разрешённая полная generation создала core version 5: **11 ready, 0 failed, 0 missing, 4 justified omissions**, praise принят. Parent independently revalidated all26 source dimensions/canonical refs, topic actions, qualifiers, отсутствие narrative sentence repetition, saved API/native desktop+mobile/PDF и paid budget — 11 HTTP attempts, по одной на applicable section, без повторов.
+
+Fresh backup/restore **66 tables**, сохранность **264 original Child rows**, versions1–4, **49 non-Child tables** и **17 protected containers** подтверждены; normal retry ceiling3 и ingress восстановлены, restore DB/swap отсутствуют. Evidence/images override теперь `/opt/astrotype-production/evidence/bug50-v4-b21743cfb0364457b907803dced38b0b/`; observability overlays остаются под `8869103`. Private parent-acceptance record и active scope `active:bug50-v4;bug50-parent-accepted;not-e22-complete` записаны и прочитаны обратно. [Полное BUG-50 evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
+
+BUG-50 и его S09/S10/S14 acceptance закрыты, но это **не** full independent operator-run, измеренные budgets или все оставшиеся scenarios. S16 и E22 остаются открытыми; новых provider calls не разрешено.
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

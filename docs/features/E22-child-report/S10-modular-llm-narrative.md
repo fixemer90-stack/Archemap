@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Переоткрыто для [BUG-50](../../reviews/2026-10-28/BUG-50-child-content-quality.md): исторические schema/evidence/safety проверки не обнаружили повторяющийся и тематически обеднённый текст.
+✅ Завершено — BUG-50 исправлен и принят в production 2026-10-31: narrative V4 на `cf3a4e6`, immutable core version 5, **11 ready / 0 failed / 0 missing**, четыре обоснованных omissions. Независимый parent readback и native desktop/mobile/PDF подтвердили coverage и отсутствие narrative sentence repetitions. Полный E22 остаётся открытым по S15–S16.
 
 Дополнительные критерии BUG-50:
 
@@ -11,7 +11,7 @@
 - [x] Версии prompt/input/validator/assembly согласованы; legacy read/retry не переинтерпретирует старые артефакты.
 - [x] Полный pipeline и восстановленный пользовательский результат проверены, а не только технический `ready`: production core v3 на `3e3ee67`, 11 real-provider sections, persisted/API/native desktop/mobile/PDF readback. Проверка выявила остаточный дефект, а не безусловное принятие текста.
 - [x] Повторяющиеся стандартные caveat/uncertainty sentences устранены versioned section-aware rendering без потери child-safety и локальной неопределённости; в десяти успешных production bodies core version 4 полных sentence-level повторов нет. Полная генерация при этом не принята из-за failed praise.
-- [ ] Новый citation contract проходит независимое review и real-provider acceptance без failed sections. Offline V4 использует проверенные per-claim IDs, но не переинтерпретирует pinned V3 retry; новые платные вызовы не разрешены.
+- [x] Новый citation contract проходит независимое review и real-provider acceptance без failed sections. Два exact-commit review APPROVED; production V4 full generation принята с **11 ready, включая praise, 0 failed, 0 missing**. Pinned V1/V2/V3 не переинтерпретированы; все прежние артефакты сохранены. Новый paid budget израсходован, дополнительных вызовов нет.
 
 ## Контекст
 
@@ -77,6 +77,14 @@ Backend commit `0d600fe375b17c27ee37d20d358426b281e3048d` добавляет nar
 Родительский агент свежим запуском проверил **1280 unit tests**, whole-backend Ruff/format/mypy (**493 source files**) — PASS. Отдельно на owned disposable PostgreSQL с прочитанными `fsync/synchronous_commit/full_page_writes=on/on/on` повторены persisted V3/V4 praise retry, historical coexistence, canonical API и PDF — **5 passed**; после teardown ноль public tables, cluster остановлен. Implementer-прогон broader lifecycle/retry/API/PDF batch — **54 passed**; финальный повтор использовал только disposable `fsync=off` и не доказывает crash durability. Все provider fixtures in-process, `LLM_ENABLED=false`.
 
 Независимые spec/backcompat и security/logic reviews точного `0d600fe` — **APPROVED**, без блокирующих замечаний. Первый reviewer выполнил **136 focused tests** и отдельно сопоставил baseline/candidate V1/V2/V3 inputs/prompts/outputs/diagnostics/hashes/assembly; второй — **99 focused tests**, **53 hostile schema probes**, **9 persisted-citation corruptions** и запрет derivation после safety failure. После reviewed commit application code не менялся. Candidate не выложен и не проверен реальным провайдером. Причина конкретного исходного отклонённого output остаётся неизвестной; removal redundant list не означает принятия split/duplicate claims. S10 и BUG-50 остаются открытыми для release/real-provider acceptance.
+
+## Production acceptance V4 — 2026-10-31
+
+Exact active `cf3a4e6e999a6e5e70cd5ff1477207731db33bd8`, CI `41133238682` — **8/8 success**, source/image/consumer verification PASS. После явного разрешения выполнена одна full real-DeepSeek generation, по одной HTTP attempt на 11 applicable sections, без retries. Immutable core version **5**: **11 ready (praise принят), 0 failed, 0 missing, 4 justified evidence omissions**. Quality `limited` только из-за нулевых owned facts в этих четырёх sections, не narrative failure или repetition.
+
+Parent independently revalidated all **26 source dimensions**, действительные canonical source refs, шесть action facts/transitions, локальные qualifiers, shared methodology/resource caveats в правильных sections; полных повторяющихся narrative sentences нет. Public API/native desktop+mobile и семь PDF pages содержат все 11 exact bodies, confidence/age/omission explanations. API/browser PDF bytes совпадают. Parent визуально осмотрел praise desktop/mobile и PDF page 5.
+
+Все **264 прежних Child rows**, historical versions **1–4**, **49 non-Child tables** и **17 protected containers** сохранены; private backup/restore **66 tables**, cleanup/normal retry settings подтверждены. Parent acceptance записана и прочитана отдельно; active scope `bug50-parent-accepted;not-e22-complete`. Полное evidence и границы: [BUG-50 final acceptance](../../reviews/2026-10-28/BUG-50-child-content-quality.md#финальная-production-приёмка-v4--2026-10-31). Это закрывает BUG-50/S10, не numeric/statistical budgets и operator-run S15–S16. Новые платные вызовы не разрешены.
 
 ## Зависимости
 

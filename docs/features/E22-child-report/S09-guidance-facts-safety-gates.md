@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Переоткрыто для [BUG-50](../../reviews/2026-10-28/BUG-50-child-content-quality.md): технические safety-гарантии исходного slice проверены, но теряется содержательный контекст средних оценок и тем. Исправление не должно ослаблять эти гарантии.
+✅ Завершено — [BUG-50](../../reviews/2026-10-28/BUG-50-child-content-quality.md) принят в production 2026-10-31. Narrative V4 поверх unchanged Guidance Facts V3 сохраняет все 26 source dimensions/canonical refs, тематические actions/transitions и локальную неопределённость; parent independently verified ready core version 5 без narrative repeats. Safety, ownership и immutable V1/V2/V3 compatibility сохранены. Полный E22 по S15–S16 остаётся открытым.
 
 Дополнительные критерии BUG-50:
 
@@ -61,6 +61,10 @@
 - strict mypy `app` — PASS (244 source files).
 
 Независимые specification-compliance и code-quality/security review завершены с вердиктами PASS/APPROVED.
+
+## BUG-50 final evidence — 2026-10-31
+
+На exact `cf3a4e6` с CI `41133238682` (8/8) одна разрешённая real-provider full generation дала core version 5, **11 ready / 0 failed / 0 missing**, четыре justified omissions. Parent verifier заново сопоставил **26/26 dimensions** с действительными persisted score refs, сохранил шесть action facts (включая transitions), conditional qualifiers и shared caveats в owning scopes. Quality limited только для insufficient evidence; narrative repeated sentences/scopes — ноль. **264** прежних Child rows и исторические артефакты сохранены; parent acceptance прочитана обратно. [Полные proof и boundaries](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
 
 ## Зависимости
 

@@ -61,6 +61,10 @@ Production source `886910321d1efcb189b8a2296dd5c947146e8b4f` выложен по
 
 Source `3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9`, exact CI `40782166066` (8/8), новая core version 3: одна полная DeepSeek generation, 11 section calls/по одной попытке, lifecycle 39.120948 s. Persisted/API/native desktop/mobile/PDF readback прошёл, включая независимый родительский readback; 66-table backup/restore и сохранение старых 109 Child rows подтверждены. Это один sample без записанных token/currency totals, не p95 и не закрытие budget checkbox. Четыре обоснованных omissions дают `limited`; стандартные caveat/uncertainty sentences всё ещё повторяются. Подробности и remaining gates: [BUG-50 evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
 
+## BUG-50 V4 accepted sample — 2026-10-31
+
+Production `cf3a4e6`, exact CI `41133238682` (8/8): одна разрешённая full DeepSeek generation core version 5, **11 ready / 0 failed / 0 missing**, четыре justified omissions; все26 dimensions/refs и native desktop/mobile/PDF parity независимо проверены. **11 HTTP attempts**, по одной на applicable section; usage **13,899 prompt + 6,132 completion = 20,031 tokens**. Это конкретный measured sample, не currency receipt, статистический p95, repeat-run reliability или утверждённый numeric budget. Checkbox budgets остаётся открыт. Fresh **66-table** backup/restore, **264 historical Child rows**, **49 non-Child tables**, **17 protected containers** и cleanup подтверждены; новые paid calls не разрешены. [Финальная BUG-50 приёмка](../../reviews/2026-10-28/BUG-50-child-content-quality.md) не закрывает S15/E22.
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

@@ -2,11 +2,11 @@
 
 ## Статус
 
-🟡 В работе — production diagnostic revision `cb38ecb` поверх content-v3 проверен end-to-end. Тематический collapse и наблюдавшиеся sentence-level boilerplate устранены в успешных разделах, но BUG-50 остаётся открытым: core version 4 имеет десять ready sections, четыре обоснованных omissions и failed praise. Единственный отдельно разрешённый praise-only retry завершился `citation_mismatch`; техническая читаемость деградированного отчёта не равна содержательному принятию. S15–S16 открыты для количественных budgets/window, полного independent operator-run и оставшихся runbook-сценариев. Предыдущий global release `8869103` выполнен с явным owner-исключением для отложенных budgets; это не измеренные budgets. Native staging flow, backup/restore, collector/scrape, rollback и Telegram firing/resolved подтверждены. Accepted staging marker не продвинут; production active marker `cb38ecb` проверен после runtime proof.
+🟡 В работе — BUG-50 исправлен и принят в production на `cf3a4e6` (narrative V4, immutable core version 5): **11 ready, 0 failed, 0 missing**, четыре обоснованных evidence omissions. Parent independently verified all26 source dimensions, отсутствие narrative sentence repetitions, native desktop/mobile/PDF parity и сохранность истории. S09/S10/S14 закрыты после реального provider acceptance. E22 остаётся открытым по S15–S16: quantitative/statistical budgets/window, полное independent operator-run и остальные runbook scenarios не выполнены. Предыдущие owner-исключения для budgets не являются измеренными budgets; accepted staging marker не продвинут. Active production scope явно `bug50-parent-accepted;not-e22-complete`.
 
 ## Цель
 
-> Открытый P1: [BUG-50 — содержательное качество Child](../../reviews/2026-10-28/BUG-50-child-content-quality.md). Production `cb38ecb`, core version 4 и один отдельный praise-only retry проверены: десять успешных bodies не содержат повторяющихся полных предложений, но praise отклонён с `citation_mismatch`. Старые артефакты сохранены; бюджеты согласованных full repairs и single-section retry израсходованы. Offline hardening контракта не является доказательством нового real-provider успеха. Полные S15 budgets и S16 independent operator-run остаются открытыми.
+> Исправленный P1: [BUG-50 — содержательное качество Child](../../reviews/2026-10-28/BUG-50-child-content-quality.md). Реальная разрешённая V4 full generation на `cf3a4e6` принята: praise готов, все 26 dimensions и topic actions сохранены, repeated narrative sentences отсутствуют. Четыре justified omissions остаются честно обозначенными; старые reports не переписаны. Бюджет израсходован без дополнительных provider attempts. Полные S15 budgets и S16 independent operator-run остаются открытыми.
 
 Создать вспомогательный отчёт для взрослого caregiver, который объясняет взаимодействие конкретной пары `родитель ↔ ребёнок` и предлагает возрастно-уместные действия взрослого. Отчёт не описывает ребёнка как фиксированную личность, не предсказывает его судьбу и не заменяет медицинскую, психологическую или педагогическую помощь.
 
@@ -156,12 +156,12 @@ Child Report помогает взрослому понять:
 | S06 | [Child Needs engine](./S06-child-needs-engine.md)                                             | ✅ Завершено |
 | S07 | [Synastry и Interaction engine](./S07-synastry-interaction-engine.md)                         | ✅ Завершено |
 | S08 | [Questionnaire и Context Resolver](./S08-questionnaire-context-resolver.md)                   | ✅ Завершено |
-| S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | 🟡 BUG-50    |
-| S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | 🟡 BUG-50    |
+| S09 | [Guidance Facts и child-safety gates](./S09-guidance-facts-safety-gates.md)                   | ✅ Завершено |
+| S10 | [Modular LLM narrative](./S10-modular-llm-narrative.md)                                       | ✅ Завершено |
 | S11 | [Async generation lifecycle](./S11-async-generation-lifecycle.md)                             | ✅ Завершено |
 | S12 | [API, ownership и access enforcement](./S12-api-ownership-access.md)                          | ✅ Завершено |
 | S13 | [Child management и questionnaire UX](./S13-child-management-questionnaire-ux.md)             | ✅ Завершено |
-| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | 🟡 BUG-50    |
+| S14 | [Reader, dynamic age block и PDF](./S14-reader-pdf-age-parity.md)                             | ✅ Завершено |
 | S15 | [QA, observability и data safety](./S15-qa-observability-data-safety.md)                      | 🟡 В работе  |
 | S16 | [Rollout runbook и live evidence](./S16-rollout-runbook-live-evidence.md)                     | 🟡 В работе  |
 

@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 Переоткрыто для [BUG-50](../../reviews/2026-10-28/BUG-50-child-content-quality.md): reader/PDF должны различать техническое завершение и ограниченное содержательное качество. Исторический функциональный slice независимо одобрен и опубликован; production global release `8869103` позднее выполнен, но это не закрывает выявленный дефект текста.
+✅ Завершено — [BUG-50](../../reviews/2026-10-28/BUG-50-child-content-quality.md) принят в production 2026-10-31. На `cf3a4e6` сохранён core version 5: 11 ready sections, 0 failed/missing, 4 justified omissions. Native desktop/mobile и PDF содержат все exact bodies/omission explanations, честный limited notice и pinned age metadata; private reason codes не раскрываются. Parent read-only/visual acceptance подтверждена, legacy reports сохранены. Это не закрывает весь E22/S15–S16.
 
 Дополнительные критерии BUG-50:
 
@@ -55,6 +55,10 @@ Reader должен быть narrative-first, показывать progressive d
 На source `3e3ee67` public API, native desktop 1440×1000/mobile 390×844 без mocks и PDF проверили один сохранённый core v3: 15 headings, все 11 bodies совпадают, четыре evidence-based omissions, limited notice без raw reason codes, без overflow/page errors и Child mutations. Нативные PDF-downloads обоих viewports совпали с API: 7 pages/27,348 bytes, SHA256 `1379394ce70802b331ad4f4b2083fa48dd15d949fac3e2f14650b34c671fdd53`; body parity PASS. Индивидуальные web fallback-пояснения omissions в PDF отсутствуют; в нём есть global limitation copy, headings/confidence notes. Это явная граница copy parity, не потеря сохранённых bodies.
 
 Upstream sentence-level boilerplate сохраняется; source-aware fix не является полным содержательным принятием. [BUG-50 evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md) остаётся открытым. Исторические immutable artifacts не переписаны.
+
+## Production BUG-50 acceptance — 2026-10-31
+
+Exact `cf3a4e6`, CI `41133238682` (8/8), immutable core version 5: **11 ready, 0 failed, 0 missing, 4 justified omissions**, включая accepted praise. Native desktop **1440×1000** и mobile **390×844** без mocks: all11 bodies/titles/confidence/age, limited notice и все четыре individual omission explanations совпали с persisted API. API/native PDFs одинаковы — **7 pages, 27,373 bytes**, SHA256 `588a42c85d46ca624c0d73c44fb9531b46af3ac4bafd01d0638bc02ade2ac3af`; PDF body и fallback parity PASS. Ноль page errors/overflow/Child mutations; private reasons не раскрыты, нет автоматической regeneration. Parent независимо прочитал API/PDF и осмотрел desktop/mobile praise и PDF page 5 без видимого clipping. Старые reports 1–4 и их PDFs доступны и не переинтерпретированы. [Финальное evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md) закрывает BUG-50, не весь E22.
 
 ## Зависимости
 

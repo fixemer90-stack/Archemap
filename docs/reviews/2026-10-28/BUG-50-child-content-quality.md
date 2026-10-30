@@ -2,7 +2,7 @@
 
 ## Статус
 
-В работе. GitHub: `fixemer90-stack/Archemap#50`, P1. В production работает content-v3 revision `e2a2f76`; дополнительная разрешённая полная real-DeepSeek генерация создала core version 4, но завершилась `narrative_failed`: раздел `praise_recognition` отклонён с `child_narrative_validation_failure`. В десяти сохранённых bodies нет повторяющихся полных предложений. Runtime, artifact/API/desktop/mobile/PDF и сохранность прежних данных проверены; родительский агент независимо повторил read-only проверку. Это доказательство безопасной деградации, не успешной полной генерации. BUG-50 не закрыт; новых платных попыток без отдельного разрешения нет.
+В работе. GitHub: `fixemer90-stack/Archemap#50`, P1. В production работает diagnostic revision `cb38ecb` поверх content-v3; core version 4 остаётся `narrative_failed`. Разрешённый narrative-only retry вызвал только `praise_recognition`, ровно один HTTP attempt, и отклонён с private reason `citation_mismatch`. В десяти сохранённых bodies нет повторяющихся полных предложений. Runtime, artifact/API/desktop/mobile/PDF и сохранность прежних данных проверены оператором и независимым родительским read-only прогоном. Это доказательство безопасной деградации, не успешной полной генерации. BUG-50 не закрыт; новый платный бюджет не разрешён.
 
 Публичные сведения обезличены: идентификаторы владельца, ребёнка, отчётов, birth data, ответы анкеты и сырые payload не включены.
 
@@ -48,7 +48,7 @@
 - [x] Независимые spec/security/code-quality reviews выполнены, замечания устранены.
 - [x] Изменения опубликованы; точный CI проверен до runtime rollout.
 - [x] После безопасного rollout проверен реальный восстановленный artifact/API/reader/PDF; новые provider-вызовы выполняются только в разрешённом объёме. Для V3 подтверждено чтение деградированного результата, не успешное завершение генерации.
-- [ ] Полная real-provider генерация нового контракта завершается без failed sections; проверен окончательный сохранённый результат. Сейчас `praise_recognition` отклонён валидатором; новый платный retry не разрешён.
+- [ ] Полная real-provider генерация нового контракта завершается без failed sections; проверен окончательный сохранённый результат. `praise_recognition` по-прежнему отклонён; отдельный разрешённый single-section retry исчерпан и сохранил `citation_mismatch`. Новые provider calls не разрешены.
 
 ## Проверки
 
@@ -128,3 +128,15 @@ Backend candidate `7c154343cdabbae0cf215aa0fd287caf39fd4944` поверх numeri
 - Отдельная доказанная RED-регрессией ошибка потери диагностики исправлена в `3012041c1ef0361c3cb90f053cda0e566ed45980`: V3 записывает только bounded allowlisted `validation_reason` без исходного текста, exception messages, IDs или Pydantic context. Public output не раскрывает diagnostics. V1/V2 metadata, fail-closed predicates, approved text, prompt и retry semantics не изменены.
 - Родительский агент свежим запуском подтвердил **1255 unit tests passed**, whole-backend Ruff/format/mypy — PASS (**490 source files**); пять прежних предупреждений WeasyPrint/AsyncMock. Новых provider calls, remote mutations или runtime restarts не было. Этот diagnostic patch не выложен в production; runtime остаётся `e2a2f76`, не `3012041`. Он делает будущий отказ диагностируемым, но не восстанавливает потерянный ответ и не исправляет уже сохранённый failed section.
 - Независимый read-only review `3012041` — **APPROVED**, без блокирующих замечаний. Проверены неизменность validator predicates/retry semantics, V1/V2 metadata и приватность проекции; focused diagnostics/narrative/V2/V3/privacy batch — **111 passed**, `LLM_ENABLED=false`. Это принятие diagnostic patch, не закрытие production praise failure.
+
+### Разрешённый praise-only retry — 2026-10-30
+
+- Владелец явно разрешил diagnostic rollout и **одну** платную попытку только failed praise, без full regeneration. Exact `cb38ecb33a131ef83d529180ef5e5d1be4d4b78b` выложен после свежей проверки CI `41100358649` (**8/8 success**). Все пять application services используют этот release; source identity — **312 Python files** на Python consumer, migrations delta **0**.
+- Перед единственным каноническим POST проверены одна failed section `praise_recognition`, отсутствие missing section pins и действительная pinned lineage. Под drained maintenance supported retry ceiling временно **1**, adapter HTTP retries **0**, каждый consumer прочитан обратно. Использованы обычные API/reconciler/broker/worker; после terminal outcome normal ceiling **3** восстановлен, maintenance снят. Full generation, questionnaire rollover и дополнительные provider calls отсутствуют.
+- Retry завершился `narrative_failed`, `child_narrative_validation_failure`, private **`validation_reason=citation_mismatch`**. Предикат означает несовпадение ordered `cited_fact_ids` с claim fact IDs **или** повтор claim fact IDs. Точный вариант без исходного output не установлен; это установленный класс отказа новой попытки, не доказанная причина прежнего отказа. Raw response не сохранялся; safety/validator не ослаблены.
+- Ровно **1 HTTP attempt**, только praise. Usage: prompt **949**, completion **382**, total **1331 tokens**; измеренной денежной стоимости нет. Нового core version нет: reports **1–4**, full generations **4**. Добавлены только canonical narrative retry, failed praise segment, narrative assembly и пять lifecycle events.
+- Все **256 исходных Child rows** в **17 Child tables**, **49 non-Child tables**, исторические versions и **17 protected containers** сохранены. Fresh private backup/restore сравнил **66 public tables**; disposable restore DB удалена, отсутствие проверено. Сервисы/consumers/ingress healthy, Caddy восстановлен, временного swap нет.
+- Saved API/native desktop **1440×1000** и mobile **390×844**/native PDF проверены без mocks: десять ready bodies и четыре omissions неизменны, failed praise объяснён, private reason не раскрыт. Ноль Child mutation requests, JS page errors и horizontal overflow. PDF во всех трёх download paths прежний: **7 pages, 27,547 bytes**, SHA256 `9722bfc7c32f393ec2bdd74021be7fccb9e02b6e7af189e73c76994b5fd0b189`.
+- Родительский агент независимо исполнил fresh remote `independent-readback-final.py`: exit **0**, `passed:true` только для deployment/budget/readability/preservation, **`real_provider_acceptance:false`**, `citation_mismatch`, один key, ноль nonterminal/unknown outcomes; retries restored **3**. Private evidence: `/opt/astrotype-production/evidence/bug50-praise-retry-3ab61aadde894976a856677f02249b4f/`.
+
+Единственная дополнительно разрешённая section attempt израсходована. BUG-50 остаётся открытым из-за citation-consistency failure; следующий шаг — offline-анализ этого контракта, не автоматический платный повтор и не объявление деградированного результата принятым.

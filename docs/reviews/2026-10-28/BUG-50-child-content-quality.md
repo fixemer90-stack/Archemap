@@ -120,3 +120,10 @@ Backend candidate `7c154343cdabbae0cf215aa0fd287caf39fd4944` поверх numeri
 Повторяющиеся caveat-предложения устранены versioned V3 composition, а исторические V1/V2 остаются неизменными. Открыт конкретный blocker: validation-rejected `praise_recognition` и отсутствие успешного полного real-provider результата. Диагностика продолжается offline/read-only; нельзя объявлять неизвестный predicate установленным или ослаблять safety ради ready.
 
 Обе согласованные full repair генерации израсходованы — одна для V2 и одна для V3. Новые provider calls требуют отдельного разрешения. BUG-50 и полный E22 остаются открытыми; statistical budget/load qualification не выполнена.
+
+### Offline-разбор отказа praise — 2026-10-30
+
+- Сохранённые input/prompt hashes точно совпали с offline-реконструкцией. Синтетический ответ с canonical approved text проходит прежние schema/ownership/citation/body/safety проверки. Неизбежное противоречие входа и валидатора не воспроизведено; синтетический ответ не является исходным DeepSeek output.
+- Исходный ответ и конкретный predicate не сохранились ни в diagnostics, ни в доступных worker logs. Причина именно того отказа остаётся неизвестной; нет основания приписывать его пунктуации, conditional flag, citations или safety.
+- Отдельная доказанная RED-регрессией ошибка потери диагностики исправлена в `3012041c1ef0361c3cb90f053cda0e566ed45980`: V3 записывает только bounded allowlisted `validation_reason` без исходного текста, exception messages, IDs или Pydantic context. Public output не раскрывает diagnostics. V1/V2 metadata, fail-closed predicates, approved text, prompt и retry semantics не изменены.
+- Родительский агент свежим запуском подтвердил **1255 unit tests passed**, whole-backend Ruff/format/mypy — PASS (**490 source files**); пять прежних предупреждений WeasyPrint/AsyncMock. Новых provider calls, remote mutations или runtime restarts не было. Этот diagnostic patch пока локален; production остаётся `e2a2f76`, не `3012041`. Он делает будущий отказ диагностируемым, но не восстанавливает потерянный ответ и не исправляет уже сохранённый failed section.

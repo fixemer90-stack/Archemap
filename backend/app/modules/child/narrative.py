@@ -96,6 +96,19 @@ _AVOID_TEXT: Final = {
 _ALLOWED_PROVIDER_NAMES: Final = frozenset({"mock", "openrouter", "deepseek", "disabled"})
 _MODEL_REFERENCE_PATTERN: Final = re.compile(r"model-sha256:[0-9a-f]{64}")
 _ERROR_TYPES: Final = frozenset({"validation_error", "provider_error"})
+_VALIDATION_REASONS: Final = frozenset(
+    {
+        "contract_validation",
+        "output_schema",
+        "section_mismatch",
+        "citation_mismatch",
+        "unsupported_facts",
+        "missing_owned_facts",
+        "claim_rendering_mismatch",
+        "body_claim_mismatch",
+        "safety_validation",
+    }
+)
 
 
 def prompt_version_for_input(section_input: ChildSectionRenderInput) -> str:
@@ -149,6 +162,10 @@ def _error_type_is_valid(value: object) -> bool:
 
 class ChildNarrativeValidationError(ValueError):
     """Raised when one generated section violates its bounded contract."""
+
+    def __init__(self, message: str, *, reason_code: str = "contract_validation") -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
 
 
 class ChildSectionFact(BaseModel):
@@ -671,25 +688,31 @@ def validate_segment_output(
     if section_input != canonical:
         raise ChildNarrativeValidationError("section input is not canonical")
     if output.section_key != section_input.section_key or output.title != section_input.section_title:
-        raise ChildNarrativeValidationError("section mismatch")
+        raise ChildNarrativeValidationError("section mismatch", reason_code="section_mismatch")
     claim_ids = [claim.fact_ids[0] for claim in output.claims]
     if output.cited_fact_ids != claim_ids or len(claim_ids) != len(set(claim_ids)):
-        raise ChildNarrativeValidationError("claims and cited facts differ")
+        raise ChildNarrativeValidationError("claims and cited facts differ", reason_code="citation_mismatch")
     cited = set(output.cited_fact_ids)
     unsupported = cited - section_input.allowed_fact_ids
     if unsupported:
-        raise ChildNarrativeValidationError(f"unsupported facts: {sorted(unsupported)}")
+        raise ChildNarrativeValidationError(
+            f"unsupported facts: {sorted(unsupported)}", reason_code="unsupported_facts"
+        )
     missing_owned = set(section_input.owned_fact_ids) - cited
     if missing_owned:
-        raise ChildNarrativeValidationError(f"missing owned facts: {sorted(missing_owned)}")
+        raise ChildNarrativeValidationError(
+            f"missing owned facts: {sorted(missing_owned)}", reason_code="missing_owned_facts"
+        )
 
     approved = {fact.id: fact for fact in (*section_input.owned_facts, *section_input.reference_facts)}
     for claim in output.claims:
         fact = approved[claim.fact_ids[0]]
         if claim.text != fact.approved_text or claim.conditional is not fact.conditional:
-            raise ChildNarrativeValidationError("claim is not the approved fact rendering")
+            raise ChildNarrativeValidationError(
+                "claim is not the approved fact rendering", reason_code="claim_rendering_mismatch"
+            )
     if output.body != " ".join(claim.text for claim in output.claims):
-        raise ChildNarrativeValidationError("body is not fully covered by claims")
+        raise ChildNarrativeValidationError("body is not fully covered by claims", reason_code="body_claim_mismatch")
 
     try:
         fact_id_map = _section_fact_id_map(
@@ -705,7 +728,9 @@ def validate_segment_output(
             guidance_facts=guidance_facts,
         )
     except ChildSafetyViolation as exc:
-        raise ChildNarrativeValidationError(f"child safety violation: {','.join(exc.categories)}") from exc
+        raise ChildNarrativeValidationError(
+            f"child safety violation: {','.join(exc.categories)}", reason_code="safety_validation"
+        ) from exc
     return output
 
 
@@ -891,9 +916,16 @@ async def run_child_segment_generation(
             | {"attempts": 1, "output_hash": _stable_hash(output_payload), "output": output_payload},
             artifact_generation_id=artifact_generation_id,
         )
-    except (ChildNarrativeValidationError, ValidationError):
+    except (ChildNarrativeValidationError, ValidationError) as exc:
         error_code = "child_narrative_validation_failure"
         error_type = "validation_error"
+        if canonical.contract_version == "child_section_render_input_v3":
+            # Persist only our bounded predicate code, never exception messages,
+            # Pydantic input/context, provider output, or unsupported fact IDs.
+            reason = "output_schema" if isinstance(exc, ValidationError) else exc.reason_code
+            base_diagnostics["validation_reason"] = (
+                reason if type(reason) is str and reason in _VALIDATION_REASONS else "contract_validation"
+            )
     except Exception as exc:  # fail closed without storing provider text
         # Adapters wrap HTTP transport failures. A response may have been lost
         # after remote acceptance, so neither automatic nor manual recall is safe.

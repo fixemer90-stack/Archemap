@@ -84,6 +84,14 @@ Active release `/opt/astrotype-production/releases/3e3ee67b68e9ea53cb6e467b5596d
 
 Provisioned reusable client launcher `/home/balthier/.hermes/cache/scratch/e22_operator_launcher.py` и полные enabled/disabled manifests находятся в private evidence `/opt/astrotype-staging/evidence/operator-b8b724d-20261029T205956Z/`. Positive enabled запуск честно остановился **до session issuance/HTTP**: retained A/B/C больше не имеют действующего Child access. Не выполнялись grants/payments, app mutations, restarts, PDF-cache writes или provider calls. Нет active-owner foreign proof, archived/deletion_pending fixtures, freeze/broker drain, statistical budgets и полного unknown-outcome/browser/PDF replay. Это частичное реальное исполнение, не основание отметить full-run checkbox. Следующий operator должен явно согласовать только synthetic A/B provisioning (C оставить expired), maintenance/lifecycle fixture scope и quantitative workload/window; произвольные customer grants запрещены.
 
+## Production content-v3 и bounded praise retry — 2026-10-30
+
+Текущий active release `/opt/astrotype-production/releases/cb38ecb33a131ef83d529180ef5e5d1be4d4b78b`, CI `41100358649` (**8/8 success**), migration delta **0**. Core version 4 сохранил десять ready sections без sentence-level повторов, четыре evidence omissions и failed praise. Отдельно разрешённый canonical praise-only retry выполнил **один HTTP attempt**, завершился `citation_mismatch`; полного generation/report version 5 не создавал. Причина новой попытки известна на уровне класса предиката, raw response/точный failing branch не сохранены.
+
+Runtime/source/image/health/consumers/ingress, saved API/native desktop+mobile/PDF и paid budget повторно проверены оператором и независимым родительским read-only verifier. Все **256 исходных Child rows**, **49 non-Child tables**, версии **1–4** и **17 protected containers** сохранены; backup/restore **66 tables**, disposable DB cleanup и восстановление normal retry ceiling **3** подтверждены. Private evidence: `/opt/astrotype-production/evidence/bug50-praise-retry-3ab61aadde894976a856677f02249b4f/`; operational images override находится в этом unique evidence directory, observability overlays остаются под старым `8869103` evidence. Сводка и текущая граница: [BUG-50](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
+
+Это operational/readability/preservation proof, **не** успешная real-provider приёмка и не полное независимое исполнение S16. Все бюджеты согласованных full repairs и single praise retry исчерпаны; новых provider calls нет. BUG-50, S15–S16 и Feature остаются открытыми.
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

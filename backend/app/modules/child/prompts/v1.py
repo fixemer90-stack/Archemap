@@ -31,6 +31,10 @@ SECTION_METADATA: Final[dict[str, tuple[str, str]]] = {
 def build_child_section_prompt(section_input: ChildSectionRenderInput) -> str:
     """Build one bounded prompt without raw chart, answers, or PII."""
 
+    if section_input.contract_version == "child_section_render_input_v4":
+        from app.modules.child.prompts.v4 import build_child_section_prompt_v4
+
+        return build_child_section_prompt_v4(section_input)
     if section_input.contract_version == "child_section_render_input_v3":
         from app.modules.child.prompts.v3 import build_child_section_prompt_v3
 

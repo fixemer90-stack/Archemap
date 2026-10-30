@@ -66,9 +66,12 @@ def compose_child_report_presentation(
         validate_guidance_facts(facts)
         terminal = [row for row in segment_rows if row.status in {"ready", "failed", "not_applicable"}]
         assembled = assemble_child_report_payload(
-            guidance_facts=facts, segment_rows=terminal, artifact_generation_id=artifact_generation_id
+            guidance_facts=facts,
+            segment_rows=terminal,
+            artifact_generation_id=artifact_generation_id,
+            prompt_version=report.prompt_version,
         )
-        inputs = build_child_section_inputs(facts)
+        inputs = build_child_section_inputs(facts, prompt_version=report.prompt_version)
     except (ChildNarrativeValidationError, ChildSafetyViolation, KeyError, TypeError, ValueError) as exc:
         raise ChildLineageMismatchError("Child presentation artifacts failed validation") from exc
     narrative = {item["section_key"]: item for item in assembled["sections"]}

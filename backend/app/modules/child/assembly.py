@@ -13,6 +13,7 @@ from app.modules.child.guidance_facts import SOURCE_PROFILE_CONTRACT_VERSIONS, C
 from app.modules.child.narrative import (
     ChildNarrativeValidationError,
     ChildSegmentOutput,
+    ChildSegmentOutputV2,
     _error_type_is_valid,
     _model_name_is_valid,
     _provider_name_is_valid,
@@ -35,7 +36,7 @@ def _verify_generation_metadata(
     if not isinstance(diagnostics, Mapping):
         raise ChildNarrativeValidationError("segment diagnostics are invalid")
     if (
-        section_input.contract_version == "child_section_render_input_v3"
+        section_input.contract_version in {"child_section_render_input_v3", "child_section_render_input_v4"}
         and (
             "provider_usage" in diagnostics
             or (
@@ -94,7 +95,7 @@ def assess_child_report_quality(
             if normalized:
                 owners.setdefault(normalized, set()).add(key)
     repeated = set().union(*(keys for keys in owners.values() if len(keys) > 1))
-    if contract_version == "child_report_narrative_v3":
+    if contract_version in {"child_report_narrative_v3", "child_report_narrative_v4"}:
         from app.modules.child.content_quality import repeated_content_scopes
 
         repeated.update(repeated_content_scopes(sections))
@@ -118,10 +119,13 @@ def assemble_child_report_payload(
     guidance_facts: ChildGuidanceFacts,
     segment_rows: Sequence[models.ChildSegmentGeneration],
     artifact_generation_id: UUID | None = None,
+    prompt_version: str | None = None,
 ) -> dict[str, Any]:
     """Assemble verified rows in contract order without rerunning deterministic calculations."""
 
-    input_by_key = {item.section_key: item for item in build_child_section_inputs(guidance_facts)}
+    input_by_key = {
+        item.section_key: item for item in build_child_section_inputs(guidance_facts, prompt_version=prompt_version)
+    }
     output_generation_id = artifact_generation_id or guidance_facts.generation_id
     allowed_generation_ids = (
         {guidance_facts.generation_id}
@@ -204,7 +208,11 @@ def assemble_child_report_payload(
             raise ChildNarrativeValidationError("ready segment lacks structured output")
         try:
             output = validate_segment_output(
-                output=ChildSegmentOutput.model_validate(raw_output),
+                output=(
+                    ChildSegmentOutputV2
+                    if section_input.contract_version == "child_section_render_input_v4"
+                    else ChildSegmentOutput
+                ).model_validate(raw_output),
                 section_input=section_input,
                 guidance_facts=guidance_facts,
             )
@@ -222,6 +230,13 @@ def assemble_child_report_payload(
 
     status = "ready" if not failed_sections and not missing_sections else "partial"
     current = guidance_facts.contract_version in SOURCE_PROFILE_CONTRACT_VERSIONS
+    selected_prompt_version = prompt_version_for_input(next(iter(input_by_key.values())))
+    narrative_version = {
+        "child-section-prompt-v1": "child_report_narrative_v1",
+        "child-section-prompt-v2": "child_report_narrative_v2",
+        "child-section-prompt-v3": "child_report_narrative_v3",
+        "child-section-prompt-v4": "child_report_narrative_v4",
+    }[selected_prompt_version]
     return {
         **(
             {
@@ -230,27 +245,19 @@ def assemble_child_report_payload(
                     omitted_sections=omitted_sections,
                     failed_sections=failed_sections,
                     missing_sections=missing_sections,
-                    contract_version=(
-                        "child_report_narrative_v3"
-                        if guidance_facts.contract_version == "child-guidance-facts-v3"
-                        else "child_report_narrative_v2"
-                    ),
+                    contract_version=narrative_version,
                 )
             }
             if current
             else {}
         ),
-        "contract_version": {
-            "child-guidance-facts-v1": "child_report_narrative_v1",
-            "child-guidance-facts-v2": "child_report_narrative_v2",
-            "child-guidance-facts-v3": "child_report_narrative_v3",
-        }[guidance_facts.contract_version],
+        "contract_version": narrative_version,
         "generation_id": str(output_generation_id),
         "source_generation_id": str(guidance_facts.generation_id),
         "child_id": str(guidance_facts.child_id),
         "age_snapshot_id": str(guidance_facts.age_snapshot_id),
         "core_report_version": guidance_facts.core_report_version,
-        "prompt_version": prompt_version_for_input(next(iter(input_by_key.values()))),
+        "prompt_version": selected_prompt_version,
         "status": status,
         "section_order": list(SECTION_METADATA),
         "sections": sections,

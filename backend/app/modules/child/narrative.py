@@ -26,11 +26,12 @@ from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandi
 from app.modules.llm.exceptions import LLMTimeoutError
 
 CHILD_PROMPT_VERSION: Final = "child-section-prompt-v1"
-CURRENT_CHILD_PROMPT_VERSION: Final = "child-section-prompt-v3"
+CURRENT_CHILD_PROMPT_VERSION: Final = "child-section-prompt-v4"
 _PROMPT_VERSIONS: Final = {
     "child_section_render_input_v1": CHILD_PROMPT_VERSION,
     "child_section_render_input_v2": "child-section-prompt-v2",
-    "child_section_render_input_v3": CURRENT_CHILD_PROMPT_VERSION,
+    "child_section_render_input_v3": "child-section-prompt-v3",
+    "child_section_render_input_v4": "child-section-prompt-v4",
 }
 _INPUT_VERSIONS: Final = {
     "child-guidance-facts-v1": "child_section_render_input_v1",
@@ -181,7 +182,10 @@ class ChildSectionRenderInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     contract_version: Literal[
-        "child_section_render_input_v1", "child_section_render_input_v2", "child_section_render_input_v3"
+        "child_section_render_input_v1",
+        "child_section_render_input_v2",
+        "child_section_render_input_v3",
+        "child_section_render_input_v4",
     ]
     section_key: str
     section_title: str
@@ -219,6 +223,38 @@ class ChildSegmentOutput(BaseModel):
     claims: list[ChildNarrativeClaim] = Field(min_length=1)
 
 
+class ChildNarrativeClaimV2(ChildNarrativeClaim):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class ChildProviderOutputV2(BaseModel):
+    """Provider-only contract: the application, not the provider, owns citation aggregation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    contract_version: Literal["child_segment_output_v2"]
+    section_key: str
+    title: str
+    body: str = Field(min_length=1)
+    claims: list[ChildNarrativeClaimV2] = Field(min_length=1)
+
+
+class ChildSegmentOutputV2(ChildProviderOutputV2):
+    """Validated, persisted application output. Never supplied as the provider schema."""
+
+    cited_fact_ids: list[str] = Field(min_length=1)
+
+
+def provider_output_schema(
+    section_input: ChildSectionRenderInput,
+) -> type[ChildSegmentOutput] | type[ChildProviderOutputV2]:
+    return (
+        ChildProviderOutputV2
+        if section_input.contract_version == "child_section_render_input_v4"
+        else ChildSegmentOutput
+    )
+
+
 class ChildSegmentProvider(Protocol):
     provider_name: str
     model_name: str
@@ -237,8 +273,8 @@ class StructuredChildProvider(Protocol):
         *,
         prompt: str,
         narrative_input: Any,
-        schema: type[ChildSegmentOutput],
-    ) -> ChildSegmentOutput: ...
+        schema: type[ChildSegmentOutput] | type[ChildProviderOutputV2],
+    ) -> ChildSegmentOutput | ChildProviderOutputV2: ...
 
 
 class StructuredChildSegmentProviderAdapter:
@@ -258,7 +294,7 @@ class StructuredChildSegmentProviderAdapter:
         response = await self._provider.generate_structured(
             prompt=prompt,
             narrative_input=cast(Any, section_input),
-            schema=ChildSegmentOutput,
+            schema=provider_output_schema(section_input),
         )
         return response.model_dump(mode="json")
 
@@ -294,6 +330,14 @@ class MockChildSegmentProvider:
             ChildNarrativeClaim(text=fact.approved_text, fact_ids=[fact.id], conditional=fact.conditional)
             for fact in section_input.owned_facts
         ]
+        if section_input.contract_version == "child_section_render_input_v4":
+            return ChildProviderOutputV2(
+                contract_version="child_segment_output_v2",
+                section_key=section_input.section_key,
+                title=section_input.section_title,
+                body=" ".join(claim.text for claim in claims),
+                claims=[ChildNarrativeClaimV2.model_validate(claim.model_dump()) for claim in claims],
+            ).model_dump(mode="json")
         return ChildSegmentOutput(
             contract_version=CHILD_SEGMENT_OUTPUT_VERSION,
             section_key=section_input.section_key,
@@ -592,9 +636,17 @@ def _family_facts(payload: Mapping[str, Any], family: str) -> list[dict[str, Any
     return [dict(fact) for fact in value if isinstance(fact, Mapping)]
 
 
-def build_child_section_inputs(guidance_facts: ChildGuidanceFacts) -> list[ChildSectionRenderInput]:
+def build_child_section_inputs(
+    guidance_facts: ChildGuidanceFacts, *, prompt_version: str | None = None
+) -> list[ChildSectionRenderInput]:
     """Project validated Guidance Facts into minimal, content-only provider inputs."""
 
+    input_version = _INPUT_VERSIONS[guidance_facts.contract_version]
+    if prompt_version is not None:
+        if prompt_version == "child-section-prompt-v4" and guidance_facts.contract_version == "child-guidance-facts-v3":
+            input_version = "child_section_render_input_v4"
+        elif prompt_version != _PROMPT_VERSIONS[input_version]:
+            raise ChildNarrativeValidationError("prompt version does not match stored content contract")
     payload = guidance_prompt_content(guidance_facts)
     inputs: list[ChildSectionRenderInput] = []
     for section_key, contract in section_contracts(guidance_facts.contract_version).items():
@@ -636,7 +688,7 @@ def build_child_section_inputs(guidance_facts: ChildGuidanceFacts) -> list[Child
         ]
         inputs.append(
             ChildSectionRenderInput(
-                contract_version=_INPUT_VERSIONS[guidance_facts.contract_version],
+                contract_version=input_version,
                 section_key=section_key,
                 section_title=title,
                 section_purpose=purpose,
@@ -649,9 +701,15 @@ def build_child_section_inputs(guidance_facts: ChildGuidanceFacts) -> list[Child
     return inputs
 
 
-def _canonical_section_input(*, guidance_facts: ChildGuidanceFacts, section_key: str) -> ChildSectionRenderInput:
+def _canonical_section_input(
+    *, guidance_facts: ChildGuidanceFacts, section_key: str, prompt_version: str | None = None
+) -> ChildSectionRenderInput:
     try:
-        return next(item for item in build_child_section_inputs(guidance_facts) if item.section_key == section_key)
+        return next(
+            item
+            for item in build_child_section_inputs(guidance_facts, prompt_version=prompt_version)
+            if item.section_key == section_key
+        )
     except StopIteration as exc:
         raise ChildNarrativeValidationError("unknown section") from exc
 
@@ -680,19 +738,28 @@ def _section_fact_id_map(*, guidance_facts: ChildGuidanceFacts, section_key: str
 
 def validate_segment_output(
     *,
-    output: ChildSegmentOutput,
+    output: ChildSegmentOutput | ChildProviderOutputV2,
     section_input: ChildSectionRenderInput,
     guidance_facts: ChildGuidanceFacts,
-) -> ChildSegmentOutput:
-    canonical = _canonical_section_input(guidance_facts=guidance_facts, section_key=section_input.section_key)
+) -> ChildSegmentOutput | ChildSegmentOutputV2:
+    canonical = _canonical_section_input(
+        guidance_facts=guidance_facts,
+        section_key=section_input.section_key,
+        prompt_version=prompt_version_for_input(section_input),
+    )
     if section_input != canonical:
         raise ChildNarrativeValidationError("section input is not canonical")
     if output.section_key != section_input.section_key or output.title != section_input.section_title:
         raise ChildNarrativeValidationError("section mismatch", reason_code="section_mismatch")
+    is_v4 = section_input.contract_version == "child_section_render_input_v4"
+    if (output.contract_version == "child_segment_output_v2") is not is_v4:
+        raise ChildNarrativeValidationError("output version does not match input", reason_code="output_schema")
     claim_ids = [claim.fact_ids[0] for claim in output.claims]
-    if output.cited_fact_ids != claim_ids or len(claim_ids) != len(set(claim_ids)):
+    if (isinstance(output, (ChildSegmentOutput, ChildSegmentOutputV2)) and output.cited_fact_ids != claim_ids) or len(
+        claim_ids
+    ) != len(set(claim_ids)):
         raise ChildNarrativeValidationError("claims and cited facts differ", reason_code="citation_mismatch")
-    cited = set(output.cited_fact_ids)
+    cited = set(claim_ids)
     unsupported = cited - section_input.allowed_fact_ids
     if unsupported:
         raise ChildNarrativeValidationError(
@@ -723,7 +790,7 @@ def validate_segment_output(
             NarrativeSectionCandidate(
                 section_key=output.section_key,
                 content=output.body,
-                fact_refs=tuple(fact_id_map[reference] for reference in output.cited_fact_ids),
+                fact_refs=tuple(fact_id_map[reference] for reference in claim_ids),
             ),
             guidance_facts=guidance_facts,
         )
@@ -731,6 +798,11 @@ def validate_segment_output(
         raise ChildNarrativeValidationError(
             f"child safety violation: {','.join(exc.categories)}", reason_code="safety_validation"
         ) from exc
+    if isinstance(output, ChildProviderOutputV2):
+        # Derive only after complete rendering, ownership, lineage and safety gates.
+        return ChildSegmentOutputV2.model_validate(
+            output.model_dump(exclude={"cited_fact_ids"}) | {"cited_fact_ids": claim_ids}
+        )
     return output
 
 
@@ -787,6 +859,7 @@ def build_child_segment_intent(
     canonical = _canonical_section_input(
         guidance_facts=guidance_facts,
         section_key=section_input.section_key,
+        prompt_version=prompt_version_for_input(section_input),
     )
     if section_input != canonical or not canonical.owned_facts:
         raise ChildNarrativeValidationError("provider intent requires a canonical non-empty section")
@@ -829,7 +902,11 @@ async def run_child_segment_generation(
 ) -> models.ChildSegmentGeneration:
     """Generate one independently retryable section and return a persistable row."""
 
-    canonical = _canonical_section_input(guidance_facts=guidance_facts, section_key=section_input.section_key)
+    canonical = _canonical_section_input(
+        guidance_facts=guidance_facts,
+        section_key=section_input.section_key,
+        prompt_version=prompt_version_for_input(section_input),
+    )
     if section_input != canonical:
         raise ChildNarrativeValidationError("section input is not canonical")
     expected_version = prompt_version_for_input(canonical)
@@ -878,7 +955,7 @@ async def run_child_segment_generation(
         )
 
     try:
-        if canonical.contract_version == "child_section_render_input_v3":
+        if canonical.contract_version in {"child_section_render_input_v3", "child_section_render_input_v4"}:
             from app.modules.llm.usage import capture_provider_usage
 
             with capture_provider_usage() as usage:
@@ -890,7 +967,7 @@ async def run_child_segment_generation(
                     base_diagnostics["provider_usage"] = usage.to_payload()
         else:
             raw = await provider.generate_segment(prompt=prompt, section_input=canonical)
-        parsed = ChildSegmentOutput.model_validate(raw)
+        parsed = provider_output_schema(canonical).model_validate(raw)
         output = validate_segment_output(
             output=parsed,
             section_input=canonical,
@@ -919,7 +996,7 @@ async def run_child_segment_generation(
     except (ChildNarrativeValidationError, ValidationError) as exc:
         error_code = "child_narrative_validation_failure"
         error_type = "validation_error"
-        if canonical.contract_version == "child_section_render_input_v3":
+        if canonical.contract_version in {"child_section_render_input_v3", "child_section_render_input_v4"}:
             # Persist only our bounded predicate code, never exception messages,
             # Pydantic input/context, provider output, or unsupported fact IDs.
             reason = "output_schema" if isinstance(exc, ValidationError) else exc.reason_code

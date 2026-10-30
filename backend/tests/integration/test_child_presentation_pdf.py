@@ -29,7 +29,7 @@ async def test_persisted_child_presentation_keeps_ready_report_and_rejects_unlin
     result = await run_claimed_full_generation(db_session, claim=claim, provider=CountingProvider(), now=NOW)
     assert result.report_id is not None
     report = await db_session.get(models.ChildReport, result.report_id)
-    assert report is not None and report.prompt_version == "child-section-prompt-v3"
+    assert report is not None and report.prompt_version == "child-section-prompt-v4"
     facts_row = await db_session.scalar(
         select(models.ChildGuidanceFacts).where(
             models.ChildGuidanceFacts.generation_id == generation.generation_id,

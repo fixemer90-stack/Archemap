@@ -1,0 +1,940 @@
+{
+  "age_stage": "3-6",
+  "assembly_hash": "1982da7d5f45e8edf2e6b5aae862449a8238c54dae6c51821be977839c71270a",
+  "generation_id": "c0a141cd-72cd-4bf0-896f-47d936d3f904",
+  "input_hash": "04b233d4a342e98be736eba0294d8cac51e84ba35e4b3331bddc3b4e711a5440",
+  "inputs": [
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "Взрослый может читать этот отчёт как набор проверяемых ориентиров, а не описание характера ребёнка. Рекомендации привязаны к возрастному этапу от 3 до 6 лет. Это не оценка способностей и не фиксированная черта ребёнка; сопоставляйте гипотезу с повседневным контактом. Шкалы стиля взрослого описывают его сторону контакта, шкалы потребностей — возможные условия контакта, а расчёт взаимодействия сопоставляет обе стороны; это не подтверждённые наблюдения. Отметка «между полюсами» не выбирает устойчиво подходящий способ; «недостаточно оснований» не позволяет делать направленный вывод даже при крайнем значении шкалы. В расчёте взаимодействия высокий полюс обозначает возможную опору, низкий — возможное напряжение. При отсутствии наблюдения сначала наблюдайте, при изменчивых реакциях сопоставляйте обстоятельства, при неоднозначных основаниях проверяйте только небольшое изменение. Не переносите рекомендации на другие возрастные этапы автоматически; отсутствие раздела не означает отсутствие потребности.",
+          "conditional": false,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "how_to_use",
+      "section_purpose": "Объяснить практический и недиагностический способ использования отчёта.",
+      "section_title": "Как читать этот отчёт"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "Взрослый может исследовать свою сторону контакта по этим шкалам, не приписывая её ребёнку. Ориентир расчёта стиля взрослого: структура, предлагаемая взрослым — между полюсами. Шкала идёт от более свободной организации к явно заданному распорядку и правилам; высокий показатель не означает лучшего воспитания. Вопрос для наблюдения: насколько явно взрослый задаёт распорядок и объясняет правила?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-1"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "parent_style",
+      "section_purpose": "Показать сильные стороны взрослого в контакте с ребёнком.",
+      "section_title": "Ваш стиль взаимодействия"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "Взрослый может проверить предполагаемые условия контакта по отклику ребёнка. Ориентир расчёта возможных потребностей в контакте: исследование нового — между полюсами. Шкала сопоставляет знакомый путь с сопровождением и пространство для исследования и проб. Вопрос для наблюдения: как проходит знакомое действие с сопровождением и проба нового?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-1"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: личное пространство — между полюсами. Шкала сопоставляет непрерывное совместное участие и защищённое личное пространство для восстановления. Вопрос для наблюдения: как соотносятся совместное участие и пространство для восстановления?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-2"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: поддержка и ободрение — между полюсами. Шкала различает спокойную доступность взрослого и более частое явное эмоциональное ободрение в контакте. Вопрос для наблюдения: как соотносятся спокойная доступность и явное ободрение в повседневном контакте?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-3"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: разнообразие — между полюсами. Шкала сопоставляет повторение в устойчивом ритме и разнообразие занятий и подходов. Вопрос для наблюдения: как складывается участие при повторении и при разнообразии занятий?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-4"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "child_interaction_needs",
+      "section_purpose": "Описать наблюдаемые потребности взаимодействия.",
+      "section_title": "Что помогает ребёнку в контакте"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "natural_contact",
+      "section_purpose": "Раскрыть устойчивые совпадения во взаимодействии.",
+      "section_title": "Где контакт складывается естественно"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "friction_zones",
+      "section_purpose": "Объяснить зоны трения без фиксированных ярлыков.",
+      "section_title": "Где может возникать напряжение"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "При неоднозначных основаниях, возможно, взрослый может проверить небольшое изменение привычного способа поддержки и наблюдать, как ребёнок возвращается к спокойствию.",
+          "conditional": true,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: спокойная сенсорная обстановка — между полюсами. Шкала различает более интенсивную стимуляцию и контакт в спокойной обстановке с меньшей сенсорной нагрузкой. Вопрос для наблюдения: как меняется контакт вместе с интенсивностью окружающей сенсорной нагрузки?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-2"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "soothing_support",
+      "section_purpose": "Дать ограниченные фактами способы поддержки.",
+      "section_title": "Как поддерживать и успокаивать"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "При неоднозначных основаниях, возможно, взрослый может проверить небольшое изменение в формулировке правила и наблюдать, как меняется реакция при его объяснении.",
+          "conditional": true,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: предсказуемость — между полюсами. Шкала сопоставляет спонтанный ход общения и устойчивый распорядок с заранее понятными ожиданиями. Вопрос для наблюдения: как проходит контакт при спонтанном ходе событий и при заранее понятном распорядке?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-2"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "boundaries_rules",
+      "section_purpose": "Показать возрастно уместную спокойную структуру.",
+      "section_title": "Границы и правила"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "При неоднозначных основаниях, возможно, взрослый может проверить небольшое изменение в объёме помощи в посильном деле и наблюдать, как меняется участие ребёнка.",
+          "conditional": true,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: самостоятельность — между полюсами. Шкала различает совместные решения с близкой помощью взрослого и значимый выбор с самостоятельными попытками. Вопрос для наблюдения: как ребёнок участвует в совместном решении и в посильной самостоятельной попытке?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-2"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "autonomy",
+      "section_purpose": "Объяснить поддержку автономии без давления.",
+      "section_title": "Самостоятельность"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "При неоднозначных основаниях, возможно, взрослый может проверить небольшое изменение способа объяснения и наблюдать, что ребёнок понял и что нужно уточнить.",
+          "conditional": true,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: словесные объяснения — между полюсами. Шкала сопоставляет короткие подсказки и показ на примере с подробным объяснением и диалогом. Вопрос для наблюдения: что становится понятным после короткой подсказки, показа или подробного диалога?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-2"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "explanation_learning",
+      "section_purpose": "Описать подходящий способ объяснять и тренировать навыки.",
+      "section_title": "Объяснения и обучение"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "Взрослый может наблюдать отклик на признание усилий, не оценивая личность ребёнка. Ориентир расчёта возможных потребностей в контакте: похвала и признание усилий — между полюсами. Шкала различает меньшую потребность в явной обратной связи и ясное признание усилий и вклада; это не мера способностей и не требование заслуживать одобрение. Вопрос для наблюдения: как ребёнок откликается на явное признание усилий и на менее выраженную обратную связь?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-1"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "praise_recognition",
+      "section_purpose": "Предложить способы замечать усилия без оценочных ярлыков.",
+      "section_title": "Похвала и признание"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "conflict_cycle",
+      "section_purpose": "Показать взрослому, как не усиливать повторяющееся напряжение.",
+      "section_title": "Цикл конфликта"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "not_personal",
+      "section_purpose": "Отделить реакцию ребёнка от оценки взрослого.",
+      "section_title": "Что важно не принимать на свой счёт"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "parent_strengths",
+      "section_purpose": "Собрать доказанные сильные стороны взрослого.",
+      "section_title": "На что вы уже можете опереться"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "Если реакция меняется с обстоятельствами, возможно, взрослый может сопоставлять условия лёгких и трудных переключений, не делая вывод по одной смене занятия.",
+          "conditional": true,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        },
+        {
+          "approved_text": "Ориентир расчёта возможных потребностей в контакте: время на переходы — между полюсами. Шкала различает быстрые переключения и постепенные переходы с предварительным предупреждением. Вопрос для наблюдения: как проходит быстрое переключение и переход с предварительным предупреждением?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-2"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: баланс помощи и самостоятельности — между полюсами. Вопрос для наблюдения: как объём помощи взрослого соотносится с самостоятельным участием ребёнка?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-3"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: способ задавать границы — между полюсами. Вопрос для наблюдения: как предлагаемые взрослым правила соотносятся с реакцией на границы?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-4"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: способ объяснять — между полюсами. Вопрос для наблюдения: как способ объяснения взрослого соотносится с пониманием в диалоге?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-5"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: поведение взрослого в конфликте — между полюсами. Вопрос для наблюдения: как реакция взрослого соотносится с усилением или ослаблением напряжения в конфликте?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-6"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: эмоциональную настроенность — между полюсами. Вопрос для наблюдения: как эмоциональный отклик взрослого соотносится с сигналами ребёнка?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-7"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: способ сопровождать обучение — между полюсами. Вопрос для наблюдения: как сопровождение взрослого соотносится с пробами и уточнением после ошибок?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-8"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: способ поддержки и успокоения — между полюсами. Вопрос для наблюдения: как способ поддержки взрослого соотносится с возвращением к спокойствию?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-9"
+        },
+        {
+          "approved_text": "Ориентир расчёта взаимодействия: темп взаимодействия — между полюсами. Вопрос для наблюдения: как темп взрослого соотносится со временем, нужным для переключения?",
+          "conditional": false,
+          "family": "source_profiles",
+          "id": "owned-10"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "conscious_adjustments",
+      "section_purpose": "Описать компенсации как действия взрослого.",
+      "section_title": "Что можно настраивать осознанно"
+    },
+    {
+      "contract_version": "child_section_render_input_v3",
+      "maximum_attempts": 2,
+      "owned_facts": [
+        {
+          "approved_text": "В теме текущего возрастного этапа: Взрослый может называть эмоции и задавать ясные границы через спокойную игру.",
+          "conditional": false,
+          "family": "recommended_actions",
+          "id": "owned-1"
+        }
+      ],
+      "reference_facts": [],
+      "retry_scope": "same_section_only",
+      "section_key": "current_age",
+      "section_purpose": "Связать рекомендации с зафиксированным возрастным этапом.",
+      "section_title": "Что важно в текущем возрасте"
+    }
+  ],
+  "payload": {
+    "age_snapshot_id": "bf7c6af3-c502-41c2-8b82-5109daa3e971",
+    "avoid_patterns": [],
+    "child_id": "4261f4c2-5be3-4343-a1b1-1e47da4bbac4",
+    "compensation_areas": [],
+    "confidence_markers": [
+      {
+        "fact_id": "action:e61a39a6-6bd5-5cd5-9c94-807aadfc5f5d",
+        "level": "low",
+        "required_language": "conditional"
+      },
+      {
+        "fact_id": "action:a9351be9-5323-5a8e-9690-5448080f7c39",
+        "level": "low",
+        "required_language": "conditional"
+      },
+      {
+        "fact_id": "action:9ea48c2b-0ec9-59f5-b479-bf29103357b1",
+        "level": "low",
+        "required_language": "conditional"
+      },
+      {
+        "fact_id": "action:9cba203d-bd4c-527b-99b5-9d41fdf64da9",
+        "level": "low",
+        "required_language": "conditional"
+      },
+      {
+        "fact_id": "action:4a254328-2e89-5b0d-812b-15e51b72974e",
+        "level": "low",
+        "required_language": "conditional"
+      }
+    ],
+    "contract_version": "child-guidance-facts-v3",
+    "core_report_version": 1,
+    "evidence_registry": {
+      "age_snapshot:bf7c6af3-c502-41c2-8b82-5109daa3e971": {
+        "age_stage": "3-6",
+        "reason_codes": [],
+        "resolver_entry_ids": [],
+        "rules_version": "child-age-mvp-1",
+        "source_id": "bf7c6af3-c502-41c2-8b82-5109daa3e971",
+        "source_type": "age_snapshot"
+      },
+      "child_age_snapshots:bf7c6af3-c502-41c2-8b82-5109daa3e971:child-age-mvp-1": {
+        "reason_codes": [
+          "age_stage_3_6"
+        ],
+        "resolver_entry_ids": [
+          "aca6c8ca-2eb8-538d-8357-ab4ffaa10b63"
+        ],
+        "source_type": "child_age_snapshots"
+      },
+      "child_answers:6c2b77f2-fba6-41c9-9906-8471f59dbed2:child-answer-mvp-1": {
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "9ea48c2b-0ec9-59f5-b479-bf29103357b1"
+        ],
+        "source_type": "child_answers"
+      },
+      "child_answers:9952514b-7735-4ae3-b6bb-1bef66fed8e0:child-answer-mvp-1": {
+        "reason_codes": [
+          "observed_context_is_variable"
+        ],
+        "resolver_entry_ids": [
+          "4a254328-2e89-5b0d-812b-15e51b72974e"
+        ],
+        "source_type": "child_answers"
+      },
+      "child_answers:dbe0db2c-78c9-412e-9b6b-16b5ab330eff:child-answer-mvp-1": {
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "9cba203d-bd4c-527b-99b5-9d41fdf64da9"
+        ],
+        "source_type": "child_answers"
+      },
+      "child_answers:e38292db-56af-474b-ac77-e4b33691494b:child-answer-mvp-1": {
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "e61a39a6-6bd5-5cd5-9c94-807aadfc5f5d"
+        ],
+        "source_type": "child_answers"
+      },
+      "child_answers:ff4eec3f-3185-4b34-8401-99cb9e43c41e:child-answer-mvp-1": {
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "a9351be9-5323-5a8e-9690-5448080f7c39"
+        ],
+        "source_type": "child_answers"
+      },
+      "child_interaction_scores:639ad6a2-65cb-45d1-b11d-0352c50ba758:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "boundary_fit",
+        "pattern": "moderate_tension",
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "a9351be9-5323-5a8e-9690-5448080f7c39"
+        ],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:84cde67a-6c44-4355-aec1-c46819fbf9ae:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "autonomy_balance",
+        "pattern": "moderate_tension",
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "e61a39a6-6bd5-5cd5-9c94-807aadfc5f5d"
+        ],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:85e39b7a-6a1f-4372-9725-bfb974708a4c:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "learning_interaction",
+        "pattern": "moderate_tension",
+        "reason_codes": [],
+        "resolver_entry_ids": [],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:ccb39a78-f50a-4fdc-894f-706f7e94dc52:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "conflict_pattern",
+        "pattern": "moderate_tension",
+        "reason_codes": [],
+        "resolver_entry_ids": [],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:cd3fc13d-3cbe-4a79-9edf-fc85ec1fbe0b:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "soothing_compatibility",
+        "pattern": "moderate_tension",
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "9cba203d-bd4c-527b-99b5-9d41fdf64da9"
+        ],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:cf7ecf2d-1dd2-4dcf-a12b-21802be701cc:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "tempo_fit",
+        "pattern": "moderate_tension",
+        "reason_codes": [
+          "observed_context_is_variable"
+        ],
+        "resolver_entry_ids": [
+          "4a254328-2e89-5b0d-812b-15e51b72974e"
+        ],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:d3559e05-d676-4467-8cad-d7429106af14:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "emotional_attunement",
+        "pattern": "moderate_tension",
+        "reason_codes": [],
+        "resolver_entry_ids": [],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_interaction_scores:f363e737-3cf4-4b3a-8b93-682077070c12:child-interaction-mvp-1": {
+        "confidence": 0.7,
+        "dimension": "communication_fit",
+        "pattern": "moderate_tension",
+        "reason_codes": [
+          "evidence_not_directionally_conclusive"
+        ],
+        "resolver_entry_ids": [
+          "9ea48c2b-0ec9-59f5-b479-bf29103357b1"
+        ],
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_type": "interaction_score"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000001:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "predictability",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000002:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "verbal_explanation",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000003:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "physical_sensory_calm",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000004:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "exploration",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000005:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "personal_space",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000006:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "transition_time",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:00000000-0000-4000-8000-000000000007:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "variety",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:22222222-2222-4222-8222-222222222222:child-needs-mvp-1": {
+        "confidence": 0.6,
+        "dimension": "recognition",
+        "score": 54.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:33333333-3333-4333-8333-333333333333:child-needs-mvp-1": {
+        "confidence": 0.65,
+        "dimension": "autonomy",
+        "score": 58.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_need_scores:44444444-4444-4444-8444-444444444444:child-needs-mvp-1": {
+        "confidence": 0.6,
+        "dimension": "reassurance",
+        "score": 56.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs",
+        "source_type": "source_profile"
+      },
+      "child_parent_style_scores:11111111-1111-4111-8111-111111111111:parent-style-mvp-2": {
+        "confidence": 0.7,
+        "dimension": "structure",
+        "score": 57.0,
+        "scoring_version": "parent-style-mvp-2",
+        "source_kind": "parent_style",
+        "source_type": "source_profile"
+      },
+      "context_resolution:c6a8a93ae482050664b73da053a58ffffe08c6739bf7da362e3fe1f1cd7e0817": {
+        "input_hash": "c6a8a93ae482050664b73da053a58ffffe08c6739bf7da362e3fe1f1cd7e0817",
+        "reason_codes": [],
+        "resolver_entry_ids": [],
+        "resolver_version": "child-context-resolver-mvp-1",
+        "source_type": "context_resolution"
+      },
+      "guidance_contract:04b233d4a342e98be736eba0294d8cac51e84ba35e4b3331bddc3b4e711a5440": {
+        "contract_version": "child-guidance-facts-v3",
+        "input_hash": "04b233d4a342e98be736eba0294d8cac51e84ba35e4b3331bddc3b4e711a5440",
+        "source_type": "guidance_contract"
+      }
+    },
+    "friction_points": [],
+    "parent_profile_id": "cf74694b-7135-4eac-8f6c-d2eb5b8e9cad",
+    "parent_strengths": [],
+    "recommended_actions": [
+      {
+        "action_code": "adult_names_emotions_and_uses_playful_clear_limits",
+        "applicability": "general",
+        "confidence": 1.0,
+        "dimension": null,
+        "evidence_refs": [
+          "child_age_snapshots:bf7c6af3-c502-41c2-8b82-5109daa3e971:child-age-mvp-1"
+        ],
+        "id": "action:aca6c8ca-2eb8-538d-8357-ab4ffaa10b63",
+        "reason_code": "age_stage_3_6",
+        "target": "caregiver",
+        "topic": "current_age"
+      },
+      {
+        "action_code": "adult_tests_small_adjustment_and_observes",
+        "applicability": "general",
+        "confidence": 0.35,
+        "dimension": "autonomy_balance",
+        "evidence_refs": [
+          "child_answers:e38292db-56af-474b-ac77-e4b33691494b:child-answer-mvp-1",
+          "child_interaction_scores:84cde67a-6c44-4355-aec1-c46819fbf9ae:child-interaction-mvp-1"
+        ],
+        "id": "action:e61a39a6-6bd5-5cd5-9c94-807aadfc5f5d",
+        "reason_code": "evidence_not_directionally_conclusive",
+        "target": "caregiver",
+        "topic": "autonomy"
+      },
+      {
+        "action_code": "adult_tests_small_adjustment_and_observes",
+        "applicability": "general",
+        "confidence": 0.35,
+        "dimension": "boundary_fit",
+        "evidence_refs": [
+          "child_answers:ff4eec3f-3185-4b34-8401-99cb9e43c41e:child-answer-mvp-1",
+          "child_interaction_scores:639ad6a2-65cb-45d1-b11d-0352c50ba758:child-interaction-mvp-1"
+        ],
+        "id": "action:a9351be9-5323-5a8e-9690-5448080f7c39",
+        "reason_code": "evidence_not_directionally_conclusive",
+        "target": "caregiver",
+        "topic": "boundaries"
+      },
+      {
+        "action_code": "adult_tests_small_adjustment_and_observes",
+        "applicability": "general",
+        "confidence": 0.35,
+        "dimension": "communication_fit",
+        "evidence_refs": [
+          "child_answers:6c2b77f2-fba6-41c9-9906-8471f59dbed2:child-answer-mvp-1",
+          "child_interaction_scores:f363e737-3cf4-4b3a-8b93-682077070c12:child-interaction-mvp-1"
+        ],
+        "id": "action:9ea48c2b-0ec9-59f5-b479-bf29103357b1",
+        "reason_code": "evidence_not_directionally_conclusive",
+        "target": "caregiver",
+        "topic": "communication"
+      },
+      {
+        "action_code": "adult_tests_small_adjustment_and_observes",
+        "applicability": "general",
+        "confidence": 0.35,
+        "dimension": "soothing_compatibility",
+        "evidence_refs": [
+          "child_answers:dbe0db2c-78c9-412e-9b6b-16b5ab330eff:child-answer-mvp-1",
+          "child_interaction_scores:cd3fc13d-3cbe-4a79-9edf-fc85ec1fbe0b:child-interaction-mvp-1"
+        ],
+        "id": "action:9cba203d-bd4c-527b-99b5-9d41fdf64da9",
+        "reason_code": "evidence_not_directionally_conclusive",
+        "target": "caregiver",
+        "topic": "soothing"
+      },
+      {
+        "action_code": "adult_tracks_context_before_generalizing",
+        "applicability": "general",
+        "confidence": 0.0,
+        "dimension": "tempo_fit",
+        "evidence_refs": [
+          "child_answers:9952514b-7735-4ae3-b6bb-1bef66fed8e0:child-answer-mvp-1",
+          "child_interaction_scores:cf7ecf2d-1dd2-4dcf-a12b-21802be701cc:child-interaction-mvp-1"
+        ],
+        "id": "action:4a254328-2e89-5b0d-812b-15e51b72974e",
+        "reason_code": "observed_context_is_variable",
+        "target": "caregiver",
+        "topic": "transitions"
+      }
+    ],
+    "source_profiles": [
+      {
+        "confidence": 0.65,
+        "dimension": "autonomy",
+        "evidence_refs": [
+          "child_need_scores:33333333-3333-4333-8333-333333333333:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:autonomy",
+        "score": 58.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "exploration",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000004:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:exploration",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "personal_space",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000005:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:personal_space",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "physical_sensory_calm",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000003:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:physical_sensory_calm",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "predictability",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000001:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:predictability",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.6,
+        "dimension": "reassurance",
+        "evidence_refs": [
+          "child_need_scores:44444444-4444-4444-8444-444444444444:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:reassurance",
+        "score": 56.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.6,
+        "dimension": "recognition",
+        "evidence_refs": [
+          "child_need_scores:22222222-2222-4222-8222-222222222222:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:recognition",
+        "score": 54.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "transition_time",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000006:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:transition_time",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "variety",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000007:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:variety",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.65,
+        "dimension": "verbal_explanation",
+        "evidence_refs": [
+          "child_need_scores:00000000-0000-4000-8000-000000000002:child-needs-mvp-1"
+        ],
+        "id": "profile:child_needs:verbal_explanation",
+        "score": 52.0,
+        "scoring_version": "child-needs-mvp-1",
+        "source_kind": "child_needs"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "autonomy_balance",
+        "evidence_refs": [
+          "child_interaction_scores:84cde67a-6c44-4355-aec1-c46819fbf9ae:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:autonomy_balance",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "boundary_fit",
+        "evidence_refs": [
+          "child_interaction_scores:639ad6a2-65cb-45d1-b11d-0352c50ba758:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:boundary_fit",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "communication_fit",
+        "evidence_refs": [
+          "child_interaction_scores:f363e737-3cf4-4b3a-8b93-682077070c12:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:communication_fit",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "conflict_pattern",
+        "evidence_refs": [
+          "child_interaction_scores:ccb39a78-f50a-4fdc-894f-706f7e94dc52:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:conflict_pattern",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "emotional_attunement",
+        "evidence_refs": [
+          "child_interaction_scores:d3559e05-d676-4467-8cad-d7429106af14:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:emotional_attunement",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "learning_interaction",
+        "evidence_refs": [
+          "child_interaction_scores:85e39b7a-6a1f-4372-9725-bfb974708a4c:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:learning_interaction",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "soothing_compatibility",
+        "evidence_refs": [
+          "child_interaction_scores:cd3fc13d-3cbe-4a79-9edf-fc85ec1fbe0b:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:soothing_compatibility",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "tempo_fit",
+        "evidence_refs": [
+          "child_interaction_scores:cf7ecf2d-1dd2-4dcf-a12b-21802be701cc:child-interaction-mvp-1"
+        ],
+        "id": "profile:interaction:tempo_fit",
+        "score": 53.0,
+        "scoring_version": "child-interaction-mvp-1",
+        "source_kind": "interaction"
+      },
+      {
+        "confidence": 0.7,
+        "dimension": "structure",
+        "evidence_refs": [
+          "child_parent_style_scores:11111111-1111-4111-8111-111111111111:parent-style-mvp-2"
+        ],
+        "id": "profile:parent_style:structure",
+        "score": 57.0,
+        "scoring_version": "parent-style-mvp-2",
+        "source_kind": "parent_style"
+      }
+    ],
+    "strong_matches": []
+  },
+  "prompt_hashes": [
+    "fc4c07518b78f7c6488d32805b9352027b4a1d0fded1d1e95b9fdbe4b63f242a",
+    "095e6ced0df68bc8529409c48f17cb7537f62febcdabec7f4c241d04e1d10f61",
+    "b7a9024860268df758c97273fbd899deff5afa02e3c8d208d424eecc6d6550c1",
+    "3c8da99547123e14cedd819969b569485bce16e9e8a6a5a9ac184d0ef6d1c146",
+    "9563d3aa6c1f738e61f44965339c167ffaf8f5e8a074958db31e0429aab02027",
+    "b31ea5c6712401e6115029bf50fdcc948f42bdffff71fdeda30f3506080bb51f",
+    "e4e80be39c436361c85bcf4bb4b8e9b536334df13888889873a77d22e188050d",
+    "2ad4b19da82b9db16d5e2d1bcc1c1c13b71f325945a6b0bbab637c0ed0b31daf",
+    "6c21e4c43da158fca68c348853c790e735d1cc9dec352dc06a34164af4065a87",
+    "e568d8dc368e416a05a1708a313126d6d2b64016a0697c89f0f5d910d7632ffa",
+    "3d9a6aa78e8c40173874204f63a08e59b8275c78630a5abf8c11fac3716349a8",
+    "fc4a9482f32c2ba699a4538b12f3d4eb5567e380e1f87f854699d063b6879d42",
+    "b1ad2c33bb180edee9cf30a63dfe205491560dc922ba3dd0012c16a14787cc8e",
+    "6c4978066da7369903901ec27882e85ac49c9bb14f781c24b072f6169c7c4850",
+    "22c15f3d167a44cd181a3dd68581f7e9c345c7ae6748e4ac6c0a19b61eb183ca"
+  ]
+}

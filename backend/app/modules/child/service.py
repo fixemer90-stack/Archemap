@@ -17,6 +17,7 @@ from app.modules.child import models
 from app.modules.child.assembly import assemble_child_report_payload
 from app.modules.child.guidance_facts import ChildGuidanceFactsRepository
 from app.modules.child.narrative import (
+    CURRENT_CHILD_PROMPT_VERSION,
     ChildSegmentProvider,
     DisabledChildSegmentProvider,
     MockChildSegmentProvider,
@@ -441,7 +442,7 @@ async def accept_narrative_retry_generation(
     )
     missing_section_pins = [
         {"section_key": item.section_key, "input_hash": _source_segment_pin_hash(item.model_dump(mode="json"))}
-        for item in build_child_section_inputs(guidance_facts)
+        for item in build_child_section_inputs(guidance_facts, prompt_version=source_report.prompt_version)
         if item.section_key not in source_keys
     ]
     result = await repository.create_generation_idempotently(
@@ -460,6 +461,11 @@ async def accept_narrative_retry_generation(
             "guidance_facts_id": str(facts_row.id),
             "guidance_contract_version": facts_row.contract_version,
             "guidance_input_hash": _guidance_facts_input_hash(facts_row),
+            **(
+                {"narrative_prompt_version": source_report.prompt_version}
+                if source_report.prompt_version == "child-section-prompt-v4"
+                else {}
+            ),
             "failed_section_pins": failed_section_pins,
             "missing_section_pins": missing_section_pins,
             **({"scope": scope} if scope == "narrative_all" else {}),
@@ -625,7 +631,11 @@ async def run_claimed_full_generation(
                 scoring_version=INTERACTION_SCORING_VERSION,
                 reference_version=INTERACTION_REFERENCE_VERSION,
                 questionnaire_version=questionnaire.questionnaire_version,
-                prompt_version=prompt_version_for_input(build_child_section_inputs(guidance_facts)[0]),
+                prompt_version=(
+                    CURRENT_CHILD_PROMPT_VERSION
+                    if guidance_facts.contract_version == "child-guidance-facts-v3"
+                    else prompt_version_for_input(build_child_section_inputs(guidance_facts)[0])
+                ),
                 report_payload=_deterministic_report_payload(
                     generation=generation,
                     guidance_facts=guidance_facts,
@@ -639,8 +649,10 @@ async def run_claimed_full_generation(
                     "age_snapshot_id": str(guidance_facts.age_snapshot_id),
                 },
             )
-            report_id = report_result.report.id
+            report = report_result.report
+            report_id = report.id
 
+        narrative_prompt_version = report.prompt_version
         if not report_was_published:
             await repository.transition_generation(
                 generation_id=generation.generation_id,
@@ -670,7 +682,7 @@ async def run_claimed_full_generation(
             )
         }
         provider_calls = 0
-        for section_input in build_child_section_inputs(guidance_facts):
+        for section_input in build_child_section_inputs(guidance_facts, prompt_version=narrative_prompt_version):
             previous = existing.get(section_input.section_key)
             if previous is not None and previous.status in {"ready", "not_applicable", "failed"}:
                 continue
@@ -736,6 +748,7 @@ async def run_claimed_full_generation(
         assembled = assemble_child_report_payload(
             guidance_facts=guidance_facts,
             segment_rows=segments,
+            prompt_version=narrative_prompt_version,
         )
         target = (
             ChildGenerationStatus.READY if assembled["status"] == "ready" else ChildGenerationStatus.NARRATIVE_FAILED
@@ -854,6 +867,10 @@ async def run_claimed_narrative_retry(
         )
         if report is None or facts_row is None:
             raise RuntimeError("Pinned narrative source lineage is unavailable")
+        if (
+            report.prompt_version == "child-section-prompt-v4" or "narrative_prompt_version" in payload
+        ) and payload.get("narrative_prompt_version") != report.prompt_version:
+            raise RuntimeError("Pinned narrative prompt version is corrupt")
         if _guidance_facts_input_hash(facts_row) != payload["guidance_input_hash"]:
             raise RuntimeError("Pinned narrative guidance facts are corrupt")
         unknown_retry = await session.scalar(
@@ -909,7 +926,7 @@ async def run_claimed_narrative_retry(
             row.section_key for row in source_segments if retry_scope == "narrative_all" or row.status == "failed"
         }:
             raise RuntimeError("Pinned narrative retry scope is incomplete")
-        section_inputs = build_child_section_inputs(guidance_facts)
+        section_inputs = build_child_section_inputs(guidance_facts, prompt_version=report.prompt_version)
         missing_section_pins = [
             {"section_key": item.section_key, "input_hash": _source_segment_pin_hash(item.model_dump(mode="json"))}
             for item in section_inputs
@@ -1025,6 +1042,7 @@ async def run_claimed_narrative_retry(
             guidance_facts=guidance_facts,
             segment_rows=tuple(merged.values()),
             artifact_generation_id=generation_id,
+            prompt_version=report.prompt_version,
         )
         target = (
             ChildGenerationStatus.READY if assembled["status"] == "ready" else ChildGenerationStatus.NARRATIVE_FAILED

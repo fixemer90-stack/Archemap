@@ -41,7 +41,9 @@ from tests.integration.test_child_generation_lifecycle import (
 pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("_setup_database")]
 
 
-@pytest.mark.parametrize("legacy_contract", ["child-guidance-facts-v1", "child-guidance-facts-v2"])
+@pytest.mark.parametrize(
+    "legacy_contract", ["child-guidance-facts-v1", "child-guidance-facts-v2", "child-guidance-facts-v3"]
+)
 async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_public_pdf(
     db_session: AsyncSession,
     client: AsyncClient,
@@ -82,7 +84,7 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
         },
     )
     profile_scores: list[GuidanceProfileScore] = []
-    if legacy_contract == "child-guidance-facts-v2":
+    if legacy_contract in {"child-guidance-facts-v2", "child-guidance-facts-v3"}:
         for kind, table, loader in (
             ("parent_style", "child_parent_style_scores", ChildRepository(db_session).load_parent_style_profile),
             ("child_needs", "child_need_scores", ChildRepository(db_session).load_child_need_profile),
@@ -143,11 +145,15 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
     )
     assert claim is not None
     await db_session.commit()
-    legacy_result = await run_claimed_full_generation(db_session, claim=claim, provider=CountingProvider(), now=NOW)
+    with monkeypatch.context() as historical:
+        historical.setattr(
+            "app.modules.child.service.CURRENT_CHILD_PROMPT_VERSION", "child-section-prompt-v3", raising=False
+        )
+        legacy_result = await run_claimed_full_generation(db_session, claim=claim, provider=CountingProvider(), now=NOW)
     assert legacy_result.report_id is not None
     legacy_report = await db_session.get(models.ChildReport, legacy_result.report_id)
-    expected_prompt = "child-section-prompt-v1" if legacy_contract.endswith("v1") else "child-section-prompt-v2"
-    expected_assembly = "child_report_narrative_v1" if legacy_contract.endswith("v1") else "child_report_narrative_v2"
+    expected_prompt = "child-section-prompt-" + legacy_contract.rsplit("-", 1)[1]
+    expected_assembly = "child_report_narrative_" + legacy_contract.rsplit("-", 1)[1]
     assert legacy_report is not None and legacy_report.prompt_version == expected_prompt
     old_segments = {
         row.id: deepcopy(row.diagnostics)
@@ -194,7 +200,7 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
     assert retry_assembly is not None
     assert retry_assembly.payload["prompt_version"] == expected_prompt
     assert retry_assembly.contract_version == expected_assembly
-    assert ("quality" in retry_assembly.payload) is legacy_contract.endswith("v2")
+    assert ("quality" in retry_assembly.payload) is not legacy_contract.endswith("v1")
     old_retry_payload = deepcopy(retry_assembly.payload)
     old_presentation = await build_child_report_presentation(
         db_session, owner_user_id=seed.owner_id, report_id=legacy_report.id
@@ -238,8 +244,8 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
         v2_snapshot = deepcopy(v2_report.report_payload)
         await db_session.commit()
 
-    # Explicit user-authorized full regeneration gets a new generation and v3;
-    # a narrative-only retry intentionally cannot reinterpret legacy evidence.
+    # Explicit user-authorized full regeneration gets a new generation and narrative v4;
+    # unchanged Guidance Facts v3 are reused without reinterpreting older narrative retries.
     repair = await repository.create_generation_idempotently(
         owner_user_id=seed.owner_id,
         child_profile_id=seed.child_id,
@@ -257,6 +263,14 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
     await db_session.commit()
     repaired = await run_claimed_full_generation(db_session, claim=repair_claim, provider=CountingProvider(), now=NOW)
     assert repaired.report_id is not None and repaired.report_id != legacy_report.id
+    repaired_report = await db_session.get(models.ChildReport, repaired.report_id)
+    assert repaired_report is not None and repaired_report.prompt_version == "child-section-prompt-v4"
+    repaired_assembly = await db_session.scalar(
+        select(models.ChildReportAssembly).where(
+            models.ChildReportAssembly.generation_id == repair.generation.generation_id
+        )
+    )
+    assert repaired_assembly is not None and repaired_assembly.contract_version == "child_report_narrative_v4"
     await db_session.commit()
     assert isinstance(db_session.bind, AsyncEngine)
     sessions = async_sessionmaker(db_session.bind, expire_on_commit=False)

@@ -37,7 +37,7 @@ GitHub: `fixemer90-stack/Archemap#51` — `[Child] Избыточные поро
 | S16 complete staging scenarios | Native mock exact/approximate/unknown, access, PDF, rollback и alerting ранее проверены | Остальные обязательные runbook-сценарии и актуальный scope-bound readback                             |
 | S16 safety/access STOP         | Проверенные safety/access отказы и fail-closed реализация есть                          | Явное независимое исполнение негативного STOP gate перед mutation/canary                              |
 
-Production permission и бюджет последней single full generation уже исполнены. Дополнительные paid calls не разрешены. Прошлое решение отложить budgets для отдельного rollout не является доказательством их измерения. E22 нельзя отметить завершённым, пока оставшиеся критерии не выполнены либо владелец явно не изменит область приёмки; перенос отмечается как перенос, а не PASS.
+Production permission и бюджет последней single full generation уже исполнены. Дополнительные paid calls не разрешены. Прошлое решение отложить budgets для отдельного rollout не является доказательством их измерения. Владелец явно выбрал **выполнить S15–S16 до закрытия E22**, а не перенести их. Численные критерии/staging-mutation/provider-cost packet пока не согласован: уточняющая форма истекла без ответа, не была отклонена. Предложенные параметры и точные границы: [QUALIFICATION-DECISION.md](./QUALIFICATION-DECISION.md). E22 остаётся открытым; ни один gate не отмечен фиктивным PASS.
 
 ## Независимая сверка оставшегося объёма — 2026-10-31
 

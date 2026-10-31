@@ -21,6 +21,7 @@
 - Пользовательский и системный workflow: [`WORKFLOW.md`](./WORKFLOW.md)
 - API и state machine: [`API.md`](./API.md)
 - Продуктовые follow-ups и оставшиеся closure gates: [`PRODUCT-FOLLOW-UPS.md`](./PRODUCT-FOLLOW-UPS.md)
+- Пакет разрешений/измерений для полного S15–S16: [`QUALIFICATION-DECISION.md`](./QUALIFICATION-DECISION.md) — numeric/provider/staging scope пока не согласован.
 
 При расхождении короткой Story с продуктовым смыслом источником истины является SRS вместе с design-документом. Реализация не может ослаблять child-safety, ownership, birth-time uncertainty или immutable lineage.
 

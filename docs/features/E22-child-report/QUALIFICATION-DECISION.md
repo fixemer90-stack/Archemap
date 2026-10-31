@@ -39,6 +39,17 @@
 
 Для текущего запуска используется вариант 1: ноль новых paid calls. Вариант 2 не разрешён и не выполняется; предыдущие production repair budgets исчерпаны. Native-mock qualification не выдаётся за прохождение real-provider currency/distribution критериев. Все S15–S16 checkbox остаются открытыми до фактического результата и независимого readback; scope-specific limitations фиксируются отдельно.
 
+## Preflight STOP — 2026-10-31
+
+Первичный и повторный read-only preflight (включая независимый parent readback) выявил два фактических isolation failures **до любых мутаций**:
+
+- На `astrotype_edge` помимо staging gateway находятся staging backend/frontend. Существующая конфигурация даёт обход предусмотренной gateway-only сетевой границы; исправление должно сохранить proxy DNS на private staging network, не менять production Caddy.
+- Fingerprints `YOOKASSA_SHOP_ID`/`YOOKASSA_SECRET_KEY` staging совпадают с production. Это не доказательство платежа или live-shop mode: payment/provider requests не отправлялись. Для native-mock qualification нужен явный no-payment контур без наследования production credentials и с fail-closed запретом HTTP при отсутствующих ключах, не выдуманные merchant credentials.
+
+Отдельные PostgreSQL/Redis volumes, app/database secrets и effective `mock` во всех четырёх staging consumers подтверждены. Все 22 наблюдённых container identities/start times и production markers сохранились; production health 200. **0/50 measured samples**, observation window не начиналось; grants, maintenance, backup/restore/refresh и fixtures не выполнялись, cleanup obligations этого preflight отсутствуют.
+
+Private evidence: `e22-s15-preflight-20261031T1340Z`, handoff `/home/balthier/.hermes/cache/scratch/e22-s15-staging-qualification-handoff.md`. Начато узкое TDD-исправление staging network/payment isolation; новый candidate проходит review/CI до разрешённой stage-only remediation. Production credential values, payments и production runtime не изменяются. После этого preflight/протокол/50 samples/окно/independent operator-run выполняются заново; STOP не засчитывается ни как benchmark failure, ни как полный S16 negative-gate PASS.
+
 ## Связанные источники
 
 - [S15](./S15-qa-observability-data-safety.md)

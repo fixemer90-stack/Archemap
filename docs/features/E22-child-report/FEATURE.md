@@ -20,6 +20,7 @@
 - SRS: [`../../SRS/SRS-E22-child-report.md`](../../SRS/SRS-E22-child-report.md)
 - Пользовательский и системный workflow: [`WORKFLOW.md`](./WORKFLOW.md)
 - API и state machine: [`API.md`](./API.md)
+- Продуктовые follow-ups и оставшиеся closure gates: [`PRODUCT-FOLLOW-UPS.md`](./PRODUCT-FOLLOW-UPS.md)
 
 При расхождении короткой Story с продуктовым смыслом источником истины является SRS вместе с design-документом. Реализация не может ослаблять child-safety, ownership, birth-time uncertainty или immutable lineage.
 
@@ -51,6 +52,10 @@ LLM не получает задачу самостоятельно рассчи
 8. Narrative failure не уничтожает полезный deterministic result.
 9. Web и PDF используют один persisted presentation contract и один зафиксированный age snapshot.
 10. Guardrails для данных и текста о несовершеннолетнем строже, чем для обычного Natal Report.
+
+## Продуктовый follow-up, зафиксированный владельцем
+
+Открытый `fixemer90-stack/Archemap#51`: избыточные пороги скрывают тематические разделы при наличии исходных расчётов. Четыре omissions принятого отчёта соответствуют текущему контракту, но это не доказывает продуктовую оправданность такого ограничения. Требуется отдельное versioned исправление; сейчас оно записано к последующей работе, не реализовано. Подробности, критерии и карта оставшихся S15–S16 gates: [PRODUCT-FOLLOW-UPS.md](./PRODUCT-FOLLOW-UPS.md). BUG-50 не переоткрывается, проверенные Stories не получают новые критерии задним числом. E22 пока завершается по своим незакрытым эксплуатационным критериям; фиктивного PASS или новых paid calls нет.
 
 ## Пользовательская ценность
 

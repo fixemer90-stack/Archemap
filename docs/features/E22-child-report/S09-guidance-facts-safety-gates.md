@@ -66,6 +66,10 @@
 
 На exact `cf3a4e6` с CI `41133238682` (8/8) одна разрешённая real-provider full generation дала core version 5, **11 ready / 0 failed / 0 missing**, четыре justified omissions. Parent verifier заново сопоставил **26/26 dimensions** с действительными persisted score refs, сохранил шесть action facts (включая transitions), conditional qualifiers и shared caveats в owning scopes. Quality limited только для insufficient evidence; narrative repeated sentences/scopes — ноль. **264** прежних Child rows и исторические артефакты сохранены; parent acceptance прочитана обратно. [Полные proof и boundaries](../../reviews/2026-10-28/BUG-50-child-content-quality.md).
 
+## Отдельный продуктовый follow-up #51
+
+Избыточное threshold-based отсечение тематических разделов при имеющихся средних/смешанных показателях зафиксировано к последующему исправлению в `fixemer90-stack/Archemap#51`. Порог должен влиять на уверенность/тип пояснения, а не автоматически исключать доступный тематический материал. Это отдельная версия content/ownership policy; старые артефакты не переписываются. Текущий закрытый Story проверен по прежним критериям и не объявляет follow-up выполненным. Подробности и границы: [PRODUCT-FOLLOW-UPS.md](./PRODUCT-FOLLOW-UPS.md).
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

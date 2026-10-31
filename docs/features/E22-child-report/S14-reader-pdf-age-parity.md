@@ -60,6 +60,10 @@ Upstream sentence-level boilerplate сохраняется; source-aware fix н�
 
 Exact `cf3a4e6`, CI `41133238682` (8/8), immutable core version 5: **11 ready, 0 failed, 0 missing, 4 justified omissions**, включая accepted praise. Native desktop **1440×1000** и mobile **390×844** без mocks: all11 bodies/titles/confidence/age, limited notice и все четыре individual omission explanations совпали с persisted API. API/native PDFs одинаковы — **7 pages, 27,373 bytes**, SHA256 `588a42c85d46ca624c0d73c44fb9531b46af3ac4bafd01d0638bc02ade2ac3af`; PDF body и fallback parity PASS. Ноль page errors/overflow/Child mutations; private reasons не раскрыты, нет автоматической regeneration. Parent независимо прочитал API/PDF и осмотрел desktop/mobile praise и PDF page 5 без видимого clipping. Старые reports 1–4 и их PDFs доступны и не переинтерпретированы. [Финальное evidence](../../reviews/2026-10-28/BUG-50-child-content-quality.md) закрывает BUG-50, не весь E22.
 
+## Отдельный продуктовый follow-up #51
+
+Избыточное threshold-based отсечение тематических разделов при имеющихся средних/смешанных показателях зафиксировано к последующему исправлению в `fixemer90-stack/Archemap#51`. Порог должен влиять на уверенность/тип пояснения, а не автоматически исключать доступный тематический материал. Это отдельная версия content/ownership policy; старые артефакты не переписываются. Текущий закрытый Story проверен по прежним критериям и не объявляет follow-up выполненным. Подробности и границы: [PRODUCT-FOLLOW-UPS.md](./PRODUCT-FOLLOW-UPS.md).
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

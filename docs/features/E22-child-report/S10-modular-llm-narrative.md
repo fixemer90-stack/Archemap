@@ -86,6 +86,10 @@ Parent independently revalidated all **26 source dimensions**, действит�
 
 Все **264 прежних Child rows**, historical versions **1–4**, **49 non-Child tables** и **17 protected containers** сохранены; private backup/restore **66 tables**, cleanup/normal retry settings подтверждены. Parent acceptance записана и прочитана отдельно; active scope `bug50-parent-accepted;not-e22-complete`. Полное evidence и границы: [BUG-50 final acceptance](../../reviews/2026-10-28/BUG-50-child-content-quality.md#финальная-production-приёмка-v4--2026-10-31). Это закрывает BUG-50/S10, не numeric/statistical budgets и operator-run S15–S16. Новые платные вызовы не разрешены.
 
+## Отдельный продуктовый follow-up #51
+
+Избыточное threshold-based отсечение тематических разделов при имеющихся средних/смешанных показателях зафиксировано к последующему исправлению в `fixemer90-stack/Archemap#51`. Порог должен влиять на уверенность/тип пояснения, а не автоматически исключать доступный тематический материал. Это отдельная версия content/ownership policy; старые артефакты не переписываются. Текущий закрытый Story проверен по прежним критериям и не объявляет follow-up выполненным. Подробности и границы: [PRODUCT-FOLLOW-UPS.md](./PRODUCT-FOLLOW-UPS.md).
+
 ## Зависимости
 
 См. граф в [`FEATURE.md`](./FEATURE.md). Story не закрывается документацией без code/test/runtime evidence.

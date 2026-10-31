@@ -110,6 +110,13 @@ services:
       - .env.staging
     environment:
       APP_ENV: staging
+      # No payment authority inherited from env_file; opt in with staging-only inputs.
+      YOOKASSA_SHOP_ID: ${STAGING_YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${STAGING_YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_WEBHOOK_SECRET: ${STAGING_YOOKASSA_WEBHOOK_SECRET:-}
+      STRIPE_SECRET_KEY: ${STAGING_STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STAGING_STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STAGING_STRIPE_WEBHOOK_SECRET:-}
       APP_DEBUG: "false"
       APP_HOST: 0.0.0.0
       APP_PORT: 8000
@@ -141,7 +148,6 @@ services:
       retries: 10
     networks:
       default:
-      edge:
         aliases:
           - staging-backend
 
@@ -154,6 +160,13 @@ services:
       - .env.staging
     environment:
       APP_ENV: staging
+      # No payment authority inherited from env_file; opt in with staging-only inputs.
+      YOOKASSA_SHOP_ID: ${STAGING_YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${STAGING_YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_WEBHOOK_SECRET: ${STAGING_YOOKASSA_WEBHOOK_SECRET:-}
+      STRIPE_SECRET_KEY: ${STAGING_STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STAGING_STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STAGING_STRIPE_WEBHOOK_SECRET:-}
       APP_DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-astrotype_staging}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-astrotype_staging}
       REDIS_URL: redis://redis:6379/0
@@ -185,6 +198,13 @@ services:
       - .env.staging
     environment:
       APP_ENV: staging
+      # No payment authority inherited from env_file; opt in with staging-only inputs.
+      YOOKASSA_SHOP_ID: ${STAGING_YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${STAGING_YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_WEBHOOK_SECRET: ${STAGING_YOOKASSA_WEBHOOK_SECRET:-}
+      STRIPE_SECRET_KEY: ${STAGING_STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STAGING_STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STAGING_STRIPE_WEBHOOK_SECRET:-}
       APP_DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-astrotype_staging}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-astrotype_staging}
       REDIS_URL: redis://redis:6379/0
@@ -218,6 +238,13 @@ services:
       - .env.staging
     environment:
       APP_ENV: staging
+      # No payment authority inherited from env_file; opt in with staging-only inputs.
+      YOOKASSA_SHOP_ID: ${STAGING_YOOKASSA_SHOP_ID:-}
+      YOOKASSA_SECRET_KEY: ${STAGING_YOOKASSA_SECRET_KEY:-}
+      YOOKASSA_WEBHOOK_SECRET: ${STAGING_YOOKASSA_WEBHOOK_SECRET:-}
+      STRIPE_SECRET_KEY: ${STAGING_STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STAGING_STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STAGING_STRIPE_WEBHOOK_SECRET:-}
       APP_DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-astrotype_staging}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-astrotype_staging}
       REDIS_URL: redis://redis:6379/0
@@ -255,7 +282,6 @@ services:
         condition: service_healthy
     networks:
       default:
-      edge:
         aliases:
           - staging-frontend
 

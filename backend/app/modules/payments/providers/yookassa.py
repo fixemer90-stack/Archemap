@@ -10,6 +10,7 @@ import httpx
 import structlog
 
 from app.config import settings
+from app.core.exceptions import PaymentError
 
 logger = structlog.get_logger()
 
@@ -28,6 +29,8 @@ class YooKassaProvider:
 
     def _get_auth_header(self) -> str:
         """Get Basic auth header for YooKassa API."""
+        if not self.shop_id.strip() or not self.secret_key.strip():
+            raise PaymentError("Payment provider is not configured", code="payment_provider_unconfigured")
         credentials = f"{self.shop_id}:{self.secret_key}"
         return b64encode(credentials.encode()).decode()
 

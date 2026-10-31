@@ -10,6 +10,15 @@ import sqlalchemy.ext.asyncio
 from scripts import child_staging_probe as probe
 
 
+@pytest.mark.parametrize("status", ["complete", "partial", "already_exists"])
+def test_self_worker_completed_outcomes_are_settled_without_rewriting_history(status: str) -> None:
+    row = {"status": status, "diagnostics": {"stage": "assembled"}}
+    assert probe.settled("astrotype_v2_natal_report_generations", row)
+    assert row == {"status": status, "diagnostics": {"stage": "assembled"}}
+    assert not probe.settled("astrotype_v2_natal_report_generations", row | {"error_code": "provider_outcome_unknown"})
+    assert not probe.settled("astrotype_v2_natal_report_generations", row | {"status": "running"})
+
+
 class Broker:
     def scan_iter(self, *, count: int) -> list[bytes]:
         assert count == 100

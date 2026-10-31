@@ -59,12 +59,18 @@ The [operator procedures](./child-operator-procedures.md) define the two shells,
 
 There is no `NEXT_PUBLIC_CHILD_REPORT_ENABLED` implementation. Do not invent a browser-only kill switch. The backend catalog/access decision is authoritative. A frontend code/build-time configuration change still requires a new build/image, not merely container environment changes.
 
-Example **application deployment**, not read-only tooling setup: on the approved staging Docker host after all mutation prerequisites and the operator procedures' mandatory quiescence/drain pass. `APP_CHECKOUT` is the clean reviewed application build checkout; `RELEASE_DIR` is its separately checksum-verified release archive. Supply the approved values; do not derive a project from the checkout basename. The example defines a base-only staging Compose function; if the active staging record includes overlays, provision and use its entire pinned chain before proceeding, never drop them:
+Staging maintenance now has published operator sources and [exact private freeze/drain/restore and identity-transfer invocations](./child-staging-maintenance.md). Provision the independently reviewed `OPERATOR_SHA` tools without rebuilding the unchanged application; the approved application target remains `4f104c8c6e6d297f99b382684ed8e62ebee7da03`. Source availability/native config validation is not proof that the controller has been provisioned or exercised. Keep the existing STOP gate if it is absent on the host.
+
+Example **application deployment**, not read-only tooling setup: on the approved staging Docker host after all mutation prerequisites and the operator procedures' mandatory quiescence/drain pass. `APP_CHECKOUT` is the clean reviewed application build checkout; `RELEASE_DIR` is its separately checksum-verified release archive. Supply the approved values; do not derive a project from the checkout basename. The example defines a staging Compose function with the controller's scheduler-hold overlay last; if the active staging record includes other overlays, provision and use its entire pinned chain before proceeding, never drop them:
 
 ```sh
 set -eu
 export TARGET_SHA='<approved full SHA>'
 : "${APP_CHECKOUT:?absolute reviewed application Git checkout}"
+: "${MAINTENANCE:?reviewed operator controller absolute source path}"
+: "${MAINTENANCE_RECORD:?private approved maintenance run record}"
+: "${MAINTENANCE_OPERATOR:?exact approved operator identity}"
+: "${MAINTENANCE_SCHEDULER_OVERLAY:?controller checkpoint scheduler.compose.json from completed freeze}"
 export RELEASE_DIR="/opt/astrotype-staging/releases/$TARGET_SHA"
 export CHILD_ALERT_SECRETS_DIR=/opt/astrotype-staging/secrets/child-alertmanager
 export CHILD_ALERT_PROBE_DIR=/opt/astrotype-staging/alert-probes/child
@@ -72,22 +78,30 @@ test "$(git -C "$APP_CHECKOUT" rev-parse HEAD)" = "$TARGET_SHA"
 test -z "$(git -C "$APP_CHECKOUT" status --porcelain)"
 compose() {
   docker compose -p astrotype-staging --project-directory "$RELEASE_DIR" \
-    --env-file "$RELEASE_DIR/.env.staging" -f "$RELEASE_DIR/docker-compose.staging.yml" "$@"
+    --env-file "$RELEASE_DIR/.env.staging" -f "$RELEASE_DIR/docker-compose.staging.yml" \
+    -f "$MAINTENANCE_SCHEDULER_OVERLAY" "$@"
 }
 compose config --quiet
 # Before build/up: privately compare rendered PostgreSQL/Redis/Prometheus volume
 # names with live inspect mounts, require existing approved bind sources and
 # correct private networks. See the identity guard in the operator procedures.
-# Define compose before the drain; do not run the following deployment lines
-# until the separate maintenance/drain procedure has completed.
+# The controller freeze is already active; gateway remains the same running ID.
+# Define the complete chain before double drain. Build while accepted work finishes.
 compose build backend worker scheduler refinement-monitor frontend
 test "${DRAIN_CONFIRMED:-false}" = true
-compose up -d --no-deps backend worker scheduler refinement-monitor frontend
+python3 "$MAINTENANCE" drain --record "$MAINTENANCE_RECORD" --operator "$MAINTENANCE_OPERATOR"
+# Infinite shutdown grace, never finite escalation against a worker.
+compose up -d --no-deps --timeout -1 backend worker refinement-monitor frontend
+# Scheduler stays stopped and restart:no under the pinned private overlay.
+compose create --no-deps scheduler
 compose ps
 compose exec -T backend python -m alembic current
-for service in backend worker scheduler refinement-monitor; do
+for service in backend worker refinement-monitor; do
   compose exec -T "$service" python -c 'from app.config import settings; print("child_enabled", settings.CHILD_REPORT_ENABLED)'
 done
+# Record fresh exact identities/nodes; approve and execute controller adopt.
+# Complete readiness/settings/reconciliation before owner-approved restore.
+# After restore, independently read scheduler effective settings/readiness too.
 ```
 
 Use `.env.production`/`docker-compose.prod.yml` only in a separately approved production window after staging passes. Do not use the development Compose file on a public deployment. Record actual container image IDs and compare the running application source checksums with the approved commit; a requested SHA supplied to the smoke CLI is not deployed-SHA verification.
@@ -164,7 +178,7 @@ The permanent rules cover observed worker terminal failures (`for: 1m`) and work
 
 ## Rollback drill and canary
 
-Before any flag change requiring process recreation, execute the operator procedures' **mandatory quiescence/drain**: freeze ingress and all producers, pause scheduler, let accepted work finish/reconcile with workers still alive, and prove every consumer's active/reserved/scheduled sets and consumed broker queues empty plus no unresolved persisted/provider outcome. Missing inspections or unknown outcomes are STOP. Only then set `CHILD_REPORT_ENABLED=false` in the selected environment file and recreate backend/worker/scheduler/refinement-monitor using the complete active Compose chain. Keep producers frozen through readiness/flag readback. Do NOT stop PostgreSQL/Redis, drop tables, truncate events, delete artifacts, downgrade immutable lineage or clear persisted generation/section diagnostics. A flag is an admission gate, not hot cancellation: recreating a busy worker does not preserve its call, and no finite Docker stop timeout may be used to kill it. Re-enable and image rollback require the same drain; if it cannot be established, leave consumers alive and escalate to the incident owner.
+Before any flag change requiring process recreation, execute the operator procedures' **mandatory quiescence/drain**: freeze ingress and all producers, pause scheduler, let accepted work finish/reconcile with workers still alive, and prove every consumer's active/reserved/scheduled sets and consumed broker queues empty plus no unresolved persisted/provider outcome. Missing inspections or unknown outcomes are STOP. Only then set `CHILD_REPORT_ENABLED=false` in the selected environment file and recreate backend/worker/scheduler/refinement-monitor using the complete active Compose chain. Keep producers frozen through readiness/flag readback. On staging, use the linked controller lifecycle, infinite shutdown grace, a stopped/restart-disabled scheduler and explicit approved identity adoption; never start the replacement scheduler during the frozen transition or recreate/restart the gateway. Do NOT stop PostgreSQL/Redis, drop tables, truncate events, delete artifacts, downgrade immutable lineage or clear persisted generation/section diagnostics. A flag is an admission gate, not hot cancellation: recreating a busy worker does not preserve its call, and no finite Docker stop timeout may be used to kill it. Re-enable and image rollback require the same drain; if it cannot be established, leave consumers alive and escalate to the incident owner.
 
 The disabled manifest contains EXACTLY `flag_off_read` and `flag_off_write`. Read points at the previously published report with asserted report/child IDs. Write POSTs `/api/v1/child/reports` with a legitimate owned completed child/session pair so authentication/ownership/validation cannot mask the flag check. Expect 503, no new generation/events/segments, no enqueue/provider attempts, no billing/entitlement mutation. Reads, pinned PDF and export stay available. Compare persisted row counts and artifact hashes before/after; the HTTP probe alone does not establish no side effects.
 

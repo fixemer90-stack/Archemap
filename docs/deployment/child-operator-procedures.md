@@ -174,7 +174,7 @@ This is for a separately approved staging maintenance window, not a command to e
 
 ### Mandatory quiescence before consumer recreation or writer stop
 
-1. Record maintenance authorization, all producer/consumer identities, exact Celery node names and their consumed queues from the live approved Compose chain. Freeze new ingress writes using the existing approved maintenance controller (not an invented flag toggle that itself recreates consumers); prevent all other API/direct task producers, then stop the scheduler producer only. Keep workers and reconciliation available while accepted work finishes. If the maintenance controller or full producer inventory is unavailable, STOP without recreating anything.
+1. Record maintenance authorization, all producer/consumer identities, exact Celery node names and their consumed queues from the live approved Compose chain. Provision the reviewed repository controller using the [staging maintenance invocation and run-record contract](./child-staging-maintenance.md); `OPERATOR_SHA` identifies these two operator scripts independently of `APPLICATION_SHA`. Execute its `preflight` and `freeze` actions: it uses only the exact staging gateway admin listener, preserves Basic Auth/noindex, returns **all authenticated HTTP requests (reads included) as 503**, disables gateway/scheduler automatic restart, and pauses only the scheduler. Exclude direct/private/edge/host API, broker and operator producers under the named exclusive operator window. Keep workers and reconciliation alive while accepted work finishes. If the reviewed tool is not provisioned or the full producer inventory/exclusion is unavailable, STOP without recreating anything. A source artifact is not a deployed controller.
 2. On the authorized host use the existing pinned `compose` function from the rollout runbook. Supply each exact node name from the recorded inventory, never a guessed wildcard. Run these read-only inspections for **both** worker services and any additional registered consumers. Capture output privately: Celery task diagnostics may contain identifiers/arguments.
 
 ```bash
@@ -188,7 +188,7 @@ done
 ```
 
 3. Require replies from every expected node, empty `active`, `reserved` and `scheduled` sets, and zero pending messages on every recorded consumed broker queue, using the approved broker diagnostic. Inspect persisted `child_generations`, `child_generation_events` and `child_segment_generations` diagnostics for queued/running work and unresolved external outcomes; inspect other task families too. Celery replies alone do not establish broker emptiness or a settled provider outcome. Missing reply (including a busy solo worker), unknown queue inventory, queued work, scheduled work or an unknown provider outcome is STOP: let workers finish/reconcile or obtain a separate incident decision, never revoke/purge/re-enqueue to manufacture a drain.
-4. With producers still frozen, repeat the complete inspections and broker/persisted checks immediately before stopping/recreating consumers. Record a signed operator drain decision in the private release record and set `DRAIN_CONFIRMED=true` only after these checks pass. This variable is an explicit manual gate, not automated drain proof. Keep maintenance in place across the transition, read back readiness/flags and reconcile durable state before restoring producers/ingress. A stop timeout is not a drain strategy; never let Docker kill a worker with active/reserved/scheduled work or unresolved provider outcome. If state changes, clear confirmation and STOP.
+4. With producers still frozen, execute the controller `drain` action immediately before **each** writer stop/recreation. It repeats exact-node inspections, all Redis list/priority queues and hash/zset unacked checks, durable Child/events/segments and other task-family settlement, plus accepted API socket/transaction checks twice; only those live checks emit the HMAC-signed, operator-bound `DRAIN_CONFIRMED` decision (30-second validity). `status` never emits a live drain decision. `DRAIN_CONFIRMED=true` remains an additional explicit operator acknowledgement in the backup example, not a substitute for its mandatory live controller invocation. Keep the same gateway loaded and auto-restart disabled across source recreation; never recreate/restart/reload it from the original Caddyfile. Use the explicit approved `adopt` identity transfer for refreshed app consumers/a stopped replacement scheduler, read back readiness/flags and reconcile durable state before `restore`. A stop timeout is not a drain strategy; never let Docker kill a worker with active/reserved/scheduled work or unresolved provider outcome. If state changes, clear confirmation and STOP.
 
 The following Bash sequence runs only after that drain, stops only currently running staging writers/frontend, creates a private nonempty custom archive, restores only into a uniquely created disposable DB, compares all public schema/table rows, rechecks the source, and restarts those services. The already paused scheduler must be recorded separately and resumed only after readiness and the maintenance owner's go decision; it is not restarted by this trap. It deliberately retains the dump/manifests. Any failed comparison blocks rollout; inspect private artifacts before retrying. `CHECKOUT`, `PRIVATE_DIR` and `OPERATOR_SHA` are the validated tooling values above, on this Docker host. No `--clean`, application drop or schema deletion is allowed.
 
@@ -197,6 +197,9 @@ The following Bash sequence runs only after that drain, stops only currently run
 set -euo pipefail
 umask 077
 test "${DRAIN_CONFIRMED:-false}" = true
+: "${MAINTENANCE_RECORD:?private approved controller run record}"
+: "${MAINTENANCE_OPERATOR:?exact approved operator identity}"
+MAINTENANCE="$CHECKOUT/backend/scripts/child_staging_maintenance.py"
 PG=astrotype-staging-postgres-1
 STATE="$CHECKOUT/backend/scripts/child_runtime_state.py"
 # This guard also proves the correct Docker daemon/project before stopping anything.
@@ -219,6 +222,12 @@ cleanup() {
   fi
   exit "$status"
 }
+
+# Live double drain is mandatory even when the manual acknowledgement is true.
+# Exclusive private output; failure happens before cleanup owns any writer stop.
+(set -o noclobber; python3 "$MAINTENANCE" drain \
+  --record "$MAINTENANCE_RECORD" --operator "$MAINTENANCE_OPERATOR" \
+  > "$PRIVATE_DIR/backup-drain-decision.json")
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
@@ -243,7 +252,7 @@ python3 "$STATE" --container "$PG" --all-public \
 
 The subshell scopes shell options and traps: cleanup finishes before the next caller command on success, failure, INT or TERM. It preserves the original failure/signal status; a cleanup failure turns an otherwise successful run into status 1. Run this as a standalone command, not inside `if`, `!`, `&&` or `||` (which suppress Bash `errexit`). On nonzero status stop; do not run acceptance steps. Untrappable termination (SIGKILL/host loss) still requires operator recovery.
 
-After the trap completes, independently verify every originally running service's readiness and public staging health, then production health/unchanged identities/marker. The cleanup owner is the recorded staging operator. The retained dump must stay root-private under the deployment backup policy; checksum and restore success do not imply indefinite retention. The previous application backup is `/opt/astrotype-staging/evidence/06b72c0f06c6f50a1831d407ec1350eb2f9e7bf8/staging-before.dump`, with `backup-proof.json`/`application-before.json` in that directory. Read back file presence/checksum before relying on it. Its historic proof covers 66 tables/56 nonempty and unchanged source; it predates later synthetic fixtures and must not be called a backup of those later rows.
+After the trap completes, keep ingress/scheduler frozen while independently verifying every originally running service's readiness, supported settings and persisted reconciliation. Run the controller `restore` invocation from the linked maintenance contract only after the maintenance owner's go decision; this restores exactly the saved Caddy JSON, owned restart policies and original scheduler running/stopped state, with readback. Then verify public staging health/auth/noindex and production health/unchanged identities/marker. The cleanup owner is the recorded staging operator. The retained dump must stay root-private under the deployment backup policy; checksum and restore success do not imply indefinite retention. The previous application backup is `/opt/astrotype-staging/evidence/06b72c0f06c6f50a1831d407ec1350eb2f9e7bf8/staging-before.dump`, with `backup-proof.json`/`application-before.json` in that directory. Read back file presence/checksum before relying on it. Its historic proof covers 66 tables/56 nonempty and unchanged source; it predates later synthetic fixtures and must not be called a backup of those later rows.
 
 ## Safe scenario trigger matrix
 

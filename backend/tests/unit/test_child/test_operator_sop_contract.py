@@ -71,6 +71,7 @@ docker() {
 }
 python3() {
   case "$*" in
+    *child_staging_maintenance.py*drain*) record drain ;;
     *--database*)
       record compare
       case "$SCENARIO" in
@@ -95,6 +96,8 @@ exit 0
             "PRIVATE_DIR": str(tmp_path),
             "OPERATOR_SHA": "a" * 40,
             "DRAIN_CONFIRMED": "true",
+            "MAINTENANCE_RECORD": str(tmp_path / "approved-run.json"),
+            "MAINTENANCE_OPERATOR": "synthetic-reviewer",
             "SCRIPT": str(script),
             "EVENTS": str(events),
             "SCENARIO": scenario,
@@ -109,6 +112,7 @@ exit 0
     observed = events.read_text().splitlines()
     assert "unexpected_docker" not in observed
     assert observed[-1] == f"caller:{status}", observed
+    assert observed.index("drain") + 1 == observed.index("stop"), observed
     assert observed.count("restart") == 1, observed
     assert observed.index("stop") < observed.index("restart") < len(observed) - 1
     assert observed.count("drop") == int(created), observed
@@ -146,6 +150,47 @@ sha256sum() { record checksum; }
     )
     assert result.returncode == 1, result.stderr
     assert not events.exists(), "Missing drain approval must stop before Docker, DB reads or backup commands"
+    assert not (tmp_path / "application.dump").exists()
+
+
+def test_backup_live_controller_failure_stops_before_writer_stop_or_restart(tmp_path: Path) -> None:
+    events = tmp_path / "mutations"
+    harness = r"""
+record() { printf '%s\n' "$1" >> "$EVENTS"; }
+date() { printf '1234567890\n'; }
+sha256sum() { return 99; }
+docker() {
+  case "$*" in
+    inspect*) printf 'true\n' ;;
+    *) record "$*"; return 99 ;;
+  esac
+}
+python3() {
+  case "$*" in
+    *child_staging_maintenance.py*drain*) return 42 ;;
+  esac
+  return 0
+}
+"""
+    result = subprocess.run(  # noqa: S603 -- no real Docker/DB commands
+        ["/bin/bash", "--noprofile", "--norc", "-c", harness + _backup_script()],
+        env={
+            "PATH": "",
+            "CHECKOUT": str(ROOT),
+            "PRIVATE_DIR": str(tmp_path),
+            "OPERATOR_SHA": "a" * 40,
+            "MAINTENANCE_RECORD": str(tmp_path / "approved.json"),
+            "MAINTENANCE_OPERATOR": "reviewer",
+            "DRAIN_CONFIRMED": "true",
+            "EVENTS": str(events),
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode == 42, result.stderr
+    assert not events.exists()
     assert not (tmp_path / "application.dump").exists()
 
 

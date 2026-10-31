@@ -22,7 +22,6 @@ import stat
 import subprocess
 import time
 from collections.abc import Callable
-from contextlib import suppress
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -70,6 +69,20 @@ TABLES = {
 BASE_SERVICES = {"gateway", "backend", "frontend", "scheduler", "worker", "refinement-monitor", "postgres", "redis"}
 PASSIVE_SERVICES = {"prometheus", "alertmanager", "otel-collector"}
 NO_RESTART = {"Name": "no", "MaximumRetryCount": 0}
+
+
+class _SchedulerNotDispatchedError(ValueError):
+    """Native adapter evidence: the mutating scheduler command was never called."""
+
+    def __init__(self, identity: str, value: bool, proof: str) -> None:
+        super().__init__("scheduler operation rejected before dispatch")
+        self.identity = identity
+        self.value = value
+        self.proof = proof
+
+
+class _CommandNotStartedError(RuntimeError):
+    """subprocess could not exec the local client; no daemon request exists."""
 
 
 class Runtime(Protocol):
@@ -376,6 +389,8 @@ def _locked(
         raise ValueError("approved record changed")
     if state["phase"] == "RESTORED" and action not in {"status", "restore"}:
         raise ValueError("completed run cannot be reused")
+    if state["phase"] == "RECOVERY_REQUIRED" and action not in {"status", "restore"}:
+        raise ValueError("definitively rejected freeze requires owned restore, not retry")
     if state.get("adopted"):
         adopted = state["adopted"]
         initial = adopted["inventory"]
@@ -503,11 +518,34 @@ def _locked(
             return
         state["intent"] = name
         state["decision"] = None
+        if name == "pause-scheduler":
+            state["attempt"] = {
+                "run_id": record["run_id"],
+                "record_sha256": digest(record),
+                "attempt_id": secrets.token_hex(16),
+                "action": name,
+                "target": {"id": scheduler, "running": False},
+                "prestate": item(scheduler),
+            }
         save_state(directory, state)
         inventory_ok(owned=True)
         # A transport failure is ambiguous: exact readback, never automatic replay.
-        with suppress(OSError, RuntimeError, ValueError, subprocess.SubprocessError, http.client.HTTPException):
+        try:
             operation()
+        except _SchedulerNotDispatchedError as exc:
+            if name != "pause-scheduler" or exc.identity != scheduler or exc.value is not False:
+                raise ValueError("no-dispatch evidence does not match pending operation") from exc
+            evidence = {**state["attempt"], "proof": exc.proof}
+            state["history"].append(
+                {"operation": name, "outcome": "not-dispatched", "evidence": evidence, "at": time.time()}
+            )
+            state["intent"] = None
+            state["attempt"] = None
+            state["phase"] = "RECOVERY_REQUIRED"
+            save_state(directory, state)
+            raise ValueError("scheduler stop not dispatched; retain evidence and restore owned state") from exc
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError, http.client.HTTPException):
+            pass
         if not matches():
             raise ValueError("operation not confirmed; retained intent blocks replay")
         inventory_ok(owned=True)
@@ -646,13 +684,17 @@ class Command(Protocol):
 
 
 def command(args: list[str], *, payload: str | None = None) -> str:
-    result = subprocess.run(  # noqa: S603
-        args,
-        input=payload.encode() if payload is not None else None,
-        capture_output=True,
-        timeout=180,
-        check=False,
-    )
+    try:
+        result = subprocess.run(  # noqa: S603
+            args,
+            input=payload.encode() if payload is not None else None,
+            capture_output=True,
+            timeout=180,
+            check=False,
+        )
+    except (FileNotFoundError, PermissionError) as exc:
+        # Popen reports exec failure here, not a child exit or daemon rejection.
+        raise _CommandNotStartedError("local Docker client could not start") from exc
     if result.returncode:
         raise RuntimeError("Docker transport failed; no remote output printed")
     return result.stdout.decode()
@@ -774,9 +816,17 @@ class DockerRuntime:
         self.command(["docker", "update", f"--restart={value}", identity])
 
     def running(self, identity: str, value: bool) -> None:
-        self.require(identity, "scheduler")
+        # Only reads/validation have occurred in this block. Even an ambiguous
+        # inspect failure cannot have dispatched the subsequent stop/start.
+        try:
+            self.require(identity, "scheduler")
+        except (ValueError, KeyError, TypeError, IndexError, OSError, RuntimeError, subprocess.SubprocessError) as exc:
+            raise _SchedulerNotDispatchedError(identity, value, "scheduler-precheck-rejected") from exc
         args = ["docker", "start", identity] if value else ["docker", "stop", "-t", "-1", identity]
-        self.command(args)
+        try:
+            self.command(args)
+        except _CommandNotStartedError as exc:
+            raise _SchedulerNotDispatchedError(identity, value, "docker-client-not-started") from exc
 
     def probe(self, backend: str, nodes: dict[str, Any]) -> dict[str, Any]:
         self.require(backend, "backend")

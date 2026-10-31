@@ -139,6 +139,20 @@ On any exception, failed drain, signal or lost transport: keep workers/data aliv
 
 If restore itself fails, do not claim cleanup succeeded. Retain the primary failure and report which owned config/policy/scheduler obligation remains. If a process was recreated, only the explicitly approved adopted IDs are eligible for controller recovery. Do not start an old removed scheduler by name, restore old payment authority, or overwrite another operator's config. The controller has no production override, force-drain, finite worker-stop, purge, re-enqueue or marker-publication option.
 
+### Definitive scheduler-stop rejection
+
+The native adapter distinguishes a narrow **proven no-dispatch** case from an unknown stop outcome. If its read-only scheduler identity/inspect precheck fails **before calling the mutating command**, or Python reports that the local Docker client executable could not be started (missing executable or permission denied), the controller records `not-dispatched` and enters `RECOVERY_REQUIRED`. Freeze still returns failure; maintenance/authentication and the owner claim stay in place. Only `status` and the same owned run's `restore` are allowed afterward; freeze/drain/adoption cannot silently retry the rejected stop. Obtain the maintenance owner's restore go decision described above, then execute:
+
+```bash
+python3 "$MAINTENANCE" status --record "$MAINTENANCE_RECORD" --operator "$MAINTENANCE_OPERATOR"
+python3 "$MAINTENANCE" restore --record "$MAINTENANCE_RECORD" --operator "$MAINTENANCE_OPERATOR"
+python3 "$MAINTENANCE" status --record "$MAINTENANCE_RECORD" --operator "$MAINTENANCE_OPERATOR"
+```
+
+This uses native definitive-rejection classification, **not an operator-supplied cancellation label or force flag**. No new cancellation subcommand is needed. Before attempting the stop, the signed private journal binds a fresh attempt ID to the exact run, approved-record hash, `pause-scheduler` action, full scheduler ID/desired running state and full observed scheduler prestate. On native rejection its retained history adds the fixed no-dispatch proof code (`scheduler-precheck-rejected` or `docker-client-not-started`), without remote error text; intent is released only after that evidence is durably checkpointed. Restore then reinstalls exact original policies/config and releases ownership only after readback, without issuing a stop or unnecessary scheduler start.
+
+A nonzero Docker client exit (including a daemon refusal), timeout, lost response, arbitrary adapter exception or unchanged running state is **not** this proof. Such failures retain the unknown intent and continue to block restore/replay until the intended target actually settles. The controller offers no operator mechanism to manufacture proof, relabel an ambiguous stop, or clear old journals. A crash before the rejection checkpoint is durable also remains unknown; old journals without native evidence retain the existing fail-closed behavior. Do not edit/re-sign records or install changed source over an active signed run to recover historical unknown intent.
+
 ## Verification boundary
 
 Offline tests exercise native-shaped JSON, fake command/HTTP transport, full freeze/double-drain/exact-restore, signed private checkpoints, incomplete node/queue/task/durable/HTTP evidence, production denial/immutability, drift, re-entry/lost outcomes, exclusive lock/claim races and approved app identity transfer. Test URLs use disposable dead-port endpoints and `LLM_ENABLED=false`; no actual mutating Docker, application database, payment or provider operation is used. The published backup Bash is executed with command stubs, including success/failure/signals, and must run live controller drain immediately before writer stop.

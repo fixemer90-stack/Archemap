@@ -48,7 +48,11 @@
 
 Отдельные PostgreSQL/Redis volumes, app/database secrets и effective `mock` во всех четырёх staging consumers подтверждены. Все 22 наблюдённых container identities/start times и production markers сохранились; production health 200. **0/50 measured samples**, observation window не начиналось; grants, maintenance, backup/restore/refresh и fixtures не выполнялись, cleanup obligations этого preflight отсутствуют.
 
-Private evidence: `e22-s15-preflight-20261031T1340Z`, handoff `/home/balthier/.hermes/cache/scratch/e22-s15-staging-qualification-handoff.md`. Начато узкое TDD-исправление staging network/payment isolation; новый candidate проходит review/CI до разрешённой stage-only remediation. Production credential values, payments и production runtime не изменяются. После этого preflight/протокол/50 samples/окно/independent operator-run выполняются заново; STOP не засчитывается ни как benchmark failure, ни как полный S16 negative-gate PASS.
+Private evidence: `e22-s15-preflight-20261031T1340Z`, handoff `/home/balthier/.hermes/cache/scratch/e22-s15-staging-qualification-handoff.md`. Repository fix `4f104c8c6e6d297f99b382684ed8e62ebee7da03` независимо APPROVED; parent повторил **1309 unit tests**, Ruff/format/mypy PASS. Exact CI `41209406856` теперь **completed/success, 8/8**: прежний bounded wait не был failed run и не является текущим blocker. Код пока не применён к live staging.
+
+Повторный preflight сохранил isolation STOP и выявил отсутствующий проверенный maintenance/all-producer freeze controller по опубликованным зависимостям. Его создание входит в разрешённый scope: начата реализация narrow stage-only controller с production-denial, inventory/drain/recovery/exact-restore тестами и независимым review до provision. Это не разрешение обойти STOP непроверенным скриптом. **0/50 samples**, окно не начато; никаких grants/restarts/provider calls или production mutations пока не выполнено.
+
+Production credential values, payments и production runtime не изменяются. После provisioning проверенного controller выполняются fresh backup/restore, stage-only remediation, повторный isolation/DNS/auth/readiness preflight, frozen protocol, 50 samples и literal window; затем отдельный независимый S16 operator. Ни первый STOP, ни исходники controller не засчитываются как benchmark или full S16 PASS.
 
 ## Связанные источники
 

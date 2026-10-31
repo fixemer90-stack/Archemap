@@ -4,9 +4,9 @@
 
 2026-10-31 владелец выбрал: **«Выполнить S15–S16 до закрытия E22»**. Следовательно, E22 остаётся открытым до исполнения критериев, а не закрывается переносом.
 
-Последующий единый запрос staging scope, численных критериев и provider-cost boundary **истёк без ответа**. Это не отказ пользователя и не одобрение. Ни один предложенный ниже предел не записан как утверждённый или измеренный; мутации staging, выдача доступа, maintenance и новые provider calls по этому пакету не выполняются.
+Первый единый запрос staging scope, численных критериев и provider-cost boundary истёк без ответа; это не было отказом. После публикации пакета владелец ответил **«давйа»** на предложение продолжить согласование и запуск. С этого ответа принят описанный ниже staging-only scope и предложенные пределы, в безопасном режиме **native-mock без новых платных calls**. Это разрешение на исполнение, не доказательство прохождения измерений. Real-provider currency/distributions остаются явно неквалифицированными.
 
-## Предложенный scope — ожидает ответа
+## Разрешённый staging-only scope
 
 - Только staging, никакого изменения production/customer data/payments.
 - Временный canonical Child access только allowlisted synthetic A/B, срок/истечение и восстановление фиксируются до mutation; C остаётся expired.
@@ -14,9 +14,9 @@
 - Staging maintenance/controller, producer freeze, consumer/broker drain, restart/recreate, settings transitions и owned disposable restore DB; original settings, ingress и все cleanup obligations восстанавливаются с readback.
 - Полный независимый operator-run по published SOP и explicit safety/access STOP decision. Наличие helper/manifests не засчитывается как исполнение.
 
-## Предложенные количественные критерии — не утверждены
+## Принятые количественные критерии — результаты ещё не получены
 
-| Параметр                      | Предложение, не измерение                                              |
+| Параметр                      | Предел, не измеренный результат                                        |
 | ----------------------------- | ---------------------------------------------------------------------- |
 | Positive samples              | 50 full native-mock generations, exact/approximate/unknown fixture mix |
 | Concurrency                   | Не более 2                                                             |
@@ -32,12 +32,12 @@
 
 Отдельно до запуска требуется зафиксировать fixture/sample mix, measurement clocks, per-operation denominators, percentile calculation rule, equivalence comparison rule для foreign/missing latency и complete producer/controller inventory. Нельзя менять критерии задним числом под получившийся результат.
 
-## Provider-cost boundary — ожидает выбора
+## Provider-cost boundary — native-mock, без платных calls
 
-1. Native-mock qualification без новых paid calls. Измеренная внешняя стоимость таких вызовов — нулевая, real-provider currency/distributions остаются явно открытым ограничением. Retained production usage и успешный v4 sample не заменяют staging distributions/receipt.
+1. Native-mock qualification без новых paid calls. Нужно подтвердить отсутствие внешних provider calls и связанных внешних расходов; до результата нулевая стоимость не выдаётся за измерение. Real-provider currency/distributions остаются явно открытым ограничением. Retained production usage и успешный v4 sample не заменяют staging distributions/receipt.
 2. Отдельно разрешённая real-provider qualification: нужен явный лимит количества calls/generations, общей суммы и валюты, per-report token/cost/attempt limits и workload/window. Тариф/стоимость проверяются отдельно; не выдумываются по token count.
 
-Ни один вариант пока не выбран. Предыдущие бюджеты production repair исчерпаны. До ответа разрешены только read-only сверка evidence и offline/docs/tooling verification; нельзя выдавать отсутствие ответа за пользовательский запрет или за разрешение.
+Для текущего запуска используется вариант 1: ноль новых paid calls. Вариант 2 не разрешён и не выполняется; предыдущие production repair budgets исчерпаны. Native-mock qualification не выдаётся за прохождение real-provider currency/distribution критериев. Все S15–S16 checkbox остаются открытыми до фактического результата и независимого readback; scope-specific limitations фиксируются отдельно.
 
 ## Связанные источники
 

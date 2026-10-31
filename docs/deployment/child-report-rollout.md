@@ -12,21 +12,23 @@ Production source `886910321d1efcb189b8a2296dd5c947146e8b4f` was explicitly auth
 
 Active production release is selected by `/opt/astrotype/.deploy-release`, not by the old source directory. Use its pinned Compose files/overlays as documented in [production release evidence](../reviews/2026-10-28/E22-production-rollout.md). The deployment marker was advanced only after readback and native desktop/mobile smoke. S15/S16 remaining acceptance work stays open; the normal preconditions below still apply unless a future owner decision explicitly changes them.
 
-### Current application follow-up — 2026-10-29
+### Current application and bounded BUG-50 acceptance — 2026-10-31
 
-Application source `3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9` is deployed with independent runtime readback. The [BUG-50 evidence record](../reviews/2026-10-28/BUG-50-child-content-quality.md) owns the latest repair/generation evidence. One authorized real DeepSeek full generation produced v3 with 11 distinct bodies, 35 distinct claims and four evidence-based omissions; eleven section calls each used one attempt, no terminal failure. Historical v1/v2 and 109 prior rows remain preserved. Sentence-level caveat/uncertainty repetition persists (26/18 occurrences), so quality remains limited and BUG-50/E22 remain open. Tokens/currency are unrecorded; one sample does not establish p95 or failure/unknown-outcome rates. The paid budget is exhausted: no further provider calls are authorized here. The owner's earlier global-release budget exception does not equal full acceptance or authorize another experiment.
+Application source `cf3a4e6e999a6e5e70cd5ff1477207731db33bd8` is deployed on all five application services with independent parent runtime/source/image readback and exact-SHA CI `41133238682` (8/8 success). The [BUG-50 evidence record](../reviews/2026-10-28/BUG-50-child-content-quality.md#финальная-production-приёмка-v4--2026-10-31) owns the accepted repair/generation evidence. One authorized real DeepSeek full generation produced narrative V4, immutable core version 5: **11 ready, 0 failed, 0 missing, 4 justified evidence omissions**. All 26 source dimensions/canonical references, topic actions and local qualifiers survive; accepted narrative bodies have no repeated full sentences. API/native desktop/mobile/PDF parity was verified. Quality remains `limited` solely for insufficient evidence in the four omitted sections; this does not claim global UI-text uniqueness or resolve the separate product concern about omissions.
+
+Historical versions 1–4 and all 264 prior Child rows were preserved. The accepted sample used **11 HTTP attempts**, one per applicable section, and **20,031 tokens** (13,899 prompt; 6,132 completion); currency cost is unmeasured, not zero. One sample does not establish p95, failure/unknown-outcome rates or an approved workload/window/budget. BUG-50 is accepted as fixed; **E22 and S15/S16 remain open**. The active scope is `active:bug50-v4;bug50-parent-accepted;not-e22-complete`. The paid budget is exhausted: no further provider calls or retries are authorized here. The owner's earlier global-release budget exception does not equal full acceptance or authorize another experiment.
 
 This is a composite deployment: retain the `886910321d1efcb189b8a2296dd5c947146e8b4f` production observability overlays and the **new** application's image override, in that order. Do not derive observability paths from the current marker as if all infrastructure moved with the application. On the approved production host this read-only entry point requires the active archive/override to have been independently matched to live containers; if files, marker or image identities differ, STOP and obtain the actual approved chain rather than recreating services:
 
 ```bash
 set -euo pipefail
-APP_SHA=3e3ee67b68e9ea53cb6e467b5596d8a6c75781b9
+APP_SHA=cf3a4e6e999a6e5e70cd5ff1477207731db33bd8
 INFRA_SHA=886910321d1efcb189b8a2296dd5c947146e8b4f
 RELEASE_DIR="$(cat /opt/astrotype/.deploy-release)"
 test "$(cat /opt/astrotype/.deploy-sha)" = "$APP_SHA"
 test "$RELEASE_DIR" = "/opt/astrotype-production/releases/$APP_SHA"
 INFRA_EVIDENCE="/opt/astrotype-production/evidence/$INFRA_SHA"
-APP_EVIDENCE="/opt/astrotype-production/evidence/$APP_SHA"
+APP_EVIDENCE=/opt/astrotype-production/evidence/bug50-v4-b21743cfb0364457b907803dced38b0b
 for file in "$RELEASE_DIR/.env.production" "$RELEASE_DIR/docker-compose.prod.yml" \
   "$INFRA_EVIDENCE/observability/compose.observability.json" \
   "$INFRA_EVIDENCE/observability/app.telemetry.json" "$APP_EVIDENCE/images.override.json"; do
@@ -107,7 +109,7 @@ Staging backend startup runs `alembic upgrade head` automatically before Uvicorn
 
 ## Automated read probes
 
-From the `OPERATOR_SHA` checkout's `backend`, use a privately provisioned JSON array manifest and the approved credential launcher described in the operator procedures. Neither a complete manifest nor an executable launcher path is supplied by this template: absence is STOP, not an instruction to invent credentials/IDs. No application redeploy is required. The enabled inventory must be EXACTLY: `exact`, `approximate`, `unknown`, `two_child`, `locked`, `foreign`, `provider_failure`, `pdf`.
+From the `OPERATOR_SHA` checkout's `backend`, use a privately provisioned JSON array manifest and the approved credential launcher described in the operator procedures. A reusable launcher and complete private manifests have been provisioned; their exact locations and blocked access state are recorded there. Their presence is not full-run proof or permission to issue sessions, renew grants or execute probes. Missing dependencies or expired positive actors are STOP, not an instruction to invent credentials/IDs. No application redeploy is required. The enabled inventory must be EXACTLY: `exact`, `approximate`, `unknown`, `two_child`, `locked`, `foreign`, `provider_failure`, `pdf`.
 
 Each entry has `name`, `path`, `token_env`. Successful JSON probes also require `equals`: JSON-pointer-to-expected-value assertions. The CLI enforces a nonempty `/id` assertion for exact/approximate/unknown/two-child records, `/generation_id` for provider-failure generation probes, and `/report_id` for flag-off report reads; a status-only assertion is rejected. `two_child` additionally requires nonempty `forbidden_values` containing the sibling's private identifiers. `exact`/`approximate`/`unknown` target the respective GET child record; `provider_failure` targets its failed narrative generation; `locked` uses an existing owned resource with Free/expired credentials; `foreign` uses another active owner's token against A's resource. `pdf` must use `/api/v1/child/reports/{report_id}/pdf?age_snapshot_id={canonical UUID}`. No other query, credentials in URLs, foreign URLs or redirects are allowed.
 

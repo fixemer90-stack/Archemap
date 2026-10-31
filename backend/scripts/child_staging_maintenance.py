@@ -90,26 +90,48 @@ def digest(value: Any) -> str:
     return hashlib.sha256(encoded(value)).hexdigest()
 
 
+def _private_fd(path: Path, *, directory: bool = False) -> int:
+    """Pin directories from /; validate the opened inode, not its pathname.
+
+    Ancestors must be root/operator-owned and never group/world-writable, even
+    sticky directories. Use a trusted operator scratch tree, not shared /tmp.
+    """
+    if not path.is_absolute() or ".." in path.parts:
+        raise ValueError("private paths must be absolute without parent traversal")
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+    fd = os.open("/", flags | os.O_DIRECTORY)
+    try:
+        for index, component in enumerate(path.parts[1:], start=1):
+            ancestor = os.fstat(fd)
+            if ancestor.st_uid not in {0, os.geteuid()} or stat.S_IMODE(ancestor.st_mode) & 0o022:
+                raise ValueError("untrusted private path ancestor owner/mode")
+            is_parent = index < len(path.parts) - 1
+            child = os.open(component, flags | (os.O_DIRECTORY if is_parent or directory else 0), dir_fd=fd)
+            os.close(fd)
+            fd = child
+        info = os.fstat(fd)
+        expected = 0o700 if directory else 0o600
+        correct_kind = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if not correct_kind or stat.S_IMODE(info.st_mode) != expected or info.st_uid != os.geteuid():
+            raise ValueError("private owner/mode/type mismatch")
+        if not directory and info.st_nlink != 1:
+            raise ValueError("hardlinked private file")
+        result, fd = fd, -1
+        return result
+    except OSError as exc:
+        raise ValueError("private path cannot be opened without symlinks") from exc
+    finally:
+        if fd != -1:
+            os.close(fd)
+
+
 def private_path(path: Path, *, directory: bool = False) -> None:
-    """Reject links in every component; strict owner, mode and hardlink count."""
-    if not path.is_absolute():
-        raise ValueError("private paths must be absolute")
-    for component in [*reversed(path.parents), path]:
-        if component.is_symlink():
-            raise ValueError("symlink in private path")
-    info = path.lstat()
-    expected = 0o700 if directory else 0o600
-    correct_kind = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
-    if not correct_kind or stat.S_IMODE(info.st_mode) != expected or info.st_uid != os.geteuid():
-        raise ValueError("private owner/mode/type mismatch")
-    if not directory and info.st_nlink != 1:
-        raise ValueError("hardlinked private file")
+    """Require trusted ancestors and a private, operator-owned target inode."""
+    os.close(_private_fd(path, directory=directory))
 
 
 def read_private(path: Path) -> Any:
-    private_path(path)
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    with os.fdopen(fd) as stream:
+    with os.fdopen(_private_fd(path)) as stream:
         return json.load(stream)
 
 
@@ -547,12 +569,16 @@ def _locked(
             frozen_ok()
             validate_evidence(runtime.probe(backend, nodes), nodes, empty=True)
         frozen_ok()
+        issued_at = time.time()
+        approval_deadline = min(record["expires_at"], (state.get("adopted") or record)["expires_at"])
+        if approval_deadline <= issued_at:
+            raise ValueError("approval window expired")
         decision = {
             "phase": "DRAIN_CONFIRMED",
             "operator": operator,
             "checks": 2,
-            "at": time.time(),
-            "expires_at": time.time() + 30,
+            "at": issued_at,
+            "expires_at": min(issued_at + 30, approval_deadline),
             "record_sha256": digest(record),
             "frozen_sha256": digest(frozen),
             "inventory_sha256": digest(initial),

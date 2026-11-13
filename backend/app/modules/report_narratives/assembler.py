@@ -506,9 +506,8 @@ def _ensure_section_quality(
                     narrative_input.failure_modes[2].supportive_reframe,
                 ]
             )
-    elif section_id == "sexuality":
-        if not body.strip():
-            additions.extend(item.claim for item in narrative_input.sexuality_patterns)
+    elif section_id == "sexuality" and not body.strip():
+        additions.extend(item.claim for item in narrative_input.sexuality_patterns)
     if not additions:
         return body
     addition_text = _dedupe_text_against(_join_inline(additions), seen)

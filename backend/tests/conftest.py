@@ -59,7 +59,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest.fixture
 async def test_redis() -> AsyncGenerator[aioredis.Redis, None]:
-    client = aioredis.from_url(TEST_REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call]
+    client = aioredis.from_url(TEST_REDIS_URL, decode_responses=True)
     await client.flushdb()
     yield client
     await client.flushdb()

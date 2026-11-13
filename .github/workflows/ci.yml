@@ -110,10 +110,12 @@ jobs:
       TEST_DATABASE_URL: postgresql+asyncpg://astrotype:astrotype_test@localhost:5432/astrotype_test
       REDIS_URL: redis://localhost:6379/0
       ENVIRONMENT: test
-      # Maintenance tests intentionally reject shared writable /tmp ancestors.
-      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v7
+
+      # runner context is unavailable in job-level env; export at runtime.
+      - name: Use runner-owned temporary directory
+        run: printf 'TMPDIR=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v6
         with:

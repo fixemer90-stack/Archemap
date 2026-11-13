@@ -6,7 +6,7 @@
 
 Актуальный DPAPI PAT проверен и действителен. Предыдущий `401` относился к устаревшей Windows `GH_TOKEN`, а не к актуальному credential. Добавление комментария в issue через текущий PAT было отклонено `Resource not accessible by personal access token (addComment)`; это отдельное ограничение issue-write, не блокировка публикации кода. Production и paid budget не изменялись.
 
-Локальные commits: backend/test repair `4ab17df`, reader/browser coverage `a4afba6`; отдельный CI fixture prerequisite `92018c4`. Это локальные Git commits, не подтверждение публикации.
+Commits опубликованы в `main`: backend/test repair `4ab17df`, reader/browser coverage `a4afba6`, evidence `3cf1660`; отдельная CI prerequisite `92018c4`. Проверенный code revision — `0115de5358e1519d2a0ef6ab9a4f3b8fbacd345b`; CI [43520765226](https://github.com/fixemer90-stack/Archemap/actions/runs/43520765226) — **8/8 jobs success**, включая полный backend unit/integration, frontend browser/build и обе Docker image builds. Последующий closure commit изменяет только документацию и использует `[skip ci]`, чтобы не повторять неизменённый 21-минутный code pipeline; application/workflow sources проверены как равные этому CI revision. Это не отдельный CI PASS для documentation commit.
 
 Это отдельный follow-up после [BUG-50](../2026-10-28/BUG-50-child-content-quality.md), не завершение эксплуатационных S15–S16 и не разрешение новой платной генерации. Исходные персональные данные и идентификаторы пользователей в этот документ не включены.
 
@@ -49,6 +49,15 @@ Reviewer независимо исполнил **241 passed, 1 deselected**, о�
 
 Неблокирующая рекомендация закреплена в коде: существующая adversarial-output matrix параметризована для V4 и V5, **15 дополнительных V5 cases**. После review изменился только этот тест и документация, production code не менялся. Родительский агент повторил whole-backend Ruff/format/mypy — PASS; весь `pytest tests/unit/test_child -q` после последнего test-only изменения — **673 passed**, одно прежнее предупреждение WeasyPrint.
 
+## Публикация и CI-ремонты
+
+- `6c29cad` опубликован, но run `43515501570` остановлен до создания jobs: GitHub не допускает `runner.temp` в job-level `env`. Это ошибка workflow, не narrative generation.
+- `c1b24f9` экспортирует `TMPDIR` из runtime step через `RUNNER_TEMP`/`GITHUB_ENV`. Отдельные RED→GREEN contract tests и Actionlint всех трёх workflows пройдены. Run `43516542772` выявил SIM102 в прежнем Self assembler, который не диагностировал локальный Ruff 0.15.20; на CI установлен Ruff 0.17.5.
+- `dc484d9` эквивалентно объединил вложенное условие; соответствующие 14 narrative assembly regressions пройдены. Затем CI выявил два obsolete `no-untyped-call` ignores после типизации Redis factory в Redis 8.1.0.
+- `0115de5` удаляет только эти два ignore comments, без изменения Redis runtime logic. Ошибка воспроизведена локально с CI-версиями Redis/Ruff/mypy. Свежие full Ruff/format/mypy и 12 rate-limit/workflow regressions — PASS. Итоговый CI проверяется отдельно, локальный PASS его не заменяет.
+- В CI `43520765226` на `0115de5` backend действительно исполнил **1453 unit tests** и **186 integration tests** — оба этапа PASS; это отдельное подтверждение сверх локального Child slice. Полный verdict workflow учитывает также downstream Docker build.
+- Push не выполняет rollout: deploy jobs требуют `workflow_dispatch`. В build/push run `43516542839` staging/production deploy jobs подтверждены как skipped; manual dispatch не выполнялся.
+
 ## Критерии и оставшаяся приёмка
 
 - [x] Средние показатели доходят до тематических разделов без превращения в strong_matches/friction_points.
@@ -57,7 +66,7 @@ Reviewer независимо исполнил **241 passed, 1 deselected**, о�
 - [x] Версионирование и frozen historical read/retry/PDF подтверждены тестами.
 - [x] Mock-only persistence → fresh session → API → PDF и отдельные desktop/tablet/mobile fixtures проверены.
 - [x] Независимое spec/security/code review завершено без блокирующих замечаний; test-only рекомендация реализована и перепроверена.
-- [ ] Изменения опубликованы; CI проверен на точном опубликованном SHA.
+- [x] Изменения опубликованы; code CI `43520765226` на точном `0115de5358e1519d2a0ef6ab9a4f3b8fbacd345b` — 8/8 success. Последующие documentation-only изменения проверены отдельно.
 - [ ] После восстановления инфраструктуры согласована и выполнена live-проверка по отдельному [чеклисту](../../deployment/child-post-recovery-verification.md). **Не блокирует закрытие #51 по согласованию с владельцем**; не считается пройденной проверкой. Новые paid calls требуют отдельного разрешения.
 
 Локальная проверка кода не является production repair. Исторический production V4 report не перезаписывается и не переинтерпретируется; для проверки нового результата требуется явный согласованный rollout/generation scope.

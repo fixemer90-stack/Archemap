@@ -2,7 +2,9 @@
 
 ## Статус
 
-Локальное исправление реализовано и прошло независимое spec/security/code review без блокирующих замечаний. Issue #51 не закрыт. Публикация и exact-SHA CI не выполнены: ранее сохранённый Windows user-level GitHub token при проверке 2026-11-13 вернул `401 Bad credentials`. Production, существующие пользовательские отчёты и paid budget не изменялись.
+Исправление реализовано и прошло независимое spec/security/code review без блокирующих замечаний. По согласованию с владельцем после утраты сервера закрытие #51 требует публикации и зелёного CI, но не production rollout. Live-проверка перенесена в [чеклист восстановления](../../deployment/child-post-recovery-verification.md); её выполнение не заявляется.
+
+Актуальный DPAPI PAT проверен и действителен. Предыдущий `401` относился к устаревшей Windows `GH_TOKEN`, а не к актуальному credential. Добавление комментария в issue через текущий PAT было отклонено `Resource not accessible by personal access token (addComment)`; это отдельное ограничение issue-write, не блокировка публикации кода. Production и paid budget не изменялись.
 
 Локальные commits: backend/test repair `4ab17df`, reader/browser coverage `a4afba6`; отдельный CI fixture prerequisite `92018c4`. Это локальные Git commits, не подтверждение публикации.
 
@@ -56,6 +58,6 @@ Reviewer независимо исполнил **241 passed, 1 deselected**, о�
 - [x] Mock-only persistence → fresh session → API → PDF и отдельные desktop/tablet/mobile fixtures проверены.
 - [x] Независимое spec/security/code review завершено без блокирующих замечаний; test-only рекомендация реализована и перепроверена.
 - [ ] Изменения опубликованы; CI проверен на точном опубликованном SHA.
-- [ ] Отдельно согласованная live-проверка нового контракта и реального результата выполнена. Новые paid calls не разрешены этим документом.
+- [ ] После восстановления инфраструктуры согласована и выполнена live-проверка по отдельному [чеклисту](../../deployment/child-post-recovery-verification.md). **Не блокирует закрытие #51 по согласованию с владельцем**; не считается пройденной проверкой. Новые paid calls требуют отдельного разрешения.
 
 Локальная проверка кода не является production repair. Исторический production V4 report не перезаписывается и не переинтерпретируется; для проверки нового результата требуется явный согласованный rollout/generation scope.

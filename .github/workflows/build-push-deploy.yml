@@ -1,6 +1,7 @@
 name: Build & Push Images
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -96,6 +97,8 @@ jobs:
 
   deploy-staging:
     name: Deploy Staging
+    # Infrastructure is unavailable; a code push must never attempt rollout.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
     environment: staging
@@ -123,6 +126,7 @@ jobs:
 
   deploy-production:
     name: Deploy Production
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [deploy-staging]
     environment: production

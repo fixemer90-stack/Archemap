@@ -281,7 +281,8 @@ export function ChildReportReader({ reportId }: { reportId: string }) {
               ) : (
                 <p className="child-muted">
                   {section.status === "not_applicable"
-                    ? "Для отдельного пояснения пока недостаточно устойчивых оснований."
+                    ? (section.evidence_note ??
+                      "Для отдельного пояснения пока недостаточно устойчивых оснований.")
                     : "Подробное пояснение пока недоступно. Ниже — сохранённые ориентиры для действий взрослого."}
                 </p>
               )}

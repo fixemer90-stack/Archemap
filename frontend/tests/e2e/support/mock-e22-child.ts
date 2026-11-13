@@ -117,6 +117,16 @@ export async function mockE22Child(
     readerQuality?: "ready" | "limited";
     poll?: boolean;
     ageFailure?: boolean;
+    sectionOverrides?: Record<
+      string,
+      {
+        status?: string;
+        body?: string | null;
+        actions?: string[];
+        evidence_state?: string;
+        evidence_note?: string;
+      }
+    >;
   } = {},
 ) {
   const children = [
@@ -360,6 +370,7 @@ export async function mockE22Child(
                     : i === 14
                       ? "На этом этапе попробуйте заранее обсудить переход к новому занятию."
                       : `Сохранённое пояснение ${i + 1}. Предложите ребёнку небольшой выбор.`,
+            ...options.sectionOverrides?.[section.key],
           })),
           age: {
             stale: !state.ageUpdated,

@@ -68,6 +68,12 @@ export interface ChildPresentation {
     body: string | null;
     actions: string[];
     confidence_note: string;
+    evidence_state?:
+      | "missing_data"
+      | "ambiguous_signals"
+      | "no_pronounced_skew"
+      | "pronounced_signal";
+    evidence_note?: string;
   }>;
   age: ChildAge & {
     age_snapshot_id: string;

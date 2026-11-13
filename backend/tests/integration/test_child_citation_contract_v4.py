@@ -31,7 +31,9 @@ from tests.integration.test_child_generation_lifecycle import (
 pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("_setup_database")]
 
 
-@pytest.mark.parametrize("prompt_version", ["child-section-prompt-v3", "child-section-prompt-v4"])
+@pytest.mark.parametrize(
+    "prompt_version", ["child-section-prompt-v3", "child-section-prompt-v4", "child-section-prompt-v5"]
+)
 async def test_persisted_failed_praise_retry_keeps_version_diagnostics_and_api_pdf(
     db_session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch, prompt_version: str
 ) -> None:
@@ -54,7 +56,13 @@ async def test_persisted_failed_praise_retry_keeps_version_diagnostics_and_api_p
 
     initial_provider = RedundantCitationProvider()
     with monkeypatch.context() as historical:
-        historical.setattr("app.modules.child.service.CURRENT_CHILD_PROMPT_VERSION", prompt_version)
+        if not prompt_version.endswith("v5"):
+            historical.setattr(
+                "app.modules.child.guidance_facts.CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION", "child-guidance-facts-v3"
+            )
+            historical.setattr(
+                "app.modules.child.service._full_generation_prompt_version", lambda facts: prompt_version
+            )
         initial = await run_claimed_full_generation(db_session, claim=claim, provider=initial_provider, now=NOW)
     assert initial.status == "narrative_failed" and initial.report_id is not None
     report = await db_session.get(models.ChildReport, initial.report_id)
@@ -76,7 +84,9 @@ async def test_persisted_failed_praise_retry_keeps_version_diagnostics_and_api_p
     facts = await db_session.scalar(
         select(models.ChildGuidanceFacts).where(models.ChildGuidanceFacts.generation_id == generation.generation_id)
     )
-    assert facts is not None and facts.contract_version == "child-guidance-facts-v3"
+    assert facts is not None and facts.contract_version == (
+        "child-guidance-facts-v4" if prompt_version.endswith("v5") else "child-guidance-facts-v3"
+    )
     facts_snapshot = deepcopy(facts.payload), deepcopy(facts.evidence_registry)
     accepted = await accept_narrative_retry_generation(
         db_session,
@@ -92,7 +102,7 @@ async def test_persisted_failed_praise_retry_keeps_version_diagnostics_and_api_p
     )
     assert retry is not None
     assert retry.operation_payload.get("narrative_prompt_version") == (
-        prompt_version if prompt_version.endswith("v4") else None
+        prompt_version if not prompt_version.endswith("v3") else None
     )
     retry_claim = await repository.claim_generation(
         generation_id=accepted.generation_id,

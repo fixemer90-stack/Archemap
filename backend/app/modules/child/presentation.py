@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.child import models
 from app.modules.child.age_resolver import AgeStage
 from app.modules.child.assembly import assemble_child_report_payload, assess_child_report_quality
+from app.modules.child.content_v4 import thematic_evidence_summary
 from app.modules.child.context_resolver import _AGE_ACTIONS
 from app.modules.child.guidance_facts import ChildGuidanceFacts, ChildGuidanceFactsRepository
 from app.modules.child.narrative import _ACTION_TEXT, ChildNarrativeValidationError, build_child_section_inputs
@@ -101,6 +102,11 @@ def compose_child_report_presentation(
                 "body": body,
                 "actions": actions,
                 "confidence_note": "Проверьте в повседневном общении; это не оценка ребёнка.",
+                **(
+                    thematic_evidence_summary(facts, section_key=key)
+                    if facts.contract_version == "child-guidance-facts-v4"
+                    else {}
+                ),
             }
         )
     return {
@@ -142,8 +148,11 @@ def compose_child_report_presentation(
                 {
                     "source_indicators": [
                         {
-                            key: item[key]
-                            for key in ("source_kind", "dimension", "score", "confidence", "scoring_version")
+                            **({"signal_state": item["signal_state"]} if "signal_state" in item else {}),
+                            **{
+                                key: item[key]
+                                for key in ("source_kind", "dimension", "score", "confidence", "scoring_version")
+                            },
                         }
                         for item in facts.source_profiles
                     ]

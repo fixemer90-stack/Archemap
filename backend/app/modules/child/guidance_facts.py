@@ -29,8 +29,13 @@ from app.modules.child.scoring.types import InteractionDimension
 GUIDANCE_FACTS_CONTRACT_VERSION: Final = "child-guidance-facts-v1"
 GUIDANCE_FACTS_CONTRACT_V2: Final = "child-guidance-facts-v2"
 GUIDANCE_FACTS_CONTRACT_V3: Final = "child-guidance-facts-v3"
-CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION: Final = GUIDANCE_FACTS_CONTRACT_V3
-SOURCE_PROFILE_CONTRACT_VERSIONS: Final = (GUIDANCE_FACTS_CONTRACT_V2, GUIDANCE_FACTS_CONTRACT_V3)
+GUIDANCE_FACTS_CONTRACT_V4: Final = "child-guidance-facts-v4"
+CURRENT_GUIDANCE_FACTS_CONTRACT_VERSION: Final = GUIDANCE_FACTS_CONTRACT_V4
+SOURCE_PROFILE_CONTRACT_VERSIONS: Final = (
+    GUIDANCE_FACTS_CONTRACT_V2,
+    GUIDANCE_FACTS_CONTRACT_V3,
+    GUIDANCE_FACTS_CONTRACT_V4,
+)
 SUPPORTED_GUIDANCE_FACTS_CONTRACT_VERSIONS: Final = (GUIDANCE_FACTS_CONTRACT_VERSION, *SOURCE_PROFILE_CONTRACT_VERSIONS)
 LOW_CONFIDENCE_THRESHOLD: Final = 0.5
 _STRONG_MATCH_THRESHOLD: Final = 65.0
@@ -154,6 +159,15 @@ def _action_fact(entry: ResolutionEntry, *, fallback_evidence_ref: str) -> dict[
     }
 
 
+def interaction_signal_state(score: float, confidence: float) -> str:
+    """Describe calculated evidence without promoting it to an editorial claim."""
+    if confidence < MIN_SCORE_CONFIDENCE:
+        return "ambiguous_signals"
+    if _FRICTION_THRESHOLD < score < _STRONG_MATCH_THRESHOLD:
+        return "no_pronounced_skew"
+    return "pronounced_signal"
+
+
 def _score_fact(score: GuidanceInteractionScore, *, prefix: str) -> dict[str, Any]:
     return {
         "id": f"{prefix}:{score.dimension}",
@@ -206,6 +220,11 @@ def build_guidance_facts(
         )
     source_profiles: tuple[dict[str, Any], ...] = tuple(
         {
+            **(
+                {"signal_state": interaction_signal_state(score.score, score.confidence)}
+                if contract_version == GUIDANCE_FACTS_CONTRACT_V4 and score.source_kind == "interaction"
+                else {}
+            ),
             "id": f"profile:{score.source_kind}:{score.dimension}",
             "source_kind": score.source_kind,
             "dimension": score.dimension,

@@ -292,7 +292,7 @@ def section_contracts(version: str) -> dict[str, SectionContract]:
         raise ValueError("Unsupported Guidance Facts contract")
     if version not in SOURCE_PROFILE_CONTRACT_VERSIONS:
         return SECTION_CONTRACTS
-    return {
+    contracts = {
         **SECTION_CONTRACTS,
         "how_to_use": _section("recommended_actions", topics=("current_age",)),
         "parent_style": _section("source_profiles"),
@@ -318,11 +318,45 @@ def section_contracts(version: str) -> dict[str, SectionContract]:
         "conflict_cycle": _section("avoid_patterns", dimensions=("conflict_pattern",)),
         "not_personal": _section("avoid_patterns", dimensions=("autonomy_balance", "emotional_attunement")),
     }
+    if version == "child-guidance-facts-v4":
+        from app.modules.child.content_v4 import INTERACTION_DESTINATIONS
+
+        for key in set(INTERACTION_DESTINATIONS.values()):
+            previous = contracts[key]
+            contracts[key] = _section(
+                *(previous.owned_fact_families - {"strong_matches", "friction_points"}),
+                "source_profiles",
+                "recommended_actions",
+                "avoid_patterns",
+            )
+        contracts["conscious_adjustments"] = _section("source_profiles", "recommended_actions", "compensation_areas")
+        # No unrelated reference fact can be selected alongside an owned fact.
+        for key in (
+            "natural_contact",
+            "friction_zones",
+            "autonomy",
+            "explanation_learning",
+            "conflict_cycle",
+            "not_personal",
+        ):
+            contracts[key] = _section(*contracts[key].owned_fact_families)
+    return contracts
 
 
 def fact_matches_section(
     fact: Mapping[str, Any], *, section_key: str, version: str, contract: SectionContract, family: str
 ) -> bool:
+    if version == "child-guidance-facts-v4":
+        from app.modules.child.content_v4 import interaction_owned
+
+        if family in {"recommended_actions", "avoid_patterns"}:
+            if section_key == "how_to_use":
+                return family == "recommended_actions" and fact.get("topic") == "current_age"
+            return interaction_owned(fact, section_key=section_key, family=family)
+        if family == "source_profiles" and fact.get("source_kind") == "interaction":
+            return interaction_owned(fact, section_key=section_key, family=family)
+        if family == "source_profiles" and section_key == "conscious_adjustments":
+            return fact.get("source_kind") == "child_needs" and fact.get("dimension") == "transition_time"
     if (
         version in SOURCE_PROFILE_CONTRACT_VERSIONS
         and section_key == "conscious_adjustments"
@@ -437,16 +471,31 @@ def _valid_string_list(value: object, *, maximum: int) -> bool:
     )
 
 
-def _fact_schema_is_valid(family: str, fact: Mapping[str, Any]) -> bool:
-    if set(fact) != _FACT_FIELDS[family] or not _bounded_string(fact.get("id")):
+def _fact_schema_is_valid(family: str, fact: Mapping[str, Any], *, version: str) -> bool:
+    expected_fields = _FACT_FIELDS[family]
+    thematic_interaction = (
+        version == "child-guidance-facts-v4"
+        and family == "source_profiles"
+        and fact.get("source_kind") == "interaction"
+    )
+    if thematic_interaction:
+        expected_fields = expected_fields | {"signal_state"}
+    if set(fact) != expected_fields or not _bounded_string(fact.get("id")):
         return False
     if not _valid_number(fact.get("confidence"), minimum=0, maximum=1):
         return False
     if not _valid_string_list(fact.get("evidence_refs"), maximum=_MAX_EVIDENCE_REFS) or not fact["evidence_refs"]:
         return False
     if family == "source_profiles":
+        from app.modules.child.guidance_facts import interaction_signal_state
+
         return (
-            _profile_values_valid(fact) and fact["id"] == f"profile:{fact.get('source_kind')}:{fact.get('dimension')}"
+            _profile_values_valid(fact)
+            and fact["id"] == f"profile:{fact.get('source_kind')}:{fact.get('dimension')}"
+            and (
+                not thematic_interaction
+                or fact.get("signal_state") == interaction_signal_state(float(fact["score"]), float(fact["confidence"]))
+            )
         )
     if family in {"strong_matches", "friction_points"}:
         return (
@@ -844,7 +893,7 @@ def validate_guidance_facts(facts: ChildGuidanceFacts | Mapping[str, Any]) -> No
             if not isinstance(fact, Mapping) or not _bounded_string(fact.get("id")):
                 issues.append(GuidanceQualityIssue("invalid_fact_schema", path))
                 continue
-            if not _fact_schema_is_valid(family, fact):
+            if not _fact_schema_is_valid(family, fact, version=str(version)):
                 issues.append(GuidanceQualityIssue("invalid_fact_schema", path))
             if not _resolver_fact_semantics_are_valid(family, fact, age_stage=authoritative_age_stage):
                 issues.append(GuidanceQualityIssue("invalid_resolver_semantics", path))

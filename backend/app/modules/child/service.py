@@ -15,9 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.modules.child import models
 from app.modules.child.assembly import assemble_child_report_payload
-from app.modules.child.guidance_facts import ChildGuidanceFactsRepository
+from app.modules.child.guidance_facts import ChildGuidanceFacts, ChildGuidanceFactsRepository
 from app.modules.child.narrative import (
-    CURRENT_CHILD_PROMPT_VERSION,
     ChildSegmentProvider,
     DisabledChildSegmentProvider,
     MockChildSegmentProvider,
@@ -66,6 +65,14 @@ class ChildGenerationRunResult:
     status: str
     report_id: UUID | None
     provider_calls: int
+
+
+def _full_generation_prompt_version(facts: ChildGuidanceFacts) -> str:
+    # A resumed full generation may already own immutable V3 Guidance Facts.
+    # Their latest compatible citation envelope is V4, never the new V5 content.
+    if facts.contract_version == "child-guidance-facts-v3":
+        return "child-section-prompt-v4"
+    return prompt_version_for_input(build_child_section_inputs(facts)[0])
 
 
 def configured_child_provider() -> ChildSegmentProvider:
@@ -463,7 +470,7 @@ async def accept_narrative_retry_generation(
             "guidance_input_hash": _guidance_facts_input_hash(facts_row),
             **(
                 {"narrative_prompt_version": source_report.prompt_version}
-                if source_report.prompt_version == "child-section-prompt-v4"
+                if source_report.prompt_version in {"child-section-prompt-v4", "child-section-prompt-v5"}
                 else {}
             ),
             "failed_section_pins": failed_section_pins,
@@ -631,11 +638,7 @@ async def run_claimed_full_generation(
                 scoring_version=INTERACTION_SCORING_VERSION,
                 reference_version=INTERACTION_REFERENCE_VERSION,
                 questionnaire_version=questionnaire.questionnaire_version,
-                prompt_version=(
-                    CURRENT_CHILD_PROMPT_VERSION
-                    if guidance_facts.contract_version == "child-guidance-facts-v3"
-                    else prompt_version_for_input(build_child_section_inputs(guidance_facts)[0])
-                ),
+                prompt_version=_full_generation_prompt_version(guidance_facts),
                 report_payload=_deterministic_report_payload(
                     generation=generation,
                     guidance_facts=guidance_facts,
@@ -868,7 +871,8 @@ async def run_claimed_narrative_retry(
         if report is None or facts_row is None:
             raise RuntimeError("Pinned narrative source lineage is unavailable")
         if (
-            report.prompt_version == "child-section-prompt-v4" or "narrative_prompt_version" in payload
+            report.prompt_version in {"child-section-prompt-v4", "child-section-prompt-v5"}
+            or "narrative_prompt_version" in payload
         ) and payload.get("narrative_prompt_version") != report.prompt_version:
             raise RuntimeError("Pinned narrative prompt version is corrupt")
         if _guidance_facts_input_hash(facts_row) != payload["guidance_input_hash"]:

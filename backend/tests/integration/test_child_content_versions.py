@@ -42,13 +42,20 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("_setup_database")]
 
 
 @pytest.mark.parametrize(
-    "legacy_contract", ["child-guidance-facts-v1", "child-guidance-facts-v2", "child-guidance-facts-v3"]
+    ("legacy_contract", "legacy_prompt"),
+    [
+        ("child-guidance-facts-v1", "child-section-prompt-v1"),
+        ("child-guidance-facts-v2", "child-section-prompt-v2"),
+        ("child-guidance-facts-v3", "child-section-prompt-v3"),
+        ("child-guidance-facts-v3", "child-section-prompt-v4"),
+    ],
 )
 async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_public_pdf(
     db_session: AsyncSession,
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
     legacy_contract: str,
+    legacy_prompt: str,
 ) -> None:
     seed, legacy_generation = await _seed_claimable_full_pipeline(db_session, idempotency_key="legacy-content")
     context_row = (
@@ -147,13 +154,14 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
     await db_session.commit()
     with monkeypatch.context() as historical:
         historical.setattr(
-            "app.modules.child.service.CURRENT_CHILD_PROMPT_VERSION", "child-section-prompt-v3", raising=False
+            "app.modules.child.service._full_generation_prompt_version",
+            lambda facts: legacy_prompt,
         )
         legacy_result = await run_claimed_full_generation(db_session, claim=claim, provider=CountingProvider(), now=NOW)
     assert legacy_result.report_id is not None
     legacy_report = await db_session.get(models.ChildReport, legacy_result.report_id)
-    expected_prompt = "child-section-prompt-" + legacy_contract.rsplit("-", 1)[1]
-    expected_assembly = "child_report_narrative_" + legacy_contract.rsplit("-", 1)[1]
+    expected_prompt = legacy_prompt
+    expected_assembly = "child_report_narrative_" + legacy_prompt.rsplit("-", 1)[1]
     assert legacy_report is not None and legacy_report.prompt_version == expected_prompt
     old_segments = {
         row.id: deepcopy(row.diagnostics)
@@ -244,8 +252,8 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
         v2_snapshot = deepcopy(v2_report.report_payload)
         await db_session.commit()
 
-    # Explicit user-authorized full regeneration gets a new generation and narrative v4;
-    # unchanged Guidance Facts v3 are reused without reinterpreting older narrative retries.
+    # Explicit full regeneration gets new V4 Guidance Facts / V5 narrative;
+    # older narrative retries keep their immutable source contracts.
     repair = await repository.create_generation_idempotently(
         owner_user_id=seed.owner_id,
         child_profile_id=seed.child_id,
@@ -264,13 +272,13 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
     repaired = await run_claimed_full_generation(db_session, claim=repair_claim, provider=CountingProvider(), now=NOW)
     assert repaired.report_id is not None and repaired.report_id != legacy_report.id
     repaired_report = await db_session.get(models.ChildReport, repaired.report_id)
-    assert repaired_report is not None and repaired_report.prompt_version == "child-section-prompt-v4"
+    assert repaired_report is not None and repaired_report.prompt_version == "child-section-prompt-v5"
     repaired_assembly = await db_session.scalar(
         select(models.ChildReportAssembly).where(
             models.ChildReportAssembly.generation_id == repair.generation.generation_id
         )
     )
-    assert repaired_assembly is not None and repaired_assembly.contract_version == "child_report_narrative_v4"
+    assert repaired_assembly is not None and repaired_assembly.contract_version == "child_report_narrative_v5"
     await db_session.commit()
     assert isinstance(db_session.bind, AsyncEngine)
     sessions = async_sessionmaker(db_session.bind, expire_on_commit=False)
@@ -287,7 +295,7 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
                         )
                     )
                 ).all()
-            ) == {"child-guidance-facts-v1", "child-guidance-facts-v2", "child-guidance-facts-v3"}
+            ) == {"child-guidance-facts-v1", "child-guidance-facts-v2", "child-guidance-facts-v4"}
             repaired_row = await reader.get(models.ChildReport, repaired.report_id)
             assert repaired_row is not None and repaired_row.version == 3
         assert preserved is not None and preserved.report_payload == old_payload
@@ -315,7 +323,7 @@ async def test_legacy_read_and_new_full_report_repair_preserve_old_hashes_and_pu
                 models.ChildGuidanceFacts.generation_id == repair.generation.generation_id,
             )
         )
-        assert current is not None and current.contract_version == "child-guidance-facts-v3"
+        assert current is not None and current.contract_version == "child-guidance-facts-v4"
         assert len(current.payload["source_profiles"]) == 26
         transition_ids = {
             fact["id"] for fact in current.payload["recommended_actions"] if fact["topic"] == "transitions"

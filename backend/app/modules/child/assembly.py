@@ -36,7 +36,8 @@ def _verify_generation_metadata(
     if not isinstance(diagnostics, Mapping):
         raise ChildNarrativeValidationError("segment diagnostics are invalid")
     if (
-        section_input.contract_version in {"child_section_render_input_v3", "child_section_render_input_v4"}
+        section_input.contract_version
+        in {"child_section_render_input_v3", "child_section_render_input_v4", "child_section_render_input_v5"}
         and (
             "provider_usage" in diagnostics
             or (
@@ -95,7 +96,7 @@ def assess_child_report_quality(
             if normalized:
                 owners.setdefault(normalized, set()).add(key)
     repeated = set().union(*(keys for keys in owners.values() if len(keys) > 1))
-    if contract_version in {"child_report_narrative_v3", "child_report_narrative_v4"}:
+    if contract_version in {"child_report_narrative_v3", "child_report_narrative_v4", "child_report_narrative_v5"}:
         from app.modules.child.content_quality import repeated_content_scopes
 
         repeated.update(repeated_content_scopes(sections))
@@ -210,7 +211,8 @@ def assemble_child_report_payload(
             output = validate_segment_output(
                 output=(
                     ChildSegmentOutputV2
-                    if section_input.contract_version == "child_section_render_input_v4"
+                    if section_input.contract_version
+                    in {"child_section_render_input_v4", "child_section_render_input_v5"}
                     else ChildSegmentOutput
                 ).model_validate(raw_output),
                 section_input=section_input,
@@ -236,6 +238,7 @@ def assemble_child_report_payload(
         "child-section-prompt-v2": "child_report_narrative_v2",
         "child-section-prompt-v3": "child_report_narrative_v3",
         "child-section-prompt-v4": "child_report_narrative_v4",
+        "child-section-prompt-v5": "child_report_narrative_v5",
     }[selected_prompt_version]
     return {
         **(

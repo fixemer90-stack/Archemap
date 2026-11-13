@@ -97,11 +97,22 @@ async def test_v3_inputs_prompt_hashes_outputs_and_assembly_remain_frozen() -> N
         ("wrong_version", "output_schema"),
     ],
 )
-async def test_v4_rejects_adversarial_outputs_without_persisting_provider_text(mutation: str, reason: str) -> None:
+@pytest.mark.parametrize(
+    ("facts_contract", "prompt_version"),
+    [
+        ("child-guidance-facts-v3", "child-section-prompt-v4"),
+        ("child-guidance-facts-v4", "child-section-prompt-v5"),
+    ],
+)
+async def test_citation_contract_rejects_adversarial_outputs_without_persisting_provider_text(
+    mutation: str, reason: str, facts_contract: str, prompt_version: str
+) -> None:
     from copy import deepcopy
 
-    facts = _middle_facts(contract_version="child-guidance-facts-v3")
-    section = next(item for item in build_child_section_inputs(facts, prompt_version=V4) if len(item.owned_facts) > 1)
+    facts = _middle_facts(contract_version=facts_contract)
+    section = next(
+        item for item in build_child_section_inputs(facts, prompt_version=prompt_version) if len(item.owned_facts) > 1
+    )
     assert any(fact.approved_text.count(".") > 1 for fact in section.owned_facts)
     raw = await MockChildSegmentProvider().generate_segment(prompt="", section_input=section)
     if mutation == "redundant_list":

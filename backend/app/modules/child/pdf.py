@@ -47,6 +47,8 @@ def render_child_report_html(presentation: dict[str, Any]) -> str:
             else ""
         )
         confidence = f'<p class="muted">{escape(section["confidence_note"])}</p>'
+        if section.get("evidence_note"):
+            confidence = f'<p class="muted">{escape(section["evidence_note"])}</p>' + confidence
         blocks.append(
             f'<section data-section-key="{escape(section["key"])}">'
             f'<div class="eyebrow">{index:02d}</div><h2>{escape(section["title"])}</h2>'

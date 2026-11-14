@@ -40,6 +40,9 @@ test("questionnaire is keyboard-accessible, responsive, and reaches deterministi
     await page.getByRole("button", { name: "5", exact: true }).focus();
     await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Далее" }).click();
+    // Draft persistence is asynchronous; do not refocus the previous step's
+    // identically labelled scale button while the next question is mounting.
+    await expect(progress).toHaveAttribute("aria-valuenow", String(step + 2));
   }
   await page
     .getByRole("button", { name: "Баланс устойчивости и эксперимента" })

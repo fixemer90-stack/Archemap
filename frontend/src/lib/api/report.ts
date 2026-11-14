@@ -1,4 +1,4 @@
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import type {
   ChartSnapshotApiResponse,
   FunctionStrengths,
@@ -138,21 +138,37 @@ export async function fetchReportApiData(
   profileId: string,
   product = "self",
 ): Promise<ReportApiData> {
+  const profilePath = `/api/v1/profiles/${encodeURIComponent(profileId)}`;
   const [profile, chartSnapshot, reportList] = await Promise.all([
-    api.get<ProfileApiResponse>(`/api/v1/profiles/${profileId}`),
-    api.post<ChartSnapshotApiResponse>(
-      `/api/v1/profiles/${profileId}/chart`,
-      {},
-    ),
+    api.get<ProfileApiResponse>(profilePath),
+    // The Career archive must never recompute today's chart. Its reader only
+    // displays saved claims; the empty compatibility snapshot is not rendered.
+    product === "career"
+      ? Promise.resolve<ChartSnapshotApiResponse>({
+          id: "",
+          profile_id: profileId,
+          chart_data: {},
+        })
+      : api.post<ChartSnapshotApiResponse>(`${profilePath}/chart`, {}),
     api.get<{ items: GeneratedReportApiResponse[] }>(
-      `/api/v1/reports?product=${encodeURIComponent(product)}&limit=100`,
+      `/api/v1/reports?product=${encodeURIComponent(product)}${product === "career" ? `&profile_id=${encodeURIComponent(profileId)}` : ""}&limit=100`,
     ),
   ]);
 
-  const latestReport = pickLatestReport(reportList.items ?? [], profileId);
+  const latestReport = pickLatestReport(
+    (reportList.items ?? []).filter((report) => report.product === product),
+    profileId,
+  );
   const generatedReport = latestReport
     ? await fetchReportById(latestReport.id)
     : undefined;
+  if (
+    generatedReport &&
+    (generatedReport.profile_id !== profileId ||
+      generatedReport.product !== product)
+  ) {
+    throw new ApiError(404, "Отчёт не найден.");
+  }
 
   return {
     profile,

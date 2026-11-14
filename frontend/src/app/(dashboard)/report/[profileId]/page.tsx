@@ -208,9 +208,6 @@ function CareerReportContent({ data }: { data: ReportData }) {
           </CardContent>
         </Card>
       )}
-
-      <CalculationParameters params={data.calculation_params} />
-      <TechnicalDetailsAccordion data={data} />
     </div>
   );
 }
@@ -263,6 +260,17 @@ function getErrorMessage(error: unknown): string {
   return "Неизвестная ошибка загрузки";
 }
 
+function getArchiveErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "Сессия истекла. Войдите снова.";
+    if (error.status === 402)
+      return "Доступ к сохранённому отчёту недоступен. Проверьте условия доступа в разделе оплаты.";
+    if (error.status === 404)
+      return "Сохранённый отчёт недоступен или не найден.";
+  }
+  return "Не удалось открыть сохранённый отчёт. Попробуйте позже.";
+}
+
 async function downloadReportPdf(reportId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/reports/${reportId}/pdf`, {
     method: "GET",
@@ -307,8 +315,31 @@ async function downloadReportPdf(reportId: string): Promise<void> {
 export default function ReportPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const profileId = params.profileId as string;
+  // App Router path params retain URL escaping; decode the segment once before
+  // safely encoding it for API paths and the target product query string.
+  let profileId = params.profileId as string;
+  try {
+    profileId = decodeURIComponent(profileId);
+  } catch {
+    // Malformed URL escaping remains opaque and is rejected by the read API.
+  }
   const product = searchParams.get("product") ?? "self";
+  return (
+    <ReportReader
+      key={`${profileId}:${product}`}
+      profileId={profileId}
+      product={product}
+    />
+  );
+}
+
+function ReportReader({
+  profileId,
+  product,
+}: {
+  profileId: string;
+  product: string;
+}) {
   const [apiData, setApiData] = useState<ReportApiData | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
   const [currentReport, setCurrentReport] =
@@ -362,7 +393,7 @@ export default function ReportPage() {
   }
 
   async function retryNarrativeGeneration() {
-    if (!apiData || !currentReport) {
+    if (product !== "self" || !apiData || !currentReport) {
       return;
     }
     try {
@@ -392,6 +423,7 @@ export default function ReportPage() {
         generationStartedAtRef.current = null;
         setElapsedSeconds(0);
         const loadedApiData = await fetchReportApiData(profileId, product);
+        if (!isMounted) return;
         const autoGenerateKey = `${profileId}:${product}`;
         const autoGenerateStorageKey = `self-report-autogen:${autoGenerateKey}`;
         const autoGenerateRequestedAt = Number.parseInt(
@@ -429,10 +461,7 @@ export default function ReportPage() {
           }
         }
         if (product !== "self" && !loadedApiData.generatedReport) {
-          throw new Error(
-            "Карьерный отчёт для этого профиля ещё не найден. " +
-              "Вернитесь в раздел Career и нажмите «Построить отчёт».",
-          );
+          if (product !== "career") throw new Error("Отчёт не найден.");
         }
         if (isMounted) {
           setApiData(loadedApiData);
@@ -453,7 +482,11 @@ export default function ReportPage() {
         }
       } catch (loadError) {
         if (isMounted) {
-          setError(getErrorMessage(loadError));
+          setError(
+            product === "career"
+              ? getArchiveErrorMessage(loadError)
+              : getErrorMessage(loadError),
+          );
           setSessionExpiredMessage(null);
           setApiData(null);
           setCurrentReport(null);
@@ -482,7 +515,10 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (
+      product !== "self" ||
       !currentReport ||
+      currentReport.profile_id !== profileId ||
+      currentReport.product !== product ||
       !apiData ||
       (currentReport.status !== "generating_narrative" &&
         currentReport.status !== "deterministic_ready")
@@ -490,6 +526,7 @@ export default function ReportPage() {
       return;
     }
 
+    let isActive = true;
     const startedAt = generationStartedAtRef.current ?? Date.now();
     generationStartedAtRef.current = startedAt;
 
@@ -506,6 +543,7 @@ export default function ReportPage() {
     const pollId = window.setInterval(() => {
       fetchReportById(currentReport.id)
         .then((report) => {
+          if (!isActive) return;
           setSessionExpiredMessage(null);
           applyReportUpdate(apiData, report);
           if (
@@ -517,6 +555,7 @@ export default function ReportPage() {
           }
         })
         .catch((pollError: unknown) => {
+          if (!isActive) return;
           if (pollError instanceof ApiError && pollError.status === 401) {
             generationStartedAtRef.current = null;
             setIsTimedOut(false);
@@ -533,11 +572,12 @@ export default function ReportPage() {
     }, NARRATIVE_TIMEOUT_MS);
 
     return () => {
+      isActive = false;
       window.clearInterval(timerId);
       window.clearInterval(pollId);
       window.clearTimeout(timeoutId);
     };
-  }, [apiData, applyReportUpdate, currentReport]);
+  }, [apiData, applyReportUpdate, currentReport, profileId, product]);
 
   const reportStatus = currentReport?.status;
   const isSelfReportWithoutNarrative = Boolean(
@@ -547,7 +587,7 @@ export default function ReportPage() {
     (isSelfReportWithoutNarrative &&
       (reportStatus === "generating_narrative" ||
         reportStatus === "deterministic_ready")) ||
-    (Boolean(data) && !currentReport && !error);
+    (product === "self" && Boolean(data) && !currentReport && !error);
   const shouldShowNarrativeUnavailable = Boolean(
     isSelfReportWithoutNarrative &&
     (reportStatus === "narrative_failed" || reportStatus === "ready"),
@@ -562,7 +602,11 @@ export default function ReportPage() {
       setError(null);
       await downloadReportPdf(currentReport.id);
     } catch (downloadError) {
-      setError(getErrorMessage(downloadError));
+      setError(
+        product === "career"
+          ? getArchiveErrorMessage(downloadError)
+          : getErrorMessage(downloadError),
+      );
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -575,18 +619,48 @@ export default function ReportPage() {
           <Link href="/dashboard">В кабинет</Link>
         </Button>
       </div>
-      {!isLoading && data && currentReport && data.product === "career" && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
-          <div>
-            <div className="text-sm font-medium">{data.profile.name}</div>
-            <div className="text-xs text-muted-foreground">
-              PDF собирается из сохранённого отчёта
+      {!isLoading && product === "career" && (
+        <Card className="mx-auto mb-6 max-w-5xl">
+          <CardHeader>
+            <CardTitle>
+              <h1>Исторический карьерный отчёт</h1>
+            </CardTitle>
+            <CardDescription>
+              Только чтение. Сохранённый отчёт не пересчитывается и не
+              обновляется.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!error && !currentReport && (
+              <p className="text-sm text-muted-foreground">
+                Сохранённый карьерный отчёт не найден.
+              </p>
+            )}
+            {currentReport && (
+              <p className="text-sm text-muted-foreground">
+                PDF собирается из сохранённого отчёта.
+              </p>
+            )}
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap">
+              <Button asChild>
+                <Link
+                  href={`/products/career?profileId=${encodeURIComponent(profileId)}`}
+                >
+                  Перейти в новый Career
+                </Link>
+              </Button>
+              {currentReport && (
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                >
+                  {isDownloadingPdf ? "Собираем PDF..." : "Скачать PDF"}
+                </Button>
+              )}
             </div>
-          </div>
-          <Button onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
-            {isDownloadingPdf ? "Собираем PDF..." : "Скачать PDF"}
-          </Button>
-        </div>
+          </CardContent>
+        </Card>
       )}
       {isLoading && <ReportSkeleton />}
       {!isLoading && sessionExpiredMessage && data && (
@@ -594,7 +668,9 @@ export default function ReportPage() {
           {sessionExpiredMessage}
         </div>
       )}
-      {!isLoading && error && !data && <ReportError message={error} />}
+      {!isLoading && error && (!data || product === "career") && (
+        <ReportError message={error} />
+      )}
       {!isLoading && !error && shouldShowProgress && (
         <ReportGenerationProgress
           elapsedSeconds={elapsedSeconds}

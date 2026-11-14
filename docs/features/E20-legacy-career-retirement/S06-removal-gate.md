@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 Runtime telemetry verified, fresh SPEC/code-security PASS; [runbook](../../deployment/legacy-career-retirement.md) подготовлен. Live readback/window/retention approval заблокированы до восстановления среды. Удаления не разрешены.
 
 ## Контекст
 
@@ -33,10 +33,16 @@ Legacy нельзя физически удалить по результата�
 
 ## Критерии приёмки
 
-- [ ] Метрики разделяют reads, PDF, blocked writes и grandfathered target access.
-- [ ] Labels имеют ограниченную cardinality и не содержат PII.
+- [x] Метрики разделяют reads, PDF, blocked writes и grandfathered target access.
+- [x] Labels имеют ограниченную cardinality и не содержат PII.
 - [ ] Dashboard/readback подтверждены на stage.
 - [ ] Observation window и zero/acceptable-use threshold определены заранее.
 - [ ] Стратегия существующих rows утверждена и документирована.
 - [ ] Backup/restore rehearsal выполнен до destructive proposal.
-- [ ] E20 не содержит автоматического `DELETE`/`DROP` legacy Career data.
+- [x] E20 не содержит автоматического `DELETE`/`DROP` legacy Career data.
+
+## Local evidence и незакрытые gates
+
+Native OTel `legacy_career_operations`, sole label `operation`, fixed allowlist; unknown/malformed values ничего не записывают. SPEC `deleg_644a7521`: PASS по runtime scope; independent ASGI probe подтвердил no PDF double-counting. Parent unit/integration regressions проверяют recorder arguments, denied paths и native naming. Fixture-only temporary-table/schema cleanup выполняется только в own disposable test DB, не является customer migration или разрешением удалить legacy rows.
+
+Grafana query templates и default retain boundary записаны в runbook. Ни numeric observation duration/threshold, ни definitive owner retention approval не придуманы вместо отсутствующего census. Stage scrape/readback, full observation window, backup/restore rehearsal и removal approval остаются открытыми.

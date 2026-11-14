@@ -2,7 +2,7 @@
 
 ## Статус
 
-⬜ Не начато
+🟡 В работе: все source SPEC/code-security gates пройдены, P1 `E20-CQ-01` исправлен и принят fresh re-review. Post-fix full persisted regression PASS; publication/CI ещё ожидаются. Общий Feature не завершён: production census, stage/production rollout и observation заблокированы после утраты сервера. Разрешение закрыть #51 без rollout не закрывает E20 gates.
 
 ## Цель
 
@@ -33,6 +33,10 @@ Legacy Career mutation/refresh ────> forbidden
 ## Канонические документы
 
 - [Workflow и границы контуров](./WORKFLOW.md)
+- [Source inventory и границы census](./INVENTORY.md)
+- [Retirement / census / observation runbook](../../deployment/legacy-career-retirement.md)
+- [Verification и независимые review gates](../../reviews/2026-11-14/E20-legacy-career-retirement.md)
+- [План локального исполнения](../../plans/2026-11-14-e20-legacy-career-retirement.md)
 - [SRS-E20](../../SRS/SRS-E20-legacy-career-retirement.md)
 - [E19 Career Report](../E19-career-report/FEATURE.md)
 - [E19 product/access contract](../E19-career-report/S01-product-access-migration-contract.md)
@@ -87,15 +91,15 @@ Legacy Career mutation/refresh ────> forbidden
 
 ## Stories
 
-| ID  | Story                                                                                    | Статус       |
-| --- | ---------------------------------------------------------------------------------------- | ------------ |
-| S01 | [Инвентаризировать runtime consumers и production data](./S01-runtime-data-inventory.md) | ⬜ Не начато |
-| S02 | [Отключить legacy Career write/generation paths](./S02-disable-legacy-writes.md)         | ⬜ Не начато |
-| S03 | [Сохранить grandfathered access к target E19](./S03-grandfathered-access.md)             | ⬜ Не начато |
-| S04 | [Зафиксировать read-only compatibility для старых rows/PDF](./S04-read-only-archive.md)  | ⬜ Не начато |
-| S05 | [Очистить UI entrypoints и deep-link routing](./S05-entrypoints-routing.md)              | ⬜ Не начато |
-| S06 | [Добавить telemetry, migration decision и final removal gate](./S06-removal-gate.md)     | ⬜ Не начато |
-| S07 | [Провести QA, stage и production rollout](./S07-qa-rollout.md)                           | ⬜ Не начато |
+| ID  | Story                                                                                    | Статус                                |
+| --- | ---------------------------------------------------------------------------------------- | ------------------------------------- |
+| S01 | [Инвентаризировать runtime consumers и production data](./S01-runtime-data-inventory.md) | 🟡 Source/tool verified; live blocked |
+| S02 | [Отключить legacy Career write/generation paths](./S02-disable-legacy-writes.md)         | 🟢 Local SPEC/CQ PASS                 |
+| S03 | [Сохранить grandfathered access к target E19](./S03-grandfathered-access.md)             | 🟢 Local SPEC/CQ/DB PASS              |
+| S04 | [Зафиксировать read-only compatibility для старых rows/PDF](./S04-read-only-archive.md)  | 🟢 Local SPEC/CQ/DB PASS              |
+| S05 | [Очистить UI entrypoints и deep-link routing](./S05-entrypoints-routing.md)              | 🟢 Local SPEC/CQ/browser PASS         |
+| S06 | [Добавить telemetry, migration decision и final removal gate](./S06-removal-gate.md)     | 🟡 В работе                           |
+| S07 | [Провести QA, stage и production rollout](./S07-qa-rollout.md)                           | 🟡 Local verification; live blocked   |
 
 ## Порядок реализации
 

@@ -12,10 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chart_engine.features import extract_features
 from app.core.exceptions import NotFoundError
+from app.core.products import validate_generic_product
 from app.modules.charts.models import ChartSnapshot
 from app.modules.charts.service import ChartService
 from app.modules.profiles.models import PersonProfile
 from app.modules.reports.models import Report, ReportVersion
+from app.modules.reports.retirement import reject_legacy_career_write
 from app.modules.rules.engine import RULE_ENGINE_VERSION, interpret
 from app.modules.rules.loader import load_ruleset
 from app.modules.rules.resolver import render_full_report
@@ -73,6 +75,8 @@ class ReportService:
         3. Build report data
         4. Persist report
         """
+        validate_generic_product(product)
+        reject_legacy_career_write(product)
         # Check if report already exists for this profile + product
         existing = await self._find_existing(profile_id, user_id, product)
         supports_narrative = product == "self"
@@ -166,6 +170,8 @@ class ReportService:
         report = result.scalar_one_or_none()
         if report is None:
             raise NotFoundError("Report not found")
+        if report.product == "career":
+            return report
         if await self._report_requires_refresh(report, user_id):
             logger.info(
                 "report_refresh_required",
@@ -189,10 +195,15 @@ class ReportService:
         limit: int = 10,
         offset: int = 0,
         allowed_products: set[str] | None = None,
+        profile_id: UUID | None = None,
     ) -> tuple[list[Report], int]:
         """List reports for a user with optional product filter."""
         query = select(Report).where(Report.user_id == user_id)
         count_query = select(func.count()).select_from(Report).where(Report.user_id == user_id)
+
+        if profile_id is not None:
+            query = query.where(Report.profile_id == profile_id)
+            count_query = count_query.where(Report.profile_id == profile_id)
 
         if allowed_products is not None:
             query = query.where(Report.product.in_(allowed_products))

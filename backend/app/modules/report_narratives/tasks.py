@@ -17,6 +17,7 @@ from app.modules.llm import LLMProviderUnavailableError, LLMTimeoutError
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.service import NarrativeRegenerateScope, ReportNarrativeService
 from app.modules.reports.models import Report
+from app.modules.reports.retirement import retirement_telemetry
 
 T = TypeVar("T")
 
@@ -78,6 +79,9 @@ async def _finalize_narrative_task_failure_async(report_id: UUID, error_message:
         report = report_result.scalar_one_or_none()
         if report is None:
             raise NotFoundError("Report not found")
+        if report.product == "career":
+            retirement_telemetry.record("blocked_worker")
+            return
 
         narrative_result = await db.execute(
             select(ReportNarrative)

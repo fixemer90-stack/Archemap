@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import UTC, date, datetime, time, timedelta
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -308,6 +308,8 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # The expanded authorization matrix intentionally exceeds the global IP budget.
+    monkeypatch.setattr("app.api.middleware._increment_rate_limit", AsyncMock(return_value=1))
     now = datetime.now(UTC)
     owner_id = uuid.uuid4()
     foreign_user_id = uuid.uuid4()
@@ -607,17 +609,19 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
     )
     db_session.add(legacy_payment)
     await db_session.flush()
-    db_session.add(
-        Entitlement(
-            user_id=owner_id,
-            product="career",
-            status="active",
-            source_payment_id=legacy_payment.id,
-            starts_at=now - timedelta(days=1),
-            expires_at=None,
-        )
+    legacy_entitlement = Entitlement(
+        user_id=owner_id,
+        product="career",
+        status="active",
+        source_payment_id=legacy_payment.id,
+        starts_at=now - timedelta(days=1),
+        expires_at=None,
     )
+    db_session.add(legacy_entitlement)
     await db_session.commit()
+    assert (await db_session.execute(select(Report).where(Report.user_id == owner_id))).scalars().all() == []
+    retirement_counter = MagicMock()
+    monkeypatch.setattr("app.modules.reports.retirement.retirement_telemetry.counter", retirement_counter)
     grandfathered_responses = await _call_career_route_matrix(
         client,
         profile_id=profile_id,
@@ -637,6 +641,87 @@ async def test_persisted_entitlement_and_ownership_matrix_covers_every_career_ro
         200,
         200,
     ]
+    assert [call.args[1] for call in retirement_counter.add.call_args_list] == [
+        {"operation": "target_grandfathered_access"}
+    ] * 10
+
+    for invalid_grant in ("expired", "revoked", "future", "subscription_linked"):
+        legacy_entitlement.status = "revoked" if invalid_grant == "revoked" else "active"
+        legacy_entitlement.starts_at = now + timedelta(days=1) if invalid_grant == "future" else now - timedelta(days=1)
+        legacy_entitlement.expires_at = now - timedelta(seconds=1) if invalid_grant == "expired" else None
+        legacy_entitlement.metadata_json = (
+            {"subscription_id": str(owner_subscription.id)} if invalid_grant == "subscription_linked" else {}
+        )
+        await db_session.commit()
+        retirement_counter.reset_mock()
+        responses = await _call_career_route_matrix(
+            client,
+            profile_id=profile_id,
+            questionnaire_id=questionnaire_id,
+            generation_id=generation_id,
+            report_id=report_id,
+        )
+        assert {response.status_code for response in responses} == {402}, invalid_grant
+        retirement_counter.add.assert_not_called()
+
+    legacy_entitlement.metadata_json = {}
+    await db_session.commit()
+    duplicate_payment = Payment(user_id=owner_id, provider="test", amount=1, status="succeeded")
+    db_session.add(duplicate_payment)
+    await db_session.flush()
+    duplicate_grant = Entitlement(
+        user_id=owner_id,
+        product="career",
+        status="active",
+        source_payment_id=duplicate_payment.id,
+        starts_at=now - timedelta(days=1),
+        expires_at=None,
+    )
+    db_session.add(duplicate_grant)
+    await db_session.commit()
+    duplicate_responses = await _call_career_route_matrix(
+        client,
+        profile_id=profile_id,
+        questionnaire_id=questionnaire_id,
+        generation_id=generation_id,
+        report_id=report_id,
+    )
+    assert [response.status_code for response in duplicate_responses] == [
+        200,
+        409,
+        422,
+        202,
+        200,
+        200,
+        200,
+        202,
+        200,
+        200,
+    ]
+
+    legacy_row = Report(
+        user_id=owner_id,
+        profile_id=profile_id,
+        product="career",
+        status="ready",
+        report_data={"legacy_marker": "never a grant"},
+    )
+    db_session.add(legacy_row)
+    legacy_entitlement.status = "revoked"
+    duplicate_grant.status = "revoked"
+    await db_session.commit()
+    row_without_grant = await _call_career_route_matrix(
+        client,
+        profile_id=profile_id,
+        questionnaire_id=questionnaire_id,
+        generation_id=generation_id,
+        report_id=report_id,
+    )
+    assert {response.status_code for response in row_without_grant} == {402}
+    for suffix in ("", "/versions", "/pdf"):
+        legacy_target = await client.get(f"/api/v1/career/reports/{legacy_row.id}{suffix}")
+        assert legacy_target.status_code == 404
+        assert "legacy_marker" not in legacy_target.text
 
     app.dependency_overrides[get_current_user] = lambda: foreign_user_id
     foreign_responses = await _call_career_route_matrix(

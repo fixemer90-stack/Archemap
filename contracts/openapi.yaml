@@ -715,11 +715,79 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /v1/reports:
+    get:
+      operationId: listReports
+      tags: [Reports]
+      summary: List owned reports, optionally scoped to a profile and product
+      description: |
+        Career archive clients supply both `product=career` and `profile_id`.
+        Filtering is performed before pagination and payload loading, so other
+        profiles cannot make an existing archive appear missing. The optional
+        profile filter preserves existing unfiltered callers and access policy.
+      parameters:
+        - name: product
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: profile_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Owned reports matching the authorized filters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, limit, offset]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReportResponse"
+                  total:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          description: Product access is locked; no report payload is returned
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /v1/reports/generate:
     post:
       operationId: generateReport
       tags: [Reports]
       summary: Generate deterministic report and enqueue narrative generation
+      description: |
+        Career v1 creation is retired. A parsed `product=career` request returns
+        410 before report lookup, version mutation, chart/rules work or dispatch.
+        New Career reports use the separate `/v1/career` product flow.
       requestBody:
         required: true
         content:
@@ -733,6 +801,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportResponse"
+        "410":
+          $ref: "#/components/responses/LegacyCareerRetired"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
@@ -802,6 +872,10 @@ paths:
       operationId: regenerateReportNarrative
       tags: [Reports]
       summary: Enqueue a fresh LLM narrative attempt without recomputing deterministic report data
+      description: |
+        Existing Career v1 artifacts are read-only. Authorized attempts to
+        regenerate them return 410 without changing the saved report/narrative
+        or enqueueing provider work. Ownership and access denials remain private.
       parameters:
         - name: report_id
           in: path
@@ -816,6 +890,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportResponse"
+        "410":
+          $ref: "#/components/responses/LegacyCareerRetired"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -824,6 +900,37 @@ paths:
           $ref: "#/components/responses/NotFound"
         "503":
           $ref: "#/components/responses/BadRequest"
+
+  /v1/rules/interpret:
+    post:
+      operationId: interpretChart
+      tags: [Reports]
+      summary: Interpret a saved chart through a supported generic ruleset
+      description: |
+        The generic Career v1 interpretation path is retired as well as report
+        persistence. Career requests return 410 rather than generating a parallel
+        legacy claims payload. Other supported products retain their behavior.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LegacyRuleInterpretRequest"
+      responses:
+        "200":
+          description: Rules interpretation for a supported product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LegacyRuleInterpretationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          $ref: "#/components/responses/LegacyCareerRetired"
+        "422":
+          $ref: "#/components/responses/ValidationError"
 
   /v1/profiles/geocode:
     get:
@@ -2196,6 +2303,13 @@ components:
         default: 20
 
   responses:
+    LegacyCareerRetired:
+      description: Career v1 generation is retired; use the target Career product flow
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/LegacyCareerRetirementResponse"
+
     CareerLocked:
       description: Active Plus or grandfathered Career entitlement is required
       content:
@@ -4070,6 +4184,77 @@ components:
         session_id:
           type: string
 
+    LegacyCareerRetirementResponse:
+      type: object
+      required: [detail]
+      additionalProperties: false
+      properties:
+        detail:
+          type: object
+          required: [code, message, target_path]
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              const: legacy_career_generation_retired
+            message:
+              type: string
+              const: Career reports are created through the Career product flow.
+            target_path:
+              type: string
+              const: /products/career
+
+    LegacyRuleInterpretRequest:
+      type: object
+      required: [profile_id]
+      properties:
+        profile_id:
+          type: string
+          format: uuid
+        product:
+          type: string
+          enum: [self, love, child, career]
+          default: self
+          description: Exact canonical identifier only; Career receives 410 and malformed path-shaped identifiers receive 422
+        ruleset_version:
+          type: string
+          default: v1
+        locale:
+          type: string
+          default: ru-RU
+        mode:
+          type: string
+          default: full
+
+    LegacyRuleInterpretationResponse:
+      type: object
+      required: [product, primary_archetype, primary_score, primary_confidence, claims, all_archetype_scores, quality_warning, provenance]
+      properties:
+        product:
+          type: string
+        primary_archetype:
+          type: string
+        primary_score:
+          type: number
+        primary_confidence:
+          type: object
+          additionalProperties: true
+        claims:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        all_archetype_scores:
+          type: object
+          additionalProperties:
+            type: number
+        quality_warning:
+          type: [string, "null"]
+        provenance:
+          type: object
+          additionalProperties:
+            type: string
+
     GenerateReportRequest:
       type: object
       required: [profile_id, product, mode]
@@ -4079,6 +4264,8 @@ components:
           format: uuid
         product:
           type: string
+          enum: [self, love, child, career]
+          description: Exact canonical identifier only; Career receives 410 and malformed path-shaped identifiers receive 422
         mode:
           type: string
           enum: [preview, full]
@@ -4168,6 +4355,14 @@ components:
         report_data:
           type: object
           additionalProperties: true
+        archive_status:
+          type: [string, "null"]
+          enum: [available, unavailable, null]
+          default: null
+          description: |
+            Additive availability metadata for historical Career artifacts.
+            Does not rewrite the saved report_data or historical status.
+            Null for ordinary non-archive responses.
         narrative:
           oneOf:
             - $ref: "#/components/schemas/NarrativeResponse"

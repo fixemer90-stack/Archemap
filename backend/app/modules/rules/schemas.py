@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.core.products import GenericProduct
+
 
 class InterpretRequest(BaseModel):
     """Request to interpret a chart."""
 
     profile_id: str = Field(..., description="Person profile UUID")
-    product: str = Field("self", description="Vertical: self, love, child, career")
+    product: GenericProduct = Field("self", description="Vertical: self, love, child, career")
     ruleset_version: str = Field("v1", description="Ruleset version tag")
     locale: str = Field("ru-RU", description="Locale for templates")
     mode: str = Field("full", description="full or preview")

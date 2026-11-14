@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
+from app.modules.reports.retirement import LegacyCareerRetiredResponse
 from app.modules.rules.schemas import (
     InterpretRequest,
     InterpretResponse,
@@ -18,7 +19,7 @@ from app.modules.rules.service import RulesService
 router = APIRouter(prefix="/rules", tags=["rules"])
 
 
-@router.post("/interpret", response_model=InterpretResponse)
+@router.post("/interpret", response_model=InterpretResponse, responses={410: {"model": LegacyCareerRetiredResponse}})
 async def interpret_chart(
     body: InterpretRequest,
     db: AsyncSession = Depends(get_db),

@@ -12,7 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.chart_engine.features import extract_features
 from app.chart_engine.types import ChartData
 from app.core.exceptions import NotFoundError
+from app.core.products import validate_generic_product
 from app.modules.charts.models import ChartSnapshot
+from app.modules.reports.retirement import reject_legacy_career_write
 from app.modules.rules.engine import interpret
 from app.modules.rules.loader import list_available_rulesets, load_ruleset
 from app.modules.rules.resolver import render_full_report
@@ -48,6 +50,8 @@ class RulesService:
         Returns:
             Rendered interpretation dict
         """
+        validate_generic_product(product)
+        reject_legacy_career_write(product)
         # Load chart snapshot
         snapshot = await self._get_snapshot(profile_id, user_id)
 

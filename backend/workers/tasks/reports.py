@@ -6,6 +6,7 @@ from typing import Any
 
 from app.config import settings
 from app.modules.report_narratives.service import NarrativeRegenerateScope
+from app.modules.reports.retirement import LegacyCareerRetiredError
 from workers.celery_app import app
 
 
@@ -51,6 +52,9 @@ def generate_report_narrative(
 
     try:
         return generate_report_narrative_task(report_id, force=force, scope=scope, stage_id=stage_id)
+    except LegacyCareerRetiredError:
+        # Retirement is a no-op, not a narrative failure; never finalize or retry it.
+        raise
     except Exception as exc:
         retries = int(getattr(self.request, "retries", 0))
         if should_retry_narrative_task_error(exc) and retries < settings.LLM_MAX_RETRIES:

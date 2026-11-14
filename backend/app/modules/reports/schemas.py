@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.core.products import GenericProduct
 from app.modules.report_narratives.models import ReportNarrative
 from app.modules.report_narratives.schemas import NarrativeStageArtifact, NarrativeStageProgress
 from app.modules.reports.models import Report
@@ -17,7 +18,7 @@ class GenerateReportRequest(BaseModel):
     """Request to generate a report."""
 
     profile_id: str = Field(..., description="Person profile UUID")
-    product: str = Field("self", description="Vertical: self, love, child, career")
+    product: GenericProduct = Field("self", description="Vertical: self, love, child, career")
     mode: str = Field("full", description="full or preview")
 
 
@@ -133,6 +134,7 @@ class ReportResponse(BaseModel):
     pdf_generated: bool
     report_data: dict[str, Any]
     narrative: NarrativeResponse | None = None
+    archive_status: Literal["available", "unavailable"] | None = None
     narrative_progress: NarrativeStageProgress | None = None
     narrative_stage_artifacts: list[NarrativeStageArtifact] = Field(default_factory=list)
     error_message: str | None = None
@@ -233,6 +235,7 @@ def build_report_response(report: Report, narrative: ReportNarrative | None = No
         pdf_url=report.pdf_url,
         pdf_generated=report.pdf_generated,
         report_data=report.report_data,
+        archive_status=("available" if report.report_data else "unavailable") if report.product == "career" else None,
         narrative=serialized_narrative,
         narrative_progress=serialized_narrative.stage_progress if serialized_narrative is not None else None,
         narrative_stage_artifacts=(serialized_narrative.stage_artifacts if serialized_narrative is not None else []),

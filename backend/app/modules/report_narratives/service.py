@@ -59,6 +59,7 @@ from app.modules.report_narratives.validators import (
     validate_self_narrative,
 )
 from app.modules.reports.models import Report
+from app.modules.reports.retirement import reject_legacy_career_write
 
 logger = structlog.get_logger()
 
@@ -90,6 +91,7 @@ class ReportNarrativeService:
     ) -> ReportNarrative:
         """Generate a narrative layer for a deterministic report."""
         report = await self._get_report(report_id)
+        reject_legacy_career_write(report.product, operation="blocked_worker")
         try:
             narrative_input = build_narrative_input(report)
             input_hash = compute_input_hash(narrative_input)

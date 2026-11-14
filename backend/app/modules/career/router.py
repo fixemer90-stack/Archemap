@@ -52,6 +52,7 @@ from app.modules.career.questionnaire import (
 from app.modules.career.repository import CareerGenerationTargetMismatchError, CareerRepository
 from app.modules.payments.service import PaymentsService
 from app.modules.profiles.models import PersonProfile
+from app.modules.reports.retirement import retirement_telemetry
 
 router = APIRouter(prefix="/career", tags=["career"])
 _ERRORS: dict[int | str, dict[str, Any]] = {
@@ -425,6 +426,8 @@ async def _require_career_access(*, db: AsyncSession, user_id: UUID) -> None:
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail=build_locked_career_payload(reason=decision.reason or "missing_career_access"),
         )
+    if decision.source == "legacy_career":
+        retirement_telemetry.record("target_grandfathered_access")
 
 
 async def _load_owned_questionnaire(

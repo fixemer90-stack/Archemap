@@ -2,7 +2,7 @@
 
 ## Статус
 
-🟡 В работе: все source SPEC/code-security gates пройдены, P1 `E20-CQ-01` исправлен и принят fresh re-review. Post-fix full persisted regression PASS; publication/CI ещё ожидаются. Общий Feature не завершён: production census, stage/production rollout и observation заблокированы после утраты сервера. Разрешение закрыть #51 без rollout не закрывает E20 gates.
+🟡 В работе: все source SPEC/code-security gates пройдены, P1 `E20-CQ-01` исправлен и принят fresh re-review. Post-fix full persisted regression PASS; опубликовано в `0d109e9`, CI `43641818436` — **8/8 jobs success**. Общий Feature не завершён: production census, stage/production rollout и observation заблокированы после утраты сервера. Разрешение закрыть #51 без rollout не закрывает E20 gates.
 
 ## Цель
 

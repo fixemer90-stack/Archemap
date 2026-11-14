@@ -2,7 +2,7 @@
 
 ## Статус
 
-Source SPEC/code-security gates пройдены, P1 `E20-CQ-01` исправлен и принят независимым re-review. Post-fix full persisted regression PASS; publication/CI и live acceptance остаются отдельными gates. Это не Feature completion, production census или rollout evidence. Родительский checkout: `/mnt/d/Python/Balthier/Archemap`, исходный implementation baseline `45c2521`.
+Source SPEC/code-security gates пройдены, P1 `E20-CQ-01` исправлен и принят независимым re-review. Post-fix full persisted regression PASS; publication и exact-SHA CI подтверждены. Live acceptance остаётся открытым gate. Это не Feature completion, production census или rollout evidence. Родительский checkout: `/mnt/d/Python/Balthier/Archemap`, исходный implementation baseline `45c2521`.
 
 ## S01 — SPEC review `deleg_1c7aa62e`
 
@@ -108,4 +108,4 @@ Frontend SPEC завершился до copy-only delta; последующий 
 
 ## Publication
 
-Parent создал отдельные verified code commits: census `93f5c84`, backend/contracts `361688b`, frontend `a465a23`. После commits повторно проверены все **30** code files: 18-file backend manifest совпал с CODE review, 12-file census/frontend manifest `eef47b9b84088a8bffe96e795399c2aaa83a19a7de85defd7a0914cdebdb0fe0` совпал с S01/S05 approval. Publication/CI ещё ожидаются; deployment не выполнялся. В workflow rollout допускается только через `workflow_dispatch`, не code push.
+Parent создал отдельные verified code commits: census `93f5c84`, backend/contracts `361688b`, frontend `a465a23`. После commits повторно проверены все **30** code files: 18-file backend manifest совпал с CODE review, 12-file census/frontend manifest `eef47b9b84088a8bffe96e795399c2aaa83a19a7de85defd7a0914cdebdb0fe0` совпал с S01/S05 approval. Опубликован commit `0d109e9a1f3f9ec1d786faa425ea2c942ce84ab5`; remote SHA/tree совпали с local readback. [CI 43641818436](https://github.com/fixemer90-stack/Archemap/actions/runs/43641818436) — terminal success, **8/8 jobs**, включая Docker build; job logs подтвердили **1580 unit / 230 integration** (по 4 warnings). Registry workflow `43641818496`: preflight success, image builds и оба deploy jobs skipped. Watcher timeouts 180s/900s не являлись CI failures: verdict принят из terminal run/jobs API. Последующий closure меняет только docs; проверенный code не меняется. Deployment не выполнялся. В workflow rollout допускается только через `workflow_dispatch`, не code push.

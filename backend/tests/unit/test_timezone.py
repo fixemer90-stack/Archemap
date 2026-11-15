@@ -24,12 +24,60 @@ def resolver(mock_redis: AsyncMock) -> TimezoneResolver:
 
 
 class TestCacheKey:
-    def test_format(self) -> None:
-        key = TimezoneResolver._cache_key(55.7558, 37.6173)
-        assert key == "tz:55.7558,37.6173"
+    def test_format(self, resolver: TimezoneResolver) -> None:
+        from importlib.metadata import PackageNotFoundError, version
 
-    def test_different_coords_different_keys(self) -> None:
-        assert TimezoneResolver._cache_key(55.0, 37.0) != TimezoneResolver._cache_key(51.0, -0.1)
+        try:
+            data_version = version("timezonefinder-data")
+        except PackageNotFoundError:
+            data_version = "bundled"
+        key = resolver._cache_key(55.7558, 37.6173)
+        assert key == f"tz:timezonefinder:{version('timezonefinder')}:data:{data_version}:55.7558,37.6173"
+
+    def test_different_coords_different_keys(self, resolver: TimezoneResolver) -> None:
+        assert resolver._cache_key(55.0, 37.0) != resolver._cache_key(51.0, -0.1)
+
+
+class TestCacheVersions:
+    @pytest.mark.parametrize("changed_package", ["timezonefinder", "timezonefinder-data"])
+    async def test_version_change_ignores_old_cached_result(self, mock_redis: AsyncMock, changed_package: str) -> None:
+        versions = {"timezonefinder": "9.2.0", "timezonefinder-data": "4.2026.6"}
+        with patch("importlib.metadata.version", side_effect=versions.__getitem__):
+            old_resolver = TimezoneResolver(mock_redis)
+        old_key = old_resolver._cache_key(55.7558, 37.6173)
+        cached = {
+            old_key: json.dumps({"tz": "Outdated/Boundary"}),
+            "tz:55.7558,37.6173": json.dumps({"tz": "Legacy/Boundary"}),
+        }
+        mock_redis.get.side_effect = cached.get
+        versions[changed_package] += ".1"
+        with patch("importlib.metadata.version", side_effect=versions.__getitem__):
+            upgraded_resolver = TimezoneResolver(mock_redis)
+
+        assert await upgraded_resolver.resolve(55.7558, 37.6173) == "Europe/Moscow"
+        assert upgraded_resolver._cache_key(55.7558, 37.6173) != old_key
+        mock_redis.set.assert_awaited_once_with(
+            upgraded_resolver._cache_key(55.7558, 37.6173),
+            json.dumps({"tz": "Europe/Moscow"}),
+            ex=86400 * 30,
+        )
+
+    def test_bundled_data_uses_engine_version(self, mock_redis: AsyncMock) -> None:
+        from importlib.metadata import PackageNotFoundError
+
+        with patch("importlib.metadata.version", side_effect=["8.2.4", PackageNotFoundError("timezonefinder-data")]):
+            resolver = TimezoneResolver(mock_redis)
+        assert resolver._cache_key(55.7558, 37.6173) == "tz:timezonefinder:8.2.4:data:bundled:55.7558,37.6173"
+
+    async def test_same_versions_reuse_cached_result(self, mock_redis: AsyncMock) -> None:
+        first = TimezoneResolver(mock_redis)
+        cached = {first._cache_key(55.7558, 37.6173): json.dumps({"tz": "Europe/Moscow"})}
+        mock_redis.get.side_effect = cached.get
+        with patch("app.infrastructure.timezone._tf") as engine:
+            second = TimezoneResolver(mock_redis)
+            assert await second.resolve(55.7558, 37.6173) == "Europe/Moscow"
+        engine.timezone_at.assert_not_called()
+        mock_redis.set.assert_not_awaited()
 
 
 class TestResolve:

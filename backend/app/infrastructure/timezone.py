@@ -7,6 +7,7 @@ because the mapping is deterministic for a given (lat, lon) pair.
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 
 import redis.asyncio as aioredis
@@ -25,10 +26,18 @@ class TimezoneResolver:
 
     def __init__(self, redis_client: aioredis.Redis) -> None:
         self._redis = redis_client
+        engine_version = importlib.metadata.version("timezonefinder")
+        try:
+            data_version = importlib.metadata.version("timezonefinder-data")
+        except importlib.metadata.PackageNotFoundError:
+            # timezonefinder 8 bundles its boundaries with the engine.
+            data_version = "bundled"
+        # Boundary data can change independently of the lookup engine. Old keys
+        # remain untouched and expire normally; upgrades use a fresh namespace.
+        self._cache_namespace = f"tz:timezonefinder:{engine_version}:data:{data_version}"
 
-    @staticmethod
-    def _cache_key(lat: float, lon: float) -> str:
-        return f"tz:{lat:.4f},{lon:.4f}"
+    def _cache_key(self, lat: float, lon: float) -> str:
+        return f"{self._cache_namespace}:{lat:.4f},{lon:.4f}"
 
     async def resolve(self, latitude: float, longitude: float) -> str | None:
         """Return IANA timezone (e.g. ``Europe/Moscow``) or *None*.

@@ -13,6 +13,7 @@ updates:
       - python
     ignore:
       # SQLAlchemy 2.1: native typing/plugin and autoflush/fencing migration first.
+      # pip's pyproject parser needs one concrete == pin for this type hold.
       - dependency-name: sqlalchemy
         update-types:
           - version-update:semver-major

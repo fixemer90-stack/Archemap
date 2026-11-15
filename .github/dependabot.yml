@@ -1,4 +1,7 @@
 version: 2
+# Compatibility holds below affect routine version updates, not security updates.
+# Revisit at the monthly dependency review; resume criteria are in
+# docs/reviews/2026-11-15/dependency-pr-cleanup.md.
 updates:
   - package-ecosystem: pip
     directory: /backend
@@ -7,11 +10,20 @@ updates:
     open-pull-requests-limit: 2
     labels:
       - dependencies
-      - backend
+      - python
+    ignore:
+      # SQLAlchemy 2.1: native typing/plugin and autoflush/fencing migration first.
+      - dependency-name: sqlalchemy
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
     groups:
       backend-python-dependencies:
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: npm
     directory: /frontend
@@ -20,11 +32,33 @@ updates:
     open-pull-requests-limit: 2
     labels:
       - dependencies
-      - frontend
+      - javascript
+    ignore:
+      # Current parser supports TS <6.1; require a supported compiler/parser pair.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      # Next's lint plugin chain must declare compatibility before ESLint 10.
+      - dependency-name: eslint
+        update-types:
+          - version-update:semver-major
+      # axe 4.14 needs Node >=22.12: coordinate CI and Docker runtime migration.
+      - dependency-name: "@axe-core/playwright"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      # Revisit resolver major migrations when usage/API migration is justified.
+      - dependency-name: "@hookform/resolvers"
+        update-types:
+          - version-update:semver-major
     groups:
       frontend-npm-dependencies:
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
@@ -33,7 +67,7 @@ updates:
     open-pull-requests-limit: 1
     labels:
       - dependencies
-      - github-actions
+      - github_actions
     groups:
       github-actions-dependencies:
         patterns:

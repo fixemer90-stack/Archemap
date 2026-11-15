@@ -1,0 +1,64 @@
+# Dependency PR cleanup — 2026-11-15
+
+## Scope and status
+
+Owner approved processing PRs #47, #52 and #53: retain compatible updates, repair and test them, merge useful changes, and close obsolete proposals. This is not a deployment or authorization to delete unrelated branches/worktrees, application data, or server volumes.
+
+| PR  | Disposition                                                | Verified state                                                                                                                                                                                                     |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| #47 | setup-python/setup-node v7, preserve current main workflow | MERGED as `3465aba9d87bf8fc607ac9ba9b7bac38789e3bcc`; candidate `fa960a804c71f14853bbe83e9df0826596ad7fdc`; CI `43721239999` success, all 8 jobs. Original remote Dependabot branch deleted and absence read back. |
+| #52 | timezonefinder 9; retain SQLAlchemy 2.0                    | MERGED as `6475e3bc6596793660823f57ac27e76e03aafa4a`; candidate `39bc32edde3af3c0f12ebff37bb8e4941c5abc3a` passed CI `43724901079`, all 8 jobs. SPEC/CODE PASS; original remote bot ref verified absent.           |
+| #53 | compatible frontend updates, bounded tooling versions      | MERGED as `002ebe84a2b9a33b52d4b827b241cbb18b811870`; candidate `d77bad12ad58041ecca607ff43d1fd6920251e44` passed CI `43728198808`, all 8 jobs. SPEC/CODE PASS; remote bot ref deletion and absence verified.      |
+
+## PR47 evidence
+
+Only seven workflow version references changed: three setup-python and four setup-node references. Reversing those substitutions reproduces main byte-for-byte. Current TMPDIR fix, events, permissions, secrets, dependencies and all eight jobs are preserved. Official v7 notes and action runtime metadata were inspected; no registry-url input is used, so removing setup-node's dummy token fallback does not apply.
+
+Independent review `deleg_016d5310`: strict JSON PASS. Workflow SHA-256 `2b3c51001fb446abbdf1387053565d883b626bb5154601f65b2ef768e9b4fd64`, diff SHA-256 `e1b39a5f4f0fd818e0d80f999f1a6fe99dd4b9e87aa6e597d00bc61b516d85bc`; parent verified both before adopting approval. GitHub readback confirmed MERGED and the exact merge commit.
+
+## PR52 repair and deferral
+
+SQLAlchemy remains `>=2.0,<2.1`, installed/locked 2.0.51; both mypy plugins are preserved. SQLAlchemy 2.1 removes the configured plugin, but removing it alone is not sufficient migration evidence: its unconditional autoflush for textual/Core execution needs fencing/transaction-guard tests around the application's advisory locks and set_config calls. This is an identified migration risk, not a reproduced application regression.
+
+Timezonefinder is installed/locked at 9.2.0 with timezonefinder-data 4.2026.6. Redis timezone namespace includes both installed distribution versions; older bundled-data engines retain a fallback. An additional read-only installed-data probe found all 444 boundary zone identifiers available in local Python zoneinfo (no missing IDs); this is local evidence, not a separately executed Docker probe. Existing keys are not deleted and expire normally. TTL, coordinate precision and coordinate-free failure logging are unchanged. No stored profiles, charts or reports are recomputed.
+
+Author TDD: namespace RED 3 failures → GREEN 14 tests; bundled-data compatibility RED 1 failure → GREEN 15 tests. Author full unit run: 1584 passed, with existing warnings. Parent strengthened the format test to support the permitted timezonefinder-8 metadata fallback; fresh timezone/chart/profile slice: 35 passed. Whole backend Ruff/format (539 files), mypy (519 source files), uv lock --check and uv pip check passed.
+
+Independent SPEC `deleg_df1de768`: PASS, independently 15 timezone tests. Four-file staged diff SHA-256 `de915f807680319d603672de949b1ab99f94ecfa4b06b32f119d3cb49ed06a35`. CODE/security review `deleg_2c64a45b`: strict JSON PASS, independently 15 timezone tests plus scoped Ruff/format/security scan; parent fingerprint matched before commit. Committed as `cd8e4e8`, then merged current main's PR47 CI-only change into candidate `39bc32e` without changing the four reviewed files; diff hash remains identical. Fresh exact-head remote CI `43724901079` passed all eight jobs; merged as `6475e3b` with explicit merge subject/body recording the retained SQLAlchemy 2.0 constraint. The local unit/review checks did not use customer DB/provider services; remote CI supplied full integration/image gates.
+
+## PR53 compatible candidate
+
+Retain TypeScript ~6.0.3, ESLint ^9.39.5, axe Playwright ~4.13.0 and resolvers ^5.9.2. Accept the tested candidate minor/patch graph, including aligned Next/eslint-config-next 16.4.6 and React/React DOM 19.3.1. No forced peers, disabled lint, or application source changes.
+
+Deferred transitions:
+
+- TS7: the installed typescript-eslint guard rejects the removed compiler API; current supported range is below 6.1.
+- ESLint10: transitive Next lint plugins do not support that major yet.
+- axe 4.14: requires Node >=22.12, while CI/Docker currently use Node20. Runtime migration must be coordinated separately.
+- Resolvers 6/7: breaking-major migration has no demonstrated benefit for current source; no resolver imports found during triage. A compatible same-major update is used instead.
+
+Local archive uses Node 22.22.2; the complete resolved lock graph was additionally checked against Node 20.20.2 as the compatibility target for CI/Docker Node 20, with zero incompatible engine ranges. Strict-peer install and clean npm ci succeeded without peer/engine overrides. Production audit: zero vulnerabilities; full tree still reports eight moderate development findings. ESLint has two existing auth-navigation warnings and its v9 deprecation notice; these are not represented as zero warnings.
+
+Repo-wide ESLint/Prettier/TypeScript, all 16 contract scripts and production build passed in the archive. Native browser runs: **131 passed / 1 skipped**, followed by E20 **54 passed**, both exits 0; original snapshots/assertions retained. The same two package files were copied into the canonical PR53 merge candidate with identical hashes: manifest `717d5c9cf3f910766536b1116a3ce56790980a2454e63d81545b5e03af241085`, lock `0ac42e2c09297162808c5f05cbbddf180b629e6dd02c1b582c271697787dab69`. Canonical clean npm ci, production audit, repo-wide lint/format/types/contracts passed. The combined 360s command timed out after completing those gates but before build completed; a separate fresh production build then passed. Scratch port overrides prevented attaching to or stopping an operator server. Independent SPEC `deleg_3a0bf34c`: PASS, 225 tracked frontend files compared and only the package pair changed; actual typescript-estree 8.60.1 supports the selected TS 6.0.3 (<6.1). Independent CODE/security `deleg_45262db1`: PASS; 25 direct declarations, 831 dependency edges, 53 present/required peer edges and 319 Node engine declarations verified, with no blocking findings. Both frozen file hashes remained identical before commit `58aca99`. Merging current main (PR52 backend changes only) preserved all reviewed frontend bytes; final candidate `d77bad12ad58041ecca607ff43d1fd6920251e44` was pushed into the original bot branch. Remote exact-head CI `43728198808` passed all eight jobs; merged as `002ebe84a2b9a33b52d4b827b241cbb18b811870` with an explicit compatible-update merge subject/body. Node/runtime type alignment and eight moderate development findings remain accepted follow-ups, not cleared findings.
+
+## Repository hygiene and migration holds
+
+Existing labels were read from GitHub: dependencies/python/javascript/github_actions are present; backend/frontend/github-actions are not. Included configuration uses the existing labels and retains the monthly schedules and PR limits. Backend/frontend routine groups contain only minor/patch updates; unheld major updates remain separate proposals. The Actions group remains unchanged apart from its label.
+
+Temporary routine-update holds (revisit during each monthly dependency review):
+
+| Dependency         | Held routine update types | Resume condition                                                                                                                                            |
+| ------------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQLAlchemy         | minor, major              | Complete native typing/plugin migration and demonstrate advisory-lock/set_config/autoflush fencing regressions on the target SQLAlchemy release.            |
+| TypeScript         | minor, major              | Installed parser supports the proposed compiler range/API; clean install, lint, typecheck, build and browser gates pass together.                           |
+| ESLint             | major                     | Next's complete React/import/a11y plugin chain declares support; peer-clean install and the full gate set pass.                                             |
+| axe Playwright     | minor, major              | CI and every frontend Docker stage migrate together to a supported Node runtime satisfying axe's exact patch floor; native accessibility/browser CI passes. |
+| Hookform resolvers | major                     | Usage audit justifies the major; applicable form/schema APIs and migration tests are reviewed, then full gates pass.                                        |
+
+These are **update-types-only** holds, not `versions` ranges or wildcard dependency exclusions. Patch updates continue. Upstream `Dependabot::Config::IgnoreCondition#ignored_versions` immediately returns `versions` for security-only jobs, so these rules, which define no `versions`, do not filter security remediation versions. A security fix requiring a held series remains a migration priority, not permission to waive CI. Dependency alerts, production audits and security-update settings are not disabled.
+
+Primary references inspected: GitHub's Dependabot options reference at https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference and upstream https://github.com/dependabot/dependabot-core/blob/main/common/lib/dependabot/config/ignore_condition.rb. Local candidate YAML parsing and semantic checks passed. Independent configuration security/SPEC review `deleg_21788a88`: strict JSON PASS, candidate SHA-256 `36cd713fb875dfdb16c3f90d3580126617f4e796f76c9f54a01fae2a33a796af`; parent verified the fingerprint and exact-path Prettier check. Review independently inspected upstream security-only semantics; its automated YAML probe did not complete, so syntax proof is the parent's parser check. Reviewed configuration is included alongside this report. No hosted Dependabot job was executed as part of this configuration review; hosted acceptance and security-fix solvability are separate operational checks, not inferred from local validation.
+
+## GitHub permissions
+
+Current protected credential can push branches/workflows and merged PR47 successfully. Actual addComment and updatePullRequest calls were denied. Do not infer merge denial from those metadata-operation denials. Pull requests: Read and write was requested for comments/title/body maintenance; no token value was requested or exposed. Required readbacks follow every successful remote write.

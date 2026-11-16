@@ -27,18 +27,18 @@ export function V2CalculationLayer({ layer }: V2CalculationLayerProps) {
         <V2KeyIndicators indicators={layer.keyIndicators} />
       </header>
       <div className="grid items-start gap-[18px] xl:grid-cols-12">
-        <div className="xl:col-span-8">
+        <div className="min-w-0 xl:col-span-8">
           <V2PlanetPositionsTable positions={layer.planetPositions} />
         </div>
-        <div className="xl:col-span-4">
+        <div className="min-w-0 xl:col-span-4">
           <V2BalanceBars balanceBars={layer.balanceBars} />
         </div>
       </div>
       <div className="grid items-start gap-[18px] xl:grid-cols-12">
-        <div className="w-full xl:col-span-6">
+        <div className="min-w-0 w-full xl:col-span-6">
           <V2HouseEmphasis houseEmphasis={layer.houseEmphasis} />
         </div>
-        <div className="w-full xl:col-span-6">
+        <div className="min-w-0 w-full xl:col-span-6">
           <V2AspectNetwork network={layer.aspectNetwork} />
         </div>
       </div>

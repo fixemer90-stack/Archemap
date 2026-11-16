@@ -1,6 +1,6 @@
 # Classical planet display order — 2026-11-16
 
-Status: classical planet ordering deployed and verified on the existing saved report. Exact-head CI passed all eight jobs. A separate pre-existing mobile table-width issue was exposed by the additional native geometry check and remains open below.
+Status: classical planet ordering deployed and verified on the existing saved report. Exact-head CI passed all eight jobs. The separate mobile table-width issue found during this release was subsequently repaired and verified; see the linked follow-up below.
 
 ## Scope and cause
 
@@ -58,12 +58,12 @@ The earlier owner-initiated report was verified read-only: six real POST request
 - All 1308 tracked source blobs matched the approved commit. Only after native desktop/order/preservation acceptance were `.deploy-sha` and `.deploy-source-tree` written and read back as the code commit/tree above.
 - A documentation-only follow-up records closeout; it is not the tested code/image revision.
 
-## Separate mobile geometry finding — OPEN
+## Separate mobile geometry finding — resolved in follow-up
 
 The additional native 390px mobile probe passed classical ordering and exact row-association assertions, but then failed its document-width assertion: `clientWidth=390`, `scrollWidth=814`. This is not recorded as an overall mobile smoke PASS.
 
 The overflowing grid item is `V2CalculationLayer`'s `xl:col-span-8` wrapper. Its planet table has `min-w-[760px]`; the grid child lacks a narrow-screen minimum-width constraint, so the table's intrinsic width expands the document instead of remaining within the intended inner scroller. Both the wrapper source and the table's layout classes are unchanged from recovery code `91d63c7` to repair code `906a4ed`. This layout issue was not introduced or fixed by the sorting-only change. No CSS, snapshots, or geometry assertions were weakened to conceal it.
 
-Private evidence retains the failed native geometry assertion, DOM bounding boxes and screenshot. Keep a separate responsive-layout repair open; do not describe this release as having passed the native mobile no-overflow gate.
+Private evidence retains the failed native geometry assertion, DOM bounding boxes and screenshot. This ordering-only release did not pass native mobile no-overflow. The subsequent [mobile width repair](../2026-11-17/report-mobile-width.md), code `789d7b7`, fixed the grid minimum widths and passed native existing-report checks at all five widths; the finding is now closed without rewriting the original failure evidence.
 
 See [fresh-instance recovery](../../deployment/recovery-2026-11-16.md) for private configuration and operational overlay requirements. Payment and unrelated feature rollout gates remain separate.

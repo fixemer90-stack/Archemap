@@ -1,5 +1,10 @@
 # Production VPS deployment
 
+For the fresh-instance recovery, its explicit data-loss choice, current release
+identity, restricted integrations and required Compose overlay, see
+[recovery — 2026-11-16](recovery-2026-11-16.md). Do not replace that runtime's
+overlay with the generic one-shot launch below.
+
 Target for first production release:
 
 - Domain: `astrotype.ru`, `www.astrotype.ru`
@@ -13,8 +18,8 @@ Target for first production release:
 At the registrar/DNS provider set:
 
 ```text
-A  @    46.173.16.113
-A  www  46.173.16.113
+A  @    <CURRENT_APPROVED_VPS_IPV4>
+A  www  <CURRENT_APPROVED_VPS_IPV4>
 ```
 
 Verify from any shell:
@@ -28,6 +33,8 @@ PY
 ```
 
 Both hosts must resolve to the VPS IP before Caddy can issue certificates.
+Use the independently confirmed current address, not an address copied from an
+older deployment report.
 
 ## Server bootstrap
 
@@ -148,10 +155,18 @@ Database volume backup:
 
 ```bash
 cd /opt/astrotype
+umask 077
 mkdir -p backups
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 docker compose -f docker-compose.prod.yml --env-file .env.production exec -T postgres \
-  pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backups/postgres-$stamp.sql"
+  sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "backups/postgres-$stamp.sql"
 ```
+
+Database variables above expand inside the PostgreSQL container, not an
+unconfigured host shell. A recovery runtime must additionally include its
+documented Compose overlay and project name. Copy backups off the VPS, verify
+checksums and exercise an isolated restore; an on-server dump alone is not
+disaster recovery. Never remove application volumes to resolve authentication
+errors.
 
 Before destructive migrations or deploys, take a VPS snapshot in the provider panel.

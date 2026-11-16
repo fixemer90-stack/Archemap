@@ -1,4 +1,5 @@
 import type { AstrotypeV2FullReportResponse } from "@/lib/api/astrotype-v2";
+import { orderPlanetPositions } from "@/lib/astrology/planet-display-order";
 
 export const CANONICAL_V2_SECTION_ORDER = [
   "core_pattern",
@@ -286,7 +287,10 @@ function toCalculationLayer(
       sun: toIndicator(keyIndicators.sun),
       moon: toIndicator(keyIndicators.moon),
     },
-    planetPositions: recordArray(layer.planet_positions).map(toPlanetPosition),
+    planetPositions: orderPlanetPositions(
+      recordArray(layer.planet_positions).map(toPlanetPosition),
+      (position) => position.body,
+    ),
     balanceBars: toBalanceBars(layer.balance_bars),
     houseEmphasis: {
       bars: recordArray(houseEmphasis.bars).map(toHouseEmphasisBar),

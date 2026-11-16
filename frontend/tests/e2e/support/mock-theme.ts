@@ -9,7 +9,7 @@ const json = (route: Route, body: unknown, status = 200) =>
     body: JSON.stringify(body),
   });
 
-const v2ReadyReport = {
+export const v2ReadyReport = {
   contract_version: "astrotype_v2_report_api_v1",
   profile: {
     id: "profile-1",

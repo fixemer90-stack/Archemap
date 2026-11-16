@@ -1,4 +1,5 @@
 import type { V2PlanetPositionViewModel } from "@/lib/astrotype-v2/report-view-model";
+import { orderPlanetPositions } from "@/lib/astrology/planet-display-order";
 import { formatValue } from "./format";
 import { V2GlossaryTerm } from "./V2GlossaryText";
 
@@ -9,8 +10,9 @@ interface V2PlanetPositionsTableProps {
 export function V2PlanetPositionsTable({
   positions,
 }: V2PlanetPositionsTableProps) {
-  const orderedPositions = [...positions].sort(
-    (a, b) => sortRank(a.body) - sortRank(b.body),
+  const orderedPositions = orderPlanetPositions(
+    positions,
+    (position) => position.body,
   );
 
   return (
@@ -112,23 +114,4 @@ function otherBody(
 ): string {
   const other = aspect.bodyA === body ? aspect.bodyB : aspect.bodyA;
   return bodyLabel(other);
-}
-
-function sortRank(body: string): number {
-  return (
-    {
-      Sun: 0,
-      Moon: 1,
-      Mercury: 2,
-      Venus: 3,
-      Mars: 4,
-      Jupiter: 5,
-      Saturn: 6,
-      Uranus: 7,
-      Neptune: 8,
-      Pluto: 9,
-      Ascendant: 10,
-      MC: 11,
-    }[body] ?? 999
-  );
 }

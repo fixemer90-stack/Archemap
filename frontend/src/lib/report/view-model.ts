@@ -10,6 +10,7 @@ import type {
   NarrativeStageProgressApiResponse,
 } from "@/lib/api/report";
 import { confidenceLabel } from "@/lib/report/score-labels";
+import { orderPlanetPositions } from "@/lib/astrology/planet-display-order";
 
 export interface ReportPlanet {
   name: string;
@@ -1234,7 +1235,10 @@ function normalizeV2CalculationLayer(
   return {
     contract_version: String(record.contract_version),
     key_indicators: asRecord(record.key_indicators),
-    planet_positions: asRecordArray(record.planet_positions),
+    planet_positions: orderPlanetPositions(
+      asRecordArray(record.planet_positions),
+      (position) => String(position.body ?? ""),
+    ),
     balance_bars: asRecordArray(record.balance_bars),
     house_accents: asRecordArray(record.house_accents),
     aspect_network: asRecordArray(record.aspect_network),

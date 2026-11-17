@@ -2,6 +2,8 @@
 
 ## Status and authority
 
+Rebuilt-host update, 2026-11-17: the owner explicitly requested restoration of Child and TEST YooKassa payments. `CHILD_REPORT_ENABLED=true` was verified in all four consumers; the current host uses `/opt/astrotype`, project `astrotype`, production Compose plus `recovery.compose.json`, not the historical release-directory paths below. Application code/images were unchanged. See [executed configuration restoration](child-test-mode-recovery-2026-11-17.md). This does not close full E22/canary or real-provider quality gates.
+
 Local implementation/QA is not permission to deploy. This template alone does not verify production/canary; executed proof belongs to the release-specific evidence record. E22 remains open until S15 staging budgets and S16 live gates have real evidence and an operator approves the target/window. Never execute deployment, paid-provider calls, account changes or database maintenance from this runbook without authorization for that environment.
 
 Use synthetic adult/child fixtures on staging. Do not put child names, DOBs, answers, prose, credentials or complete exports into tickets, CI artifacts or this repository. Private manifests contain opaque IDs; store them with mode `0600`, outside the checkout. Tokens belong in environment variables, not command arguments or JSON manifests. Export/download URLs are authenticated, never public shares.

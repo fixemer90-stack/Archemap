@@ -1,6 +1,6 @@
 # Career: responsive reader layout repair
 
-Статус: локальное исправление и независимый review завершены; публикация, CI и production-приёмка ещё не завершены.
+Статус: исправлено, опубликовано, exact-SHA CI и native production-приёмка завершены.
 
 ## Дефект и причина
 
@@ -29,8 +29,18 @@
 - [x] Полный текст и профиль помещаются, не скрыты дополнительной обрезкой.
 - [x] Регрессии desktop/mobile/tablet, обе темы, доступность и print проверены.
 - [x] Независимый review и scope fingerprints подтверждены. Все 11 frontend paths и operational controller одобрены; тесты reviewer не запускал. После review усилен только тест (ожидание fonts.ready и вертикальные текстовые bounds), 20 регрессий повторно прошли; production-код/контроллер/snapshots не изменились.
-- [ ] Изменения опубликованы; exact-SHA CI завершён.
-- [ ] Обновлён только frontend; остальные семь контейнеров и приватная конфигурация сохранены.
-- [ ] Native production smoke без mocks подтвердил исправление; сохранённые отчёты не изменились, новых генераций нет.
+- [x] Изменения опубликованы; exact-SHA CI завершён.
+- [x] Обновлён только frontend; остальные семь контейнеров и приватная конфигурация сохранены.
+- [x] Native production smoke без mocks подтвердил исправление; сохранённые отчёты не изменились, новых генераций нет.
+
+## Production-приёмка
+
+- Проверенный и развёрнутый code SHA: `66406822590d2dd9b3ce6b2fc5444102abd3108f`, tree `371b70d0e955492b50ec710e908d37066e034f38`. Перед сборкой проверены Git archive/commit/tree/manifest и SHA-256 на обеих сторонах; все 1319 tracked blobs проверены перед финальными маркерами.
+- Exact-SHA CI `44836297294`: все восемь jobs success. В логе: 195 Career browser tests, 1594 backend unit, 246 integration passed; production build и Docker builds success. Отдельный registry workflow `44836297240`: preflight success, build/push/deploy jobs skipped; он не считается rollout-доказательством.
+- Новый frontend image: `sha256:d7d1a76c4868b40987d4ce5ccff969708b52d3a15cff9e44e6deb595c03cb94f`. Пересоздан только frontend, остальные семь контейнеров сохранили IDs/images/config. Приватные dotenv, runtime environments, feature flags, restart policies и Caddy config не изменились; overlay изменил только frontend image/build label. API/DB/Redis health: `ok`.
+- Native production reader без response mocks: 320/390/768/1440px, light и dark. Реальная тема проверена по HTML class с каноническим persisted key `astrotype-theme`. Во всех восьми случаях document width совпадает с scrollWidth, hero width совпадает с scrollWidth, текстовые bounds внутри hero, первое слово заголовка занимает одну строку. Скриншоты просмотрены; обрезания заголовка, описания, статусов или профильных карточек нет. На 320px кнопки переносятся.
+- Ноль Career mutations, ноль page errors. Перед/после совпали полные saved-row hashes: Career 3 generations / 3 reports / 30 segments; Child 2 reports / 30 segments; Self 1 natal report. Новых платных генераций не запускалось, историческая partial_failure сохранена.
+- Операторский native-доступ — короткоживущий штатный access JWT, не проверка пользовательского login-flow; токен не записан в исходники/отчёт/evidence. Приватные evidence: `/root/astrotype-recovery-evidence/career-mobile-release/`; controller: `/root/astrotype-recovery-evidence/career-mobile-rollout.py`. Он импортирует прежние проверенные helpers `/root/astrotype-recovery-evidence/career-resume-rollout.py` и `/root/astrotype-recovery-evidence/restore-child-test-config.py`; эти файлы нельзя удалять при операционном cleanup. Активационный overlay: `/opt/astrotype/recovery.compose.json`.
+- `.deploy-sha` / `.deploy-source-tree` записаны и прочитаны обратно только после CI, native-приёмки, проверки сохранности отчётов и финального runtime readback.
 
 Backend, API, генераторы, данные отчётов и провайдеры в этом исправлении не меняются. Новый платный LLM-прогон не требуется и не разрешался.

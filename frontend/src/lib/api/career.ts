@@ -64,6 +64,12 @@ export interface CareerReportPayload {
   assembled_payload: Record<string, unknown>;
 }
 
+export function getCurrentCareerReport(profileId: string) {
+  return apiClient<CareerGenerationStatus | null>(
+    `/api/v1/career/reports/current?profile_id=${encodeURIComponent(profileId)}`,
+  );
+}
+
 export function getCurrentCareerQuestionnaire(profileId: string) {
   return apiClient<CareerQuestionnaire>(
     `/api/v1/career/questionnaires/current?profile_id=${encodeURIComponent(profileId)}`,

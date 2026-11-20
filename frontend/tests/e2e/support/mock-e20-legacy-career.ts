@@ -82,6 +82,7 @@ export async function mockLegacyCareer(
         birth_place: "Москва",
         timezone: "Europe/Moscow",
       });
+    if (path === "/api/v1/career/reports/current") return json(route, null);
     if (path === "/api/v1/reports")
       return options.denied
         ? json(route, { detail: "SECRET backend diagnostic" }, options.denied)

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Briefcase, Check, Loader2 } from "lucide-react";
 
@@ -12,6 +12,7 @@ import {
   createCareerReport,
   getCareerGeneration,
   getCurrentCareerQuestionnaire,
+  getCurrentCareerReport,
   saveCareerQuestionnaire,
   type CareerAnswers,
   type CareerGenerationStatus,
@@ -132,6 +133,7 @@ function questionnaireErrorCopy(error: unknown) {
 }
 
 export default function CareerProductPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkedProfileId = searchParams.get("profileId");
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -153,31 +155,75 @@ export default function CareerProductPage() {
   const completionKey = useRef<string | null>(null);
   const generationKey = useRef<string | null>(null);
   const pollAttempts = useRef(0);
-  const deepLinkOpened = useRef(false);
+  // Guards late responses, not generation deduplication: the server lookup owns that.
+  const requestScope = useRef(0);
 
-  const openQuestionnaire = useCallback(async (profile: Profile) => {
-    setSelectedProfile(profile);
-    setQuestionnaire(null);
-    setGeneration(null);
-    setLocked(false);
-    setError(null);
-    setStep(0);
-    setConsented(false);
-    try {
-      const draft = await getCurrentCareerQuestionnaire(profile.id);
-      setQuestionnaire(draft);
-      setAnswers(draft.answers ?? {});
-      setSaved(true);
-    } catch (loadError) {
-      if (loadError instanceof ApiError && loadError.status === 402) {
-        setLocked(true);
-        return;
+  const resumeGeneration = useCallback(
+    (current: CareerGenerationStatus) => {
+      setQuestionnaire(null);
+      const terminal = [
+        "ready",
+        "partial_failure",
+        "narrative_failed",
+        "failed",
+      ].includes(current.status);
+      if (terminal && current.report_id) {
+        router.replace(
+          `/products/career/report/${encodeURIComponent(current.report_id)}`,
+        );
+      } else if (terminal) {
+        setGeneration(null);
+        setError(
+          "Не удалось создать отчёт. Предыдущая попытка завершилась без сохранённого отчёта. Новая генерация не запускалась.",
+        );
+      } else {
+        setGeneration(current);
+        pollAttempts.current = 0;
       }
-      setError(questionnaireErrorCopy(loadError));
-    }
-  }, []);
+    },
+    [router],
+  );
+
+  const openQuestionnaire = useCallback(
+    async (profile: Profile) => {
+      const scope = ++requestScope.current;
+      completionKey.current = null;
+      generationKey.current = null;
+      setSaving(false);
+      setSubmitting(false);
+      setSelectedProfile(profile);
+      setQuestionnaire(null);
+      setGeneration(null);
+      setLocked(false);
+      setError(null);
+      setStep(0);
+      setConsented(false);
+      try {
+        const current = await getCurrentCareerReport(profile.id);
+        if (scope !== requestScope.current) return;
+        if (current) {
+          resumeGeneration(current);
+          return;
+        }
+        const draft = await getCurrentCareerQuestionnaire(profile.id);
+        if (scope !== requestScope.current) return;
+        setQuestionnaire(draft);
+        setAnswers(draft.answers ?? {});
+        setSaved(true);
+      } catch (loadError) {
+        if (scope !== requestScope.current) return;
+        if (loadError instanceof ApiError && loadError.status === 402) {
+          setLocked(true);
+          return;
+        }
+        setError(questionnaireErrorCopy(loadError));
+      }
+    },
+    [resumeGeneration],
+  );
 
   useEffect(() => {
+    let cancelled = false;
     async function loadProfiles() {
       try {
         const response = await fetch("/api/v1/profiles", {
@@ -185,22 +231,26 @@ export default function CareerProductPage() {
         });
         if (!response.ok) throw new Error("Не удалось загрузить профили");
         const data = (await response.json()) as { items?: Profile[] };
+        if (cancelled) return;
         const loadedProfiles = data.items ?? [];
         setProfiles(loadedProfiles);
         const preselectedProfile = loadedProfiles.find(
           (profile) => profile.id === deepLinkedProfileId,
         );
-        if (preselectedProfile && !deepLinkOpened.current) {
-          deepLinkOpened.current = true;
+        if (preselectedProfile) {
           await openQuestionnaire(preselectedProfile);
         }
       } catch (loadError) {
-        setError(errorMessage(loadError));
+        if (!cancelled) setError(errorMessage(loadError));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     void loadProfiles();
+    return () => {
+      cancelled = true;
+      requestScope.current += 1;
+    };
   }, [deepLinkedProfileId, openQuestionnaire]);
 
   useEffect(() => {
@@ -211,9 +261,20 @@ export default function CareerProductPage() {
       )
     )
       return;
+    let cancelled = false;
+    const scope = requestScope.current;
     const timer = window.setInterval(async () => {
       try {
         const next = await getCareerGeneration(generation.generation_id);
+        if (cancelled || scope !== requestScope.current) return;
+        if (
+          ["ready", "partial_failure", "narrative_failed", "failed"].includes(
+            next.status,
+          )
+        ) {
+          resumeGeneration(next);
+          return;
+        }
         setGeneration(next);
         pollAttempts.current += 1;
         if (pollAttempts.current >= 120) {
@@ -223,12 +284,16 @@ export default function CareerProductPage() {
           );
         }
       } catch (pollError) {
+        if (cancelled || scope !== requestScope.current) return;
         window.clearInterval(timer);
         setError(errorMessage(pollError));
       }
     }, 2000);
-    return () => window.clearInterval(timer);
-  }, [generation]);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [generation, resumeGeneration]);
 
   const questions = useMemo(
     () => questionnaire?.questions ?? [],
@@ -252,6 +317,7 @@ export default function CareerProductPage() {
   async function persistDraft(nextAnswers = answers) {
     if (!questionnaire || questionnaire.status === "completed")
       return questionnaire;
+    const scope = requestScope.current;
     setSaving(true);
     setSaved(false);
     try {
@@ -259,11 +325,12 @@ export default function CareerProductPage() {
         questionnaire.session_id,
         nextAnswers,
       );
+      if (scope !== requestScope.current) return null;
       setQuestionnaire({ ...questionnaire, ...next });
       setSaved(true);
       return next;
     } finally {
-      setSaving(false);
+      if (scope === requestScope.current) setSaving(false);
     }
   }
 
@@ -275,6 +342,7 @@ export default function CareerProductPage() {
 
   async function move(direction: -1 | 1) {
     if (!currentQuestion) return;
+    const scope = requestScope.current;
     const value = answers[currentQuestion.key];
     if (
       direction > 0 &&
@@ -286,11 +354,12 @@ export default function CareerProductPage() {
     }
     try {
       await persistDraft();
+      if (scope !== requestScope.current) return;
       setStep((current) =>
         Math.max(0, Math.min(questions.length - 1, current + direction)),
       );
     } catch (saveError) {
-      setError(errorMessage(saveError));
+      if (scope === requestScope.current) setError(errorMessage(saveError));
     }
   }
 
@@ -312,27 +381,39 @@ export default function CareerProductPage() {
     }
     setSubmitting(true);
     setError(null);
+    const scope = requestScope.current;
     try {
+      // Reconcile transport ambiguity / another tab before any paid-path mutation.
+      const current = await getCurrentCareerReport(selectedProfile.id);
+      if (scope !== requestScope.current) return;
+      if (current) {
+        resumeGeneration(current);
+        return;
+      }
       await persistDraft();
+      if (scope !== requestScope.current) return;
       if (questionnaire.status !== "completed") {
         completionKey.current ??= newIdempotencyKey("career-questionnaire");
         await completeCareerQuestionnaire(
           questionnaire.session_id,
           completionKey.current,
         );
+        if (scope !== requestScope.current) return;
       }
       generationKey.current ??= newIdempotencyKey("career-report");
       const accepted = await createCareerReport(
         selectedProfile.id,
         generationKey.current,
       );
+      if (scope !== requestScope.current) return;
       const initial = await getCareerGeneration(accepted.generation_id);
+      if (scope !== requestScope.current) return;
       setGeneration(initial);
       pollAttempts.current = 0;
     } catch (submitError) {
-      setError(errorMessage(submitError));
+      if (scope === requestScope.current) setError(errorMessage(submitError));
     } finally {
-      setSubmitting(false);
+      if (scope === requestScope.current) setSubmitting(false);
     }
   }
 

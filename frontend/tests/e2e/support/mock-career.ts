@@ -1,4 +1,5 @@
 import type { Page, Route } from "@playwright/test";
+import type { CareerGenerationStatus } from "../../../src/lib/api/career";
 
 import { careerQuestions, reportPayload } from "../fixtures/career";
 
@@ -10,6 +11,7 @@ const json = (route: Route, body: unknown, status = 200) =>
   });
 
 export type CareerMockState = {
+  requests: string[];
   answerWrites: number;
   completions: number;
   reportCreates: number;
@@ -20,6 +22,7 @@ export type CareerMockState = {
 export async function mockCareerApi(
   page: Page,
   options: {
+    currentGeneration?: CareerGenerationStatus | null;
     reportStatus?: "ready" | "deterministic_ready" | "narrative_failed";
   } = {},
 ): Promise<CareerMockState> {
@@ -33,6 +36,7 @@ export async function mockCareerApi(
   });
 
   const state: CareerMockState = {
+    requests: [],
     answerWrites: 0,
     completions: 0,
     reportCreates: 0,
@@ -44,6 +48,11 @@ export async function mockCareerApi(
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
+    state.requests.push(`${request.method()} ${path}${url.search}`);
+
+    if (path === "/api/v1/career/reports/current") {
+      return json(route, options.currentGeneration ?? null);
+    }
 
     if (path === "/api/v1/users/me") {
       return json(route, {

@@ -74,6 +74,19 @@ test("questionnaire is keyboard-accessible, responsive, and reaches deterministi
   expect(state.reportCreates).toBe(1);
   expect(state.completionKeys[0]).toMatch(/^career-questionnaire:/);
   expect(state.reportKeys[0]).toMatch(/^career-report:/);
+  const currentLookup = state.requests.indexOf(
+    "GET /api/v1/career/reports/current?profile_id=profile-1",
+  );
+  const draftLookup = state.requests.indexOf(
+    "GET /api/v1/career/questionnaires/current?profile_id=profile-1",
+  );
+  expect(currentLookup).toBeGreaterThanOrEqual(0);
+  expect(draftLookup).toBeGreaterThan(currentLookup);
+  expect(
+    state.requests.filter((request) =>
+      request.startsWith("GET /api/v1/career/reports/current?"),
+    ),
+  ).toHaveLength(2);
 
   await expectNoHorizontalOverflow(page);
   const accessibility = await new AxeBuilder({ page }).analyze();

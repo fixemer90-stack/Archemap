@@ -118,4 +118,18 @@ for (const questionKey of [
   );
 }
 
+expect(
+  api.includes("/api/v1/career/reports/current?profile_id=") &&
+    api.includes("apiClient<CareerGenerationStatus | null>"),
+  "Career client must reconcile the server-owned current generation, including no report",
+);
+expect(
+  page.indexOf("await getCurrentCareerReport(profile.id)") <
+    page.indexOf("await getCurrentCareerQuestionnaire(profile.id)"),
+  "Career entry must resolve saved generation before opening the questionnaire",
+);
+expect(
+  page.includes("await getCurrentCareerReport(selectedProfile.id)"),
+  "Career submission must reconcile ambiguous or cross-tab generation before mutations",
+);
 console.log("Career product UX contract checks passed");

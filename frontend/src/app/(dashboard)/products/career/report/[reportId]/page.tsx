@@ -115,7 +115,7 @@ export default function CareerReportPage() {
     );
 
   return (
-    <article className="career-reader mx-auto max-w-5xl space-y-10 bg-transparent px-4 pb-20 text-text-primary sm:px-6 print:max-w-none print:bg-surface-elevated print:px-0 print:pb-0 print:text-text-secondary">
+    <article className="career-reader mx-auto max-w-5xl space-y-10 bg-transparent px-4 pb-20 break-words text-text-primary sm:px-6 print:max-w-none print:bg-surface-elevated print:px-0 print:pb-0 print:text-text-secondary">
       <nav
         className="flex flex-wrap items-center justify-between gap-3 print:hidden"
         aria-label="Действия с отчётом"
@@ -126,7 +126,7 @@ export default function CareerReportPage() {
             Назад
           </Link>
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void load()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Обновить
@@ -140,12 +140,12 @@ export default function CareerReportPage() {
         </div>
       </nav>
 
-      <header className="relative grid overflow-hidden rounded-[28px] border border-border-default/25 bg-[var(--hero-background)] p-7 shadow-2xl sm:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
-        <div>
+      <header className="relative grid grid-cols-1 gap-7 overflow-hidden rounded-[28px] border border-border-default/25 bg-[var(--hero-background)] p-7 shadow-2xl sm:p-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-12">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.28em] text-accent-gold">
             Astrotype Career
           </p>
-          <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-cormorant)] text-4xl font-semibold leading-tight sm:text-6xl">
+          <h1 className="mt-4 max-w-3xl font-[family-name:var(--font-cormorant)] text-2xl font-semibold leading-tight max-[360px]:text-xl sm:text-5xl">
             Профессиональная механика без готовых ярлыков
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-text-secondary">
@@ -166,7 +166,10 @@ export default function CareerReportPage() {
             </span>
           </div>
         </div>
-        <aside className="grid content-end gap-3" aria-label="Краткий профиль">
+        <aside
+          className="grid min-w-0 grid-cols-1 content-end gap-3"
+          aria-label="Краткий профиль"
+        >
           <div className="rounded-2xl border border-border-default bg-scrim p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted">
               Ведущий профиль

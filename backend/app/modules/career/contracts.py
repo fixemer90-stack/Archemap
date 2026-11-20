@@ -49,6 +49,7 @@ CAREER_ROUTE_ACCESS_CONTRACT: tuple[CareerRouteAccessContract, ...] = (
     CareerRouteAccessContract("POST", "/v1/career/questionnaires/{session_id}/complete", "questionnaire"),
     CareerRouteAccessContract("POST", "/v1/career/reports", "create"),
     CareerRouteAccessContract("GET", "/v1/career/generations/{generation_id}", "generate"),
+    CareerRouteAccessContract("GET", "/v1/career/reports/current", "read"),
     CareerRouteAccessContract("GET", "/v1/career/reports/{report_id}", "read"),
     CareerRouteAccessContract("GET", "/v1/career/reports/{report_id}/sections", "read"),
     CareerRouteAccessContract("POST", "/v1/career/reports/{report_id}/regenerate", "regenerate"),

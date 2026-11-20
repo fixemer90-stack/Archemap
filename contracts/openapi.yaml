@@ -446,7 +446,8 @@ paths:
     post:
       tags:
       - Career
-      summary: Create Career Report
+      summary: Create or resume Career Report
+      description: Normal create reuses the latest saved attempt, including degraded or failed attempts, without dispatching another job. Exact persisted keys replay their original attempt and reject cross-target reuse. A completed questionnaire version different from the saved report requires explicit regeneration (409); saved reports remain readable with their original version. Only the explicit regenerate endpoint creates a new paid report version.
       operationId: createCareerReport
       security:
       - bearerAuth: []
@@ -507,6 +508,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CareerGenerationStatusResponse'
+        '402':
+          $ref: '#/components/responses/CareerLocked'
+        '404':
+          $ref: '#/components/responses/CareerNotFound'
+        '409':
+          $ref: '#/components/responses/CareerConflict'
+        '422':
+          $ref: '#/components/responses/CareerValidationError'
+        '503':
+          $ref: '#/components/responses/CareerUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/career/reports/current:
+    get:
+      tags:
+      - Career
+      summary: Resume the current saved Career generation without dispatching work
+      description: Returns the latest attempt for the owned Career profile and pinned chart, including failed attempts and explicit regenerations. Returns null when none exists. Does not create a questionnaire or generation.
+      operationId: getCurrentCareerReport
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: profile_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Profile Id
+      responses:
+        '200':
+          description: Current saved attempt or null
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/CareerGenerationStatusResponse'
+                - type: 'null'
+                title: Response Get Current Career Report Api V1 Career Reports Current Get
         '402':
           $ref: '#/components/responses/CareerLocked'
         '404':

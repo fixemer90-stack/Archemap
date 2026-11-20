@@ -49,7 +49,11 @@ from app.modules.career.questionnaire import (
     build_answer_rows,
     complete_questionnaire_session,
 )
-from app.modules.career.repository import CareerGenerationTargetMismatchError, CareerRepository
+from app.modules.career.repository import (
+    CareerGenerationRequiresRegenerationError,
+    CareerGenerationTargetMismatchError,
+    CareerRepository,
+)
 from app.modules.payments.service import PaymentsService
 from app.modules.profiles.models import PersonProfile
 from app.modules.reports.retirement import retirement_telemetry
@@ -236,20 +240,14 @@ async def create_career_report(
         career_profile_id=profile.id,
         questionnaire_version=QUESTIONNAIRE_VERSION,
     )
-    if questionnaire is None or questionnaire.status != "completed":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Questionnaire is not completed")
     try:
-        result = await repository.create_generation_idempotently(
-            generation_id=uuid4(),
+        result = await repository.resume_or_create_generation(
+            profile=profile,
             user_id=current_user,
-            career_profile_id=profile.id,
-            chart_id=profile.chart_id,
-            operation="create",
             idempotency_key=idempotency_key,
-            source_report_id=None,
-            diagnostics={},
+            questionnaire=questionnaire,
         )
-    except CareerGenerationTargetMismatchError as exc:
+    except (CareerGenerationTargetMismatchError, CareerGenerationRequiresRegenerationError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     await db.commit()
     if result.created:
@@ -273,6 +271,39 @@ async def get_career_generation(
     if generation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
     await _require_career_access(db=db, user_id=current_user)
+    report = await repository.get_report_by_generation_id(generation.generation_id)
+    segments = await repository.list_segments_for_generation(generation.generation_id)
+    return build_generation_status_payload(generation=generation, report=report, segments=segments)
+
+
+@router.get(
+    "/reports/current",
+    response_model=CareerGenerationStatusResponse | None,
+    responses=_ERRORS,
+)
+@career_access_operation("read")
+async def get_current_career_report(
+    profile_id: Annotated[UUID, Query()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[UUID, Depends(get_current_user)],
+) -> dict[str, Any] | None:
+    _require_feature_enabled()
+    repository = CareerRepository(db)
+    profile = await repository.get_profile_for_person(profile_id=profile_id, user_id=current_user)
+    if profile is None:
+        chart = await repository.get_latest_chart_for_person(profile_id=profile_id, user_id=current_user)
+        if chart is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile or v2 chart not found")
+    await _require_career_access(db=db, user_id=current_user, reconcile_payments=False)
+    if profile is None:
+        return None
+    generation = await repository.get_latest_generation(
+        career_profile_id=profile.id,
+        chart_id=profile.chart_id,
+        user_id=current_user,
+    )
+    if generation is None:
+        return None
     report = await repository.get_report_by_generation_id(generation.generation_id)
     segments = await repository.list_segments_for_generation(generation.generation_id)
     return build_generation_status_payload(generation=generation, report=report, segments=segments)
@@ -418,8 +449,9 @@ def _require_feature_enabled() -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Career report is not enabled")
 
 
-async def _require_career_access(*, db: AsyncSession, user_id: UUID) -> None:
-    await PaymentsService(db).reconcile_latest_pending_provider_payment(user_id)
+async def _require_career_access(*, db: AsyncSession, user_id: UUID, reconcile_payments: bool = True) -> None:
+    if reconcile_payments:
+        await PaymentsService(db).reconcile_latest_pending_provider_payment(user_id)
     decision = await CareerAccessPolicy(EntitlementsService(db)).check(user_id)
     if not decision.allowed:
         raise HTTPException(

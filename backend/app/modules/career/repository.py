@@ -23,6 +23,10 @@ class CareerGenerationTargetMismatchError(ValueError):
     """An idempotency key was reused for a different report target."""
 
 
+class CareerGenerationRequiresRegenerationError(ValueError):
+    """Saved output predates the completed questionnaire; explicit consent is required."""
+
+
 @dataclass(frozen=True)
 class CareerGenerationCreateResult:
     generation: models.CareerGeneration
@@ -164,6 +168,26 @@ class CareerRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_latest_generation(
+        self,
+        *,
+        career_profile_id: UUID,
+        chart_id: UUID,
+        user_id: UUID,
+    ) -> models.CareerGeneration | None:
+        """Resume the newest attempt, including failed attempts and explicit regenerations."""
+        result = await self.session.execute(
+            select(models.CareerGeneration)
+            .where(
+                models.CareerGeneration.career_profile_id == career_profile_id,
+                models.CareerGeneration.chart_id == chart_id,
+                models.CareerGeneration.user_id == user_id,
+            )
+            .order_by(models.CareerGeneration.created_at.desc(), models.CareerGeneration.id.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def get_generation_by_idempotency(
         self,
         *,
@@ -179,6 +203,64 @@ class CareerRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    async def resume_or_create_generation(
+        self,
+        *,
+        profile: models.CareerProfile,
+        user_id: UUID,
+        idempotency_key: str,
+        questionnaire: models.CareerQuestionnaireSession | None,
+    ) -> CareerGenerationCreateResult:
+        """Fence normal creates on the existing profile, never implicitly retry an attempt.
+
+        The caller commits before dispatch. Regeneration deliberately keeps its separate
+        explicit new-version path. Exact persisted keys replay their original attempt.
+        """
+        locked = await self.session.execute(
+            select(models.CareerProfile.id)
+            .where(models.CareerProfile.id == profile.id, models.CareerProfile.user_id == user_id)
+            .with_for_update()
+        )
+        if locked.scalar_one_or_none() is None:
+            raise ValueError("Career profile not found")
+        existing = await self.get_generation_by_idempotency(
+            user_id=user_id,
+            operation="create",
+            idempotency_key=idempotency_key,
+        )
+        if existing is not None:
+            if (existing.career_profile_id, existing.chart_id, existing.source_report_id) != (
+                profile.id,
+                profile.chart_id,
+                None,
+            ):
+                raise CareerGenerationTargetMismatchError("Idempotency key already used for another target")
+            return CareerGenerationCreateResult(generation=existing, created=False)
+        if questionnaire is None or questionnaire.status != "completed":
+            raise CareerGenerationRequiresRegenerationError("Questionnaire is not completed")
+        current = await self.get_latest_generation(
+            career_profile_id=profile.id,
+            chart_id=profile.chart_id,
+            user_id=user_id,
+        )
+        if current is not None:
+            report = await self.get_report_by_generation_id(current.generation_id)
+            if report is not None and report.questionnaire_version != questionnaire.questionnaire_version:
+                raise CareerGenerationRequiresRegenerationError(
+                    "Questionnaire changed; explicitly regenerate the saved report"
+                )
+            return CareerGenerationCreateResult(generation=current, created=False)
+        return await self.create_generation_idempotently(
+            generation_id=uuid.uuid4(),
+            user_id=user_id,
+            career_profile_id=profile.id,
+            chart_id=profile.chart_id,
+            operation="create",
+            idempotency_key=idempotency_key,
+            source_report_id=None,
+            diagnostics={},
+        )
 
     async def create_generation_idempotently(
         self,

@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 TABLE_TERMINALS = {
     "child_generations": {"ready", "narrative_failed", "failed", "age_update_ready", "age_update_failed"},
     "child_segment_generations": {"ready", "not_applicable", "failed"},
-    "career_generations": {"ready", "narrative_failed", "failed"},
+    "career_generations": {"ready", "partial_failure", "narrative_failed", "failed"},
     "career_segment_generations": {"ready", "failed", "not_applicable"},
     "astrotype_v2_natal_report_generations": {
         "ready",

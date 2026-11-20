@@ -93,6 +93,7 @@ def test_every_runtime_career_route_has_an_explicit_access_operation_contract() 
         ("POST", "/v1/career/questionnaires/{session_id}/complete"): "questionnaire",
         ("POST", "/v1/career/reports"): "create",
         ("GET", "/v1/career/generations/{generation_id}"): "generate",
+        ("GET", "/v1/career/reports/current"): "read",
         ("GET", "/v1/career/reports/{report_id}"): "read",
         ("GET", "/v1/career/reports/{report_id}/sections"): "read",
         ("POST", "/v1/career/reports/{report_id}/regenerate"): "regenerate",

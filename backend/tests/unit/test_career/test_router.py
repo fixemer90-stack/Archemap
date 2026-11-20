@@ -8,6 +8,7 @@ EXPECTED_ROUTES = {
     ("post", "/api/v1/career/questionnaires/{session_id}/complete"),
     ("post", "/api/v1/career/reports"),
     ("get", "/api/v1/career/generations/{generation_id}"),
+    ("get", "/api/v1/career/reports/current"),
     ("get", "/api/v1/career/reports/{report_id}"),
     ("get", "/api/v1/career/reports/{report_id}/sections"),
     ("post", "/api/v1/career/reports/{report_id}/regenerate"),

@@ -201,7 +201,7 @@ async def test_career_api_persists_lifecycle_idempotency_and_locked_payload(
         status="deterministic_ready",
         scoring_version="career-mvp-1",
         reference_version="career-ref-1",
-        questionnaire_version="career-q-1",
+        questionnaire_version="career-q-2",
         prompt_version="career-prompt-1",
         deterministic_payload={"top_dimensions": [{"fact_key": "dimension:systems", "score": 88}]},
         narrative_payload={"sections": []},
@@ -278,8 +278,8 @@ async def test_career_api_persists_lifecycle_idempotency_and_locked_payload(
     first = await client.post("/api/v1/career/reports", json={"profile_id": str(profile_id)}, headers=headers)
     second = await client.post("/api/v1/career/reports", json={"profile_id": str(profile_id)}, headers=headers)
     assert first.status_code == second.status_code == 202
-    assert first.json()["generation_id"] == second.json()["generation_id"]
-    assert enqueue.await_count == 1
+    assert first.json()["generation_id"] == second.json()["generation_id"] == str(generation_id)
+    enqueue.assert_not_awaited()
 
     async def deny_access(*, db: AsyncSession, user_id: uuid.UUID) -> None:
         del db, user_id

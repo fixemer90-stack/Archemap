@@ -13,11 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
+from app.core.exceptions import ValidationError
 from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
 from app.modules.analytics.repository import BusinessEventConflictError
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
 from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
+from app.modules.auth.models import EmailVerification, IdentityLink
+from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.service import AuthService
+from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
@@ -58,7 +62,10 @@ def fact() -> BusinessEventInput:
 @pytest.fixture
 async def registration_tables(_setup_database: None) -> AsyncGenerator[None, None]:
     metadata = User.metadata
-    tables = tuple(metadata.tables[model.__tablename__] for model in (User, PersonProfile, ChartSnapshot))
+    tables = tuple(
+        metadata.tables[model.__tablename__]
+        for model in (User, PersonProfile, ChartSnapshot, EmailVerification, IdentityLink)
+    )
     async with test_engine.begin() as conn:
         await conn.run_sync(metadata.create_all, tables=tables, checkfirst=False)
     try:
@@ -112,6 +119,100 @@ async def test_registration_and_analytics_commit_together(
             assert events[0].entity_id == users[0].id
             assert events[0].occurred_at == users[0].created_at
             assert events[0].details == {"registration_method": "email"}
+
+
+@pytest.mark.usefixtures("registration_tables")
+@pytest.mark.parametrize("enabled", [False, True])
+async def test_oauth_emits_only_for_new_account(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
+    async with session_factory() as session:
+        new = await OAuthService(session)._find_or_create_user("yandex", "provider-1", "new@example.com", "Name", None)
+        await session.commit()
+    async with session_factory() as session:
+        returning = await OAuthService(session)._find_or_create_user(
+            "yandex", "provider-1", "new@example.com", "Name", None
+        )
+        await session.commit()
+        assert returning.id == new.id
+    async with session_factory() as fresh:
+        rows = (await fresh.scalars(select(BusinessEvent))).all()
+        assert len(rows) == int(enabled)
+        if enabled:
+            assert rows[0].event_type == "registration_completed"
+            assert rows[0].entity_id == new.id
+            assert rows[0].occurred_at == new.created_at
+            assert rows[0].details == {"registration_method": "oauth"}
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
+
+
+@pytest.mark.usefixtures("registration_tables")
+@pytest.mark.parametrize("scenario", ["same-token", "race-oauth-link", "oauth-link-only"])
+async def test_concurrent_verification_records_only_first_transition(
+    monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    async with session_factory() as session:
+        user = User(email="existing@example.com", hashed_password="", is_verified=False)
+        session.add(user)
+        await session.flush()
+        token = await VerificationService(session).create_verification(user.id)
+        await session.commit()
+
+    async def verify() -> bool:
+        async with session_factory() as attempt:
+            try:
+                await VerificationService(attempt).verify_email(token)
+            except ValidationError:
+                await attempt.rollback()
+                return False
+            await attempt.commit()
+            return True
+
+    async def link() -> bool:
+        async with session_factory() as attempt:
+            linked = await OAuthService(attempt)._find_or_create_user("yandex", "provider-2", user.email, None, None)
+            assert linked.id == user.id
+            await attempt.commit()
+            return True
+
+    if scenario == "oauth-link-only":
+        assert await link()
+        assert await verify()  # An unused token may still be consumed, without another transition.
+    else:
+        race_oauth = scenario == "race-oauth-link"
+        results = await asyncio.gather(verify(), link() if race_oauth else verify())
+        assert sum(results) == (2 if race_oauth else 1)
+    async with session_factory() as fresh:
+        stored = await fresh.get(User, user.id)
+        assert stored is not None and stored.is_verified
+        row = (await fresh.scalars(select(BusinessEvent))).one()
+        assert row.event_type == "account_verified"
+        assert row.entity_id == user.id
+        assert row.details == {}
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+
+
+@pytest.mark.usefixtures("registration_tables")
+async def test_failed_verification_outbox_does_not_consume_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    async with session_factory() as session:
+        account = User(email="verify@example.com", hashed_password="", is_verified=False)
+        session.add(account)
+        await session.flush()
+        account_id = account.id
+        token = await VerificationService(session).create_verification(account_id)
+        await session.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false)"))
+        await session.commit()
+        with pytest.raises(IntegrityError):
+            await VerificationService(session).verify_email(token)
+        await session.commit()
+    async with session_factory() as fresh:
+        stored = await fresh.get(User, account_id)
+        assert stored is not None and not stored.is_verified
+        verification = (await fresh.scalars(select(EmailVerification))).one()
+        assert verification.used_at is None
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == 0
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 0
 
 
 @pytest.mark.usefixtures("_setup_database")

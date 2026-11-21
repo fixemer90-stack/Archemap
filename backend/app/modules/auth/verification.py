@@ -14,6 +14,8 @@ from app.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.infrastructure.email import get_email_provider
 from app.infrastructure.email_templates import resend_verification_template, verify_email_template
+from app.modules.analytics.schemas import BusinessEventInput, EventType
+from app.modules.analytics.service import emit_business_event
 from app.modules.auth.models import EmailVerification
 from app.modules.users.models import User
 
@@ -32,6 +34,8 @@ class VerificationService:
 
     async def create_verification(self, user_id: uuid.UUID) -> str:
         """Create a verification token for a user."""
+        # Lock order shared with verification and account deletion: user, then token.
+        await self.db.execute(select(User.id).where(User.id == user_id).with_for_update())
         await self.db.execute(
             update(EmailVerification)
             .where(EmailVerification.user_id == user_id, EmailVerification.used_at.is_(None))
@@ -52,30 +56,45 @@ class VerificationService:
 
     async def verify_email(self, token: str) -> User:
         """Verify email using token."""
-        result = await self.db.execute(
-            select(EmailVerification).where(
-                EmailVerification.token == token,
-                EmailVerification.used_at.is_(None),
+        user_id = await self.db.scalar(
+            select(EmailVerification.user_id).where(
+                EmailVerification.token == token, EmailVerification.used_at.is_(None)
             )
         )
-        verification = result.scalar_one_or_none()
-
-        if verification is None:
+        if user_id is None:
             raise ValidationError("Invalid or already used verification token")
 
-        if verification.expires_at < datetime.now(UTC):
-            raise ValidationError("Verification token has expired")
-
-        verification.used_at = datetime.now(UTC)
-
-        user_result = await self.db.execute(select(User).where(User.id == verification.user_id))
+        user_result = await self.db.execute(
+            select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True)
+        )
         user = user_result.scalar_one_or_none()
 
         if user is None:
             raise NotFoundError("User not found")
 
+        verification = await self.db.scalar(
+            select(EmailVerification)
+            .where(
+                EmailVerification.token == token,
+                EmailVerification.user_id == user.id,
+                EmailVerification.used_at.is_(None),
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if verification is None:
+            raise ValidationError("Invalid or already used verification token")
+        now = datetime.now(UTC)
+        if verification.expires_at < now:
+            raise ValidationError("Verification token has expired")
+        verification.used_at = now
+        first_verification = not user.is_verified
         user.is_verified = True
         await self.db.flush()
+        if first_verification and settings.BUSINESS_MONITORING_ENABLED:
+            await emit_business_event(
+                self.db, BusinessEventInput(event_type=EventType.ACCOUNT_VERIFIED, entity_id=user.id, occurred_at=now)
+            )
 
         logger.info("email_verified", user_id=str(user.id))
         return user

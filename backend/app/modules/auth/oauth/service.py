@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import secrets
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import AuthorizationError, ValidationError
 from app.core.security import create_access_token, create_refresh_token
 from app.infrastructure.redis import get_redis_client
+from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType
+from app.modules.analytics.service import emit_business_event
 from app.modules.auth.models import IdentityLink
 from app.modules.auth.oauth.yandex import YandexOAuthProvider
 from app.modules.profiles.models import PersonProfile
@@ -146,7 +149,12 @@ class OAuthService:
 
         # 2. Try to find by email
         if provider_email:
-            email_result = await self.db.execute(select(User).where(User.email == provider_email))
+            email_result = await self.db.execute(
+                select(User)
+                .where(User.email == provider_email)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
             matched_user = email_result.scalar_one_or_none()
 
             if matched_user:
@@ -161,11 +169,20 @@ class OAuthService:
                     access_token=None,
                 )
                 self.db.add(new_link)
+                first_verification = not matched_user.is_verified
+                verified_at = datetime.now(UTC)
                 matched_user.is_verified = True  # OAuth emails are considered verified
                 # Update birth_date if we got it and user doesn't have one
                 if birth_date and not matched_user.birth_date:
                     matched_user.birth_date = birth_date
                 await self.db.flush()
+                if first_verification and settings.BUSINESS_MONITORING_ENABLED:
+                    await emit_business_event(
+                        self.db,
+                        BusinessEventInput(
+                            event_type=EventType.ACCOUNT_VERIFIED, entity_id=matched_user.id, occurred_at=verified_at
+                        ),
+                    )
                 logger.info("oauth_account_linked", user_id=str(matched_user.id), provider=provider)
                 return matched_user
 
@@ -195,6 +212,17 @@ class OAuthService:
         )
         self.db.add(new_link)
         await self.db.flush()
+
+        if settings.BUSINESS_MONITORING_ENABLED:
+            await emit_business_event(
+                self.db,
+                BusinessEventInput(
+                    event_type=EventType.REGISTRATION_COMPLETED,
+                    entity_id=user.id,
+                    occurred_at=user.created_at,
+                    details=EventDetails(registration_method="oauth"),
+                ),
+            )
 
         logger.info(
             "oauth_user_created",

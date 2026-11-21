@@ -418,7 +418,14 @@ export default function CareerProductPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 pb-16 sm:px-6">
+    <div className="mx-auto max-w-5xl space-y-8 px-4 pt-4 pb-16 sm:px-6 sm:pt-6">
+      <nav aria-label="Навигация Career">
+        <Button variant="outline" asChild>
+          <Link href="/dashboard">
+            <ArrowLeft className="mr-1 h-4 w-4" />В личный кабинет
+          </Link>
+        </Button>
+      </nav>
       <header className="space-y-3">
         <p className="text-xs uppercase tracking-[0.24em] text-accent-gold">
           Astrotype Career

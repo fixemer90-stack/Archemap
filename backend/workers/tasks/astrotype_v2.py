@@ -7,6 +7,8 @@ import asyncio
 import hashlib
 import json
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from time import perf_counter
@@ -14,7 +16,8 @@ from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.chart_engine.chart import build_chart
 from app.config import settings
@@ -187,6 +190,7 @@ class _RevisionChartInput:
     bind=True,
     max_retries=settings.LLM_MAX_RETRIES,
     default_retry_delay=30,
+    reject_on_worker_lost=True,
     soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4, 600),
     time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720),
 )
@@ -212,6 +216,32 @@ def generate_natal_report_v2(
     )
 
 
+@asynccontextmanager
+async def _generation_session(generation_id: uuid.UUID, *, refinement: bool) -> AsyncIterator[AsyncSession]:
+    async with async_session_factory() as session:
+        if refinement:
+            yield session
+            return
+        engine = session.bind
+        if not isinstance(engine, AsyncEngine):
+            raise RuntimeError("Self generation requires an async PostgreSQL engine")
+        # Keep one checked-out connection, not a transaction lock, across the worker's commits.
+        # A process exit drops the connection and releases the lock without reissuing provider calls.
+        async with engine.connect() as connection:
+            params = {"name": f"astrotype-self-generation:{generation_id}"}
+            try:
+                await connection.execute(text("SELECT pg_advisory_lock(hashtextextended(:name, 0))"), params)
+                await connection.commit()
+                async with AsyncSession(bind=connection, expire_on_commit=False) as owned_session:
+                    yield owned_session
+                await connection.execute(text("SELECT pg_advisory_unlock(hashtextextended(:name, 0))"), params)
+                await connection.commit()
+            except BaseException:
+                # Discard the physical connection: even a cancelled acquisition may have obtained the lock.
+                await connection.invalidate()
+                raise
+
+
 async def _generate_natal_report_v2_async(
     *,
     profile_id: str,
@@ -227,7 +257,7 @@ async def _generate_natal_report_v2_async(
     generation_uuid = uuid.UUID(generation_id)
     revision_uuid = uuid.UUID(revision_id) if revision_id is not None else None
     refinement_started = perf_counter() if revision_uuid is not None else None
-    async with async_session_factory() as db:
+    async with _generation_session(generation_uuid, refinement=revision_uuid is not None) as db:
         repository = AstrotypeV2Repository(db)
         revision: ProfileBirthDataRevision | None = None
         generation_query = None
@@ -261,6 +291,22 @@ async def _generate_natal_report_v2_async(
                 existing = await repository.get_report(generation.report_id)
                 if existing is None:
                     raise ValueError("Generation report not found")
+                if generation.status == "narrative_generating" and existing.status == "narrative_generating":
+                    # The prior delivery no longer owns the connection. Its provider outcome may
+                    # be unknown; preserve the calculation and do not replay the paid work.
+                    existing.status = "narrative_failed"
+                    existing.assembled_payload = existing.assembled_payload | {
+                        "status": "narrative_failed",
+                        "error_code": "narrative_generation_failed",
+                    }
+                    await _persist_generation_status(
+                        repository=repository,
+                        generation_id=generation_uuid,
+                        status="narrative_failed",
+                        report_id=existing.id,
+                        diagnostics={"stage": "segments", "error_code": "narrative_worker_interrupted"},
+                    )
+                    await db.commit()
                 return _task_payload(
                     generation_id=generation_id,
                     profile_id=profile_uuid,
@@ -540,6 +586,8 @@ async def _generate_natal_report_v2_async(
                     force=force,
                 )
             except Exception:
+                if isinstance(db.bind, AsyncConnection) and db.bind.invalidated:
+                    raise  # The connection-scoped delivery guard was lost; do not reconnect to publish.
                 await db.rollback()
                 failed_report = await repository.get_report(report_id)
                 if failed_report is None:
@@ -583,6 +631,8 @@ async def _generate_natal_report_v2_async(
                     force=force,
                 )
         except Exception:
+            if isinstance(db.bind, AsyncConnection) and db.bind.invalidated:
+                raise
             await db.rollback()
             if generation_query is not None:
                 # A competing delivery may have completed while this one was rolling back.

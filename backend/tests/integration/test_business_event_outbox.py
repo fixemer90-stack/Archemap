@@ -78,7 +78,7 @@ async def self_report_tables(registration_tables: None) -> AsyncGenerator[None, 
 
 
 @pytest.mark.usefixtures("self_report_tables")
-@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure", "concurrent-replay"])
+@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure", "concurrent-replay", "worker-loss"])
 async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
     monkeypatch: pytest.MonkeyPatch, scenario: str
 ) -> None:
@@ -130,6 +130,8 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
                 assert (events[0].entity_id, events[0].subject_id) == (report.id, user_id)
                 assert (events[0].product, events[0].occurred_at, events[0].details) == ("self", report.created_at, {})
             observed_report_ids.append(report.id)
+        if scenario == "worker-loss":
+            raise asyncio.CancelledError
         return []
 
     monkeypatch.setattr(self_worker, "_ensure_ready_segments", narrative_probe)
@@ -157,7 +159,11 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
         )
 
-    if scenario == "concurrent-replay":
+    if scenario == "worker-loss":
+        with pytest.raises(asyncio.CancelledError):
+            await force_same_generation()
+        result = await force_same_generation()
+    elif scenario == "concurrent-replay":
         first, second = await asyncio.gather(force_same_generation(), force_same_generation())
         assert first["report_id"] == second["report_id"]
         result = next(item for item in (first, second) if item["status"] == "narrative_failed")
@@ -179,8 +185,21 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
     assert reused["status"] == "already_exists"
     assert len(observed_report_ids) == 1
     async with session_factory() as fresh:
-        assert await fresh.scalar(select(func.count()).select_from(self_models.NatalReport)) == 1
+        report = (await fresh.scalars(select(self_models.NatalReport))).one()
+        assert str(report.id) == result["report_id"]
+        assert report.status == "narrative_failed"
+        if scenario == "worker-loss":
+            generation = (
+                await fresh.scalars(
+                    select(self_models.NatalReportGeneration).where(
+                        self_models.NatalReportGeneration.generation_id == generation_id
+                    )
+                )
+            ).one()
+            assert generation.status == "narrative_failed"
+            assert generation.diagnostics["error_code"] == "narrative_worker_interrupted"
         assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == int(enabled)
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
 
 
 @pytest.fixture

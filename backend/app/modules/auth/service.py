@@ -25,6 +25,8 @@ from app.core.security import (
     verify_password,
 )
 from app.core.token_blacklist import blacklist_token, is_token_blacklisted
+from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType
+from app.modules.analytics.service import emit_business_event
 from app.modules.auth.models import IdentityLink
 from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
@@ -120,9 +122,19 @@ class AuthService:
         await self.db.flush()
         await self.db.refresh(user)
 
-        if not settings.AUTO_VERIFY_EMAIL:
-            verification_service = VerificationService(self.db)
-            token = await verification_service.create_verification(user.id)
+        verification_service = None if settings.AUTO_VERIFY_EMAIL else VerificationService(self.db)
+        token = await verification_service.create_verification(user.id) if verification_service else None
+        if settings.BUSINESS_MONITORING_ENABLED:
+            await emit_business_event(
+                self.db,
+                BusinessEventInput(
+                    event_type=EventType.REGISTRATION_COMPLETED,
+                    entity_id=user.id,
+                    occurred_at=user.created_at,
+                    details=EventDetails(registration_method="email"),
+                ),
+            )
+        if verification_service is not None and token is not None:
             await verification_service.send_verification_email(normalized_email, token)
 
         return {

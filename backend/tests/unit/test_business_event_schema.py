@@ -36,6 +36,15 @@ def test_registration_cannot_add_a_second_identity_component() -> None:
         BusinessEventInput.model_validate(payload(source_id=UUID(int=2)))
 
 
+def test_registration_method_is_bounded_and_event_specific() -> None:
+    details = EventDetails(registration_method="email")
+    assert BusinessEventInput.model_validate(payload(details=details)).details == details
+    with pytest.raises(ValidationError, match="details not registered"):
+        BusinessEventInput.model_validate(payload(event_type=EventType.PROVIDER_USAGE_OBSERVED, details=details))
+    with pytest.raises(ValidationError):
+        EventDetails.model_validate({"registration_method": "name@example.com"})
+
+
 def test_payment_confirmation_requires_local_merchant_binding() -> None:
     values = payload(event_type=EventType.PAYMENT_CONFIRMED, mode=Mode.LIVE)
     with pytest.raises(ValidationError, match="local merchant binding UUID"):

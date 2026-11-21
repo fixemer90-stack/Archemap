@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID
 
 import pytest
 
@@ -44,6 +45,54 @@ def _query_result(*, first: object | None = None, all_: list[object] | None = No
 
 
 class TestRegister:
+    @pytest.mark.parametrize("enabled", [False, True])
+    async def test_registration_event_is_gated_and_precedes_email(
+        self, service: AuthService, mock_db: AsyncMock, monkeypatch: pytest.MonkeyPatch, enabled: bool
+    ) -> None:
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
+        monkeypatch.setattr(settings, "AUTO_VERIFY_EMAIL", False)
+        mock_db.execute.return_value = _query_result()
+        occurred_at = datetime(2026, 1, 1, tzinfo=UTC)
+
+        async def refresh(user: object) -> None:
+            setattr(user, "id", UUID(int=1))  # noqa: B010
+            setattr(user, "created_at", occurred_at)  # noqa: B010
+
+        mock_db.refresh.side_effect = refresh
+        calls = MagicMock()
+        calls.create_token = AsyncMock(return_value="secret-token")
+        calls.send_email = AsyncMock()
+        calls.emit = AsyncMock()
+        with (
+            patch("app.modules.auth.service.hash_password", return_value="hashed"),
+            patch("app.modules.auth.service.VerificationService") as verification,
+            patch("app.modules.auth.service.emit_business_event", calls.emit, create=True),
+        ):
+            verification.return_value.create_verification = calls.create_token
+            verification.return_value.send_verification_email = calls.send_email
+            await service.register(
+                "new@example.com",
+                TEST_PASSWORD,
+                "Test User",
+                TEST_BIRTH_DATE,
+                TEST_BIRTH_PLACE,
+                TEST_LATITUDE,
+                TEST_LONGITUDE,
+                TEST_TIMEZONE,
+            )
+
+        expected = ["create_token", "emit", "send_email"] if enabled else ["create_token", "send_email"]
+        assert [call[0] for call in calls.mock_calls] == expected
+        if enabled:
+            assert calls.emit.await_args.args[0] is mock_db
+            event = calls.emit.await_args.args[1]
+            assert event.event_type.value == "registration_completed"
+            assert event.entity_id == UUID(int=1)
+            assert event.occurred_at == occurred_at
+            assert event.details.model_dump(mode="json", exclude_none=True) == {"registration_method": "email"}
+
     async def test_register_new_user(self, service: AuthService, mock_db: AsyncMock) -> None:
         mock_db.execute.return_value = _query_result()
 

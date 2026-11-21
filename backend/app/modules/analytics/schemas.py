@@ -57,7 +57,7 @@ class CostBasis(StrEnum):
 
 
 class EventDetails(StrictModel):
-    """Only observed usage counts; absent cost means unknown, never zero.
+    """Bounded per-event details; absent cost means unknown, never zero.
 
     Additional financial/report parameters require registry and schema review.
     No provider/model/request identifiers or free text are admitted.
@@ -69,6 +69,7 @@ class EventDetails(StrictModel):
     cost_microunits: int | None = Field(default=None, ge=0, le=1_000_000_000_000)
     cost_currency: Currency | None = None
     cost_basis: CostBasis | None = None
+    registration_method: Literal["email", "oauth"] | None = None
 
     @model_validator(mode="after")
     def complete_cost(self) -> Self:
@@ -114,7 +115,13 @@ class BusinessEventInput(StrictModel):
             and self.source_id is not None
         ):
             raise ValueError("event identity uses only the canonical entity UUID")
-        if self.event_type is not EventType.PROVIDER_USAGE_OBSERVED and self.details.model_dump(exclude_none=True):
+        keys = self.details.model_dump(exclude_none=True).keys()
+        if self.event_type is EventType.REGISTRATION_COMPLETED:
+            if keys - {"registration_method"}:
+                raise ValueError("details not registered for event type")
+        elif self.details.registration_method is not None or (
+            self.event_type is not EventType.PROVIDER_USAGE_OBSERVED and keys
+        ):
             raise ValueError("details not registered for event type")
         return self
 

@@ -3,7 +3,7 @@
 import asyncio
 import os
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -12,10 +12,15 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.config import settings
 from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
 from app.modules.analytics.repository import BusinessEventConflictError
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
 from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
+from app.modules.auth.service import AuthService
+from app.modules.charts.models import ChartSnapshot
+from app.modules.profiles.models import PersonProfile
+from app.modules.users.models import User
 from tests.conftest import test_engine
 from tests.conftest import test_session_factory as session_factory
 
@@ -48,6 +53,65 @@ NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 def fact() -> BusinessEventInput:
     return BusinessEventInput(event_type=EventType.REGISTRATION_COMPLETED, entity_id=UUID(int=1), occurred_at=NOW)
+
+
+@pytest.fixture
+async def registration_tables(_setup_database: None) -> AsyncGenerator[None, None]:
+    metadata = User.metadata
+    tables = tuple(metadata.tables[model.__tablename__] for model in (User, PersonProfile, ChartSnapshot))
+    async with test_engine.begin() as conn:
+        await conn.run_sync(metadata.create_all, tables=tables, checkfirst=False)
+    try:
+        yield
+    finally:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(metadata.drop_all, tables=tables)
+
+
+@pytest.mark.usefixtures("registration_tables")
+@pytest.mark.parametrize("enabled,fail_outbox", [(False, False), (True, False), (True, True)])
+async def test_registration_and_analytics_commit_together(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool, fail_outbox: bool
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
+    monkeypatch.setattr(settings, "AUTO_VERIFY_EMAIL", True)
+    async with session_factory() as session:
+        if fail_outbox:
+            await session.execute(
+                text("ALTER TABLE business_event_outbox ADD CONSTRAINT t03_reject_queue CHECK (false)")
+            )
+            await session.commit()
+        signup = AuthService(session).register(
+            "fixture@example.com",
+            "fixture-password",
+            "Fixture",
+            date(1990, 5, 15),
+            "Москва",
+            55.75,
+            37.61,
+            "Europe/Moscow",
+        )
+        if fail_outbox:
+            with pytest.raises(IntegrityError):
+                await signup
+        else:
+            await signup
+        await session.commit()
+
+    async with session_factory() as fresh:
+        users = (await fresh.scalars(select(User))).all()
+        events = (await fresh.scalars(select(BusinessEvent))).all()
+        account_count = 0 if fail_outbox else 1
+        assert len(users) == account_count
+        assert await fresh.scalar(select(func.count()).select_from(PersonProfile)) == account_count
+        assert await fresh.scalar(select(func.count()).select_from(ChartSnapshot)) == account_count
+        event_count = 1 if enabled and not fail_outbox else 0
+        assert len(events) == event_count
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == event_count
+        if event_count:
+            assert events[0].entity_id == users[0].id
+            assert events[0].occurred_at == users[0].created_at
+            assert events[0].details == {"registration_method": "email"}
 
 
 @pytest.mark.usefixtures("_setup_database")

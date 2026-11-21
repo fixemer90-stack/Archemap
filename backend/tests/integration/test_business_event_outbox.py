@@ -78,7 +78,7 @@ async def self_report_tables(registration_tables: None) -> AsyncGenerator[None, 
 
 
 @pytest.mark.usefixtures("self_report_tables")
-@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure"])
+@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure", "concurrent-replay"])
 async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
     monkeypatch: pytest.MonkeyPatch, scenario: str
 ) -> None:
@@ -108,7 +108,9 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             self_models.NatalReportGeneration(generation_id=generation_id, user_id=user_id, profile_id=profile_id)
         )
         if scenario == "outbox-failure":
-            await session.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false)"))
+            await session.execute(
+                text("ALTER TABLE business_event_outbox ADD CONSTRAINT t03_self_outbox CHECK (false)")
+            )
         await session.commit()
 
     observed_report_ids: list[UUID] = []
@@ -147,19 +149,37 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
                 BusinessEventOutbox,
             ):
                 assert await fresh.scalar(select(func.count()).select_from(model)) == 0
-        return
-    result = await self_worker._generate_natal_report_v2_async(
-        user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
-    )
+            await fresh.execute(text("ALTER TABLE business_event_outbox DROP CONSTRAINT t03_self_outbox"))
+            await fresh.commit()
+
+    async def force_same_generation() -> dict[str, object]:
+        return await self_worker._generate_natal_report_v2_async(
+            user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
+        )
+
+    if scenario == "concurrent-replay":
+        first, second = await asyncio.gather(force_same_generation(), force_same_generation())
+        assert first["report_id"] == second["report_id"]
+        result = next(item for item in (first, second) if item["status"] == "narrative_failed")
+    else:
+        result = await force_same_generation()
     assert result["status"] == "narrative_failed"  # No narrative segments were supplied by the probe.
     assert len(observed_report_ids) == 1
+    replayed = await force_same_generation()
+    assert replayed["report_id"] == result["report_id"]
+    assert replayed["status"] == result["status"]
     monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    reuse_id = UUID(int=14)
+    async with session_factory() as session:
+        session.add(self_models.NatalReportGeneration(generation_id=reuse_id, user_id=user_id, profile_id=profile_id))
+        await session.commit()
     reused = await self_worker._generate_natal_report_v2_async(
-        user_id=str(user_id), profile_id=str(profile_id), generation_id=str(UUID(int=14))
+        user_id=str(user_id), profile_id=str(profile_id), generation_id=str(reuse_id)
     )
     assert reused["status"] == "already_exists"
     assert len(observed_report_ids) == 1
     async with session_factory() as fresh:
+        assert await fresh.scalar(select(func.count()).select_from(self_models.NatalReport)) == 1
         assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == int(enabled)
 
 

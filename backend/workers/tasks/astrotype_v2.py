@@ -230,6 +230,44 @@ async def _generate_natal_report_v2_async(
     async with async_session_factory() as db:
         repository = AstrotypeV2Repository(db)
         revision: ProfileBirthDataRevision | None = None
+        generation_query = None
+        if revision_uuid is None:
+            generation_query = (
+                select(models.NatalReportGeneration)
+                .where(
+                    models.NatalReportGeneration.generation_id == generation_uuid,
+                    models.NatalReportGeneration.user_id == user_uuid,
+                    models.NatalReportGeneration.profile_id == profile_uuid,
+                )
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            generation = await db.scalar(generation_query)
+            if generation is None:
+                raise ValueError("Generation not found")
+            if generation.report_id is None:
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status="running",
+                    diagnostics={"force": force, "stage": "started"},
+                )
+                await db.commit()
+                # Preserve visible running status, then reclaim and re-read before building the foundation.
+                generation = await db.scalar(generation_query)
+                if generation is None:
+                    raise ValueError("Generation not found")
+            if generation.report_id is not None:
+                existing = await repository.get_report(generation.report_id)
+                if existing is None:
+                    raise ValueError("Generation report not found")
+                return _task_payload(
+                    generation_id=generation_id,
+                    profile_id=profile_uuid,
+                    report=existing,
+                    status=generation.status,
+                    force=force,
+                )
         try:
             _log_generation_started(
                 logger,
@@ -274,14 +312,6 @@ async def _generate_natal_report_v2_async(
                     diagnostics={"force": force, "stage": "started", "source": "birth_data_refinement"},
                 )
                 await repository.flush()
-            else:
-                await _persist_generation_status(
-                    repository=repository,
-                    generation_id=generation_uuid,
-                    status="running",
-                    diagnostics={"force": force, "stage": "started"},
-                )
-                await db.commit()
             existing_report = await repository.get_latest_report_for_profile(
                 profile_id=profile_uuid,
                 user_id=user_uuid,
@@ -554,12 +584,19 @@ async def _generate_natal_report_v2_async(
                 )
         except Exception:
             await db.rollback()
-            await _persist_generation_status(
-                repository=repository,
-                generation_id=generation_uuid,
-                status="failed",
-                diagnostics={"stage": "pipeline", "error": "generation aborted"},
-            )
+            if generation_query is not None:
+                # A competing delivery may have completed while this one was rolling back.
+                generation = await db.scalar(generation_query)
+                can_mark_failed = generation is not None and generation.report_id is None
+            else:
+                can_mark_failed = True
+            if can_mark_failed:
+                await _persist_generation_status(
+                    repository=repository,
+                    generation_id=generation_uuid,
+                    status="failed",
+                    diagnostics={"stage": "pipeline", "error": "generation aborted"},
+                )
             if revision_uuid is not None:
                 failed_revision = await db.scalar(
                     select(ProfileBirthDataRevision).where(ProfileBirthDataRevision.id == revision_uuid)

@@ -3,7 +3,7 @@
 import asyncio
 import os
 from collections.abc import AsyncGenerator
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
 import pytest
@@ -18,15 +18,17 @@ from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
 from app.modules.analytics.repository import BusinessEventConflictError
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
 from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
+from app.modules.astrotype_v2 import models as self_models
 from app.modules.auth.models import EmailVerification, IdentityLink
 from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.service import AuthService
 from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
-from app.modules.profiles.models import PersonProfile
+from app.modules.profiles.models import PersonProfile, ProfileActiveNatalReport
 from app.modules.users.models import User
 from tests.conftest import test_engine
 from tests.conftest import test_session_factory as session_factory
+from workers.tasks import astrotype_v2 as self_worker
 
 pytestmark = pytest.mark.skipif(
     os.getenv("E23_DISPOSABLE_TEST_DATABASES") != "1", reason="opt in only with dedicated E23 disposable databases"
@@ -57,6 +59,108 @@ NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 def fact() -> BusinessEventInput:
     return BusinessEventInput(event_type=EventType.REGISTRATION_COMPLETED, entity_id=UUID(int=1), occurred_at=NOW)
+
+
+@pytest.fixture
+async def self_report_tables(registration_tables: None) -> AsyncGenerator[None, None]:
+    metadata = self_models.NatalReport.metadata
+    tables = (
+        *(table for name, table in metadata.tables.items() if name.startswith("astrotype_v2_")),
+        metadata.tables[ProfileActiveNatalReport.__tablename__],
+    )
+    async with test_engine.begin() as conn:
+        await conn.run_sync(metadata.create_all, tables=tables, checkfirst=False)
+    try:
+        yield
+    finally:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(metadata.drop_all, tables=tables)
+
+
+@pytest.mark.usefixtures("self_report_tables")
+@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure"])
+async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
+    monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    enabled = scenario != "off"
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
+    monkeypatch.setattr(self_worker, "async_session_factory", session_factory)
+    user_id, profile_id, generation_id = UUID(int=11), UUID(int=12), UUID(int=13)
+    async with session_factory() as session:
+        session.add(User(id=user_id, email="self-owner@example.com", hashed_password="", is_verified=True))
+        await session.flush()
+        session.add(
+            PersonProfile(
+                id=profile_id,
+                user_id=user_id,
+                name="Fixture",
+                birth_date=date(1990, 1, 1),
+                birth_time=time(12),
+                birth_time_accuracy="exact",
+                birth_place="Moscow",
+                latitude=55.75,
+                longitude=37.61,
+                timezone="Europe/Moscow",
+            )
+        )
+        await session.flush()
+        session.add(
+            self_models.NatalReportGeneration(generation_id=generation_id, user_id=user_id, profile_id=profile_id)
+        )
+        if scenario == "outbox-failure":
+            await session.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false)"))
+        await session.commit()
+
+    observed_report_ids: list[UUID] = []
+
+    async def narrative_probe(**_kwargs: object) -> list[self_models.ReportSegmentGeneration]:
+        async with session_factory() as fresh:
+            report = (await fresh.scalars(select(self_models.NatalReport))).one()
+
+            assert report.status == "narrative_generating"
+            assert report.deterministic_payload
+            assert report.infographic_data_id is not None
+            events = (await fresh.scalars(select(BusinessEvent))).all()
+            assert len(events) == int(enabled)
+            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
+            if enabled:
+                assert events[0].event_type == "basic_report_ready"
+                assert (events[0].entity_id, events[0].subject_id) == (report.id, user_id)
+                assert (events[0].product, events[0].occurred_at, events[0].details) == ("self", report.created_at, {})
+            observed_report_ids.append(report.id)
+        return []
+
+    monkeypatch.setattr(self_worker, "_ensure_ready_segments", narrative_probe)
+
+    if scenario == "outbox-failure":
+        with pytest.raises(IntegrityError):
+            await self_worker._generate_natal_report_v2_async(
+                user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
+            )
+        assert observed_report_ids == []
+        async with session_factory() as fresh:
+            for model in (
+                self_models.NatalReport,
+                self_models.NatalChart,
+                self_models.NatalFact,
+                BusinessEvent,
+                BusinessEventOutbox,
+            ):
+                assert await fresh.scalar(select(func.count()).select_from(model)) == 0
+        return
+    result = await self_worker._generate_natal_report_v2_async(
+        user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
+    )
+    assert result["status"] == "narrative_failed"  # No narrative segments were supplied by the probe.
+    assert len(observed_report_ids) == 1
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    reused = await self_worker._generate_natal_report_v2_async(
+        user_id=str(user_id), profile_id=str(profile_id), generation_id=str(UUID(int=14))
+    )
+    assert reused["status"] == "already_exists"
+    assert len(observed_report_ids) == 1
+    async with session_factory() as fresh:
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == int(enabled)
 
 
 @pytest.fixture

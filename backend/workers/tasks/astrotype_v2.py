@@ -20,6 +20,8 @@ from app.chart_engine.chart import build_chart
 from app.config import settings
 from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.chart_adapter import NatalTimingProvenance, build_natal_chart_rows
 from app.modules.astrotype_v2.chart_persistence import persist_natal_chart_rows
@@ -431,6 +433,18 @@ async def _generate_natal_report_v2_async(
                     report_id=report_id,
                 )
             await repository.flush()
+            if settings.BUSINESS_MONITORING_ENABLED:
+                # This commit makes the calculation usable regardless of the later narrative outcome.
+                await emit_business_event(
+                    db,
+                    BusinessEventInput(
+                        event_type=EventType.BASIC_REPORT_READY,
+                        entity_id=report_id,
+                        subject_id=user_uuid,
+                        product=Product.SELF,
+                        occurred_at=report.created_at,
+                    ),
+                )
             await db.commit()
 
             try:

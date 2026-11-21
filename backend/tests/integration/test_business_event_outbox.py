@@ -1,0 +1,422 @@
+"""Real PostgreSQL proofs; TEST_DATABASE_URL must name a disposable database."""
+
+import asyncio
+import os
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
+
+import pytest
+from sqlalchemy import Connection, event, func, select, text
+from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
+
+from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
+from app.modules.analytics.repository import BusinessEventConflictError
+from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
+from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
+from tests.conftest import test_engine
+from tests.conftest import test_session_factory as session_factory
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("E23_DISPOSABLE_TEST_DATABASES") != "1", reason="opt in only with dedicated E23 disposable databases"
+)
+
+
+@pytest.fixture
+async def _setup_database() -> AsyncGenerator[None, None]:
+    """Install only the two tables owned by the outbox in the disposable database."""
+    metadata = BusinessEvent.metadata
+    tables = tuple(metadata.tables[model.__tablename__] for model in (BusinessEvent, BusinessEventOutbox))
+    async with test_engine.begin() as conn:
+        if await conn.scalar(text("SELECT current_database()")) != "e23_tests":
+            pytest.fail("outbox fixture requires the dedicated e23_tests database")
+        for table in tables:
+            if await conn.scalar(text("SELECT to_regclass(:name)"), {"name": table.name}) is not None:
+                pytest.fail("outbox fixture refuses existing analytics tables")
+        await conn.run_sync(metadata.create_all, tables=tables, checkfirst=False)
+    try:
+        yield
+    finally:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(metadata.drop_all, tables=tables)
+
+
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def fact() -> BusinessEventInput:
+    return BusinessEventInput(event_type=EventType.REGISTRATION_COMPLETED, entity_id=UUID(int=1), occurred_at=NOW)
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_event_outbox_and_caller_mutation_rollback_together(db_session: AsyncSession) -> None:
+    await db_session.execute(text("CREATE TABLE t02_caller_mutation (id integer PRIMARY KEY)"))
+    await db_session.commit()
+    await db_session.execute(text("INSERT INTO t02_caller_mutation VALUES (1)"))
+    event = await emit_business_event(db_session, fact(), recorded_at=NOW)
+    assert event.id is not None
+    assert await db_session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+    await db_session.rollback()
+    async with session_factory() as fresh:
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == 0
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 0
+        assert await fresh.scalar(text("SELECT count(*) FROM t02_caller_mutation")) == 0
+        await fresh.execute(text("DROP TABLE t02_caller_mutation"))
+        await fresh.commit()
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_committing_sessions_deduplicate_and_conflict_without_changing_history() -> None:
+    async def emit() -> tuple[UUID, datetime]:
+        async with session_factory() as session:
+            event = await emit_business_event(session, fact(), recorded_at=NOW)
+            result = (event.id, event.created_at)
+            await session.commit()
+            return result
+
+    results = await asyncio.gather(emit(), emit())
+    assert results[0] == results[1]
+    async with session_factory() as session:
+        replay = await emit_business_event(session, fact(), recorded_at=NOW + timedelta(days=1))
+        assert (replay.id, replay.created_at) == results[0]
+        await session.execute(text("CREATE TABLE t02_conflicting_caller_mutation (id integer PRIMARY KEY)"))
+        changed = fact().model_copy(update={"mode": Mode.LIVE})
+        with pytest.raises(BusinessEventConflictError, match=r"^business event identity conflicts with stored facts$"):
+            await emit_business_event(session, changed, recorded_at=NOW)
+        await session.commit()  # Catch-and-commit must not alter the event or outbox.
+    async with session_factory() as session:
+        assert await session.scalar(text("SELECT to_regclass('t02_conflicting_caller_mutation')")) is None
+        events = (await session.scalars(select(BusinessEvent))).all()
+        assert len(events) == 1
+        assert events[0].mode == "unknown"
+        assert events[0].created_at == NOW
+        assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"mode": Mode.TEST},
+        {"subject_id": UUID(int=2)},
+        {"product": Product.SELF},
+        {"occurred_at": NOW + timedelta(seconds=1)},
+        {"details": EventDetails(input_tokens=2)},
+    ],
+)
+@pytest.mark.usefixtures("_setup_database")
+async def test_every_business_fact_is_immutable_on_catch_and_commit(change: dict[str, object]) -> None:
+    original = BusinessEventInput(
+        event_type=EventType.PROVIDER_USAGE_OBSERVED,
+        entity_id=UUID(int=3),
+        occurred_at=NOW,
+        details=EventDetails(input_tokens=1),
+    )
+    async with session_factory() as session:
+        first = await emit_business_event(session, original, recorded_at=NOW)
+        event_id = first.id
+        await session.commit()
+    async with session_factory() as session:
+        with pytest.raises(BusinessEventConflictError):
+            await emit_business_event(session, original.model_copy(update=change), recorded_at=NOW)
+        await session.commit()
+    async with session_factory() as session:
+        row = (await session.scalars(select(BusinessEvent))).one()
+        assert row.id == event_id
+        assert row.mode == "unknown"
+        assert row.subject_id is None
+        assert row.product is None
+        assert row.occurred_at == NOW
+        assert row.details == {"input_tokens": 1}
+        assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_claim_contention_restart_and_fencing() -> None:
+    async with session_factory() as session:
+        await emit_business_event(session, fact(), recorded_at=NOW)
+        await session.commit()
+    async with session_factory() as first, session_factory() as second:
+        claim = await claim_outbox(first, now=NOW, lease_seconds=10)
+        assert claim is not None
+        assert await claim_outbox(second, now=NOW, lease_seconds=10) is None
+        await second.commit()
+        await first.commit()
+    async with session_factory() as restarted:
+        assert await claim_outbox(restarted, now=NOW + timedelta(seconds=9), lease_seconds=10) is None
+        replacement = await claim_outbox(restarted, now=NOW + timedelta(seconds=10), lease_seconds=10)
+        assert replacement is not None
+        assert replacement.outbox_id == claim.outbox_id
+        assert replacement.token != claim.token
+        await restarted.commit()
+    async with session_factory() as stale:
+        assert not await complete_outbox(stale, claim, now=NOW + timedelta(seconds=11))
+        assert not await retry_outbox(stale, claim, now=NOW + timedelta(seconds=11), delay_seconds=1)
+        assert await complete_outbox(stale, replacement, now=NOW + timedelta(seconds=11))
+        assert not await complete_outbox(stale, replacement, now=NOW + timedelta(seconds=11))
+        await stale.commit()
+    async with session_factory() as fresh:
+        row = (await fresh.scalars(select(BusinessEventOutbox))).one()
+        assert row.status == "delivered"
+        assert row.attempts == 2
+        assert row.claim_token is None
+        assert row.delivered_at == NOW + timedelta(seconds=11)
+        assert await claim_outbox(fresh, now=NOW + timedelta(days=1), lease_seconds=10) is None
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_retry_budget_delay_and_expired_completion() -> None:
+    async with session_factory() as session:
+        await emit_business_event(session, fact(), recorded_at=NOW)
+        await session.commit()
+    async with session_factory() as session:
+        for invalid in (0, -1, 3601, True):
+            with pytest.raises(ValueError):
+                await claim_outbox(session, now=NOW, lease_seconds=invalid)
+        with pytest.raises(ValueError):
+            await claim_outbox(session, now=datetime(2026, 1, 1), lease_seconds=1)
+        for attempt in range(10):
+            clock = NOW + timedelta(seconds=attempt * 3)
+            claim = await claim_outbox(session, now=clock, lease_seconds=2)
+            assert claim is not None
+            if attempt == 0:
+                for invalid in (0, -1, 86401, True):
+                    with pytest.raises(ValueError):
+                        await retry_outbox(session, claim, now=clock, delay_seconds=invalid)
+            if attempt == 9:
+                assert not await complete_outbox(session, claim, now=clock + timedelta(seconds=2))
+            else:
+                assert await retry_outbox(session, claim, now=clock, delay_seconds=3)
+                assert await claim_outbox(session, now=clock + timedelta(seconds=2), lease_seconds=2) is None
+            await session.commit()
+        assert await claim_outbox(session, now=NOW + timedelta(days=2), lease_seconds=2) is None
+        row = (await session.scalars(select(BusinessEventOutbox))).one()
+        assert row.attempts == 10
+        assert row.status == "pending"
+
+
+@pytest.mark.usefixtures("_setup_database")
+@pytest.mark.parametrize("cancel_enqueue", [False, True], ids=["integrity-error", "cancelled"])
+async def test_queue_failure_caught_then_commit_cannot_leave_an_orphan_event(cancel_enqueue: bool) -> None:
+    def cancel_outbox_insert(_conn: Connection, _cursor: object, statement: str, *_args: object) -> None:
+        if statement.startswith("INSERT INTO business_event_outbox "):
+            raise asyncio.CancelledError
+
+    async with session_factory() as session:
+        if not cancel_enqueue:
+            await session.execute(
+                text("ALTER TABLE business_event_outbox ADD CONSTRAINT t02_reject_queue CHECK (false)")
+            )
+            await session.commit()
+        await session.execute(text("CREATE TABLE t02_queue_failure_caller (id integer PRIMARY KEY)"))
+        if cancel_enqueue:
+            event.listen((await session.connection()).sync_connection, "before_cursor_execute", cancel_outbox_insert)
+        with pytest.raises(asyncio.CancelledError if cancel_enqueue else IntegrityError):
+            await emit_business_event(session, fact(), recorded_at=NOW)
+        await session.commit()
+    async with session_factory() as session:
+        assert await session.scalar(text("SELECT to_regclass('t02_queue_failure_caller')")) is None
+        assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 0
+        assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 0
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_payment_binding_mismatch_aborts_caller_write() -> None:
+    payment = BusinessEventInput(
+        event_type=EventType.PAYMENT_CONFIRMED, entity_id=UUID(int=9), source_id=UUID(int=10), occurred_at=NOW
+    )
+    async with session_factory() as session:
+        receipt = await emit_business_event(session, payment, recorded_at=NOW)
+        await session.commit()
+        assert await emit_business_event(session, payment, recorded_at=NOW) == receipt
+        await session.execute(text("CREATE TABLE t02_payment_conflict_caller (id integer PRIMARY KEY)"))
+        with pytest.raises(BusinessEventConflictError):
+            await emit_business_event(session, payment.model_copy(update={"source_id": UUID(int=11)}), recorded_at=NOW)
+        await session.commit()
+    async with session_factory() as session:
+        assert await session.scalar(text("SELECT to_regclass('t02_payment_conflict_caller')")) is None
+        stored = (await session.scalars(select(BusinessEvent))).one()
+        assert (stored.id, stored.source_id) == (receipt.id, payment.source_id)
+        assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_replay_compares_database_json_not_mutated_identity_map() -> None:
+    original = BusinessEventInput(
+        event_type=EventType.PROVIDER_USAGE_OBSERVED,
+        entity_id=UUID(int=9),
+        occurred_at=NOW,
+        details=EventDetails(input_tokens=1),
+    )
+    async with session_factory() as session:
+        receipt = await emit_business_event(session, original, recorded_at=NOW)
+        await session.commit()
+        row = (await session.scalars(select(BusinessEvent))).one()
+        row.details["input_tokens"] = 2
+        assert await emit_business_event(session, original, recorded_at=NOW) == receipt
+        with pytest.raises(BusinessEventConflictError):
+            await emit_business_event(
+                session, original.model_copy(update={"details": EventDetails(input_tokens=2)}), recorded_at=NOW
+            )
+
+
+@pytest.mark.usefixtures("_setup_database")
+async def test_claim_rollback_does_not_consume_attempt_or_leave_valid_token() -> None:
+    async with session_factory() as session:
+        await emit_business_event(session, fact(), recorded_at=NOW)
+        await session.commit()
+        discarded = await claim_outbox(session, now=NOW, lease_seconds=10)
+        assert discarded is not None
+        await session.rollback()
+    async with session_factory() as session:
+        current = await claim_outbox(session, now=NOW, lease_seconds=10)
+        assert current is not None
+        assert current.token != discarded.token
+        assert not await complete_outbox(session, discarded, now=NOW)
+        assert await complete_outbox(session, current, now=NOW)
+        await session.commit()
+    async with session_factory() as session:
+        row = (await session.scalars(select(BusinessEventOutbox))).one()
+        assert row.attempts == 1
+        assert row.status == "delivered"
+
+
+MIGRATION_DATABASE_URL = os.getenv("BUSINESS_EVENT_MIGRATION_DATABASE_URL")
+
+
+@pytest.fixture
+async def migration_sessions() -> AsyncGenerator[async_sessionmaker[AsyncSession], None]:
+    if MIGRATION_DATABASE_URL is None:
+        pytest.skip("set BUSINESS_EVENT_MIGRATION_DATABASE_URL to a dedicated disposable migration database")
+    engine = create_async_engine(MIGRATION_DATABASE_URL, poolclass=NullPool)
+    async with engine.connect() as conn:
+        if await conn.scalar(text("SELECT current_database()")) != "e23_migration":
+            pytest.fail("migration test requires the dedicated e23_migration database")
+        if await conn.scalar(text("SELECT current_schemas(false)")) != ["public"]:
+            pytest.fail("migration test requires public as the only effective search path")
+        if await conn.scalar(
+            text("""
+            SELECT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                           WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema')
+        """)
+        ):
+            pytest.fail("migration test requires a database with no existing user relations")
+    try:
+        yield async_sessionmaker(engine, expire_on_commit=False)
+    finally:
+        await engine.dispose()
+
+
+async def migration(*arguments: str) -> tuple[int, str]:
+    import sys
+
+    assert MIGRATION_DATABASE_URL is not None
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "alembic",
+        *arguments,
+        env={**os.environ, "DATABASE_URL": MIGRATION_DATABASE_URL, "LLM_ENABLED": "false"},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    output, _ = await asyncio.wait_for(process.communicate(), timeout=120)
+    assert process.returncode is not None
+    return process.returncode, output.decode()
+
+
+async def test_migration_roundtrip_live_schema_parity_and_nonempty_guard(
+    migration_sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    from sqlalchemy import Connection, MetaData, Table, inspect
+
+    session_factory = migration_sessions
+
+    from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
+
+    code, output = await migration("upgrade", "head")
+    assert code == 0, output
+
+    def parity(connection: Connection) -> None:
+        connection.execute(text("CREATE SCHEMA t02_expected"))
+        expected = MetaData(schema="t02_expected")
+        for model in (BusinessEvent, BusinessEventOutbox):
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.to_metadata(expected, schema="t02_expected")
+        expected.create_all(connection)
+        inspector = inspect(connection)
+        for model in (BusinessEvent, BusinessEventOutbox):
+            table = model.__table__
+            assert isinstance(table, Table)
+            for actual, reference in zip(
+                sorted(inspector.get_columns(table.name), key=lambda column: column["name"]),
+                sorted(inspector.get_columns(table.name, schema="t02_expected"), key=lambda column: column["name"]),
+                strict=True,
+            ):
+                assert (actual["name"], str(actual["type"]), actual["nullable"], actual["default"]) == (
+                    reference["name"],
+                    str(reference["type"]),
+                    reference["nullable"],
+                    reference["default"],
+                )
+            definitions = text(
+                "SELECT c.conname, pg_get_constraintdef(c.oid) FROM pg_constraint c "
+                "JOIN pg_class t ON t.oid = c.conrelid "
+                "JOIN pg_namespace n ON n.oid = t.relnamespace "
+                "WHERE t.relname = :table AND n.nspname = :schema ORDER BY c.conname"
+            )
+            actual_constraints = connection.execute(definitions, {"table": table.name, "schema": "public"}).all()
+            expected_constraints = connection.execute(
+                definitions, {"table": table.name, "schema": "t02_expected"}
+            ).all()
+            assert [(name, definition.replace("t02_expected.", "")) for name, definition in expected_constraints] == [
+                (name, definition) for name, definition in actual_constraints
+            ]
+            assert {column["name"] for column in inspector.get_columns(table.name)} == set(table.columns.keys())
+            assert {
+                (index["name"], tuple(index["column_names"]), index["unique"])
+                for index in inspector.get_indexes(table.name)
+                if not index.get("duplicates_constraint")
+            } == {(index.name, tuple(column.name for column in index.columns), index.unique) for index in table.indexes}
+            assert {item["name"] for item in inspector.get_check_constraints(table.name)} == {
+                item.name for item in table.constraints if item.__class__.__name__ == "CheckConstraint"
+            }
+            assert {item["name"] for item in inspector.get_unique_constraints(table.name)} == {
+                item.name for item in table.constraints if item.__class__.__name__ == "UniqueConstraint"
+            }
+        expected.drop_all(connection)
+        connection.execute(text("DROP SCHEMA t02_expected"))
+
+    async with session_factory() as session:
+        await (await session.connection()).run_sync(parity)
+        await session.execute(text("CREATE TABLE t02_migration_sentinel (id integer PRIMARY KEY)"))
+        await session.execute(text("INSERT INTO t02_migration_sentinel VALUES (42)"))
+        await session.commit()
+    code, output = await migration("downgrade", "a8b9c0d1e2f3")
+    assert code == 0, output
+    async with session_factory() as session:
+        assert await session.scalar(text("SELECT id FROM t02_migration_sentinel")) == 42
+        assert await session.scalar(text("SELECT to_regclass('business_events')")) is None
+    code, output = await migration("upgrade", "head")
+    assert code == 0, output
+    async with session_factory() as session:
+        await (await session.connection()).run_sync(parity)
+        await emit_business_event(session, fact(), recorded_at=NOW)
+        await session.commit()
+    for sql in (
+        "UPDATE business_events SET mode = 'test'",
+        "DELETE FROM business_events",
+        "TRUNCATE business_events CASCADE",
+    ):
+        async with session_factory() as session:
+            with pytest.raises(DBAPIError, match="business events are append-only"):
+                await session.execute(text(sql))
+    code, output = await migration("downgrade", "a8b9c0d1e2f3")
+    assert code != 0
+    assert "nonempty business monitoring history" in output
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 1
+        assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+        assert await session.scalar(text("SELECT id FROM t02_migration_sentinel")) == 42

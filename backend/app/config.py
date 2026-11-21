@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     YOOKASSA_SECRET_KEY: str = ""
     YOOKASSA_WEBHOOK_SECRET: str = ""
 
+    # ── Business monitoring / outbound analytics ───────────────────────
+    BUSINESS_MONITORING_ENABLED: bool = False
+    BUSINESS_ALERTS_ENABLED: bool = False
+    YANDEX_METRICA_EXPORT_ENABLED: bool = False
+
     # ── OAuth / Yandex ID ──────────────────────────────────────────────
     YANDEX_CLIENT_ID: str = ""
     YANDEX_CLIENT_SECRET: str = ""

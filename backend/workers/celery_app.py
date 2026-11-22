@@ -56,6 +56,10 @@ app.conf.update(
             "task": "career.monitor_pipeline",
             "schedule": 300.0,
         },
+        "reconcile-career-publications": {
+            "task": "career.reconcile_publications",
+            "schedule": 60.0,
+        },
         "reconcile-child-generations": {
             "task": "child.reconcile_generations",
             "schedule": float(settings.CHILD_GENERATION_RECONCILE_INTERVAL_SECONDS),

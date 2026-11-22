@@ -99,6 +99,15 @@ def test_career_monitor_is_registered_in_the_local_beat_schedule() -> None:
     assert schedule["task"] in app.tasks
 
 
+def test_career_publication_reconciler_is_registered_in_beat() -> None:
+    import workers.tasks.career  # noqa: F401
+
+    schedule = app.conf.beat_schedule["reconcile-career-publications"]
+    assert schedule["task"] == "career.reconcile_publications"
+    assert schedule["schedule"] == 60.0
+    assert schedule["task"] in app.tasks
+
+
 def test_birth_data_refinement_dispatch_is_registered_in_the_beat_schedule() -> None:
     import workers.tasks  # noqa: F401
 

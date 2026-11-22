@@ -17,6 +17,8 @@ from app.config import settings
 from app.core.models import BaseModel
 from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2.models import NatalFact
 from app.modules.career import models
 from app.modules.career.archetype_engine import build_archetype_rows, match_archetypes
@@ -124,6 +126,119 @@ async def _run_narrative_quality_pipeline(
     return segment_rows, assembled
 
 
+async def _emit_career_terminal(
+    db: AsyncSession,
+    generation: models.CareerGeneration,
+    *,
+    report: models.CareerReport | None = None,
+) -> None:
+    if not settings.BUSINESS_MONITORING_ENABLED:
+        return
+    status = generation.status
+    if status in {"failed", "narrative_failed"}:
+        event_type = EventType.REPORT_FAILED
+        entity_id = generation.generation_id
+        artifact: models.CareerGeneration | models.CareerReport = generation
+    elif report is not None and status in {"ready", "partial_failure"}:
+        event_type = EventType.REPORT_READY if status == "ready" else EventType.REPORT_PARTIAL
+        entity_id = report.id
+        artifact = report
+    else:
+        return  # A deterministic checkpoint or successful subset is not terminal.
+
+    await db.flush()
+    await db.refresh(artifact, attribute_names=["updated_at"])
+    await emit_business_event(
+        db,
+        BusinessEventInput(
+            event_type=event_type,
+            entity_id=entity_id,
+            subject_id=generation.user_id,
+            product=Product.CAREER,
+            occurred_at=artifact.updated_at,
+        ),
+    )
+
+
+async def _publish_career_checkpoint(
+    db: AsyncSession,
+    generation_id: uuid.UUID,
+    *,
+    skip_locked: bool = False,
+) -> tuple[models.CareerGeneration | None, bool]:
+    generation = (
+        await db.execute(
+            select(models.CareerGeneration)
+            .where(models.CareerGeneration.generation_id == generation_id)
+            .with_for_update(skip_locked=skip_locked)
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
+    if generation is None or generation.pending_publication is None:
+        return generation, False
+    candidate = generation.pending_publication
+    status = candidate["status"]
+    report = None
+    if generation.report_id is not None:
+        report = await CareerRepository(db).get_report_for_user(generation.report_id, generation.user_id)
+        if report is None or (report.generation_id, report.career_profile_id, report.chart_id) != (
+            generation_id,
+            generation.career_profile_id,
+            generation.chart_id,
+        ):
+            raise RuntimeError("Career publication checkpoint has no matching report")
+        report.status = status
+    if "segments" in candidate:
+        if report is None:
+            raise RuntimeError("Career publication has no report")
+        report.narrative_payload = candidate["narrative_payload"]
+        report.assembled_payload = candidate["assembled_payload"]
+        db.add_all(
+            models.CareerSegmentGeneration(
+                career_profile_id=generation.career_profile_id,
+                chart_id=generation.chart_id,
+                generation_id=generation_id,
+                **segment,
+            )
+            for segment in candidate["segments"]
+        )
+    generation.status = status
+    generation.diagnostics = candidate["diagnostics"]
+    generation.pending_publication = None
+    await _emit_career_terminal(db, generation, report=report)
+    return generation, True
+
+
+@app.task(name="career.reconcile_publications")  # type: ignore[untyped-decorator]
+def reconcile_career_publications() -> int:
+    return run_async_in_worker(_reconcile_career_publications())
+
+
+async def _reconcile_career_publications() -> int:
+    async with async_session_factory() as db:
+        identifiers = (
+            await db.scalars(
+                select(models.CareerGeneration.generation_id)
+                .where(models.CareerGeneration.pending_publication.is_not(None))
+                .order_by(models.CareerGeneration.updated_at, models.CareerGeneration.generation_id)
+                .limit(50)
+            )
+        ).all()
+    recovered = 0
+    for generation_id in identifiers:
+        async with async_session_factory() as db:
+            try:
+                # A concurrent publisher can clear the candidate before we acquire its lock.
+                _, published = await _publish_career_checkpoint(db, generation_id, skip_locked=True)
+                if published:
+                    await db.commit()
+                    recovered += 1
+            except Exception:
+                await db.rollback()
+                logger.warning("career_publication_recovery_failed", generation_id=str(generation_id))
+    return recovered
+
+
 @app.task(  # type: ignore[untyped-decorator]
     name="career.generate_report",
     bind=True,
@@ -216,15 +331,17 @@ async def _generate_career_report_async(
         repository = CareerRepository(db)
         generation = await repository.claim_generation(generation_id)
         if generation is None:
-            existing = await _load_generation(db, generation_id)
+            existing, _ = await _publish_career_checkpoint(db, generation_id)
             if existing is None:
                 raise ValueError("Career generation not found")
-            return {
+            result = {
                 "generation_id": str(existing.generation_id),
                 "report_id": str(existing.report_id) if existing.report_id is not None else None,
                 "status": existing.status,
                 "duplicate_delivery": True,
             }
+            await db.commit()
+            return result
         await db.commit()
         stage = "deterministic"
         stage_started = perf_counter()
@@ -233,6 +350,7 @@ async def _generate_career_report_async(
             report_id=str(generation.report_id) if generation.report_id else None,
             user_id=str(generation.user_id),
         )
+        publishing_result = False
         try:
             event_logger.info("career_generation_started", operation=generation.operation)
             if generation.operation == "regenerate":
@@ -390,7 +508,29 @@ async def _generate_career_report_async(
                 report=report,
                 section_inputs=inputs,
             )
-            await repository.add_many(segment_rows)
+            publishing_result = True
+            generation.pending_publication = {
+                "status": assembled.status,
+                "diagnostics": {"stage": "complete", "report_status": assembled.status},
+                "narrative_payload": assembled.narrative_payload,
+                "assembled_payload": assembled.assembled_payload,
+                "segments": [
+                    {
+                        "section_key": s.section_key,
+                        "status": s.status,
+                        "prompt_version": s.prompt_version,
+                        "provider": s.provider,
+                        "model_version": s.model_version,
+                        "input_payload": s.input_payload,
+                        "output_payload": s.output_payload,
+                        "error": s.error,
+                    }
+                    for s in segment_rows
+                ],
+            }
+            await db.commit()
+            await _publish_career_checkpoint(db, generation_id)
+            await db.commit()
             for segment in segment_rows:
                 career_telemetry.record(
                     stage="narrative",
@@ -398,12 +538,6 @@ async def _generate_career_report_async(
                     operation=generation.operation,
                     section_key=segment.section_key,
                 )
-            report.status = assembled.status
-            report.narrative_payload = assembled.narrative_payload
-            report.assembled_payload = assembled.assembled_payload
-            generation.status = assembled.status
-            generation.diagnostics = {"stage": "complete", "report_status": assembled.status}
-            await db.commit()
             career_telemetry.record(
                 stage="narrative",
                 outcome="ready" if assembled.status == "ready" else "partial_failure",
@@ -413,7 +547,7 @@ async def _generate_career_report_async(
             event_logger.info(
                 "career_generation_completed",
                 report_id=str(report.id),
-                status=report.status,
+                status=generation.status,
                 scoring_version=report.scoring_version,
                 prompt_version=report.prompt_version,
                 model_version=settings.LLM_MODEL,
@@ -421,21 +555,22 @@ async def _generate_career_report_async(
             return {
                 "generation_id": str(generation.generation_id),
                 "report_id": str(report.id),
-                "status": report.status,
+                "status": generation.status,
             }
         except Exception as exc:
             await db.rollback()
+            if publishing_result:
+                # An outbox/commit error is not a narrative failure. Also never
+                # replace an already committed result if post-commit telemetry fails.
+                raise
             generation = await _load_generation(db, generation_id)
             if generation is not None:
-                generation.status = failure_status_for_generation(report_id=generation.report_id)
-                generation.diagnostics = {"stage": "failed", "error": type(exc).__name__}
-                if generation.report_id is not None:
-                    failed_report = await repository.get_report_for_user(
-                        generation.report_id,
-                        generation.user_id,
-                    )
-                    if failed_report is not None:
-                        failed_report.status = "narrative_failed"
+                generation.pending_publication = {
+                    "status": failure_status_for_generation(report_id=generation.report_id),
+                    "diagnostics": {"stage": "failed", "error": type(exc).__name__},
+                }
+                await db.commit()
+                await _publish_career_checkpoint(db, generation_id)
                 await db.commit()
                 career_telemetry.record(
                     stage=stage,

@@ -6,7 +6,18 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -293,6 +304,12 @@ class CareerGeneration(BaseModel):
             name="uq_career_generations_user_operation_idempotency",
         ),
         UniqueConstraint("generation_id", name="uq_career_generations_generation"),
+        Index(
+            "ix_career_generations_pending_publication",
+            "updated_at",
+            "generation_id",
+            postgresql_where=text("pending_publication IS NOT NULL"),
+        ),
     )
 
     generation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
@@ -316,6 +333,7 @@ class CareerGeneration(BaseModel):
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
     celery_task_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     diagnostics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    pending_publication: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
 
 class CareerReport(BaseModel):

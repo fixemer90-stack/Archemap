@@ -42,6 +42,7 @@ TASKS = {
     "astrotype_v2.generate_natal_report",
     "career.generate_report",
     "career.monitor_pipeline",
+    "career.reconcile_publications",
     "child.generate_report",
     "child.reconcile_generations",
     "profiles.dispatch_birth_data_refinements",

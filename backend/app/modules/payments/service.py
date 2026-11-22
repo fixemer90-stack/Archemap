@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.exceptions import NotFoundError, PaymentError, ValidationError
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Mode, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.authorization.models import Entitlement
 from app.modules.authorization.service import AccountTierService, EntitlementsService
 from app.modules.catalog.service import CatalogService
@@ -537,11 +539,12 @@ class PaymentsService:
                     provider_event_id=event_id,
                 )
             else:
-                await subscription_service.activate_initial_payment(
+                subscription = await subscription_service.activate_initial_payment(
                     subscription_id=subscription_id,
                     payment=payment,
                     provider_event_id=event_id,
                 )
+                await self._emit_initial_plus_confirmation(payment, subscription)
             return
         if product := metadata.get("product"):
             product_id = metadata.get("product_id")
@@ -552,6 +555,34 @@ class PaymentsService:
                 metadata={"product_id": product_id} if product_id else None,
             )
         await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+
+    async def _emit_initial_plus_confirmation(self, payment: Payment, subscription: Subscription) -> None:
+        if not settings.BUSINESS_MONITORING_ENABLED or getattr(payment, "merchant_binding_id", None) is None:
+            return
+        # The authenticated provider match and locked first-success check have already won.
+        # Match the local period as well, before any financial event can leave this transaction.
+        if (
+            payment.paid_at is None
+            or payment.payment_mode not in ("test", "live")
+            or subscription.user_id != payment.user_id
+            or subscription.latest_payment_id != payment.id
+            or subscription.current_period_start != payment.paid_at
+        ):
+            await self.db.rollback()
+            raise ValidationError("Confirmed payment does not match its initial subscription period")
+        for event_type in (EventType.PAYMENT_CONFIRMED, EventType.SUBSCRIPTION_PERIOD_STARTED):
+            await emit_business_event(
+                self.db,
+                BusinessEventInput(
+                    event_type=event_type,
+                    entity_id=payment.id,
+                    source_id=payment.merchant_binding_id if event_type is EventType.PAYMENT_CONFIRMED else None,
+                    subject_id=payment.user_id,
+                    mode=Mode(payment.payment_mode),
+                    product=Product.PLUS,
+                    occurred_at=payment.paid_at,
+                ),
+            )
 
     async def _record_renewal_failure(self, payment: Payment, reason: str) -> None:
         if (payment.metadata_json or {}).get("billing_reason") != "renewal" or payment.subscription_id is None:

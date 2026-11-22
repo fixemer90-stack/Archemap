@@ -10,11 +10,14 @@ from uuid import UUID
 
 import httpx
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.config import settings
-from app.modules.payments.models import Payment
+from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
+from app.modules.authorization.models import Entitlement
+from app.modules.payments.models import Payment, PaymentWebhook
 from app.modules.payments.service import PaymentsService
 from app.modules.subscriptions.models import Subscription, SubscriptionEvent
 from app.modules.subscriptions.service import SubscriptionsService
@@ -176,10 +179,13 @@ async def test_bound_payment_requires_exact_canonical_evidence(
 
 
 @pytest.mark.usefixtures("_setup_database")
+@pytest.mark.parametrize("analytics", ["off", "on", "rollback", "reconcile-first"])
 async def test_stale_reconciliation_cannot_replace_first_webhook_success(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    analytics: str,
 ) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", analytics != "off")
     monkeypatch.setattr(settings, "YOOKASSA_PROVENANCE_ENABLED", True)
     monkeypatch.setattr(settings, "YOOKASSA_MERCHANT_BINDING_ID", _BINDING)
     monkeypatch.setattr(settings, "YOOKASSA_PAYMENT_MODE", "test")
@@ -232,17 +238,66 @@ async def test_stale_reconciliation_cannot_replace_first_webhook_success(
             await session.commit()
 
     webhook = {"event": "payment.succeeded", "object": canonical}
-    async with asyncio.timeout(10), asyncio.TaskGroup() as tasks:
-        tasks.create_task(reconcile())
-        await lookup_started.wait()
+    async with sessions() as session:
+        assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 0
+    if analytics == "rollback":
+        lookup_started.set()  # The deliberate outbox failure runs before the two-session race.
+        async with sessions.begin() as session:
+            await session.execute(
+                text("""
+                CREATE FUNCTION reject_second_financial_fact() RETURNS trigger LANGUAGE plpgsql AS $$
+                BEGIN
+                    IF (SELECT event_type FROM business_events WHERE id = NEW.event_id)
+                        = 'subscription_period_started' THEN
+                        RAISE EXCEPTION 'fixture rejects period outbox' USING ERRCODE = '23514';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$
+            """)
+            )
+            await session.execute(
+                text("""
+                CREATE TRIGGER reject_second_financial_fact BEFORE INSERT ON business_event_outbox
+                FOR EACH ROW EXECUTE FUNCTION reject_second_financial_fact()
+            """)
+            )
         async with sessions() as session:
-            result = await PaymentsService(session).handle_webhook("yookassa", webhook)
-            assert result["processed"] is True
+            with pytest.raises(IntegrityError, match="fixture rejects period outbox"):
+                await PaymentsService(session).handle_webhook("yookassa", webhook)
             await session.commit()
+        async with sessions.begin() as session:
+            payment = await session.get(Payment, checkout.payment_id)
+            subscription = await session.get(Subscription, checkout.subscription_id)
+            assert payment is not None and payment.status == "pending" and payment.paid_at is None
+            assert subscription is not None and subscription.current_period_start is None
+            assert await session.scalar(select(func.count()).select_from(Entitlement)) == 0
+            assert await session.scalar(select(func.count()).select_from(PaymentWebhook)) == 0
+            assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 0
+            assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 0
+            await session.execute(text("DROP TRIGGER reject_second_financial_fact ON business_event_outbox"))
+            await session.execute(text("DROP FUNCTION reject_second_financial_fact()"))
+        lookup_started.clear()
+
+    if analytics == "reconcile-first":
+        lookup_started.set()
+        await reconcile()
+        async with sessions() as session:
             payment = await session.get(Payment, checkout.payment_id)
             assert payment is not None and payment.paid_at is not None
             first_paid_at = payment.paid_at
-        release_lookup.set()
+    else:
+        async with asyncio.timeout(10), asyncio.TaskGroup() as tasks:
+            tasks.create_task(reconcile())
+            await lookup_started.wait()
+            async with sessions() as session:
+                result = await PaymentsService(session).handle_webhook("yookassa", webhook)
+                assert result["processed"] is True
+                await session.commit()
+                payment = await session.get(Payment, checkout.payment_id)
+                assert payment is not None and payment.paid_at is not None
+                first_paid_at = payment.paid_at
+            release_lookup.set()
 
     async with sessions() as session:
         await PaymentsService(session).handle_webhook("yookassa", webhook)
@@ -261,3 +316,20 @@ async def test_stale_reconciliation_cannot_replace_first_webhook_success(
         assert payment is not None and subscription is not None
         assert payment.paid_at == first_paid_at == subscription.current_period_start
         assert effective_times == [first_paid_at]
+        rows = {fact.event_type: fact for fact in (await session.scalars(select(BusinessEvent))).all()}
+        if analytics == "off":
+            assert not rows
+        else:
+            assert set(rows) == {"payment_confirmed", "subscription_period_started"}
+            assert rows["payment_confirmed"].source_id == _BINDING
+            assert rows["subscription_period_started"].source_id is None
+            for fact in rows.values():
+                assert (fact.entity_id, fact.subject_id, fact.mode, fact.product, fact.occurred_at, fact.details) == (
+                    payment.id,
+                    user.id,
+                    "test",
+                    "plus",
+                    first_paid_at,
+                    {},
+                )
+        assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == len(rows)

@@ -78,7 +78,7 @@ async def test_plus_checkout_records_intent_with_payment_before_dispatch(
 
 
 @pytest.mark.parametrize("case", ["enabled", "disabled", "outbox-rejected"])
-async def test_plus_renewal_cancellation_records_one_fact_per_transition(
+async def test_local_cancellation_does_not_claim_confirmed_renewal_stop(
     db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch, case: str
 ) -> None:
     monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", case != "disabled")
@@ -114,21 +114,18 @@ async def test_plus_renewal_cancellation_records_one_fact_per_transition(
     if case == "outbox-rejected":
         await db_session.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false)"))
         await db_session.commit()
-        with pytest.raises(IntegrityError):
-            await cancel(now)
-    else:
-        async with sessions.begin() as stale:
-            preloaded = await stale.get(Subscription, sub_id)
-            assert preloaded is not None and preloaded.cancel_at_period_end is False
-            await cancel(now)
-            await db_session.commit()
-            await SubscriptionsService(stale).cancel_at_period_end(
-                subscription_id=sub_id, user_id=owner, reason="replayed", now=now + timedelta(seconds=1)
-            )
-        if case == "enabled":
-            await service.resume(subscription_id=sub_id, user_id=owner, now=now + timedelta(seconds=2))
-            await db_session.commit()
-            await cancel(now + timedelta(seconds=3))
+    async with sessions.begin() as stale:
+        preloaded = await stale.get(Subscription, sub_id)
+        assert preloaded is not None and preloaded.cancel_at_period_end is False
+        await cancel(now)
+        await db_session.commit()
+        await SubscriptionsService(stale).cancel_at_period_end(
+            subscription_id=sub_id, user_id=owner, reason="replayed", now=now + timedelta(seconds=1)
+        )
+    if case == "enabled":
+        await service.resume(subscription_id=sub_id, user_id=owner, now=now + timedelta(seconds=2))
+        await db_session.commit()
+        await cancel(now + timedelta(seconds=3))
     await db_session.commit()
 
     async with sessions() as fresh:
@@ -141,21 +138,9 @@ async def test_plus_renewal_cancellation_records_one_fact_per_transition(
                 .order_by(SubscriptionEvent.effective_at)
             )
         ).all()
-        facts = (await fresh.scalars(select(BusinessEvent).order_by(BusinessEvent.occurred_at))).all()
-        deliveries = (await fresh.scalars(select(BusinessEventOutbox))).all()
-        if case == "outbox-rejected":
-            assert saved.status == "active" and saved.cancelled_at is None and not saved.cancel_at_period_end
-            assert not events and not facts and not deliveries
-        elif case == "disabled":
-            assert saved.status == "cancel_scheduled" and saved.cancelled_at == now
-            assert len(events) == 1 and not facts and not deliveries
-        else:
-            assert saved.status == "cancel_scheduled" and saved.cancelled_at == now + timedelta(seconds=3)
-            assert len(events) == len(facts) == len(deliveries) == 2
-            for event, fact in zip(events, facts, strict=True):
-                assert fact.event_type == "renewal_canceled" and fact.entity_id == event.id
-                assert fact.occurred_at == event.effective_at and fact.subject_id == owner
-                assert (
-                    fact.product == "plus" and fact.mode == "unknown" and fact.details == {} and fact.source_id is None
-                )
-            assert {delivery.event_id for delivery in deliveries} == {fact.id for fact in facts}
+        assert not (await fresh.scalars(select(BusinessEvent))).all()
+        assert not (await fresh.scalars(select(BusinessEventOutbox))).all()
+        assert saved.status == "cancel_scheduled" and saved.cancel_at_period_end
+        expected_times = [now, now + timedelta(seconds=3)] if case == "enabled" else [now]
+        assert saved.cancelled_at == expected_times[-1]
+        assert [event.effective_at for event in events] == expected_times

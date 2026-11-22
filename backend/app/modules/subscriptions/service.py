@@ -11,10 +11,7 @@ from uuid import UUID, uuid4
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
-from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
-from app.modules.analytics.service import emit_business_event
 from app.modules.authorization.service import AccountTierService, EntitlementsService
 from app.modules.catalog.service import CatalogService, SubscriptionPlanDefinition
 from app.modules.payments.service import PaymentsService
@@ -328,7 +325,7 @@ class SubscriptionsService:
             raise ValidationError("Subscription is not active")
         if subscription.cancel_at_period_end:
             return subscription  # The locked row already represents this cancellation.
-        event, created = await self.repository.append_event(
+        _event, created = await self.repository.append_event(
             subscription_id=subscription.id,
             event_key=f"cancel_requested:{uuid4()}",
             provider_event_id=None,
@@ -341,17 +338,7 @@ class SubscriptionsService:
             subscription.status = "cancel_scheduled"
             subscription.cancel_at_period_end = True
             subscription.cancelled_at = moment
-            if settings.BUSINESS_MONITORING_ENABLED:
-                await emit_business_event(
-                    self.db,
-                    BusinessEventInput(
-                        event_type=EventType.RENEWAL_CANCELED,
-                        entity_id=event.id,
-                        subject_id=subscription.user_id,
-                        occurred_at=event.effective_at,
-                        product=Product.PLUS,
-                    ),
-                )
+            # This local request does not prove that future billing was stopped.
             self._record_transition(
                 subscription=subscription,
                 event_type="cancel_requested",

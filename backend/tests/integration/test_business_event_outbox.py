@@ -19,7 +19,7 @@ from app.modules.analytics.repository import BusinessEventConflictError
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
 from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
 from app.modules.astrotype_v2 import models as self_models
-from app.modules.astrotype_v2.api_runtime import build_report_progress_v2
+from app.modules.astrotype_v2.api_runtime import build_generation_status_payload, build_report_read_payload_v2
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.auth.models import EmailVerification, IdentityLink
 from app.modules.auth.oauth.service import OAuthService
@@ -236,9 +236,15 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             assert generation.diagnostics["error_code"] == "narrative_worker_interrupted"
             segments = list((await fresh.scalars(select(self_models.ReportSegmentGeneration))).all())
             assert len(segments) == 1 and segments[0].status == "running"  # shared outline, don't rewrite it
-            progress = build_report_progress_v2(report=report, outline=None, segments=segments)
+            payload = build_report_read_payload_v2(
+                report=report, outline=None, infographic=None, facts=[], segments=segments
+            )
+            progress = payload["progress"]
             assert (progress["status"], progress["running_segments"]) == ("narrative_failed", 0)
             assert progress["segments"][0]["status"] == "failed"
+            assert payload["segments"][0]["status"] == "failed"
+            status = build_generation_status_payload(generation=generation, report=report, segments=segments)
+            assert status["sections"][0]["segment_status"] == "failed"
         assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == int(enabled)
         assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
 

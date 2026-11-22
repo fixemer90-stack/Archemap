@@ -1,7 +1,8 @@
 import asyncio
 import signal
-from collections.abc import Generator
+from collections.abc import Coroutine, Generator
 from selectors import BaseSelector, SelectorKey
+from typing import Any
 
 import pytest
 from billiard.exceptions import SoftTimeLimitExceeded  # type: ignore[import-untyped]
@@ -64,3 +65,38 @@ def test_soft_timeout_drains_interrupted_coroutine_before_worker_reuses_loop(
 
     assert finalized == [True]
     assert not asyncio.all_tasks(worker_loop)
+
+
+def test_soft_timeout_after_root_scheduled_never_restarts_old_delivery(
+    worker_loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_task = worker_loop.create_task
+    calls: list[str] = []
+    fired = False
+
+    def interrupt_root(coro: Coroutine[Any, Any, Any], **kwargs: Any) -> asyncio.Task[Any]:
+        nonlocal fired
+        task = create_task(coro, **kwargs)
+        if not fired:
+            fired = True
+            signal.raise_signal(signal.SIGUSR1)
+        return task
+
+    def timeout_handler(*_args: object) -> None:
+        raise SoftTimeLimitExceeded
+
+    async def interrupted() -> None:
+        calls.append("old delivery")
+
+    monkeypatch.setattr(worker_loop, "create_task", interrupt_root)
+    previous = signal.signal(signal.SIGUSR1, timeout_handler)
+    try:
+        with pytest.raises(SoftTimeLimitExceeded):
+            celery_async.run_async_in_worker(interrupted())
+    finally:
+        signal.signal(signal.SIGUSR1, previous)
+
+    pending_at_return = asyncio.all_tasks(worker_loop)
+    celery_async.run_async_in_worker(asyncio.sleep(0))
+    assert calls == []
+    assert not pending_at_return

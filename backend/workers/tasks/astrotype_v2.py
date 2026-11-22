@@ -46,7 +46,7 @@ from app.modules.astrotype_v2.report_assembler import (
     build_partial_natal_report_row,
 )
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
-from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2
+from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2, SectionRenderInputV2
 from app.modules.astrotype_v2.segment_inputs import build_section_render_inputs_v2
 from app.modules.astrotype_v2.segment_validation import SegmentValidationError
 from app.modules.astrotype_v2.synthesis import NatalSynthesisV2, build_natal_synthesis_row
@@ -956,16 +956,27 @@ async def _ensure_llm_segments(
         await repository.flush()
         await repository.session.commit()
 
-    generated_segments = await asyncio.gather(
-        *(
-            _generate_llm_segment_safely(
-                provider=segment_provider,
-                section_input=section_input,
-                outline_id=outline.id,
-            )
-            for section_input in generation_inputs
+    start = asyncio.get_running_loop().create_future()
+
+    async def generate(section_input: SectionRenderInputV2) -> models.ReportSegmentGeneration:
+        await start
+        return await _generate_llm_segment_safely(
+            provider=segment_provider,
+            section_input=section_input,
+            outline_id=outline.id,
         )
-    )
+
+    async with asyncio.TaskGroup() as group:
+        try:
+            tasks = [group.create_task(generate(section_input)) for section_input in generation_inputs]
+            start.set_result(None)
+        finally:
+            # A Celery soft timeout can interrupt create_task after scheduling but before
+            # TaskGroup registration. No provider work may start until registration is complete.
+            if not start.done():
+                start.cancel()
+                await asyncio.sleep(0)  # Let any unregistered child observe cancellation before unwinding.
+    generated_segments = [task.result() for task in tasks]
 
     new_segments = _upsert_segments(existing_by_key=by_key, new_segments=generated_segments)
     if new_segments:

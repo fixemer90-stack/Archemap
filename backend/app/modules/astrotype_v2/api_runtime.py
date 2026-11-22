@@ -84,12 +84,10 @@ def build_report_progress_v2(
 ) -> dict[str, Any]:
     """Build segment-level progress for polling clients."""
 
-    segment_items = [_segment_progress(segment) for segment in _ordered_segments(outline=outline, segments=segments)]
-    if report.status == "narrative_failed":
-        # Segment rows belong to the shared outline, not this report version.
-        for item in segment_items:
-            if item["status"] in {"queued", "running", "pending"}:
-                item["status"] = "failed"
+    segment_items = [
+        _segment_progress(segment, parent_status=report.status)
+        for segment in _ordered_segments(outline=outline, segments=segments)
+    ]
     failed_segments = sum(1 for segment in segment_items if segment["status"] == "failed")
     ready_segments = sum(1 for segment in segment_items if segment["status"] == "ready")
     running_segments = sum(1 for segment in segment_items if segment["status"] in {"queued", "running", "pending"})
@@ -126,7 +124,10 @@ def build_report_read_payload_v2(
         "infographic": _infographic_payload(infographic),
         "profile": _profile_payload(profile),
         "facts": facts,
-        "segments": [_segment_payload(segment) for segment in _ordered_segments(outline=outline, segments=segments)],
+        "segments": [
+            _segment_payload(segment, parent_status=report.status)
+            for segment in _ordered_segments(outline=outline, segments=segments)
+        ],
     }
 
 
@@ -139,7 +140,9 @@ def build_generation_status_payload(
 ) -> dict[str, Any]:
     """Return persisted status and section diagnostics for an accepted generation id."""
 
-    segment_items = _generation_section_diagnostics(outline=outline, segments=segments or [])
+    segment_items = _generation_section_diagnostics(
+        outline=outline, segments=segments or [], parent_status=generation.status
+    )
     payload = {
         "contract_version": "astrotype_v2_generation_status_v1",
         "generation_id": str(generation.generation_id),
@@ -176,6 +179,7 @@ def _generation_section_diagnostics(
     *,
     outline: models.ReportOutline | None,
     segments: list[models.ReportSegmentGeneration],
+    parent_status: str,
 ) -> list[dict[str, Any]]:
     segment_by_key = {segment.section_key: segment for segment in segments}
     outline_sections = outline.outline.get("sections", []) if outline is not None else []
@@ -196,7 +200,9 @@ def _generation_section_diagnostics(
                 "grounding_status": outline_section.get("grounding_status"),
                 "owned_evidence_count": outline_section.get("owned_evidence_count"),
                 "reference_evidence_count": outline_section.get("reference_evidence_count"),
-                "segment_status": segment.status if segment is not None else "pending",
+                "segment_status": _project_segment_status(
+                    segment.status if segment is not None else "pending", parent_status=parent_status
+                ),
                 "provider": segment.provider if segment is not None else None,
                 "model": segment.model if segment is not None else None,
                 "error": segment.error if segment is not None else None,
@@ -221,10 +227,17 @@ def _ordered_segments(
     return ordered + extras
 
 
-def _segment_progress(segment: models.ReportSegmentGeneration) -> dict[str, Any]:
+def _project_segment_status(status: str, *, parent_status: str) -> str:
+    # Shared outline rows describe the latest section attempt, not this report version.
+    if parent_status == "narrative_failed" and status in {"queued", "running", "pending"}:
+        return "failed"
+    return status
+
+
+def _segment_progress(segment: models.ReportSegmentGeneration, *, parent_status: str) -> dict[str, Any]:
     return {
         "section_key": segment.section_key,
-        "status": segment.status,
+        "status": _project_segment_status(segment.status, parent_status=parent_status),
         "provider": segment.provider,
         "model": segment.model,
         "prompt_version": segment.prompt_version,
@@ -232,9 +245,9 @@ def _segment_progress(segment: models.ReportSegmentGeneration) -> dict[str, Any]
     }
 
 
-def _segment_payload(segment: models.ReportSegmentGeneration) -> dict[str, Any]:
+def _segment_payload(segment: models.ReportSegmentGeneration, *, parent_status: str) -> dict[str, Any]:
     return {
-        **_segment_progress(segment),
+        **_segment_progress(segment, parent_status=parent_status),
         "payload": segment.payload,
     }
 

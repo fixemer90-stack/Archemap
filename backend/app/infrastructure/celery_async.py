@@ -28,13 +28,20 @@ def run_async_in_worker(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047
         _TASK_LOOP = asyncio.new_event_loop()
         asyncio.set_event_loop(_TASK_LOOP)
 
-    task = _TASK_LOOP.create_task(coro)
+    task: asyncio.Task[T] | None = None
     try:
+        task = _TASK_LOOP.create_task(coro)
         return _TASK_LOOP.run_until_complete(task)
     except BaseException:
-        # A soft timeout can interrupt the loop itself instead of reaching the coroutine.
-        # Finish cancellation before another delivery can reuse this loop.
-        if not task.done():
-            task.cancel()
-            _TASK_LOOP.run_until_complete(_drain_cancelled_task(task))
+        # The signal can interrupt create_task after scheduling but before it returns.
+        pending = (
+            task
+            if task is not None
+            else next((candidate for candidate in asyncio.all_tasks(_TASK_LOOP) if candidate.get_coro() is coro), None)
+        )
+        if pending is None:
+            coro.close()
+        elif not pending.done():
+            pending.cancel()
+            _TASK_LOOP.run_until_complete(_drain_cancelled_task(pending))
         raise

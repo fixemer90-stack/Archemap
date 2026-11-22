@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
+import signal
 import uuid
+from collections.abc import Coroutine
 from datetime import UTC, date, datetime, time
 from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from billiard.pool import soft_timeout_sighandler  # type: ignore[import-untyped]
 
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.segment_validation import SegmentValidationError
@@ -150,6 +154,64 @@ async def test_llm_segments_persist_failed_validation_rows_without_losing_ready_
     assert by_key["perception_and_mind"].payload["error"]["class"] == "SegmentValidationError"
     assert by_key["perception_and_mind"].payload["request"]["section_id"] == "perception_and_mind"
     assert repository.session.commits >= 1
+
+
+@pytest.mark.parametrize("interrupt_at", [1, 3, 6])
+def test_soft_timeout_during_child_registration_never_calls_provider(
+    monkeypatch: pytest.MonkeyPatch, interrupt_at: int
+) -> None:
+    from billiard.exceptions import SoftTimeLimitExceeded  # type: ignore[import-untyped]
+
+    from app.infrastructure import celery_async
+    from workers.tasks import astrotype_v2
+
+    loop = asyncio.new_event_loop()
+    monkeypatch.setattr(celery_async, "_TASK_LOOP", loop)
+    create_task = loop.create_task
+    scheduled = 0
+    calls: list[str] = []
+    chart_id = uuid.uuid4()
+    outline = _outline(chart_id)
+
+    def interrupt_child_registration(coro: Coroutine[Any, Any, Any], **kwargs: Any) -> asyncio.Task[Any]:
+        nonlocal scheduled
+        task = create_task(coro, **kwargs)
+        if loop.is_running():
+            scheduled += 1
+            if scheduled == interrupt_at:
+                signal.raise_signal(signal.SIGUSR1)
+        return task
+
+    async def provider_probe(**kwargs: Any) -> models.ReportSegmentGeneration:
+        key = kwargs["section_input"].section_id
+        calls.append(key)
+        return _ready_segment(key, chart_id=chart_id, outline_id=outline.id)
+
+    monkeypatch.setattr(loop, "create_task", interrupt_child_registration)
+    monkeypatch.setattr(astrotype_v2, "get_llm_provider", lambda: object())
+    monkeypatch.setattr(astrotype_v2, "run_segment_generation_v2", provider_probe)
+
+    previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
+    try:
+        with pytest.raises(ExceptionGroup, match="TaskGroup") as interrupted:
+            celery_async.run_async_in_worker(
+                astrotype_v2._ensure_llm_segments(
+                    repository=cast(Any, _FakeRepository()),
+                    outline=outline,
+                    synthesis=_synthesis(chart_id),
+                    existing_segments=[],
+                )
+            )
+        assert len(interrupted.value.exceptions) == 1
+        assert isinstance(interrupted.value.exceptions[0], SoftTimeLimitExceeded)
+        pending_at_return = asyncio.all_tasks(loop)
+        celery_async.run_async_in_worker(asyncio.sleep(0))
+        assert scheduled == interrupt_at
+        assert calls == []
+        assert not pending_at_return
+    finally:
+        signal.signal(signal.SIGUSR1, previous)
+        loop.close()
 
 
 @pytest.mark.asyncio

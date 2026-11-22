@@ -85,6 +85,11 @@ def build_report_progress_v2(
     """Build segment-level progress for polling clients."""
 
     segment_items = [_segment_progress(segment) for segment in _ordered_segments(outline=outline, segments=segments)]
+    if report.status == "narrative_failed":
+        # Segment rows belong to the shared outline, not this report version.
+        for item in segment_items:
+            if item["status"] in {"queued", "running", "pending"}:
+                item["status"] = "failed"
     failed_segments = sum(1 for segment in segment_items if segment["status"] == "failed")
     ready_segments = sum(1 for segment in segment_items if segment["status"] == "ready")
     running_segments = sum(1 for segment in segment_items if segment["status"] in {"queued", "running", "pending"})
@@ -156,6 +161,8 @@ def build_generation_status_payload(
 
 
 def _overall_status(*, report: models.NatalReport, failed_segments: int, running_segments: int) -> str:
+    if report.status == "narrative_failed":
+        return report.status
     if failed_segments:
         return "failed"
     if report.status in {"complete", "ready"}:

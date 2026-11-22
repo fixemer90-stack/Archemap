@@ -10,7 +10,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from time import perf_counter
 from typing import Any, cast
 from zoneinfo import ZoneInfo
@@ -56,6 +56,7 @@ from app.modules.profiles.observability import birth_data_refinement_telemetry
 from workers.celery_app import app
 
 _SOURCE_VERSION = "v2.0"
+_SELF_HARD_LIMIT_SECONDS = max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720)
 _ENGINE_VERSION = "0.1.6"
 _DETERMINISTIC_PROMPT_VERSION = "astrotype_v2_deterministic_local_v1"
 _DETERMINISTIC_PROVIDER = "deterministic"
@@ -192,7 +193,7 @@ class _RevisionChartInput:
     default_retry_delay=30,
     reject_on_worker_lost=True,
     soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4, 600),
-    time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720),
+    time_limit=_SELF_HARD_LIMIT_SECONDS,
 )
 def generate_natal_report_v2(
     self: object,
@@ -228,7 +229,7 @@ async def _generation_session(generation_id: uuid.UUID, *, refinement: bool) -> 
         # Keep one checked-out connection, not a transaction lock, across the worker's commits.
         # A process exit drops the connection and releases the lock without reissuing provider calls.
         async with engine.connect() as connection:
-            params = {"name": f"astrotype-self-generation:{generation_id}"}
+            params = _generation_lock_params(generation_id)
             try:
                 await connection.execute(text("SELECT pg_advisory_lock(hashtextextended(:name, 0))"), params)
                 await connection.commit()
@@ -240,6 +241,74 @@ async def _generation_session(generation_id: uuid.UUID, *, refinement: bool) -> 
                 # Discard the physical connection: even a cancelled acquisition may have obtained the lock.
                 await connection.invalidate()
                 raise
+
+
+def _generation_lock_params(generation_id: uuid.UUID) -> dict[str, str]:
+    return {"name": f"astrotype-self-generation:{generation_id}"}
+
+
+async def _fail_interrupted_narrative(
+    repository: AstrotypeV2Repository, generation: models.NatalReportGeneration, report: models.NatalReport
+) -> None:
+    report.status = "narrative_failed"
+    report.assembled_payload = report.assembled_payload | {
+        "status": "narrative_failed",
+        "error_code": "narrative_generation_failed",
+    }
+    await _persist_generation_status(
+        repository=repository,
+        generation_id=generation.generation_id,
+        status="narrative_failed",
+        report_id=report.id,
+        diagnostics={"stage": "segments", "error_code": "narrative_worker_interrupted"},
+    )
+
+
+@app.task(name="astrotype_v2.reconcile_interrupted_narratives")  # type: ignore[untyped-decorator]
+def reconcile_interrupted_narratives() -> int:
+    # Allow older workers without the advisory guard to finish during a rolling restart.
+    before = datetime.now(UTC) - timedelta(seconds=_SELF_HARD_LIMIT_SECONDS + 60)
+    return run_async_in_worker(_reconcile_interrupted_narratives(before=before))
+
+
+async def _reconcile_interrupted_narratives(*, before: datetime) -> int:
+    generation = models.NatalReportGeneration
+    report = models.NatalReport
+    eligible = (
+        generation.status == "narrative_generating",
+        generation.updated_at < before,
+        report.status == "narrative_generating",
+        report.generation_id == generation.generation_id,
+        ~select(ProfileBirthDataRevision.id)
+        .where(ProfileBirthDataRevision.generation_id == generation.generation_id)
+        .exists(),
+    )
+    query = select(generation, report).join(report, report.id == generation.report_id).where(*eligible)
+    async with async_session_factory() as db:
+        candidates = list(
+            (
+                await db.scalars(
+                    query.with_only_columns(generation.generation_id)
+                    .order_by(generation.updated_at, generation.id)
+                    .limit(100)
+                )
+            ).all()
+        )
+    recovered = 0
+    for generation_id in candidates:
+        async with async_session_factory.begin() as db:
+            if not await db.scalar(
+                text("SELECT pg_try_advisory_xact_lock(hashtextextended(:name, 0))"),
+                _generation_lock_params(generation_id),
+            ):
+                continue
+            rows = (
+                await db.execute(query.where(generation.generation_id == generation_id).with_for_update())
+            ).one_or_none()
+            if rows is not None:
+                await _fail_interrupted_narrative(AstrotypeV2Repository(db), rows[0], rows[1])
+                recovered += 1
+    return recovered
 
 
 async def _generate_natal_report_v2_async(
@@ -294,18 +363,7 @@ async def _generate_natal_report_v2_async(
                 if generation.status == "narrative_generating" and existing.status == "narrative_generating":
                     # The prior delivery no longer owns the connection. Its provider outcome may
                     # be unknown; preserve the calculation and do not replay the paid work.
-                    existing.status = "narrative_failed"
-                    existing.assembled_payload = existing.assembled_payload | {
-                        "status": "narrative_failed",
-                        "error_code": "narrative_generation_failed",
-                    }
-                    await _persist_generation_status(
-                        repository=repository,
-                        generation_id=generation_uuid,
-                        status="narrative_failed",
-                        report_id=existing.id,
-                        diagnostics={"stage": "segments", "error_code": "narrative_worker_interrupted"},
-                    )
+                    await _fail_interrupted_narrative(repository, generation, existing)
                     await db.commit()
                 return _task_payload(
                     generation_id=generation_id,

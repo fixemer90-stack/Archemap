@@ -60,6 +60,10 @@ app.conf.update(
             "task": "child.reconcile_generations",
             "schedule": float(settings.CHILD_GENERATION_RECONCILE_INTERVAL_SECONDS),
         },
+        "reconcile-self-narratives": {
+            "task": "astrotype_v2.reconcile_interrupted_narratives",
+            "schedule": 60.0,
+        },
         "dispatch-birth-data-refinements": {
             "task": "profiles.dispatch_birth_data_refinements",
             "schedule": 60.0,

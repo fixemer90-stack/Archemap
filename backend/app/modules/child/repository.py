@@ -16,8 +16,11 @@ from sqlalchemy import case, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.audit import AuditLog
 from app.core.models import BaseModel
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2.models import (
     NatalChart,
     NatalFact,
@@ -1445,6 +1448,18 @@ class ChildRepository:
                 attempt_number=0,
                 occurred_at=datetime.now(UTC),
             )
+            if settings.BUSINESS_MONITORING_ENABLED:
+                # Record only newly accepted operations, before commit and broker dispatch.
+                await emit_business_event(
+                    self.session,
+                    BusinessEventInput(
+                        event_type=EventType.REPORT_REQUESTED,
+                        entity_id=inserted.generation_id,
+                        subject_id=inserted.owner_user_id,
+                        occurred_at=inserted.created_at,
+                        product=Product.CHILD,
+                    ),
+                )
             return ChildGenerationCreateResult(generation=inserted, created=True)
 
         existing = await self.session.scalar(

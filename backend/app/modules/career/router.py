@@ -38,6 +38,7 @@ from app.modules.career.api_schemas import (
     QuestionnaireResponse,
     RegenerateCareerReportRequest,
 )
+from app.modules.career.business_events import emit_career_terminal
 from app.modules.career.contracts import career_access_operation
 from app.modules.career.observability import career_telemetry
 from app.modules.career.questionnaire import (
@@ -585,11 +586,16 @@ async def _enqueue_generation(
             generation_id=str(generation.generation_id),
             section_keys=section_keys,
         )
-        generation.celery_task_id = str(getattr(task, "id", "")) or None
-        await db.commit()
     except Exception as exc:
+        # A publish error does not prove non-delivery. Serialize against the worker
+        # claim and only abandon work that is still queued under the lock.
+        await db.refresh(generation, with_for_update=True)
+        if generation.status != "queued":
+            await db.commit()
+            return
         generation.status = "failed"
         generation.diagnostics = {"error": "career_queue_unavailable"}
+        await emit_career_terminal(db, generation)
         await db.commit()
         career_telemetry.record(
             stage="deterministic",
@@ -598,3 +604,7 @@ async def _enqueue_generation(
             error_code="career_queue_unavailable",
         )
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Career queue unavailable") from exc
+    await db.refresh(generation, with_for_update=True)
+    if generation.status == "queued":
+        generation.celery_task_id = str(getattr(task, "id", "")) or None
+    await db.commit()

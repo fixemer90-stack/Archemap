@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -27,6 +29,7 @@ from app.modules.career.narrative import CAREER_SECTION_ORDER, MockCareerSegment
 from app.modules.career.narrative_schemas import CareerSectionRenderInput
 from app.modules.career.questionnaire import QUESTIONNAIRE_VERSION
 from app.modules.career.repository import CareerRepository
+from app.modules.career.router import _enqueue_generation
 from app.modules.profiles.models import PersonProfile
 from app.modules.users.models import User
 from workers.tasks import career
@@ -288,6 +291,61 @@ async def _queued_regeneration(
     assert created
     await db.commit()
     return operation
+
+
+@pytest.mark.parametrize("case", ["failure", "off", "outbox-rejected", "worker-won", "late-receipt"])
+async def test_career_publish_error_only_terminalizes_unclaimed_work(
+    db_session: AsyncSession, career_profile: CareerProfile, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", case != "off")
+    source = await _historical_report(db_session, career_profile)
+    operation = await _queued_regeneration(db_session, career_profile, source)
+    query = select(CareerGeneration).where(CareerGeneration.generation_id == operation)
+    generation = (await db_session.scalars(query)).one()
+    await db_session.commit()
+    sessions = _sessions(db_session)
+    if case in {"worker-won", "late-receipt"}:
+        async with sessions.begin() as worker:
+            assert await CareerRepository(worker).claim_generation(operation) is not None
+    if case == "outbox-rejected":
+        await db_session.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false) NOT VALID"))
+        await db_session.commit()
+
+    def publish_error(**_: Any) -> None:
+        raise OSError("private broker error")
+
+    if case == "late-receipt":
+        monkeypatch.setattr(career.generate_career_report, "delay", lambda **_: SimpleNamespace(id="received"))
+    else:
+        monkeypatch.setattr(career.generate_career_report, "delay", publish_error)
+    if case in {"worker-won", "late-receipt"}:
+        await _enqueue_generation(db=db_session, generation=generation, section_keys=[])
+    elif case == "outbox-rejected":
+        with pytest.raises(IntegrityError):
+            await _enqueue_generation(db=db_session, generation=generation, section_keys=[])
+        await db_session.commit()
+    else:
+        with pytest.raises(HTTPException) as error:
+            await _enqueue_generation(db=db_session, generation=generation, section_keys=[])
+        assert error.value.status_code == 503
+
+    async with sessions() as fresh:
+        saved = (await fresh.scalars(query)).one()
+        expected = {
+            "worker-won": "calculating_dimensions",
+            "late-receipt": "calculating_dimensions",
+            "outbox-rejected": "queued",
+        }.get(case, "failed")
+        assert saved.status == expected
+        assert saved.celery_task_id is None
+        if case == "failure":
+            await _assert_terminal_event(
+                fresh, saved, event_type="report_failed", entity_id=operation, occurred_at=saved.updated_at
+            )
+        else:
+            assert (
+                await fresh.scalar(select(BusinessEvent.id).where(BusinessEvent.event_type == "report_failed")) is None
+            )
 
 
 async def test_career_ready_is_bound_to_new_result_and_not_reemitted_on_redelivery(

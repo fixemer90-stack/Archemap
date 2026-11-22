@@ -17,11 +17,10 @@ from app.config import settings
 from app.core.models import BaseModel
 from app.infrastructure.celery_async import run_async_in_worker
 from app.infrastructure.database import async_session_factory
-from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
-from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2.models import NatalFact
 from app.modules.career import models
 from app.modules.career.archetype_engine import build_archetype_rows, match_archetypes
+from app.modules.career.business_events import emit_career_terminal
 from app.modules.career.career_paths import build_career_path_rows, build_career_paths
 from app.modules.career.dimension_engine import score_career_dimensions
 from app.modules.career.dimension_persistence import build_dimension_rows
@@ -126,40 +125,6 @@ async def _run_narrative_quality_pipeline(
     return segment_rows, assembled
 
 
-async def _emit_career_terminal(
-    db: AsyncSession,
-    generation: models.CareerGeneration,
-    *,
-    report: models.CareerReport | None = None,
-) -> None:
-    if not settings.BUSINESS_MONITORING_ENABLED:
-        return
-    status = generation.status
-    if status in {"failed", "narrative_failed"}:
-        event_type = EventType.REPORT_FAILED
-        entity_id = generation.generation_id
-        artifact: models.CareerGeneration | models.CareerReport = generation
-    elif report is not None and status in {"ready", "partial_failure"}:
-        event_type = EventType.REPORT_READY if status == "ready" else EventType.REPORT_PARTIAL
-        entity_id = report.id
-        artifact = report
-    else:
-        return  # A deterministic checkpoint or successful subset is not terminal.
-
-    await db.flush()
-    await db.refresh(artifact, attribute_names=["updated_at"])
-    await emit_business_event(
-        db,
-        BusinessEventInput(
-            event_type=event_type,
-            entity_id=entity_id,
-            subject_id=generation.user_id,
-            product=Product.CAREER,
-            occurred_at=artifact.updated_at,
-        ),
-    )
-
-
 async def _publish_career_checkpoint(
     db: AsyncSession,
     generation_id: uuid.UUID,
@@ -205,7 +170,7 @@ async def _publish_career_checkpoint(
     generation.status = status
     generation.diagnostics = candidate["diagnostics"]
     generation.pending_publication = None
-    await _emit_career_terminal(db, generation, report=report)
+    await emit_career_terminal(db, generation, report=report)
     return generation, True
 
 

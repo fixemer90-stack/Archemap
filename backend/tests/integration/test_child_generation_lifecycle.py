@@ -15,6 +15,7 @@ from app.dependencies import get_current_user
 from app.main import app
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.authorization.models import Entitlement
+from app.modules.authorization.service import EntitlementsService
 from app.modules.child import models
 from app.modules.child.age_resolver import resolve_child_age
 from app.modules.child.narrative import ChildSectionRenderInput, MockChildSegmentProvider
@@ -42,6 +43,13 @@ from tests.integration.test_child_interaction import _persist_interaction
 
 pytestmark = pytest.mark.usefixtures("_setup_database")
 NOW = datetime(2026, 10, 23, 12, tzinfo=UTC)
+
+
+@pytest.fixture(autouse=True)
+def _pin_http_access_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.modules.child.router.EntitlementsService", lambda db: EntitlementsService(db, now=lambda: NOW)
+    )
 
 
 @dataclass(frozen=True)

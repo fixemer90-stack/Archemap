@@ -12,7 +12,10 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.models import BaseModel
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.career import models
 
@@ -295,6 +298,18 @@ class CareerRepository:
         )
         inserted = (await self.session.execute(statement)).scalar_one_or_none()
         if inserted is not None:
+            if settings.BUSINESS_MONITORING_ENABLED:
+                # The insert winner alone records acceptance, before the caller commits and dispatches.
+                await emit_business_event(
+                    self.session,
+                    BusinessEventInput(
+                        event_type=EventType.REPORT_REQUESTED,
+                        entity_id=inserted.generation_id,
+                        subject_id=inserted.user_id,
+                        occurred_at=inserted.created_at,
+                        product=Product.CAREER,
+                    ),
+                )
             return CareerGenerationCreateResult(generation=inserted, created=True)
 
         existing = await self.get_generation_by_idempotency(

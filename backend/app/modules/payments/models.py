@@ -6,11 +6,37 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models import BaseModel
+from app.infrastructure.database import Base
+
+
+class YooKassaMerchantBinding(Base):
+    """Immutable checkout namespace, independent of the lifetime of any payment."""
+
+    __tablename__ = "yookassa_merchant_bindings"
+    __table_args__ = (
+        CheckConstraint("payment_mode IN ('test', 'live')", name="ck_yookassa_binding_mode"),
+        CheckConstraint("btrim(merchant_account_id) <> ''", name="ck_yookassa_binding_account"),
+        UniqueConstraint("id", "payment_mode", "merchant_account_id", name="uq_yookassa_binding_provenance"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    payment_mode: Mapped[str] = mapped_column(String(4), nullable=False)
+    merchant_account_id: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
 class Payment(BaseModel):
@@ -18,6 +44,15 @@ class Payment(BaseModel):
 
     __tablename__ = "payments"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["merchant_binding_id", "payment_mode", "merchant_account_id"],
+            [
+                "yookassa_merchant_bindings.id",
+                "yookassa_merchant_bindings.payment_mode",
+                "yookassa_merchant_bindings.merchant_account_id",
+            ],
+            name="fk_payments_yookassa_binding",
+        ),
         CheckConstraint(
             "(merchant_binding_id IS NULL AND payment_mode IS NULL AND merchant_account_id IS NULL) OR "
             "(merchant_binding_id IS NOT NULL AND payment_mode IS NOT NULL AND payment_mode IN ('test', 'live') "

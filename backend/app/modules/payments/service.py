@@ -11,6 +11,7 @@ from uuid import UUID
 import httpx
 import structlog
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -20,7 +21,7 @@ from app.modules.analytics.service import emit_business_event
 from app.modules.authorization.models import Entitlement
 from app.modules.authorization.service import AccountTierService, EntitlementsService
 from app.modules.catalog.service import CatalogService
-from app.modules.payments.models import Payment, PaymentWebhook
+from app.modules.payments.models import Payment, PaymentWebhook, YooKassaMerchantBinding
 from app.modules.payments.providers.yookassa import YooKassaProvider
 from app.modules.payments.schemas import (
     BillingAccessResponse,
@@ -83,6 +84,8 @@ class PaymentsService:
             or not yookassa.secret_key.strip()
         ):
             raise PaymentError("Payment merchant provenance is not configured", code="payment_provenance_unconfigured")
+        if binding_id is not None and mode is not None:
+            await self._pin_merchant_binding(binding_id, mode, yookassa.shop_id)
 
         payment = Payment(
             user_id=user_id,
@@ -320,6 +323,22 @@ class PaymentsService:
             ),
         )
 
+    async def _pin_merchant_binding(self, binding_id: UUID, mode: str, account_id: str) -> None:
+        binding = YooKassaMerchantBinding
+        await self.db.execute(
+            insert(binding)
+            .values(id=binding_id, payment_mode=mode, merchant_account_id=account_id)
+            .on_conflict_do_nothing(index_elements=[binding.id])
+        )
+        result = await self.db.execute(
+            select(binding.payment_mode, binding.merchant_account_id).where(binding.id == binding_id)
+        )
+        row = result.one()
+        if (row.payment_mode, row.merchant_account_id) != (mode, account_id):
+            raise PaymentError(
+                "Payment merchant binding conflicts with registered provenance", code="payment_binding_conflict"
+            )
+
     async def reconcile_pending_provider_payment(self, payment: Payment) -> None:
         """Reconcile a pending provider payment before access state is shown.
 
@@ -335,19 +354,17 @@ class PaymentsService:
         yookassa = YooKassaProvider()
         canonical_payload = await yookassa.get_payment(payment.provider_payment_id)
         event = yookassa.parse_webhook_event({"object": canonical_payload})
-        if getattr(payment, "merchant_binding_id", None) is not None:
-            # The provider GET runs without holding the lock. Reload after it:
-            # the identity map may still contain pending state after a webhook committed.
-            result = await self.db.execute(
-                select(Payment)
-                .where(Payment.id == payment.id)
-                .with_for_update()
-                .execution_options(populate_existing=True)
-            )
-            locked = result.scalar_one_or_none()
-            if locked is None or locked.status not in {"pending", "processing"} or locked.paid_at is not None:
-                return
-            payment = locked
+        if event.get("status") in ("pending", "waiting_for_capture"):
+            return  # This fallback only applies final provider states.
+        # Provider I/O happens before the lock. Reload even for legacy rows:
+        # the identity map may still contain pending state after a webhook committed.
+        result = await self.db.execute(
+            select(Payment).where(Payment.id == payment.id).with_for_update().execution_options(populate_existing=True)
+        )
+        locked = result.scalar_one_or_none()
+        if locked is None or locked.status not in {"pending", "processing"}:
+            return
+        payment = locked
         if not self._event_matches_payment(payment, event, authenticated_shop_id=yookassa.shop_id):
             logger.warning(
                 "pending_payment_reconciliation_mismatch",
@@ -362,6 +379,8 @@ class PaymentsService:
         if new_status == "succeeded":
             await self._apply_canonical_success(payment, event)
             await self.db.flush()
+        elif payment.paid_at is not None:
+            return  # An older provider snapshot cannot reopen an already confirmed payment.
         elif new_status == "failed":
             payment.status = "failed"
             payment.failed_at = datetime.now(UTC)
@@ -480,12 +499,12 @@ class PaymentsService:
         # Update payment status
         old_status = payment.status
         new_status = self._map_provider_status(event["status"])
-        if getattr(payment, "merchant_binding_id", None) is not None and payment.paid_at is not None:
-            # A stale provider read cannot reopen a confirmed, bound attempt.
-            new_status = old_status
-        elif new_status == "succeeded":
+        if new_status == "succeeded":
             await self._apply_canonical_success(payment, event)
             new_status = payment.status
+        elif payment.paid_at is not None:
+            # Protect confirmed legacy payments as well as merchant-bound attempts.
+            new_status = old_status
         else:
             payment.status = new_status
             if new_status == "failed":
@@ -517,8 +536,10 @@ class PaymentsService:
         }
 
     async def _apply_canonical_success(self, payment: Payment, event: dict[str, Any]) -> None:
-        """Apply validated success; callers hold the payment row lock for bound attempts."""
+        """Apply validated success under the lock, without repeating a recorded grant."""
         if payment.paid_at is not None:
+            if payment.status in {"pending", "processing", "failed", "cancelled"} and payment.refunded_at is None:
+                payment.status = "succeeded"
             return
         payment.status = "succeeded"
         payment.paid_at = datetime.now(UTC)

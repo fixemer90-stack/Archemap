@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from base64 import b64encode
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -15,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.config import settings
+from app.core.exceptions import PaymentError
 from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
 from app.modules.authorization.models import Entitlement
 from app.modules.payments.models import Payment, PaymentWebhook
@@ -26,6 +28,86 @@ from app.modules.users.models import User
 _BINDING = UUID("e90560fc-9140-4fbe-b5cc-806148125201")
 _SHOP = "synthetic-shop"
 _UNUSED_HASH = "not-used-for-authentication"
+
+
+@pytest.mark.usefixtures("_setup_database")
+@pytest.mark.parametrize("case", ["stale-webhook", "stale-reconcile", "repair-webhook", "repair-reconcile", "refunded"])
+async def test_legacy_payment_preserves_confirmed_success(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    monkeypatch.setattr(settings, "YOOKASSA_SHOP_ID", _SHOP)
+    monkeypatch.setattr(settings, "YOOKASSA_SECRET_KEY", "synthetic-key")
+    user = User(email="legacy-race@example.invalid", hashed_password=_UNUSED_HASH)
+    db_session.add(user)
+    await db_session.flush()
+    confirmed_at = datetime(2026, 1, 1, tzinfo=UTC)
+    stale = case.startswith("stale-")
+    payment = Payment(
+        user_id=user.id,
+        provider="yookassa",
+        provider_payment_id="legacy-payment",
+        amount=999,
+        paid_at=None if stale else confirmed_at,
+        status="refunded" if case == "refunded" else "pending",
+        refunded_at=confirmed_at if case == "refunded" else None,
+    )
+    db_session.add(payment)
+    await db_session.flush()
+    payment_id = payment.id
+    event = {
+        "id": "legacy-payment",
+        "status": "succeeded",
+        "paid": True,
+        "amount": {"value": "999.00", "currency": "RUB"},
+        "metadata": {"payment_id": str(payment_id), "user_id": str(user.id)},
+    }
+    webhook = {"event": "payment.succeeded", "object": event}
+    await db_session.commit()
+    engine = db_session.bind
+    assert isinstance(engine, AsyncEngine)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    lookup_started, release_lookup = asyncio.Event(), asyncio.Event()
+
+    async def get_payment(_provider: object, provider_payment_id: str) -> dict[str, Any]:
+        assert provider_payment_id == "legacy-payment"
+        if stale and not lookup_started.is_set():
+            lookup_started.set()
+            await release_lookup.wait()
+            return {**event, "status": "pending" if case == "stale-webhook" else "canceled", "paid": False}
+        return event
+
+    monkeypatch.setattr("app.modules.payments.service.YooKassaProvider.get_payment", get_payment)
+
+    async def deliver() -> None:
+        async with sessions.begin() as session:
+            service = PaymentsService(session)
+            if case.endswith("reconcile"):
+                row = await session.get(Payment, payment_id)
+                assert row is not None
+                await service.reconcile_pending_provider_payment(row)
+            else:
+                await service.handle_webhook("yookassa", webhook)
+
+    if stale:
+        async with asyncio.timeout(10), asyncio.TaskGroup() as tasks:
+            tasks.create_task(deliver())
+            await lookup_started.wait()
+            async with sessions.begin() as session:
+                await PaymentsService(session).handle_webhook("yookassa", webhook)
+                winner = await session.get(Payment, payment_id)
+                assert winner is not None and winner.paid_at is not None
+                confirmed_at = winner.paid_at
+            release_lookup.set()
+    else:
+        await deliver()
+
+    async with sessions() as session:
+        persisted = await session.get(Payment, payment_id)
+        assert persisted is not None
+        assert persisted.status == ("refunded" if case == "refunded" else "succeeded")
+        assert persisted.paid_at == confirmed_at
+        assert persisted.cancelled_at is None
+        assert await session.scalar(select(func.count()).select_from(Entitlement)) == 0
 
 
 @pytest.mark.usefixtures("_setup_database")
@@ -75,6 +157,50 @@ async def test_initial_plus_checkout_pins_provenance_before_provider_dispatch(
     await db_session.rollback()
     assert observed == [(_BINDING, "test", _SHOP, "pending") if enabled else (None, None, None, "pending")]
     assert persisted == ("synthetic-payment", "pending" if enabled else "succeeded", None)
+
+
+@pytest.mark.usefixtures("_setup_database")
+@pytest.mark.parametrize("conflict", ["account", "mode"])
+async def test_checkout_rejects_reusing_binding_for_another_merchant_before_dispatch(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch, conflict: str
+) -> None:
+    monkeypatch.setattr(settings, "YOOKASSA_PROVENANCE_ENABLED", True)
+    monkeypatch.setattr(settings, "YOOKASSA_MERCHANT_BINDING_ID", _BINDING)
+    monkeypatch.setattr(settings, "YOOKASSA_PAYMENT_MODE", "test")
+    monkeypatch.setattr(settings, "YOOKASSA_SHOP_ID", _SHOP)
+    monkeypatch.setattr(settings, "YOOKASSA_SECRET_KEY", "synthetic-key")
+    users = [User(email=f"binding-{i}@example.invalid", hashed_password=_UNUSED_HASH) for i in range(3)]
+    db_session.add_all(users)
+    await db_session.flush()
+    ids = [user.id for user in users]
+    await db_session.commit()
+    attempts = 0
+
+    async def create(_provider: object, **_: Any) -> dict[str, Any]:
+        nonlocal attempts
+        attempts += 1
+        return {"id": f"synthetic-payment-{attempts}", "status": "pending"}
+
+    monkeypatch.setattr("app.modules.payments.service.YooKassaProvider.create_payment", create)
+    service = SubscriptionsService(db_session)
+    for user_id in ids[:2]:
+        await service.create_checkout(
+            user_id=user_id, plan_code="astrotype_plus_monthly", return_url="https://example.invalid"
+        )
+        await db_session.commit()
+    monkeypatch.setattr(
+        settings,
+        "YOOKASSA_SHOP_ID" if conflict == "account" else "YOOKASSA_PAYMENT_MODE",
+        "other-shop" if conflict == "account" else "live",
+    )
+    try:
+        with pytest.raises(PaymentError, match="binding"):
+            await service.create_checkout(
+                user_id=ids[2], plan_code="astrotype_plus_monthly", return_url="https://example.invalid"
+            )
+    finally:
+        await db_session.rollback()
+    assert attempts == 2
 
 
 @pytest.mark.usefixtures("_setup_database")

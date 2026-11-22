@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 _PREVIOUS = "b9c0d1e2f3a4"
 _REVISION = "d1e2f3a4b5c6"
+_REGISTRY = "f3a4b5c6d7e8"
 
 
 async def test_payment_merchant_migration_keeps_legacy_unknown_and_rejects_rebinding() -> None:
@@ -114,5 +115,40 @@ async def test_payment_merchant_migration_keeps_legacy_unknown_and_rejects_rebin
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == _REVISION
             result = await connection.execute(text("SELECT id, payment_mode, status FROM payments"))
             assert [tuple(row) for row in result] == [(legacy, None, "succeeded")]
+
+        insert_bound = text(
+            "INSERT INTO payments (id, user_id, provider, amount, merchant_binding_id, payment_mode, "
+            "merchant_account_id) VALUES (:payment, :owner, 'yookassa', 999, :binding, 'test', :account)"
+        )
+        conflicting = uuid4()
+        async with engine.begin() as connection:
+            for payment, account in ((bound, "synthetic-shop"), (conflicting, "other-shop")):
+                await connection.execute(
+                    insert_bound, {"payment": payment, "owner": owner, "binding": binding, "account": account}
+                )
+        assert "conflicting historical YooKassa binding provenance" in alembic("upgrade", _REGISTRY, succeeds=False)
+        async with engine.begin() as connection:
+            await connection.execute(text("DELETE FROM payments WHERE id = :id"), {"id": conflicting})
+        alembic("upgrade", _REGISTRY)
+        async with engine.begin() as connection:
+            await connection.execute(text("DELETE FROM payments WHERE id = :id"), {"id": bound})
+            registry = await connection.execute(
+                text("SELECT id, payment_mode, merchant_account_id FROM yookassa_merchant_bindings")
+            )
+            assert [tuple(row) for row in registry] == [(binding, "test", "synthetic-shop")]
+        with pytest.raises(DBAPIError, match="fk_payments_yookassa_binding"):
+            async with engine.begin() as connection:
+                await connection.execute(
+                    insert_bound, {"payment": conflicting, "owner": owner, "binding": binding, "account": "other-shop"}
+                )
+        for statement in (
+            "UPDATE yookassa_merchant_bindings SET payment_mode = 'live'",
+            "DELETE FROM yookassa_merchant_bindings",
+            "TRUNCATE yookassa_merchant_bindings CASCADE",
+        ):
+            with pytest.raises(DBAPIError, match="binding provenance is immutable"):
+                async with engine.begin() as connection:
+                    await connection.execute(text(statement))
+        assert "registered YooKassa binding provenance exists" in alembic("downgrade", _REVISION, succeeds=False)
     finally:
         await engine.dispose()

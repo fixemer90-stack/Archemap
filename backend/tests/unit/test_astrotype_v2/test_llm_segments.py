@@ -3,10 +3,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import signal
 import uuid
 from typing import Any
 
+import httpx
 import pytest
+import respx
+from billiard.exceptions import SoftTimeLimitExceeded  # type: ignore[import-untyped]
+from billiard.pool import soft_timeout_sighandler  # type: ignore[import-untyped]
 
 from app.modules.astrotype_v2.outline import build_report_outline_v2
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2, SectionRenderInputV2
@@ -110,6 +117,68 @@ def _valid_long_output(section_id: str = "core_pattern") -> dict[str, Any]:
         "continuation_cursor": None,
         "notes": [],
     }
+
+
+@pytest.mark.parametrize("provider_name", ["openrouter", "deepseek"])
+@pytest.mark.parametrize(("phase", "expected_posts"), [("prompt", 0), ("validation", 1), ("http_build", 0)])
+def test_soft_timeout_prevents_dispatch_of_new_segment_posts(
+    monkeypatch: pytest.MonkeyPatch, provider_name: str, phase: str, expected_posts: int
+) -> None:
+    from app.infrastructure import celery_async
+    from app.modules.astrotype_v2 import llm_segments
+    from app.modules.astrotype_v2.segment_validation import validate_segment_output_v2
+    from app.modules.llm.providers.deepseek import DeepSeekProvider
+    from app.modules.llm.providers.openrouter import OpenRouterProvider
+
+    provider_type = OpenRouterProvider if provider_name == "openrouter" else DeepSeekProvider
+    endpoint = (
+        "https://openrouter.ai/api/v1/chat/completions"
+        if provider_name == "openrouter"
+        else "https://api.deepseek.com/chat/completions"
+    )
+    provider = llm_segments.StructuredSegmentProviderAdapter(
+        provider=provider_type(api_key="test-only", model="test", timeout_seconds=1, max_retries=0),
+        provider_name=provider_name,
+        model_name="test",
+    )
+
+    def signal_after(call: Any) -> Any:
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return call(*args, **kwargs)
+            finally:
+                signal.raise_signal(signal.SIGUSR1)
+
+        return wrapped
+
+    if phase == "prompt":
+        monkeypatch.setattr(llm_segments, "build_segment_prompt", signal_after(llm_segments.build_segment_prompt))
+    elif phase == "validation":
+        monkeypatch.setattr(llm_segments, "validate_segment_output_v2", signal_after(validate_segment_output_v2))
+    else:
+        monkeypatch.setattr(httpx.AsyncClient, "build_request", signal_after(httpx.AsyncClient.build_request))
+
+    section_input = _section_input()
+    bad_response = {**_valid_long_output(), "body": "Too short"}
+    loop = asyncio.new_event_loop()
+    monkeypatch.setattr(celery_async, "_TASK_LOOP", loop)
+    previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
+    try:
+        with respx.mock as offline:
+            route = offline.post(endpoint).mock(
+                return_value=httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(bad_response)}}]})
+            )
+            with pytest.raises(SoftTimeLimitExceeded):
+                celery_async.run_async_in_worker(
+                    llm_segments.run_segment_generation_v2(
+                        provider=provider, section_input=section_input, outline_id=uuid.uuid4()
+                    )
+                )
+            assert route.call_count == expected_posts
+        assert not asyncio.all_tasks(loop)
+    finally:
+        signal.signal(signal.SIGUSR1, previous)
+        loop.close()
 
 
 def test_build_segment_prompt_requires_expanded_json_grounded_in_one_section_without_low_caps() -> None:

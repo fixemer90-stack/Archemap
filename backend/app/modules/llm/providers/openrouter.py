@@ -13,6 +13,7 @@ from app.modules.llm.exceptions import (
     LLMProviderUnavailableError,
     LLMTimeoutError,
 )
+from app.modules.llm.http_dispatch import guard_llm_http_request
 from app.modules.report_narratives.schemas import NarrativeInput
 
 StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
@@ -51,7 +52,9 @@ class OpenRouterProvider:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds, event_hooks={"request": [guard_llm_http_request]}
+            ) as client:
                 response = await client.post(
                     "https://openrouter.ai/api/v1/chat/completions",
                     headers=headers,

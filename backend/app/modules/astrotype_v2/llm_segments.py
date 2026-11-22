@@ -8,6 +8,7 @@ import json
 import uuid
 from typing import Any, Protocol, cast
 
+from app.infrastructure.celery_async import check_worker_soft_timeout
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.schemas import ReportSegmentOutputV2, SectionRenderInputV2
 from app.modules.astrotype_v2.segment_validation import SegmentValidationError, validate_segment_output_v2
@@ -135,6 +136,7 @@ async def run_segment_generation_v2(
                 "Do not return a short overview. Do not set continuation_complete=true below the floor. "
                 "Include mechanism, lived manifestation, tension, protection or shadow, mature expression, and a soft self-check cue."
             )
+        check_worker_soft_timeout()
         raw_response = await provider.generate_segment(prompt=retry_prompt, section_input=section_input)
         parsed = ReportSegmentOutputV2.model_validate(raw_response)
         try:

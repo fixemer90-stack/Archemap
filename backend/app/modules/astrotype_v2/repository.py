@@ -220,9 +220,11 @@ class AstrotypeV2Repository:
         )
         return owned_id is not None
 
-    async def get_report_for_user(self, *, report_id: uuid.UUID, user_id: uuid.UUID) -> models.NatalReport | None:
-        """Return one report only when its v2 chart belongs to the user."""
-        result = await self.session.execute(
+    async def get_report_for_user(
+        self, *, report_id: uuid.UUID, user_id: uuid.UUID, profile_id: uuid.UUID | None = None
+    ) -> models.NatalReport | None:
+        """Return an owned report, optionally scoped to the generation's profile."""
+        query = (
             select(models.NatalReport)
             .join(models.NatalChart, models.NatalReport.chart_id == models.NatalChart.id)
             .where(
@@ -230,6 +232,9 @@ class AstrotypeV2Repository:
                 models.NatalChart.user_id == user_id,
             )
         )
+        if profile_id is not None:
+            query = query.where(models.NatalChart.profile_id == profile_id)
+        result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def get_report_for_generation(

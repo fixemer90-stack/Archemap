@@ -94,7 +94,12 @@ async def get_v2_generation_status(
     generation = await repository.get_generation_for_user(generation_id=generation_id, user_id=current_user)
     if generation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generation not found")
-    report = await repository.get_report_for_generation(generation_id=generation_id, user_id=current_user)
+    if generation.report_id is None:
+        report = await repository.get_report_for_generation(generation_id=generation_id, user_id=current_user)
+    else:
+        report = await repository.get_report_for_user(
+            report_id=generation.report_id, user_id=current_user, profile_id=generation.profile_id
+        )
     outline = await repository.get_outline_for_chart(report.chart_id) if report is not None else None
     segments = await repository.list_segments_for_outline(outline.id) if outline is not None else []
     return build_generation_status_payload(generation=generation, report=report, outline=outline, segments=segments)

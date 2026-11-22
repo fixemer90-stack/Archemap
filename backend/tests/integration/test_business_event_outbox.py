@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import Connection, event, func, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -19,6 +20,7 @@ from app.modules.analytics.repository import BusinessEventConflictError
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
 from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
 from app.modules.astrotype_v2 import models as self_models
+from app.modules.astrotype_v2 import router as self_router
 from app.modules.astrotype_v2.api_runtime import build_generation_status_payload, build_report_read_payload_v2
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
 from app.modules.auth.models import EmailVerification, IdentityLink
@@ -245,6 +247,26 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             assert payload["segments"][0]["status"] == "failed"
             status = build_generation_status_payload(generation=generation, report=report, segments=segments)
             assert status["sections"][0]["segment_status"] == "failed"
+
+            async def allow_basic_report(**_kwargs: object) -> None:
+                pass
+
+            monkeypatch.setattr(self_router, "_require_basic_report_access", allow_basic_report)
+            for job_id, expected in ((generation_id, "narrative_failed"), (reuse_id, "already_exists")):
+                polled = await self_router.get_v2_generation_status(job_id, fresh, user_id)
+                assert polled["report_id"] == str(report.id)
+                assert polled["status"] == expected
+                assert polled["links"]["progress"].endswith(f"/{report.id}/progress")
+                assert polled["sections"] and all(item["segment_status"] == "failed" for item in polled["sections"])
+            with pytest.raises(HTTPException) as denied:
+                await self_router.get_v2_generation_status(reuse_id, fresh, UUID(int=99))
+            assert denied.value.status_code == 404
+            assert (
+                await AstrotypeV2Repository(fresh).get_report_for_user(
+                    report_id=report.id, user_id=user_id, profile_id=UUID(int=99)
+                )
+                is None
+            )
         assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == int(enabled)
         assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
 

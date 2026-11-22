@@ -103,6 +103,19 @@ class PaymentsService:
         self.db.add(payment)
         await self.db.flush()
 
+        if settings.BUSINESS_MONITORING_ENABLED and initial_plus:
+            # Admission is a local intent, not evidence of a charge or of merchant mode.
+            await emit_business_event(
+                self.db,
+                BusinessEventInput(
+                    event_type=EventType.CHECKOUT_CREATED,
+                    entity_id=payment.id,
+                    subject_id=payment.user_id,
+                    occurred_at=payment.created_at,
+                    product=Product.PLUS,
+                ),
+            )
+
         # Call provider
         result = await self._create_yookassa_payment(
             yookassa=yookassa,

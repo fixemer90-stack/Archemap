@@ -6,12 +6,15 @@ import calendar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.authorization.service import AccountTierService, EntitlementsService
 from app.modules.catalog.service import CatalogService, SubscriptionPlanDefinition
 from app.modules.payments.service import PaymentsService
@@ -323,9 +326,11 @@ class SubscriptionsService:
         moment = now or datetime.now(UTC)
         if not SubscriptionAccessPolicy.is_active(subscription, now=moment):
             raise ValidationError("Subscription is not active")
-        _event, created = await self.repository.append_event(
+        if subscription.cancel_at_period_end:
+            return subscription  # The locked row already represents this cancellation.
+        event, created = await self.repository.append_event(
             subscription_id=subscription.id,
-            event_key=f"cancel_requested:{subscription.id}:{moment.isoformat()}",
+            event_key=f"cancel_requested:{uuid4()}",
             provider_event_id=None,
             event_type="cancel_requested",
             effective_at=moment,
@@ -336,6 +341,17 @@ class SubscriptionsService:
             subscription.status = "cancel_scheduled"
             subscription.cancel_at_period_end = True
             subscription.cancelled_at = moment
+            if settings.BUSINESS_MONITORING_ENABLED:
+                await emit_business_event(
+                    self.db,
+                    BusinessEventInput(
+                        event_type=EventType.RENEWAL_CANCELED,
+                        entity_id=event.id,
+                        subject_id=subscription.user_id,
+                        occurred_at=event.effective_at,
+                        product=Product.PLUS,
+                    ),
+                )
             self._record_transition(
                 subscription=subscription,
                 event_type="cancel_requested",

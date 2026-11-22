@@ -38,7 +38,7 @@ class SubscriptionsRepository:
     async def get_subscription(self, subscription_id: UUID, *, for_update: bool = False) -> Subscription | None:
         query = select(Subscription).where(Subscription.id == subscription_id)
         if for_update:
-            query = query.with_for_update()
+            query = query.with_for_update().execution_options(populate_existing=True)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 

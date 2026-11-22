@@ -365,7 +365,7 @@ async def test_stale_reconciliation_cannot_replace_first_webhook_success(
 
     webhook = {"event": "payment.succeeded", "object": canonical}
     async with sessions() as session:
-        assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 0
+        assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == int(analytics != "off")
     if analytics == "rollback":
         lookup_started.set()  # The deliberate outbox failure runs before the two-session race.
         async with sessions.begin() as session:
@@ -399,8 +399,8 @@ async def test_stale_reconciliation_cannot_replace_first_webhook_success(
             assert subscription is not None and subscription.current_period_start is None
             assert await session.scalar(select(func.count()).select_from(Entitlement)) == 0
             assert await session.scalar(select(func.count()).select_from(PaymentWebhook)) == 0
-            assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 0
-            assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 0
+            assert (await session.scalars(select(BusinessEvent.event_type))).all() == ["checkout_created"]
+            assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
             await session.execute(text("DROP TRIGGER reject_second_financial_fact ON business_event_outbox"))
             await session.execute(text("DROP FUNCTION reject_second_financial_fact()"))
         lookup_started.clear()
@@ -446,10 +446,13 @@ async def test_stale_reconciliation_cannot_replace_first_webhook_success(
         if analytics == "off":
             assert not rows
         else:
-            assert set(rows) == {"payment_confirmed", "subscription_period_started"}
+            assert set(rows) == {"checkout_created", "payment_confirmed", "subscription_period_started"}
+            checkout_fact = rows["checkout_created"]
+            assert checkout_fact.entity_id == payment.id and checkout_fact.occurred_at == payment.created_at
+            assert checkout_fact.mode == "unknown" and checkout_fact.source_id is None
             assert rows["payment_confirmed"].source_id == _BINDING
             assert rows["subscription_period_started"].source_id is None
-            for fact in rows.values():
+            for fact in (rows["payment_confirmed"], rows["subscription_period_started"]):
                 assert (fact.entity_id, fact.subject_id, fact.mode, fact.product, fact.occurred_at, fact.details) == (
                     payment.id,
                     user.id,

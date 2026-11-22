@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -61,6 +62,9 @@ class Settings(BaseSettings):
     YOOKASSA_SHOP_ID: str = ""
     YOOKASSA_SECRET_KEY: str = ""
     YOOKASSA_WEBHOOK_SECRET: str = ""
+    YOOKASSA_PROVENANCE_ENABLED: bool = False
+    YOOKASSA_MERCHANT_BINDING_ID: UUID | None = None
+    YOOKASSA_PAYMENT_MODE: Literal["test", "live"] | None = None
 
     # ── Business monitoring / outbound analytics ───────────────────────
     BUSINESS_MONITORING_ENABLED: bool = False

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,14 @@ class Payment(BaseModel):
     """Payment record — tracks a single payment attempt."""
 
     __tablename__ = "payments"
+    __table_args__ = (
+        CheckConstraint(
+            "(merchant_binding_id IS NULL AND payment_mode IS NULL AND merchant_account_id IS NULL) OR "
+            "(merchant_binding_id IS NOT NULL AND payment_mode IS NOT NULL AND payment_mode IN ('test', 'live') "
+            "AND merchant_account_id IS NOT NULL AND btrim(merchant_account_id) <> '' AND provider = 'yookassa')",
+            name="ck_payments_merchant_provenance",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -29,6 +37,10 @@ class Payment(BaseModel):
     # Provider info
     provider: Mapped[str] = mapped_column(String(50), nullable=False)  # yookassa, cloudpayments, stripe
     provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # Null on historical and other unproven attempts. Never inferred from today's credentials.
+    merchant_binding_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    payment_mode: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    merchant_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Amount
     amount: Mapped[float] = mapped_column(Float, nullable=False)

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -12,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, PaymentError, ValidationError
 from app.modules.authorization.models import Entitlement
 from app.modules.authorization.service import AccountTierService, EntitlementsService
 from app.modules.catalog.service import CatalogService
@@ -28,6 +30,7 @@ from app.modules.subscriptions.models import Subscription
 from app.modules.subscriptions.observability import subscription_telemetry
 
 logger = structlog.get_logger()
+_PROVIDER_AMOUNT = re.compile(r"[0-9]+(?:\.[0-9]{1,2})?")
 
 
 class PaymentsService:
@@ -55,11 +58,37 @@ class PaymentsService:
         2. Call provider API to create payment
         3. Update Payment with provider_payment_id and confirmation_url
         """
-        # Create payment record
+        if provider != "yookassa":
+            raise ValidationError(f"Unsupported payment provider: {provider}")
+        yookassa = YooKassaProvider()
+        commercial_facts = metadata or {}
+        initial_plus = (
+            subscription_id is not None
+            and commercial_facts.get("plan_code") == "astrotype_plus_monthly"
+            and commercial_facts.get("product_id") == "astrotype_plus_monthly"
+            and commercial_facts.get("subscription_id") == str(subscription_id)
+            and commercial_facts.get("billing_reason") in (None, "initial")
+        )
+        bind_merchant = settings.YOOKASSA_PROVENANCE_ENABLED and initial_plus
+        binding_id = settings.YOOKASSA_MERCHANT_BINDING_ID if bind_merchant else None
+        mode = settings.YOOKASSA_PAYMENT_MODE if bind_merchant else None
+        if bind_merchant and (
+            binding_id is None
+            or mode is None
+            or not yookassa.shop_id.strip()
+            or yookassa.shop_id != yookassa.shop_id.strip()
+            or len(yookassa.shop_id) > 255
+            or not yookassa.secret_key.strip()
+        ):
+            raise PaymentError("Payment merchant provenance is not configured", code="payment_provenance_unconfigured")
+
         payment = Payment(
             user_id=user_id,
             subscription_id=subscription_id,
             provider=provider,
+            merchant_binding_id=binding_id,
+            payment_mode=mode,
+            merchant_account_id=yookassa.shop_id if bind_merchant else None,
             amount=amount,
             currency=currency,
             description=description,
@@ -70,19 +99,20 @@ class PaymentsService:
         await self.db.flush()
 
         # Call provider
-        if provider == "yookassa":
-            result = await self._create_yookassa_payment(
-                payment=payment,
-                return_url=return_url,
-                save_payment_method=save_payment_method,
-                payment_method_id=provider_payment_method_id,
-            )
-        else:
-            raise ValidationError(f"Unsupported payment provider: {provider}")
+        result = await self._create_yookassa_payment(
+            yookassa=yookassa,
+            payment=payment,
+            return_url=return_url,
+            save_payment_method=save_payment_method,
+            payment_method_id=provider_payment_method_id,
+        )
 
         # Update payment with provider info
         payment.provider_payment_id = result.get("id")
         payment.status = self._map_provider_status(result.get("status", "pending"))
+        # A create response isn't an authenticated canonical read, even when it says paid.
+        if bind_merchant and payment.status == "succeeded":
+            payment.status = "pending"
 
         # Extract confirmation URL
         confirmation = result.get("confirmation", {})
@@ -303,7 +333,20 @@ class PaymentsService:
         yookassa = YooKassaProvider()
         canonical_payload = await yookassa.get_payment(payment.provider_payment_id)
         event = yookassa.parse_webhook_event({"object": canonical_payload})
-        if not self._event_matches_payment(payment, event):
+        if getattr(payment, "merchant_binding_id", None) is not None:
+            # The provider GET runs without holding the lock. Reload after it:
+            # the identity map may still contain pending state after a webhook committed.
+            result = await self.db.execute(
+                select(Payment)
+                .where(Payment.id == payment.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            locked = result.scalar_one_or_none()
+            if locked is None or locked.status not in {"pending", "processing"} or locked.paid_at is not None:
+                return
+            payment = locked
+        if not self._event_matches_payment(payment, event, authenticated_shop_id=yookassa.shop_id):
             logger.warning(
                 "pending_payment_reconciliation_mismatch",
                 provider=payment.provider,
@@ -314,40 +357,8 @@ class PaymentsService:
             return
 
         new_status = self._map_provider_status(event["status"])
-        if new_status == "succeeded" and event.get("paid") is True:
-            payment.status = "succeeded"
-            if payment.paid_at is None:
-                payment.paid_at = datetime.now(UTC)
-            payment.payment_method_id = event.get("payment_method", {}).get("id")
-            payment.payment_method_type = event.get("payment_method", {}).get("type")
-            subscription_id = getattr(payment, "subscription_id", None)
-            if subscription_id is not None:
-                from app.modules.subscriptions.service import SubscriptionsService
-
-                subscription_service = SubscriptionsService(self.db)
-                if (payment.metadata_json or {}).get("billing_reason") == "renewal":
-                    await subscription_service.apply_renewal_success(
-                        subscription_id=subscription_id,
-                        payment=payment,
-                        provider_event_id=payment.provider_payment_id or str(payment.id),
-                    )
-                else:
-                    await subscription_service.activate_initial_payment(
-                        subscription_id=subscription_id,
-                        payment=payment,
-                        provider_event_id=payment.provider_payment_id or str(payment.id),
-                    )
-            else:
-                product = (payment.metadata_json or {}).get("product")
-                product_id = (payment.metadata_json or {}).get("product_id")
-                if product:
-                    await EntitlementsService(self.db).grant_paid_product(
-                        user_id=payment.user_id,
-                        product=product,
-                        source_payment_id=payment.id,
-                        metadata={"product_id": product_id} if product_id else None,
-                    )
-                await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+        if new_status == "succeeded":
+            await self._apply_canonical_success(payment, event)
             await self.db.flush()
         elif new_status == "failed":
             payment.status = "failed"
@@ -402,8 +413,9 @@ class PaymentsService:
         if provider == "yookassa":
             yookassa = YooKassaProvider()
             event = yookassa.parse_webhook_event(payload)
+            requested_payment_id = event["payment_id"]
             try:
-                canonical_payload = await yookassa.get_payment(event["payment_id"])
+                canonical_payload = await yookassa.get_payment(requested_payment_id)
             except httpx.HTTPError as exc:
                 logger.warning(
                     "webhook_provider_reconciliation_failed",
@@ -425,10 +437,13 @@ class PaymentsService:
 
         # Find payment
         payment_result = await self.db.execute(
-            select(Payment).where(
+            select(Payment)
+            .where(
                 Payment.provider == provider,
-                Payment.provider_payment_id == event["payment_id"],
+                Payment.provider_payment_id == requested_payment_id,
             )
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         payment = payment_result.scalar_one_or_none()
 
@@ -439,7 +454,9 @@ class PaymentsService:
             await self.db.flush()
             return {"processed": False, "message": "Payment not found"}
 
-        if not self._event_matches_payment(payment, event):
+        if event["payment_id"] != requested_payment_id or not self._event_matches_payment(
+            payment, event, authenticated_shop_id=yookassa.shop_id
+        ):
             logger.warning(
                 "webhook_payment_mismatch",
                 provider=provider,
@@ -461,66 +478,21 @@ class PaymentsService:
         # Update payment status
         old_status = payment.status
         new_status = self._map_provider_status(event["status"])
-        payment.status = new_status
-
-        if new_status == "succeeded" and event.get("paid") is True:
-            payment.paid_at = datetime.now(UTC)
-            payment.payment_method_id = event.get("payment_method", {}).get("id")
-            payment.payment_method_type = event.get("payment_method", {}).get("type")
-            subscription_id = getattr(payment, "subscription_id", None)
-            if subscription_id is not None:
-                from app.modules.subscriptions.service import SubscriptionsService
-
-                subscription_service = SubscriptionsService(self.db)
-                if (payment.metadata_json or {}).get("billing_reason") == "renewal":
-                    await subscription_service.apply_renewal_success(
-                        subscription_id=subscription_id,
-                        payment=payment,
-                        provider_event_id=payment.provider_payment_id or str(payment.id),
-                    )
-                else:
-                    await subscription_service.activate_initial_payment(
-                        subscription_id=subscription_id,
-                        payment=payment,
-                        provider_event_id=payment.provider_payment_id or str(payment.id),
-                    )
-            else:
-                product = (payment.metadata_json or {}).get("product")
-                product_id = (payment.metadata_json or {}).get("product_id")
-                if product:
-                    await EntitlementsService(self.db).grant_paid_product(
-                        user_id=payment.user_id,
-                        product=product,
-                        source_payment_id=payment.id,
-                        metadata={"product_id": product_id} if product_id else None,
-                    )
-                await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+        if getattr(payment, "merchant_binding_id", None) is not None and payment.paid_at is not None:
+            # A stale provider read cannot reopen a confirmed, bound attempt.
+            new_status = old_status
         elif new_status == "succeeded":
-            logger.warning(
-                "webhook_succeeded_without_paid_true",
-                provider=provider,
-                payment_id=event["payment_id"],
-                local_payment_id=str(payment.id),
-                paid=event.get("paid"),
-            )
-            payment.status = old_status
-            webhook.processed = True
-            webhook.processed_at = datetime.now(UTC)
-            webhook.error_message = "Payment payload mismatch"
-            await self.db.flush()
-            return {
-                "processed": False,
-                "payment_id": str(payment.id),
-                "status": old_status,
-                "message": "Payment payload mismatch",
-            }
-        elif new_status == "failed":
-            payment.failed_at = datetime.now(UTC)
-            payment.error_code = event.get("status")
-            await self._record_renewal_failure(payment, str(event.get("status") or "failed"))
-        elif new_status == "cancelled":
-            payment.cancelled_at = datetime.now(UTC)
-            await self._record_renewal_failure(payment, str(event.get("status") or "cancelled"))
+            await self._apply_canonical_success(payment, event)
+            new_status = payment.status
+        else:
+            payment.status = new_status
+            if new_status == "failed":
+                payment.failed_at = datetime.now(UTC)
+                payment.error_code = event.get("status")
+                await self._record_renewal_failure(payment, str(event.get("status") or "failed"))
+            elif new_status == "cancelled":
+                payment.cancelled_at = datetime.now(UTC)
+                await self._record_renewal_failure(payment, str(event.get("status") or "cancelled"))
 
         # Mark webhook as processed
         webhook.processed = True
@@ -542,6 +514,45 @@ class PaymentsService:
             "message": f"Payment status updated: {old_status} → {new_status}",
         }
 
+    async def _apply_canonical_success(self, payment: Payment, event: dict[str, Any]) -> None:
+        """Apply validated success; callers hold the payment row lock for bound attempts."""
+        if payment.paid_at is not None:
+            return
+        payment.status = "succeeded"
+        payment.paid_at = datetime.now(UTC)
+        payment.payment_method_id = event.get("payment_method", {}).get("id")
+        payment.payment_method_type = event.get("payment_method", {}).get("type")
+
+        subscription_id = getattr(payment, "subscription_id", None)
+        metadata = payment.metadata_json or {}
+        if subscription_id is not None:
+            from app.modules.subscriptions.service import SubscriptionsService
+
+            subscription_service = SubscriptionsService(self.db)
+            event_id = payment.provider_payment_id or str(payment.id)
+            if metadata.get("billing_reason") == "renewal":
+                await subscription_service.apply_renewal_success(
+                    subscription_id=subscription_id,
+                    payment=payment,
+                    provider_event_id=event_id,
+                )
+            else:
+                await subscription_service.activate_initial_payment(
+                    subscription_id=subscription_id,
+                    payment=payment,
+                    provider_event_id=event_id,
+                )
+            return
+        if product := metadata.get("product"):
+            product_id = metadata.get("product_id")
+            await EntitlementsService(self.db).grant_paid_product(
+                user_id=payment.user_id,
+                product=product,
+                source_payment_id=payment.id,
+                metadata={"product_id": product_id} if product_id else None,
+            )
+        await AccountTierService(self.db).upgrade_to_plus(payment.user_id)
+
     async def _record_renewal_failure(self, payment: Payment, reason: str) -> None:
         if (payment.metadata_json or {}).get("billing_reason") != "renewal" or payment.subscription_id is None:
             return
@@ -555,15 +566,14 @@ class PaymentsService:
 
     async def _create_yookassa_payment(
         self,
+        yookassa: YooKassaProvider,
         payment: Payment,
         return_url: str,
         save_payment_method: bool = False,
         payment_method_id: str | None = None,
     ) -> dict[str, Any]:
         """Create payment via YooKassa API."""
-        yookassa = YooKassaProvider()
-
-        metadata = payment.metadata_json or {}
+        metadata = dict(payment.metadata_json or {})
         metadata["payment_id"] = str(payment.id)
         metadata["user_id"] = str(payment.user_id)
 
@@ -592,17 +602,25 @@ class PaymentsService:
         }
         return status_map.get(provider_status, "pending")
 
-    def _event_matches_payment(self, payment: Payment, event: dict[str, Any]) -> bool:
-        """Validate provider object against local immutable payment facts."""
+    def _event_matches_payment(self, payment: Payment, event: dict[str, Any], *, authenticated_shop_id: str) -> bool:
+        """Match the authenticated canonical provider object, not the notification body."""
+        provider_status = event.get("status")
+        if not isinstance(provider_status, str):
+            return False
         if event.get("payment_id") != payment.provider_payment_id:
             return False
         if event.get("currency") != payment.currency:
             return False
-        event_amount = float(event.get("amount") or 0)
-        if abs(event_amount - float(payment.amount)) >= 0.01:
+        wire_amount = event.get("amount")
+        if not isinstance(wire_amount, str) or not _PROVIDER_AMOUNT.fullmatch(wire_amount):
+            return False
+        expected_amount = Decimal(str(payment.amount))
+        if not expected_amount.is_finite() or expected_amount <= 0 or Decimal(wire_amount) != expected_amount:
             return False
 
-        metadata = event.get("metadata") or {}
+        metadata = event.get("metadata")
+        if not isinstance(metadata, dict):
+            return False
         payment_metadata = payment.metadata_json or {}
         if metadata.get("payment_id") != str(payment.id):
             return False
@@ -612,4 +630,24 @@ class PaymentsService:
             return False
         if payment_metadata.get("product") and metadata.get("product") != payment_metadata.get("product"):
             return False
-        return event.get("status") != "succeeded" or event.get("paid") is True
+
+        # Null binding is historical/unproven. It retains the compatibility
+        # access path but cannot supply financial-mode evidence.
+        if getattr(payment, "merchant_binding_id", None) is not None and (
+            not authenticated_shop_id
+            or authenticated_shop_id != payment.merchant_account_id
+            or event.get("recipient_account_id") != payment.merchant_account_id
+            or payment.payment_mode not in ("test", "live")
+            or event.get("test") is not (payment.payment_mode == "test")
+            or payment.subscription_id is None
+            or metadata.get("subscription_id") != str(payment.subscription_id)
+            or metadata.get("subscription_id") != payment_metadata.get("subscription_id")
+            or metadata.get("plan_code") != "astrotype_plus_monthly"
+            or metadata.get("plan_code") != payment_metadata.get("plan_code")
+            or metadata.get("product_id") != "astrotype_plus_monthly"
+            or metadata.get("product") != payment_metadata.get("product")
+            or metadata.get("billing_reason") != payment_metadata.get("billing_reason")
+            or metadata.get("billing_reason") not in (None, "initial")
+        ):
+            return False
+        return provider_status != "succeeded" or event.get("paid") is True

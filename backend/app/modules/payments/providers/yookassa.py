@@ -224,15 +224,21 @@ class YooKassaProvider:
         """
         event_type = body.get("event", "")
         payment = body.get("object", {})
-
+        if not isinstance(payment, dict):
+            payment = {}
+        amount = payment.get("amount")
+        recipient = payment.get("recipient")
+        payment_method = payment.get("payment_method")
         return {
             "event_type": event_type,
             "payment_id": payment.get("id", ""),
             "status": payment.get("status", ""),
-            "amount": float(payment.get("amount", {}).get("value", "0")),
-            "currency": payment.get("amount", {}).get("currency", "RUB"),
+            "amount": amount.get("value") if isinstance(amount, dict) else None,
+            "currency": amount.get("currency") if isinstance(amount, dict) else None,
             "metadata": payment.get("metadata", {}),
-            "payment_method": payment.get("payment_method", {}),
+            "payment_method": payment_method if isinstance(payment_method, dict) else {},
+            "recipient_account_id": recipient.get("account_id") if isinstance(recipient, dict) else None,
+            "test": payment.get("test"),
             "created_at": payment.get("created_at", ""),
             "captured_at": payment.get("captured_at"),
             "paid": payment.get("paid", False),

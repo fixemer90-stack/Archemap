@@ -543,6 +543,7 @@ async def run_claimed_full_generation(
     generation = claim.generation
     generation_id = generation.generation_id
     provider_calls = 0
+    publishing = False
 
     async def checkpoint() -> None:
         heartbeat = await repository.heartbeat_generation(
@@ -756,23 +757,15 @@ async def run_claimed_full_generation(
         target = (
             ChildGenerationStatus.READY if assembled["status"] == "ready" else ChildGenerationStatus.NARRATIVE_FAILED
         )
-        await repository.create_report_assembly_idempotently(
-            child_profile_id=generation.child_profile_id,
-            generation_id=generation.generation_id,
-            source_generation_id=generation.generation_id,
-            report_id=report_id,
-            status=target.value,
-            contract_version=str(assembled["contract_version"]),
-            payload=assembled,
-        )
-        await repository.transition_generation(
+        await repository.checkpoint_generation_assembly(
             generation_id=generation.generation_id,
             claim_token=claim.claim_token,
-            expected_status=ChildGenerationStatus.GENERATING_SECTIONS,
-            target_status=target,
             now=clock(),
-            error_code=None if target is ChildGenerationStatus.READY else "narrative_generation_failed",
+            payload=assembled,
         )
+        publishing = True
+        await session.commit()
+        await repository.publish_checkpointed_generation(generation_id=generation_id, now=clock())
         await session.commit()
         return ChildGenerationRunResult(
             generation_id=generation.generation_id,
@@ -782,6 +775,8 @@ async def run_claimed_full_generation(
         )
     except Exception:
         await session.rollback()
+        if publishing:
+            raise  # The reconciler publishes the private checkpoint, not another provider attempt.
         released = await repository.release_generation_for_retry(
             generation_id=generation_id,
             claim_token=claim.claim_token,
@@ -815,6 +810,7 @@ async def run_claimed_narrative_retry(
     generation_id = generation.generation_id
     generation_source_report_id = generation.source_report_id
     provider_calls = 0
+    publishing = False
     repository = ChildRepository(session)
     lease_duration = timedelta(seconds=settings.CHILD_GENERATION_LEASE_SECONDS)
 
@@ -1051,24 +1047,15 @@ async def run_claimed_narrative_retry(
         target = (
             ChildGenerationStatus.READY if assembled["status"] == "ready" else ChildGenerationStatus.NARRATIVE_FAILED
         )
-        await repository.create_report_assembly_idempotently(
-            child_profile_id=generation.child_profile_id,
-            generation_id=generation_id,
-            source_generation_id=source_generation_id,
-            report_id=source_report_id,
-            status=target.value,
-            contract_version=str(assembled["contract_version"]),
-            payload=assembled,
-        )
-        await repository.transition_generation(
+        await repository.checkpoint_generation_assembly(
             generation_id=generation_id,
             claim_token=claim.claim_token,
-            expected_status=ChildGenerationStatus.GENERATING_SECTIONS,
-            target_status=target,
             now=clock(),
-            report_id=source_report_id,
-            error_code=None if target is ChildGenerationStatus.READY else "narrative_generation_failed",
+            payload=assembled,
         )
+        publishing = True
+        await session.commit()
+        await repository.publish_checkpointed_generation(generation_id=generation_id, now=clock())
         await session.commit()
         return ChildGenerationRunResult(
             generation_id=generation_id,
@@ -1078,6 +1065,8 @@ async def run_claimed_narrative_retry(
         )
     except Exception:
         await session.rollback()
+        if publishing:
+            raise
         released = await repository.release_generation_for_retry(
             generation_id=generation_id,
             claim_token=claim.claim_token,

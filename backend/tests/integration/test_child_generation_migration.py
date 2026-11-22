@@ -6,6 +6,8 @@ import sys
 from datetime import timedelta
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -26,6 +28,8 @@ async def test_upgraded_lifecycle_guards_refuse_lossy_downgrade_and_allow_empty_
 ) -> None:
     assert isinstance(db_session.bind, AsyncEngine)
     engine = db_session.bind
+    head = ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
+    assert head is not None
     await db_session.rollback()
     async with engine.begin() as connection:
         await connection.execute(text("DROP SCHEMA public CASCADE"))
@@ -111,10 +115,25 @@ async def test_upgraded_lifecycle_guards_refuse_lossy_downgrade_and_allow_empty_
                 await writer.commit()
             await writer.rollback()
 
+    async with sessions.begin() as writer:
+        await writer.execute(
+            text("UPDATE child_generations SET pending_publication = '{}'::jsonb WHERE generation_id = :generation_id"),
+            {"generation_id": generation.generation_id},
+        )
+    checkpoint_refused = alembic("downgrade", "a4b5c6d7e8f9", succeeds=False)
+    assert "unpublished Child report candidates exist" in checkpoint_refused.stderr
+    async with sessions.begin() as writer:
+        assert await writer.scalar(text("SELECT version_num FROM alembic_version")) == head
+        count = await writer.scalar(
+            text("SELECT count(*) FROM child_generations WHERE pending_publication IS NOT NULL")
+        )
+        assert count == 1
+        await writer.execute(text("UPDATE child_generations SET pending_publication = NULL"))
+
     refused = alembic("downgrade", "f7a8b9c0d1e2", succeeds=False)
     assert "Refusing lossy downgrade" in refused.stderr
     async with engine.connect() as connection:
-        assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "a8b9c0d1e2f3"
+        assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == head
         assert await connection.scalar(text("SELECT count(*) FROM child_report_assemblies")) == 1
         assert await connection.scalar(text("SELECT count(*) FROM child_generation_events")) == event_count
         assert (
@@ -154,4 +173,4 @@ async def test_upgraded_lifecycle_guards_refuse_lossy_downgrade_and_allow_empty_
         assert await connection.scalar(text("SELECT to_regclass('public.child_generation_events')")) is None
     alembic("upgrade", "head")
     async with engine.connect() as connection:
-        assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "a8b9c0d1e2f3"
+        assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == head

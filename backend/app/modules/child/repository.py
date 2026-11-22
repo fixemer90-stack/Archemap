@@ -1694,6 +1694,7 @@ class ChildRepository:
                 .where(
                     models.ChildGeneration.generation_id == generation_id,
                     models.ChildGeneration.claim_token == claim_token,
+                    models.ChildGeneration.pending_publication.is_(None),
                 )
                 .values(
                     status=(
@@ -1741,6 +1742,7 @@ class ChildRepository:
         now: datetime,
         report_id: UUID | None = None,
         error_code: str | None = None,
+        from_checkpoint: bool = False,
     ) -> models.ChildGeneration:
         require_transition(expected_status.value, target_status.value)
         current = _server_now(now)
@@ -1757,6 +1759,7 @@ class ChildRepository:
                 claim_token=None,
                 lease_expires_at=None,
                 next_retry_at=None,
+                pending_publication=None,
             )
         transitioned = (
             await self.session.execute(
@@ -1765,6 +1768,11 @@ class ChildRepository:
                     models.ChildGeneration.generation_id == generation_id,
                     models.ChildGeneration.claim_token == claim_token,
                     models.ChildGeneration.status == expected_status.value,
+                    (
+                        models.ChildGeneration.pending_publication.is_not(None)
+                        if from_checkpoint
+                        else models.ChildGeneration.pending_publication.is_(None)
+                    ),
                 )
                 .values(**values)
                 .returning(models.ChildGeneration)
@@ -1783,6 +1791,112 @@ class ChildRepository:
             task_correlation=transitioned.celery_task_id,
         )
         return transitioned
+
+    async def _emit_generation_outcome(
+        self,
+        generation: models.ChildGeneration,
+        *,
+        assembly: models.ChildReportAssembly | None = None,
+    ) -> None:
+        if (
+            not settings.BUSINESS_MONITORING_ENABLED
+            or generation.operation == ChildGenerationOperation.AGE_UPDATE.value
+        ):
+            return
+        if generation.finished_at is None:
+            raise RuntimeError("Child outcome has no persisted finish time")
+        event_type, entity_id = EventType.REPORT_FAILED, generation.generation_id
+        if assembly is not None and assembly.status == ChildGenerationStatus.READY.value:
+            event_type, entity_id = EventType.REPORT_READY, assembly.id
+        elif assembly is not None and assembly.payload["status"] == "partial" and assembly.payload["sections"]:
+            event_type, entity_id = EventType.REPORT_PARTIAL, assembly.id
+        await emit_business_event(
+            self.session,
+            BusinessEventInput(
+                event_type=event_type,
+                entity_id=entity_id,
+                subject_id=generation.owner_user_id,
+                occurred_at=generation.finished_at,
+                product=Product.CHILD,
+            ),
+        )
+
+    async def checkpoint_generation_assembly(
+        self,
+        *,
+        generation_id: UUID,
+        claim_token: UUID,
+        payload: dict[str, Any],
+        now: datetime,
+    ) -> None:
+        current = _server_now(now)
+        generation = models.ChildGeneration
+        updated = await self.session.scalar(
+            update(generation)
+            .where(
+                generation.generation_id == generation_id,
+                generation.claim_token == claim_token,
+                generation.status == ChildGenerationStatus.GENERATING_SECTIONS.value,
+                generation.pending_publication.is_(None),
+            )
+            .values(pending_publication=payload, heartbeat_at=current)
+            .returning(generation.generation_id)
+        )
+        if updated is None:
+            raise ChildLineageMismatchError("Child publication checkpoint lost its claim")
+
+    async def publish_checkpointed_generation(self, *, generation_id: UUID, now: datetime) -> None:
+        model = models.ChildGeneration
+        generation = await self.session.scalar(
+            select(model)
+            .where(model.generation_id == generation_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if generation is None:
+            raise ChildLineageMismatchError("Child publication generation is unavailable")
+        payload = generation.pending_publication
+        if payload is None and generation.status in FULL_TERMINAL_STATUSES:
+            return  # A competing publisher already finished under this same row lock.
+        if payload is None or generation.claim_token is None:
+            raise ChildLineageMismatchError("Child publication checkpoint is unavailable")
+        await self._publish_locked_generation(generation, now=now)
+
+    async def _publish_locked_generation(self, generation: models.ChildGeneration, *, now: datetime) -> None:
+        payload = generation.pending_publication
+        report_id = generation.report_id
+        if generation.operation == ChildGenerationOperation.NARRATIVE_RETRY.value:
+            report_id = generation.source_report_id
+        if (
+            payload is None
+            or report_id is None
+            or generation.claim_token is None
+            or generation.status != ChildGenerationStatus.GENERATING_SECTIONS.value
+            or payload.get("generation_id") != str(generation.generation_id)
+            or payload.get("status") not in {"ready", "partial"}
+        ):
+            raise ChildLineageMismatchError("Child publication checkpoint lineage is invalid")
+        target = ChildGenerationStatus.READY if payload["status"] == "ready" else ChildGenerationStatus.NARRATIVE_FAILED
+        result = await self.create_report_assembly_idempotently(
+            child_profile_id=generation.child_profile_id,
+            generation_id=generation.generation_id,
+            source_generation_id=UUID(payload["source_generation_id"]),
+            report_id=report_id,
+            status=target.value,
+            contract_version=payload["contract_version"],
+            payload=payload,
+        )
+        transitioned = await self.transition_generation(
+            generation_id=generation.generation_id,
+            claim_token=generation.claim_token,
+            expected_status=ChildGenerationStatus.GENERATING_SECTIONS,
+            target_status=target,
+            now=now,
+            report_id=report_id,
+            error_code=None if target is ChildGenerationStatus.READY else "narrative_generation_failed",
+            from_checkpoint=True,
+        )
+        await self._emit_generation_outcome(transitioned, assembly=result.assembly)
 
     async def fail_claimed_generation(
         self,
@@ -1827,6 +1941,7 @@ class ChildRepository:
                     models.ChildGeneration.generation_id == generation_id,
                     models.ChildGeneration.claim_token == claim_token,
                     models.ChildGeneration.status == expected.value,
+                    models.ChildGeneration.pending_publication.is_(None),
                 )
                 .values(
                     status=target.value,
@@ -1852,6 +1967,7 @@ class ChildRepository:
             error_code=error_code,
             task_correlation=failed.celery_task_id,
         )
+        await self._emit_generation_outcome(failed)
         return failed
 
     async def allocate_report_version(self, *, child_profile_id: UUID) -> int:
@@ -2108,6 +2224,21 @@ class ChildRepository:
         limit: int = 100,
     ) -> ChildGenerationReconcileResult:
         current = _server_now(now)
+        model = models.ChildGeneration
+        pending = (
+            await self.session.scalars(
+                select(model)
+                .where(model.pending_publication.is_not(None))
+                .order_by(model.heartbeat_at, model.id)
+                .limit(limit)
+                .with_for_update(skip_locked=True)
+                .execution_options(populate_existing=True)
+            )
+        ).all()
+        terminal = []
+        for generation in pending:
+            await self._publish_locked_generation(generation, now=current)
+            terminal.append(generation.generation_id)
         stuck = tuple(
             (
                 await self.session.execute(
@@ -2119,6 +2250,7 @@ class ChildRepository:
                         ),
                         models.ChildGeneration.lease_expires_at.is_not(None),
                         models.ChildGeneration.lease_expires_at < current,
+                        models.ChildGeneration.pending_publication.is_(None),
                     )
                     .order_by(models.ChildGeneration.lease_expires_at, models.ChildGeneration.id)
                     .limit(limit)
@@ -2130,7 +2262,6 @@ class ChildRepository:
             .all()
         )
         requeued: list[UUID] = []
-        terminal: list[UUID] = []
         for generation in stuck:
             status_before = generation.status
             task_correlation = generation.celery_task_id
@@ -2174,6 +2305,8 @@ class ChildRepository:
                 error_code=generation.last_error_code,
                 task_correlation=task_correlation,
             )
+            if event_code is ChildGenerationEventCode.RECONCILIATION_EXHAUSTED:
+                await self._emit_generation_outcome(generation)
         await self.session.flush()
         return ChildGenerationReconcileResult(tuple(requeued), tuple(terminal))
 

@@ -683,6 +683,12 @@ class ChildGeneration(BaseModel):
         ),
         Index("ix_child_generations_status_lease", "status", "lease_expires_at"),
         Index("ix_child_generations_status_retry", "status", "next_retry_at"),
+        Index(
+            "ix_child_generations_pending_publication",
+            "heartbeat_at",
+            "id",
+            postgresql_where=sql_text("pending_publication IS NOT NULL"),
+        ),
     )
 
     child_profile_id: Mapped[uuid.UUID] = mapped_column(
@@ -722,6 +728,7 @@ class ChildGeneration(BaseModel):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     diagnostics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    pending_publication: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
 
 class ChildGenerationEvent(BaseModel):

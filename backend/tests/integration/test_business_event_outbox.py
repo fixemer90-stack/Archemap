@@ -31,6 +31,7 @@ from app.modules.auth.service import AuthService
 from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
 from app.modules.profiles.models import PersonProfile, ProfileActiveNatalReport, ProfileBirthDataRevision
+from app.modules.profiles.refinement import BirthDataRevisionRepository, BirthDataSnapshot
 from app.modules.users.models import User
 from tests.conftest import test_engine
 from tests.conftest import test_session_factory as session_factory
@@ -97,6 +98,8 @@ async def self_report_tables(registration_tables: None) -> AsyncGenerator[None, 
         "complete",
         "partial",
         "terminal-outbox-failure",
+        "refinement-replay",
+        "refinement-beat",
     ],
 )
 async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
@@ -106,6 +109,10 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
     monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
     monkeypatch.setattr(self_worker, "async_session_factory", session_factory)
     user_id, profile_id, generation_id = UUID(int=11), UUID(int=12), UUID(int=13)
+    refinement = scenario.startswith("refinement-")
+    outbox_failure = scenario == "terminal-outbox-failure" or refinement
+    revision_id: UUID | None = None
+    checkpointed_narrative: dict[str, object] | None = None
     async with session_factory() as session:
         session.add(User(id=user_id, email="self-owner@example.com", hashed_password="", is_verified=True))
         await session.flush()
@@ -124,9 +131,27 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             )
         )
         await session.flush()
-        session.add(
-            self_models.NatalReportGeneration(generation_id=generation_id, user_id=user_id, profile_id=profile_id)
-        )
+        if refinement:
+            accepted = await BirthDataRevisionRepository(session).create_revision(
+                user_id=user_id,
+                profile_id=profile_id,
+                generation_id=generation_id,
+                idempotency_key="fixture-revision",
+                request_hash="a" * 64,
+                new_snapshot=BirthDataSnapshot(
+                    birth_time=time(13),
+                    birth_time_accuracy="exact",
+                    birth_place="Moscow",
+                    latitude=55.75,
+                    longitude=37.61,
+                    timezone="Europe/Moscow",
+                ),
+            )
+            revision_id = accepted.revision.id
+        else:
+            session.add(
+                self_models.NatalReportGeneration(generation_id=generation_id, user_id=user_id, profile_id=profile_id)
+            )
         if scenario == "outbox-failure":
             await session.execute(
                 text("ALTER TABLE business_event_outbox ADD CONSTRAINT t03_self_outbox CHECK (false)")
@@ -149,16 +174,20 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             assert report.status == "narrative_generating"
             assert report.deterministic_payload
             assert report.infographic_data_id is not None
-            events = (await fresh.scalars(select(BusinessEvent))).all()
+            events = (
+                await fresh.scalars(select(BusinessEvent).where(BusinessEvent.event_type != "report_requested"))
+            ).all()
             assert len(events) == int(enabled)
-            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
+            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled) + int(
+                refinement
+            )
             if enabled:
                 assert events[0].event_type == "basic_report_ready"
                 assert (events[0].entity_id, events[0].subject_id) == (report.id, user_id)
                 assert (events[0].product, events[0].occurred_at, events[0].details) == ("self", report.created_at, {})
             observed_report_ids.append(report.id)
-        if scenario in {"complete", "partial", "terminal-outbox-failure"}:
-            if scenario == "terminal-outbox-failure":
+        if scenario in {"complete", "partial"} or outbox_failure:
+            if outbox_failure:
                 async with session_factory.begin() as fresh:
                     await fresh.execute(
                         text(
@@ -223,20 +252,36 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
 
     async def force_same_generation() -> dict[str, object]:
         return await self_worker._generate_natal_report_v2_async(
-            user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
+            user_id=str(user_id),
+            profile_id=str(profile_id),
+            generation_id=str(generation_id),
+            revision_id=str(revision_id) if revision_id is not None else None,
+            force=True,
         )
 
-    expected_status = scenario if scenario in {"complete", "partial"} else "narrative_failed"
-    if scenario == "terminal-outbox-failure":
+    expected_status = "complete" if outbox_failure else scenario
+    if expected_status not in {"complete", "partial"}:
+        expected_status = "narrative_failed"
+    if outbox_failure:
         with pytest.raises(IntegrityError):
             await force_same_generation()
         async with session_factory.begin() as fresh:
-            assert await fresh.scalar(select(self_models.NatalReport.status)) == "narrative_generating"
+            pending = (await fresh.scalars(select(self_models.NatalReport))).one()
+            assert pending.status == "narrative_generating"
+            assert pending.pending_publication is not None and pending.pending_publication["status"] == "complete"
+            checkpointed_narrative = pending.pending_publication["narrative_payload"]
+            assert checkpointed_narrative and pending.narrative_payload != checkpointed_narrative
             assert await fresh.scalar(select(self_models.NatalReportGeneration.status)) == "narrative_generating"
-            assert list((await fresh.scalars(select(BusinessEvent.event_type))).all()) == ["basic_report_ready"]
-            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
-            assert await fresh.scalar(select(func.count()).select_from(self_models.ReportSegmentGeneration)) == 0
+            expected_events = {"basic_report_ready", "report_requested"} if refinement else {"basic_report_ready"}
+            assert set((await fresh.scalars(select(BusinessEvent.event_type))).all()) == expected_events
+            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == len(expected_events)
+            segment_count = await fresh.scalar(select(func.count()).select_from(self_models.ReportSegmentGeneration))
+            assert segment_count is not None and segment_count > 0
             await fresh.execute(text("ALTER TABLE business_event_outbox DROP CONSTRAINT t03_terminal_outbox"))
+        if scenario == "refinement-beat":
+            cutoff = datetime.max.replace(tzinfo=UTC)
+            assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 1
+            assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
         result = await force_same_generation()
     elif scenario == "worker-loss":
         with pytest.raises(asyncio.CancelledError):
@@ -256,7 +301,7 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
         result = next(item for item in (first, second) if item["status"] == "narrative_failed")
     else:
         result = await force_same_generation()
-    assert result["status"] == expected_status
+    assert result["report_status"] == expected_status
     assert len(observed_report_ids) == 1
     replayed = await force_same_generation()
     assert replayed["report_id"] == result["report_id"]
@@ -275,6 +320,12 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
         report = (await fresh.scalars(select(self_models.NatalReport))).one()
         assert str(report.id) == result["report_id"]
         assert report.status == expected_status
+        assert report.pending_publication is None
+        if checkpointed_narrative is not None:
+            assert report.narrative_payload == checkpointed_narrative
+        if revision_id is not None:
+            readback_revision = await fresh.get(ProfileBirthDataRevision, revision_id)
+            assert readback_revision is not None and readback_revision.status == "ready"
         if scenario in {"worker-loss", "disconnect"}:
             generation = (
                 await fresh.scalars(
@@ -321,7 +372,11 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             expected_status
         ]
         if enabled:
-            assert set(events) == {"basic_report_ready", terminal_type}
+            assert set(events) == (
+                {"basic_report_ready", terminal_type, "report_requested"}
+                if refinement
+                else {"basic_report_ready", terminal_type}
+            )
             terminal = events[terminal_type]
             assert terminal.entity_id == (generation_id if terminal_type == "report_failed" else report.id)
             assert (terminal.subject_id, terminal.product, terminal.details) == (user_id, "self", {})

@@ -16,8 +16,11 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.exceptions import ArchemapError, AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.infrastructure.timezone import TimezoneResolver
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2.models import NatalReportGeneration
 from app.modules.profiles.models import PersonProfile, ProfileBirthDataRevision
 from app.modules.profiles.schemas import BirthDataRefinementRequest, BirthDataRefinementStatusResponse
@@ -212,6 +215,17 @@ class BirthDataRevisionRepository:
         )
         self.session.add_all((generation, revision))
         await self.session.flush()
+        if settings.BUSINESS_MONITORING_ENABLED:
+            await emit_business_event(
+                self.session,
+                BusinessEventInput(
+                    event_type=EventType.REPORT_REQUESTED,
+                    entity_id=generation_id,
+                    subject_id=user_id,
+                    product=Product.SELF,
+                    occurred_at=generation.created_at,
+                ),
+            )
         return BirthDataRevisionCreateResult(revision=revision, created=True)
 
     async def ensure_owned_profile(self, *, user_id: uuid.UUID, profile_id: uuid.UUID) -> PersonProfile:

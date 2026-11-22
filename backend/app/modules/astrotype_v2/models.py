@@ -349,3 +349,5 @@ class NatalReport(BaseModel):
     deterministic_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     narrative_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     assembled_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # Private candidate, never serialized by report readers until terminal publication succeeds.
+    pending_publication: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)

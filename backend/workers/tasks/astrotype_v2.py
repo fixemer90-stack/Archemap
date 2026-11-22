@@ -218,11 +218,8 @@ def generate_natal_report_v2(
 
 
 @asynccontextmanager
-async def _generation_session(generation_id: uuid.UUID, *, refinement: bool) -> AsyncIterator[AsyncSession]:
+async def _generation_session(generation_id: uuid.UUID) -> AsyncIterator[AsyncSession]:
     async with async_session_factory() as session:
-        if refinement:
-            yield session
-            return
         engine = session.bind
         if not isinstance(engine, AsyncEngine):
             raise RuntimeError("Self generation requires an async PostgreSQL engine")
@@ -294,6 +291,65 @@ async def _fail_interrupted_narrative(
     )
 
 
+async def _publish_checkpointed_self_report(
+    repository: AstrotypeV2Repository,
+    *,
+    report: models.NatalReport,
+    generation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    revision: ProfileBirthDataRevision | None,
+) -> None:
+    candidate = report.pending_publication
+    if candidate is None or candidate.get("status") not in {"complete", "partial"}:
+        raise RuntimeError("No valid Self publication candidate")
+    report.status = candidate["status"]
+    report.deterministic_payload = candidate["deterministic_payload"]
+    report.narrative_payload = candidate["narrative_payload"]
+    report.assembled_payload = candidate["assembled_payload"]
+    report.pending_publication = None
+    if revision is not None:
+        revision.status = "ready"
+        revision.error_code = None
+    await _persist_generation_status(
+        repository=repository,
+        generation_id=generation_id,
+        status=report.status,
+        report_id=report.id,
+        diagnostics={"stage": "assembled"},
+    )
+    await _emit_self_terminal(repository, report=report, generation_id=generation_id, user_id=user_id)
+
+
+async def _recover_self_narrative(
+    repository: AstrotypeV2Repository,
+    generation: models.NatalReportGeneration,
+    report: models.NatalReport,
+) -> None:
+    revision = await repository.session.scalar(
+        select(ProfileBirthDataRevision)
+        .where(
+            ProfileBirthDataRevision.generation_id == generation.generation_id,
+            ProfileBirthDataRevision.user_id == generation.user_id,
+            ProfileBirthDataRevision.profile_id == generation.profile_id,
+            ProfileBirthDataRevision.report_id == report.id,
+        )
+        .with_for_update()
+    )
+    if report.pending_publication is not None:
+        await _publish_checkpointed_self_report(
+            repository,
+            report=report,
+            generation_id=generation.generation_id,
+            user_id=generation.user_id,
+            revision=revision,
+        )
+    else:
+        if revision is not None:
+            revision.status = "deterministic_ready"
+            revision.error_code = "narrative_generation_failed"
+        await _fail_interrupted_narrative(repository, generation, report)
+
+
 @app.task(name="astrotype_v2.reconcile_interrupted_narratives")  # type: ignore[untyped-decorator]
 def reconcile_interrupted_narratives() -> int:
     # Allow older workers without the advisory guard to finish during a rolling restart.
@@ -309,9 +365,6 @@ async def _reconcile_interrupted_narratives(*, before: datetime) -> int:
         generation.updated_at < before,
         report.status == "narrative_generating",
         report.generation_id == generation.generation_id,
-        ~select(ProfileBirthDataRevision.id)
-        .where(ProfileBirthDataRevision.generation_id == generation.generation_id)
-        .exists(),
     )
     query = select(generation, report).join(report, report.id == generation.report_id).where(*eligible)
     async with async_session_factory() as db:
@@ -336,7 +389,7 @@ async def _reconcile_interrupted_narratives(*, before: datetime) -> int:
                 await db.execute(query.where(generation.generation_id == generation_id).with_for_update())
             ).one_or_none()
             if rows is not None:
-                await _fail_interrupted_narrative(AstrotypeV2Repository(db), rows[0], rows[1])
+                await _recover_self_narrative(AstrotypeV2Repository(db), rows[0], rows[1])
                 recovered += 1
     return recovered
 
@@ -356,7 +409,7 @@ async def _generate_natal_report_v2_async(
     generation_uuid = uuid.UUID(generation_id)
     revision_uuid = uuid.UUID(revision_id) if revision_id is not None else None
     refinement_started = perf_counter() if revision_uuid is not None else None
-    async with _generation_session(generation_uuid, refinement=revision_uuid is not None) as db:
+    async with _generation_session(generation_uuid) as db:
         repository = AstrotypeV2Repository(db)
         revision: ProfileBirthDataRevision | None = None
         generation_query = None
@@ -393,7 +446,7 @@ async def _generate_natal_report_v2_async(
                 if generation.status == "narrative_generating" and existing.status == "narrative_generating":
                     # The prior delivery no longer owns the connection. Its provider outcome may
                     # be unknown; preserve the calculation and do not replay the paid work.
-                    await _fail_interrupted_narrative(repository, generation, existing)
+                    await _recover_self_narrative(repository, generation, existing)
                     await db.commit()
                 return _task_payload(
                     generation_id=generation_id,
@@ -422,6 +475,14 @@ async def _generate_natal_report_v2_async(
                 if revision.status in {"deterministic_ready", "ready", "failed"}:
                     existing = await repository.get_report(revision.report_id) if revision.report_id else None
                     if existing is not None:
+                        generation = await repository.get_generation(generation_uuid)
+                        if (
+                            generation is not None
+                            and generation.report_id == existing.id
+                            and generation.status == existing.status == "narrative_generating"
+                        ):
+                            await _recover_self_narrative(repository, generation, existing)
+                            await db.commit()
                         return _task_payload(
                             generation_id=generation_id,
                             profile_id=profile_uuid,
@@ -638,26 +699,29 @@ async def _generate_natal_report_v2_async(
                         previous_version=report.version - 1,
                     )
                 publishing_terminal = True
-                report.status = complete_report.status
-                report.deterministic_payload = complete_report.deterministic_payload
-                report.narrative_payload = complete_report.narrative_payload
-                report.assembled_payload = complete_report.assembled_payload
+                # Keep the exact validated result private and durable before attempting publication.
+                # The report stays usable at its deterministic tier until the terminal event can commit.
+                report.pending_publication = {
+                    "status": complete_report.status,
+                    "deterministic_payload": complete_report.deterministic_payload,
+                    "narrative_payload": complete_report.narrative_payload,
+                    "assembled_payload": complete_report.assembled_payload,
+                }
                 await _persist_generation_status(
                     repository=repository,
                     generation_id=generation_uuid,
-                    status=complete_report.status,
+                    status="narrative_generating",
                     report_id=report_id,
-                    diagnostics={"stage": "assembled"},
+                    diagnostics={"stage": "publication_pending"},
                 )
-                if revision_uuid is not None:
-                    completed_revision = await db.scalar(
-                        select(ProfileBirthDataRevision).where(ProfileBirthDataRevision.id == revision_uuid)
-                    )
-                    if completed_revision is not None:
-                        completed_revision.status = "ready"
-                        completed_revision.error_code = None
-                await repository.flush()
-                await _emit_self_terminal(repository, report=report, generation_id=generation_uuid, user_id=user_uuid)
+                await db.commit()
+                await _publish_checkpointed_self_report(
+                    repository,
+                    report=report,
+                    generation_id=generation_uuid,
+                    user_id=user_uuid,
+                    revision=revision,
+                )
                 await db.commit()
                 if refinement_started is not None:
                     birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)

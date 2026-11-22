@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.chart_engine.chart import build_chart
 from app.config import settings
-from app.infrastructure.celery_async import run_async_in_worker
+from app.infrastructure.celery_async import check_worker_soft_timeout, run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
 from app.modules.analytics.service import emit_business_event
@@ -956,10 +956,8 @@ async def _ensure_llm_segments(
         await repository.flush()
         await repository.session.commit()
 
-    start = asyncio.get_running_loop().create_future()
-
     async def generate(section_input: SectionRenderInputV2) -> models.ReportSegmentGeneration:
-        await start
+        check_worker_soft_timeout()
         return await _generate_llm_segment_safely(
             provider=segment_provider,
             section_input=section_input,
@@ -967,15 +965,7 @@ async def _ensure_llm_segments(
         )
 
     async with asyncio.TaskGroup() as group:
-        try:
-            tasks = [group.create_task(generate(section_input)) for section_input in generation_inputs]
-            start.set_result(None)
-        finally:
-            # A Celery soft timeout can interrupt create_task after scheduling but before
-            # TaskGroup registration. No provider work may start until registration is complete.
-            if not start.done():
-                start.cancel()
-                await asyncio.sleep(0)  # Let any unregistered child observe cancellation before unwinding.
+        tasks = [group.create_task(generate(section_input)) for section_input in generation_inputs]
     generated_segments = [task.result() for task in tasks]
 
     new_segments = _upsert_segments(existing_by_key=by_key, new_segments=generated_segments)

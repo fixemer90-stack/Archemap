@@ -141,7 +141,9 @@ def build_generation_status_payload(
     """Return persisted status and section diagnostics for an accepted generation id."""
 
     segment_items = _generation_section_diagnostics(
-        outline=outline, segments=segments or [], parent_status=generation.status
+        outline=outline,
+        segments=segments or [],
+        parent_status=report.status if report is not None else generation.status,
     )
     payload = {
         "contract_version": "astrotype_v2_generation_status_v1",

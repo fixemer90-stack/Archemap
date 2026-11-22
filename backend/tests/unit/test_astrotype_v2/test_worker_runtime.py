@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import signal
 import uuid
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
+from contextvars import Context
 from datetime import UTC, date, datetime, time
 from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from billiard.exceptions import SoftTimeLimitExceeded  # type: ignore[import-untyped]
 from billiard.pool import soft_timeout_sighandler  # type: ignore[import-untyped]
 
 from app.modules.astrotype_v2 import models
@@ -160,8 +162,6 @@ async def test_llm_segments_persist_failed_validation_rows_without_losing_ready_
 def test_soft_timeout_during_child_registration_never_calls_provider(
     monkeypatch: pytest.MonkeyPatch, interrupt_at: int
 ) -> None:
-    from billiard.exceptions import SoftTimeLimitExceeded  # type: ignore[import-untyped]
-
     from app.infrastructure import celery_async
     from workers.tasks import astrotype_v2
 
@@ -193,7 +193,7 @@ def test_soft_timeout_during_child_registration_never_calls_provider(
 
     previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
     try:
-        with pytest.raises(ExceptionGroup, match="TaskGroup") as interrupted:
+        with pytest.raises(SoftTimeLimitExceeded):
             celery_async.run_async_in_worker(
                 astrotype_v2._ensure_llm_segments(
                     repository=cast(Any, _FakeRepository()),
@@ -202,14 +202,72 @@ def test_soft_timeout_during_child_registration_never_calls_provider(
                     existing_segments=[],
                 )
             )
-        assert len(interrupted.value.exceptions) == 1
-        assert isinstance(interrupted.value.exceptions[0], SoftTimeLimitExceeded)
+
         pending_at_return = asyncio.all_tasks(loop)
         celery_async.run_async_in_worker(asyncio.sleep(0))
-        assert scheduled == interrupt_at
+        assert scheduled == len(outline.section_keys)
         assert calls == []
         assert not pending_at_return
     finally:
+        signal.signal(signal.SIGUSR1, previous)
+        loop.close()
+
+
+def test_soft_timeout_during_task_group_callback_registration_does_not_stall(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.infrastructure import celery_async
+    from workers.tasks import astrotype_v2
+
+    loop = asyncio.new_event_loop()
+    monkeypatch.setattr(celery_async, "_TASK_LOOP", loop)
+    fired = False
+    rescued = False
+    rescue: asyncio.TimerHandle | None = None
+    calls: list[str] = []
+    chart_id = uuid.uuid4()
+    outline = _outline(chart_id)
+
+    class InterruptibleTask(asyncio.Task[Any]):
+        def add_done_callback(self, fn: Callable[[Any], object], /, *, context: Context | None = None) -> None:
+            nonlocal fired, rescue, rescued
+            if not fired and isinstance(getattr(fn, "__self__", None), asyncio.TaskGroup):
+                fired = True
+
+                def rescue_hanging_group() -> None:
+                    nonlocal rescued
+                    rescued = True
+                    asyncio.Task.add_done_callback(self, fn, context=context)
+
+                rescue = loop.call_later(0.15, rescue_hanging_group)
+                signal.raise_signal(signal.SIGUSR1)
+            super().add_done_callback(fn, context=context)
+
+    def factory(event_loop: asyncio.AbstractEventLoop, coro: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
+        return InterruptibleTask(coro, loop=event_loop)
+
+    async def provider_probe(**kwargs: Any) -> models.ReportSegmentGeneration:
+        key = kwargs["section_input"].section_id
+        calls.append(key)
+        return _ready_segment(key, chart_id=chart_id, outline_id=outline.id)
+
+    loop.set_task_factory(factory)
+    monkeypatch.setattr(astrotype_v2, "get_llm_provider", lambda: object())
+    monkeypatch.setattr(astrotype_v2, "run_segment_generation_v2", provider_probe)
+    previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
+    try:
+        with pytest.raises(SoftTimeLimitExceeded):
+            celery_async.run_async_in_worker(
+                astrotype_v2._ensure_llm_segments(
+                    repository=cast(Any, _FakeRepository()),
+                    outline=outline,
+                    synthesis=_synthesis(chart_id),
+                    existing_segments=[],
+                )
+            )
+        assert fired and not rescued
+        assert calls == [] and not asyncio.all_tasks(loop)
+    finally:
+        if rescue is not None:
+            rescue.cancel()
         signal.signal(signal.SIGUSR1, previous)
         loop.close()
 

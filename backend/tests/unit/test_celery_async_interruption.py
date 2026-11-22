@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from billiard.exceptions import SoftTimeLimitExceeded  # type: ignore[import-untyped]
+from billiard.pool import soft_timeout_sighandler  # type: ignore[import-untyped]
 
 from app.infrastructure import celery_async
 
@@ -44,9 +45,6 @@ def test_soft_timeout_drains_interrupted_coroutine_before_worker_reuses_loop(
 
     monkeypatch.setattr(selector, "select", interrupt_select)
 
-    def timeout_handler(*_args: object) -> None:
-        raise SoftTimeLimitExceeded
-
     async def interrupted() -> None:
         nonlocal started
         started = True
@@ -56,7 +54,7 @@ def test_soft_timeout_drains_interrupted_coroutine_before_worker_reuses_loop(
             await asyncio.sleep(0)
             finalized.append(True)
 
-    previous = signal.signal(signal.SIGUSR1, timeout_handler)
+    previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
     try:
         with pytest.raises(SoftTimeLimitExceeded):
             celery_async.run_async_in_worker(interrupted())
@@ -82,14 +80,11 @@ def test_soft_timeout_after_root_scheduled_never_restarts_old_delivery(
             signal.raise_signal(signal.SIGUSR1)
         return task
 
-    def timeout_handler(*_args: object) -> None:
-        raise SoftTimeLimitExceeded
-
     async def interrupted() -> None:
         calls.append("old delivery")
 
     monkeypatch.setattr(worker_loop, "create_task", interrupt_root)
-    previous = signal.signal(signal.SIGUSR1, timeout_handler)
+    previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
     try:
         with pytest.raises(SoftTimeLimitExceeded):
             celery_async.run_async_in_worker(interrupted())
@@ -100,3 +95,36 @@ def test_soft_timeout_after_root_scheduled_never_restarts_old_delivery(
     celery_async.run_async_in_worker(asyncio.sleep(0))
     assert calls == []
     assert not pending_at_return
+
+
+def test_soft_timeout_during_initial_task_step_registration_has_no_loop_errors(
+    worker_loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    call_soon = worker_loop.call_soon
+    calls: list[str] = []
+    errors: list[dict[str, Any]] = []
+    fired = False
+
+    def interrupt_step(callback: Any, *args: Any, **kwargs: Any) -> asyncio.Handle:
+        nonlocal fired
+        handle = call_soon(callback, *args, **kwargs)
+        if not fired and isinstance(getattr(callback, "__self__", None), asyncio.Task):
+            fired = True
+            signal.raise_signal(signal.SIGUSR1)
+        return handle
+
+    async def interrupted() -> None:
+        calls.append("old delivery")
+
+    worker_loop.set_exception_handler(lambda _loop, context: errors.append(context))
+    monkeypatch.setattr(worker_loop, "call_soon", interrupt_step)
+    previous = signal.signal(signal.SIGUSR1, soft_timeout_sighandler)
+    try:
+        with pytest.raises(SoftTimeLimitExceeded):
+            celery_async.run_async_in_worker(interrupted())
+        celery_async.run_async_in_worker(asyncio.sleep(0))
+    finally:
+        signal.signal(signal.SIGUSR1, previous)
+
+    assert fired and calls == []
+    assert errors == []

@@ -49,6 +49,24 @@ def _segment(chart_id: uuid.UUID, outline_id: uuid.UUID, key: str, status: str) 
     )
 
 
+def test_reused_failed_report_controls_generation_segment_projection() -> None:
+    from app.modules.astrotype_v2.api_runtime import build_generation_status_payload
+
+    chart_id = uuid.uuid4()
+    report = _report(chart_id)
+    report.status = "narrative_failed"
+    outline = _outline(chart_id)
+    running = _segment(chart_id, outline.id, "core_pattern", "running")
+    generation = models.NatalReportGeneration(
+        generation_id=uuid.uuid4(), profile_id=uuid.uuid4(), status="already_exists", report_id=report.id
+    )
+    result = build_generation_status_payload(generation=generation, report=report, outline=outline, segments=[running])
+
+    assert result["status"] == "already_exists"
+    assert [item["segment_status"] for item in result["sections"]] == ["failed", "failed"]
+    assert running.status == "running"
+
+
 def test_build_generation_accepted_response_enqueues_profile_job_without_running_pipeline_inline() -> None:
     from app.modules.astrotype_v2.api_runtime import build_generation_accepted_response, enqueue_v2_report_generation
 

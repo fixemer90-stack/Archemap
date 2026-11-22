@@ -247,6 +247,33 @@ def _generation_lock_params(generation_id: uuid.UUID) -> dict[str, str]:
     return {"name": f"astrotype-self-generation:{generation_id}"}
 
 
+async def _emit_self_terminal(
+    repository: AstrotypeV2Repository, *, report: models.NatalReport, generation_id: uuid.UUID, user_id: uuid.UUID
+) -> None:
+    if not settings.BUSINESS_MONITORING_ENABLED:
+        return
+    event_type = {
+        "complete": EventType.REPORT_READY,
+        "partial": EventType.REPORT_PARTIAL,
+        "narrative_failed": EventType.REPORT_FAILED,
+    }[report.status]
+    occurred_at = (
+        await repository.session.scalars(
+            select(models.NatalReport.updated_at).where(models.NatalReport.id == report.id)
+        )
+    ).one()
+    await emit_business_event(
+        repository.session,
+        BusinessEventInput(
+            event_type=event_type,
+            entity_id=generation_id if event_type is EventType.REPORT_FAILED else report.id,
+            subject_id=user_id,
+            product=Product.SELF,
+            occurred_at=occurred_at,
+        ),
+    )
+
+
 async def _fail_interrupted_narrative(
     repository: AstrotypeV2Repository, generation: models.NatalReportGeneration, report: models.NatalReport
 ) -> None:
@@ -261,6 +288,9 @@ async def _fail_interrupted_narrative(
         status="narrative_failed",
         report_id=report.id,
         diagnostics={"stage": "segments", "error_code": "narrative_worker_interrupted"},
+    )
+    await _emit_self_terminal(
+        repository, report=report, generation_id=generation.generation_id, user_id=generation.user_id
     )
 
 
@@ -581,6 +611,7 @@ async def _generate_natal_report_v2_async(
                 )
             await db.commit()
 
+            publishing_terminal = False
             try:
                 segments = await _ensure_ready_segments(
                     repository=repository,
@@ -606,6 +637,7 @@ async def _generate_natal_report_v2_async(
                         segment_rows=segments,
                         previous_version=report.version - 1,
                     )
+                publishing_terminal = True
                 report.status = complete_report.status
                 report.deterministic_payload = complete_report.deterministic_payload
                 report.narrative_payload = complete_report.narrative_payload
@@ -625,6 +657,7 @@ async def _generate_natal_report_v2_async(
                         completed_revision.status = "ready"
                         completed_revision.error_code = None
                 await repository.flush()
+                await _emit_self_terminal(repository, report=report, generation_id=generation_uuid, user_id=user_uuid)
                 await db.commit()
                 if refinement_started is not None:
                     birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
@@ -644,6 +677,8 @@ async def _generate_natal_report_v2_async(
                     force=force,
                 )
             except Exception:
+                if publishing_terminal:
+                    raise  # A persistence failure is not a narrative failure.
                 if isinstance(db.bind, AsyncConnection) and db.bind.invalidated:
                     raise  # The connection-scoped delivery guard was lost; do not reconnect to publish.
                 await db.rollback()
@@ -670,6 +705,9 @@ async def _generate_natal_report_v2_async(
                         failed_revision.status = "deterministic_ready"
                         failed_revision.error_code = "narrative_generation_failed"
                 await repository.flush()
+                await _emit_self_terminal(
+                    repository, report=failed_report, generation_id=generation_uuid, user_id=user_uuid
+                )
                 await db.commit()
                 if refinement_started is not None:
                     birth_data_refinement_telemetry.record_generation_duration(perf_counter() - refinement_started)
@@ -697,7 +735,8 @@ async def _generate_natal_report_v2_async(
                 generation = await db.scalar(generation_query)
                 can_mark_failed = generation is not None and generation.report_id is None
             else:
-                can_mark_failed = True
+                generation = await repository.get_generation(generation_uuid)
+                can_mark_failed = generation is not None and generation.report_id is None
             if can_mark_failed:
                 await _persist_generation_status(
                     repository=repository,

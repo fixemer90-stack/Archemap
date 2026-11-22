@@ -11,7 +11,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_current_user, get_db
+from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.access import BASIC_REPORT_TYPE, report_access_operation
 from app.modules.astrotype_v2.api_runtime import (
@@ -323,6 +326,17 @@ async def _enqueue_persisted_v2_generation(
     )
     await repository.add(generation)
     await repository.flush()
+    if settings.BUSINESS_MONITORING_ENABLED:
+        await emit_business_event(
+            db,
+            BusinessEventInput(
+                event_type=EventType.REPORT_REQUESTED,
+                entity_id=generation_id,
+                subject_id=user_id,
+                product=Product.SELF,
+                occurred_at=generation.created_at,
+            ),
+        )
     await db.commit()
 
     task = queue.delay(

@@ -4,6 +4,7 @@ import asyncio
 import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime, time, timedelta
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -23,6 +24,7 @@ from app.modules.astrotype_v2 import models as self_models
 from app.modules.astrotype_v2 import router as self_router
 from app.modules.astrotype_v2.api_runtime import build_generation_status_payload, build_report_read_payload_v2
 from app.modules.astrotype_v2.repository import AstrotypeV2Repository
+from app.modules.astrotype_v2.synthesis import NatalSynthesisV2
 from app.modules.auth.models import EmailVerification, IdentityLink
 from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.service import AuthService
@@ -83,7 +85,20 @@ async def self_report_tables(registration_tables: None) -> AsyncGenerator[None, 
 
 
 @pytest.mark.usefixtures("self_report_tables")
-@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure", "concurrent-replay", "worker-loss", "disconnect"])
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "off",
+        "on",
+        "outbox-failure",
+        "concurrent-replay",
+        "worker-loss",
+        "disconnect",
+        "complete",
+        "partial",
+        "terminal-outbox-failure",
+    ],
+)
 async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
     monkeypatch: pytest.MonkeyPatch, scenario: str
 ) -> None:
@@ -119,9 +134,14 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
         await session.commit()
 
     observed_report_ids: list[UUID] = []
+    real_narrative = self_worker._ensure_ready_segments
 
     async def narrative_probe(
-        *, repository: AstrotypeV2Repository, **_kwargs: object
+        *,
+        repository: AstrotypeV2Repository,
+        chart_id: UUID,
+        outline: self_models.ReportOutline,
+        synthesis: NatalSynthesisV2,
     ) -> list[self_models.ReportSegmentGeneration]:
         async with session_factory() as fresh:
             report = (await fresh.scalars(select(self_models.NatalReport))).one()
@@ -137,14 +157,31 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
                 assert (events[0].entity_id, events[0].subject_id) == (report.id, user_id)
                 assert (events[0].product, events[0].occurred_at, events[0].details) == ("self", report.created_at, {})
             observed_report_ids.append(report.id)
+        if scenario in {"complete", "partial", "terminal-outbox-failure"}:
+            if scenario == "terminal-outbox-failure":
+                async with session_factory.begin() as fresh:
+                    await fresh.execute(
+                        text(
+                            "ALTER TABLE business_event_outbox "
+                            "ADD CONSTRAINT t03_terminal_outbox CHECK (false) NOT VALID"
+                        )
+                    )
+            segments = await real_narrative(
+                repository=repository, chart_id=chart_id, outline=outline, synthesis=synthesis
+            )
+            if scenario == "partial":
+                for segment in segments[1:]:
+                    await repository.session.delete(segment)
+                return segments[:1]
+            return segments
         if scenario in {"worker-loss", "disconnect"}:
-            outline = await repository.get_outline_for_chart(report.chart_id)
-            assert outline is not None
+            persisted_outline = await repository.get_outline_for_chart(report.chart_id)
+            assert persisted_outline is not None
             await repository.add(
                 self_models.ReportSegmentGeneration(
                     chart_id=report.chart_id,
-                    outline_id=outline.id,
-                    section_key=outline.section_keys[0],
+                    outline_id=persisted_outline.id,
+                    section_key=persisted_outline.section_keys[0],
                     status="running",
                     provider="fixture",
                     model="fixture",
@@ -189,7 +226,19 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
         )
 
-    if scenario == "worker-loss":
+    expected_status = scenario if scenario in {"complete", "partial"} else "narrative_failed"
+    if scenario == "terminal-outbox-failure":
+        with pytest.raises(IntegrityError):
+            await force_same_generation()
+        async with session_factory.begin() as fresh:
+            assert await fresh.scalar(select(self_models.NatalReport.status)) == "narrative_generating"
+            assert await fresh.scalar(select(self_models.NatalReportGeneration.status)) == "narrative_generating"
+            assert list((await fresh.scalars(select(BusinessEvent.event_type))).all()) == ["basic_report_ready"]
+            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+            assert await fresh.scalar(select(func.count()).select_from(self_models.ReportSegmentGeneration)) == 0
+            await fresh.execute(text("ALTER TABLE business_event_outbox DROP CONSTRAINT t03_terminal_outbox"))
+        result = await force_same_generation()
+    elif scenario == "worker-loss":
         with pytest.raises(asyncio.CancelledError):
             await force_same_generation()
         result = await force_same_generation()
@@ -207,7 +256,7 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
         result = next(item for item in (first, second) if item["status"] == "narrative_failed")
     else:
         result = await force_same_generation()
-    assert result["status"] == "narrative_failed"  # No narrative segments were supplied by the probe.
+    assert result["status"] == expected_status
     assert len(observed_report_ids) == 1
     replayed = await force_same_generation()
     assert replayed["report_id"] == result["report_id"]
@@ -225,7 +274,7 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
     async with session_factory() as fresh:
         report = (await fresh.scalars(select(self_models.NatalReport))).one()
         assert str(report.id) == result["report_id"]
-        assert report.status == "narrative_failed"
+        assert report.status == expected_status
         if scenario in {"worker-loss", "disconnect"}:
             generation = (
                 await fresh.scalars(
@@ -267,8 +316,97 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
                 )
                 is None
             )
-        assert await fresh.scalar(select(func.count()).select_from(BusinessEvent)) == int(enabled)
-        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == int(enabled)
+        events = {item.event_type: item for item in (await fresh.scalars(select(BusinessEvent))).all()}
+        terminal_type = {"complete": "report_ready", "partial": "report_partial", "narrative_failed": "report_failed"}[
+            expected_status
+        ]
+        if enabled:
+            assert set(events) == {"basic_report_ready", terminal_type}
+            terminal = events[terminal_type]
+            assert terminal.entity_id == (generation_id if terminal_type == "report_failed" else report.id)
+            assert (terminal.subject_id, terminal.product, terminal.details) == (user_id, "self", {})
+            assert terminal.occurred_at == report.updated_at
+        else:
+            assert not events
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == len(events)
+
+
+@pytest.mark.usefixtures("self_report_tables")
+@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure"])
+async def test_self_request_is_persisted_with_event_before_queue_dispatch(
+    monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", scenario != "off")
+    user_id, profile_id = UUID(int=11), UUID(int=12)
+    async with session_factory.begin() as db:
+        db.add(User(id=user_id, email="request-owner@example.invalid", hashed_password="", is_verified=True))
+        await db.flush()
+        db.add(
+            PersonProfile(
+                id=profile_id,
+                user_id=user_id,
+                name="Fixture",
+                birth_date=date(1990, 1, 1),
+                birth_place="Moscow",
+                latitude=55.75,
+                longitude=37.61,
+                timezone="Europe/Moscow",
+            )
+        )
+        if scenario == "outbox-failure":
+            await db.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false)"))
+
+    calls: list[dict[str, object]] = []
+
+    def dispatch(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)
+        return SimpleNamespace(id="fixture-task-id")
+
+    async with session_factory() as db:
+        request = self_router._enqueue_persisted_v2_generation(
+            repository=AstrotypeV2Repository(db),
+            db=db,
+            profile_id=profile_id,
+            user_id=user_id,
+            queue=SimpleNamespace(delay=dispatch),
+            force=True,
+        )
+        if scenario == "outbox-failure":
+            with pytest.raises(IntegrityError):
+                await request
+            await db.commit()
+        else:
+            accepted = await request
+            assert accepted.status_code == 202
+            assert calls == [
+                {
+                    "user_id": str(user_id),
+                    "profile_id": str(profile_id),
+                    "force": True,
+                    "generation_id": accepted.payload["generation_id"],
+                }
+            ]
+
+    async with session_factory() as fresh:
+        jobs = list((await fresh.scalars(select(self_models.NatalReportGeneration))).all())
+        events = list((await fresh.scalars(select(BusinessEvent))).all())
+        if scenario == "outbox-failure":
+            assert not calls and not jobs
+        else:
+            assert len(jobs) == 1 and jobs[0].celery_task_id == "fixture-task-id"
+        if scenario == "on":
+            assert len(events) == 1
+            recorded = events[0]
+            assert (recorded.entity_id, recorded.subject_id, recorded.product, recorded.occurred_at) == (
+                jobs[0].generation_id,
+                user_id,
+                "self",
+                jobs[0].created_at,
+            )
+            assert (recorded.event_type, recorded.details) == ("report_requested", {})
+        else:
+            assert not events
+        assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == len(events)
 
 
 @pytest.fixture

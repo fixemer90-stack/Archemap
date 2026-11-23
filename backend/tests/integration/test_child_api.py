@@ -359,7 +359,7 @@ async def test_every_route_access_matrix_and_denial_payload_load_order(
             db_session,
             user_id=seed.owner_id,
             status="inactive" if access == "inactive" else "active",
-            expires_at=NOW - timedelta(days=2) if access == "expired" else NOW + timedelta(days=30),
+            expires_in=-timedelta(hours=1) if access == "expired" else timedelta(days=30),
         )
     app.dependency_overrides[get_current_user] = lambda: seed.owner_id
     monkeypatch.setattr("app.modules.child.router.settings.CHILD_REPORT_ENABLED", False)

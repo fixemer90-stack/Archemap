@@ -15,7 +15,6 @@ from app.dependencies import get_current_user
 from app.main import app
 from app.modules.astrotype_v2.models import NatalChart
 from app.modules.authorization.models import Entitlement
-from app.modules.authorization.service import EntitlementsService
 from app.modules.child import models
 from app.modules.child.age_resolver import resolve_child_age
 from app.modules.child.narrative import ChildSectionRenderInput, MockChildSegmentProvider
@@ -43,13 +42,6 @@ from tests.integration.test_child_interaction import _persist_interaction
 
 pytestmark = pytest.mark.usefixtures("_setup_database")
 NOW = datetime(2026, 10, 23, 12, tzinfo=UTC)
-
-
-@pytest.fixture(autouse=True)
-def _pin_http_access_clock(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "app.modules.child.router.EntitlementsService", lambda db: EntitlementsService(db, now=lambda: NOW)
-    )
 
 
 @dataclass(frozen=True)
@@ -277,9 +269,11 @@ async def _grant_direct_child_access(
     user_id: UUID,
     product: str = "child",
     status: str = "active",
-    starts_at: datetime = NOW - timedelta(days=1),
-    expires_at: datetime | None = NOW + timedelta(days=30),
+    starts_in: timedelta = -timedelta(days=1),
+    expires_in: timedelta = timedelta(days=30),
 ) -> None:
+    # HTTP authorization uses wall time, independently of the fixed pipeline clock.
+    now = datetime.now(UTC)
     payment = Payment(
         user_id=user_id,
         provider="test",
@@ -296,8 +290,8 @@ async def _grant_direct_child_access(
             product=product,
             status=status,
             source_payment_id=payment.id,
-            starts_at=starts_at,
-            expires_at=expires_at,
+            starts_at=now + starts_in,
+            expires_at=now + expires_in,
             metadata_json={},
         )
     )
@@ -305,6 +299,7 @@ async def _grant_direct_child_access(
 
 
 async def _grant_plus_access(db: AsyncSession, *, user_id: UUID) -> None:
+    now = datetime.now(UTC)
     plan = SubscriptionPlan(
         plan_code="astrotype_plus_monthly",
         display_name="Astrotype Plus",
@@ -332,8 +327,8 @@ async def _grant_plus_access(db: AsyncSession, *, user_id: UUID) -> None:
         plan_id=plan.id,
         provider="test",
         status="active",
-        current_period_start=NOW - timedelta(days=1),
-        current_period_end=NOW + timedelta(days=30),
+        current_period_start=now - timedelta(days=1),
+        current_period_end=now + timedelta(days=30),
         latest_payment_id=payment.id,
         metadata_json={},
     )
@@ -345,8 +340,8 @@ async def _grant_plus_access(db: AsyncSession, *, user_id: UUID) -> None:
             product="self",
             status="active",
             source_payment_id=payment.id,
-            starts_at=NOW - timedelta(days=1),
-            expires_at=NOW + timedelta(days=30),
+            starts_at=now - timedelta(days=1),
+            expires_at=now + timedelta(days=30),
             metadata_json={"subscription_id": str(subscription.id)},
         )
     )
@@ -483,11 +478,11 @@ async def test_http_create_allows_active_plus_access(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("product", "entitlement_status", "expires_at"),
+    ("product", "entitlement_status", "expires_in"),
     [
-        ("career", "active", NOW + timedelta(days=30)),
-        ("child", "inactive", NOW + timedelta(days=30)),
-        ("child", "active", NOW - timedelta(seconds=1)),
+        ("career", "active", timedelta(days=30)),
+        ("child", "inactive", timedelta(days=30)),
+        ("child", "active", -timedelta(seconds=1)),
     ],
 )
 async def test_http_create_rejects_unrelated_inactive_or_expired_direct_grants(
@@ -496,7 +491,7 @@ async def test_http_create_rejects_unrelated_inactive_or_expired_direct_grants(
     monkeypatch: pytest.MonkeyPatch,
     product: str,
     entitlement_status: str,
-    expires_at: datetime,
+    expires_in: timedelta,
 ) -> None:
     seed = await _seed_lifecycle(db_session)
     await _grant_direct_child_access(
@@ -504,7 +499,7 @@ async def test_http_create_rejects_unrelated_inactive_or_expired_direct_grants(
         user_id=seed.owner_id,
         product=product,
         status=entitlement_status,
-        expires_at=expires_at,
+        expires_in=expires_in,
     )
     app.dependency_overrides[get_current_user] = lambda: seed.owner_id
     monkeypatch.setattr("app.modules.child.router.settings.CHILD_REPORT_ENABLED", True)

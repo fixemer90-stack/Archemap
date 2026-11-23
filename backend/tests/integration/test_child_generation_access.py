@@ -16,11 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user
 from app.main import app
-from app.modules.authorization.service import EntitlementsService
 from app.modules.child import models
 from app.modules.child.repository import ChildRepository
 from tests.integration.test_child_generation_lifecycle import (
-    NOW,
     _grant_direct_child_access,
     _grant_plus_access,
     _seed_lifecycle,
@@ -46,10 +44,6 @@ ARTIFACT_MODELS = (
 def dispatched(monkeypatch: pytest.MonkeyPatch) -> list[UUID]:
     calls: list[UUID] = []
     monkeypatch.setattr("app.modules.child.router.settings.CHILD_REPORT_ENABLED", True)
-    monkeypatch.setattr(
-        "app.modules.child.router.EntitlementsService",
-        lambda db: EntitlementsService(db, now=lambda: NOW),
-    )
 
     def dispatch(*, generation_id: UUID) -> str:
         calls.append(generation_id)
@@ -94,8 +88,8 @@ async def test_http_paid_gate_rejects_non_authorizing_grants_without_side_effect
             user_id=seed.owner_id,
             product="career" if grant == "unrelated" else "child",
             status="inactive" if grant == "inactive" else "active",
-            starts_at=NOW + timedelta(days=1) if grant == "future" else NOW - timedelta(days=1),
-            expires_at=NOW - timedelta(seconds=1) if grant == "expired" else NOW + timedelta(days=30),
+            starts_in=timedelta(days=1) if grant == "future" else -timedelta(days=1),
+            expires_in=-timedelta(seconds=1) if grant == "expired" else timedelta(days=30),
         )
         if grant == "subscription_backed_child":
             from app.modules.authorization.models import Entitlement

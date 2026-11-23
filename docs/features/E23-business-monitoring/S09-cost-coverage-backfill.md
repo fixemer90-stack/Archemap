@@ -39,6 +39,8 @@ Do not treat the sampled transport store as a complete ledger: disabled collecti
 
 ## Evidence
 
+- Follow-up on PostgreSQL migrated to `e23d7b001`: all 121 scoped tests passed, including all three opt-in usage evidence integration tests with the dedicated disposable database configured. Provider responses were mocked; no production evidence or backfill was written.
+
 The pure cost helper rejects counts outside the nonnegative signed 64-bit range and rates with more than 38 coefficient digits or a stored exponent outside −38…38. These are validation limits, not rounding rules. Valid inputs preserve exact subtotals across scales; unavailable usage or rates remain unavailable, and currencies are not combined.
 
 - RED: `pytest tests/unit/test_business_cost_coverage.py -q -k 'counts_fail_before or rate_envelope or both_numeric'` — eight missing-validation failures; the valid boundary case passed.

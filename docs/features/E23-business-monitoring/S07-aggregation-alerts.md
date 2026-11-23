@@ -37,6 +37,8 @@ A PostgreSQL checkpoint is committed before HTTP and transitions to `acknowledge
 
 ## Evidence
 
+- Follow-up disposable PostgreSQL/Redis run: 30 tests passed, including seven runtime integration cases. The used S07 downgrade was rejected and the four delivery fence rows remained. This is not real Telegram delivery or production timer acceptance.
+
 Original projection and watchdog evidence from `backend/`, before the Telegram follow-up:
 
 - RED: `BUSINESS_MONITORING_ENABLED=false .venv/bin/python -m pytest tests/unit/test_business_operations.py -q` failed on the missing operations module before implementation. GREEN: that suite plus `tests/unit/test_business_event*.py` and `tests/unit/test_celery_async_interruption.py` passed (55 tests).

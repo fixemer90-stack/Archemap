@@ -30,6 +30,7 @@ from app.modules.auth.oauth.service import OAuthService
 from app.modules.auth.service import AuthService
 from app.modules.auth.verification import VerificationService
 from app.modules.charts.models import ChartSnapshot
+from app.modules.profiles.dispatch import dispatch_birth_data_revision, dispatch_pending_birth_data_revisions
 from app.modules.profiles.models import PersonProfile, ProfileActiveNatalReport, ProfileBirthDataRevision
 from app.modules.profiles.refinement import BirthDataRevisionRepository, BirthDataSnapshot
 from app.modules.users.models import User
@@ -100,6 +101,8 @@ async def self_report_tables(registration_tables: None) -> AsyncGenerator[None, 
         "terminal-outbox-failure",
         "refinement-replay",
         "refinement-beat",
+        "pipeline-failed",
+        "pipeline-abandoned",
     ],
 )
 async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
@@ -107,6 +110,7 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
 ) -> None:
     enabled = scenario != "off"
     monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
+    monkeypatch.setattr(settings, "LLM_ENABLED", False)
     monkeypatch.setattr(self_worker, "async_session_factory", session_factory)
     user_id, profile_id, generation_id = UUID(int=11), UUID(int=12), UUID(int=13)
     refinement = scenario.startswith("refinement-")
@@ -259,6 +263,41 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
             force=True,
         )
 
+    if scenario in {"pipeline-failed", "pipeline-abandoned"}:
+
+        async def fail_profile(*_: object, **__: object) -> None:
+            if scenario == "pipeline-abandoned":
+                raise asyncio.CancelledError
+            raise ValueError("private deterministic error")
+
+        monkeypatch.setattr(self_worker, "_load_profile", fail_profile)
+        if scenario == "pipeline-failed":
+            with pytest.raises(ValueError, match="private deterministic error"):
+                await force_same_generation()
+        else:
+            with pytest.raises(asyncio.CancelledError):
+                await force_same_generation()
+            async with session_factory() as fresh:
+                assert await fresh.scalar(select(self_models.NatalReportGeneration.status)) == "running"
+            assert await self_worker._reconcile_interrupted_narratives(before=NOW) == 0
+            cutoff = datetime.max.replace(tzinfo=UTC)
+            assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 1
+            assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        async with session_factory() as fresh:
+            job = (await fresh.scalars(select(self_models.NatalReportGeneration))).one()
+            assert job.status == "failed" and job.report_id is None
+            failure = (await fresh.scalars(select(BusinessEvent))).one()
+            assert (failure.event_type, failure.entity_id, failure.occurred_at, failure.details) == (
+                "report_failed",
+                generation_id,
+                job.updated_at,
+                {},
+            )
+            assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+        assert (await force_same_generation())["status"] == "failed"
+        assert not observed_report_ids
+        return
+
     expected_status = "complete" if outbox_failure else scenario
     if expected_status not in {"complete", "partial"}:
         expected_status = "narrative_failed"
@@ -387,11 +426,255 @@ async def test_self_basic_ready_is_committed_with_foundation_before_narrative(
 
 
 @pytest.mark.usefixtures("self_report_tables")
-@pytest.mark.parametrize("scenario", ["off", "on", "outbox-failure"])
+@pytest.mark.parametrize(
+    "scenario",
+    ["interrupted", "delayed", "worker-before-receipt", "outbox-rollback", "flag-off", "pending", "dispatching"],
+)
+async def test_self_recovers_only_dispatched_refinements_with_a_persisted_worker_claim(
+    monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    enabled = scenario != "flag-off"
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", enabled)
+    monkeypatch.setattr(settings, "LLM_ENABLED", False)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "mock")
+    monkeypatch.setattr(self_worker, "async_session_factory", session_factory)
+    user_id, profile_id, generation_id = UUID(int=21), UUID(int=22), UUID(int=23)
+    async with session_factory.begin() as db:
+        db.add(User(id=user_id, email="refinement-owner@example.invalid", hashed_password="", is_verified=True))
+        await db.flush()
+        db.add(
+            PersonProfile(
+                id=profile_id,
+                user_id=user_id,
+                name="Fixture",
+                birth_date=date(1990, 1, 1),
+                birth_time=time(12),
+                birth_time_accuracy="exact",
+                birth_place="Moscow",
+                latitude=55.75,
+                longitude=37.61,
+                timezone="Europe/Moscow",
+            )
+        )
+        await db.flush()
+        accepted = await BirthDataRevisionRepository(db).create_revision(
+            user_id=user_id,
+            profile_id=profile_id,
+            generation_id=generation_id,
+            idempotency_key="refinement-interruption",
+            request_hash="b" * 64,
+            new_snapshot=BirthDataSnapshot(
+                birth_time=time(13),
+                birth_time_accuracy="exact",
+                birth_place="Moscow",
+                latitude=55.75,
+                longitude=37.61,
+                timezone="Europe/Moscow",
+            ),
+        )
+        revision_id = accepted.revision.id
+        snapshot = accepted.revision.new_snapshot.copy()
+
+    cutoff = datetime.now(UTC) + timedelta(hours=1)
+    sent: list[dict[str, UUID]] = []
+
+    def send(**kwargs: UUID) -> None:
+        sent.append(kwargs)
+
+    def forbid_provider(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("this test must never enter the provider")
+
+    monkeypatch.setattr(self_worker, "get_llm_provider", forbid_provider)
+    original_load = self_worker._load_profile
+
+    async def deliver() -> dict[str, object]:
+        (message,) = sent
+        return await self_worker._generate_natal_report_v2_async(
+            user_id=str(message["user_id"]),
+            profile_id=str(message["profile_id"]),
+            generation_id=str(message["generation_id"]),
+            revision_id=str(message["revision_id"]),
+            force=True,
+        )
+
+    async def observe_claim_and_interrupt(db: AsyncSession, *, profile_id: UUID, user_id: UUID) -> PersonProfile:
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        async with session_factory() as fresh:
+            revision = await fresh.get(ProfileBirthDataRevision, revision_id)
+            assert revision is not None and revision.status == "processing" and revision.report_id is None
+            assert await fresh.scalar(select(self_models.NatalReportGeneration.status)) == "running"
+            assert (
+                await fresh.scalar(select(BusinessEvent.id).where(BusinessEvent.event_type == "report_failed")) is None
+            )
+        if scenario == "delayed":
+            return await original_load(db, profile_id=profile_id, user_id=user_id)
+        raise asyncio.CancelledError
+
+    async def interrupt_worker() -> None:
+        with pytest.raises(asyncio.CancelledError):
+            await deliver()
+
+    monkeypatch.setattr(self_worker, "_load_profile", observe_claim_and_interrupt)
+    mark_dispatched = BirthDataRevisionRepository.mark_dispatched
+
+    async def reconcile_during_dispatch(repository: BirthDataRevisionRepository, *, revision_id: UUID) -> None:
+        # Publication succeeded, but the real dispatcher has not yet written its receipt.
+        assert len(sent) == 1
+        async with session_factory() as fresh:
+            revision = await fresh.get(ProfileBirthDataRevision, revision_id)
+            assert revision is not None and (revision.status, revision.dispatch_status) == ("queued", "dispatching")
+            assert await fresh.scalar(select(self_models.NatalReportGeneration.status)) == "queued"
+        if scenario == "worker-before-receipt":
+            await interrupt_worker()
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        await mark_dispatched(repository, revision_id=revision_id)
+
+    if scenario in {"delayed", "worker-before-receipt"}:
+        monkeypatch.setattr(BirthDataRevisionRepository, "mark_dispatched", reconcile_during_dispatch)
+
+    async with session_factory() as db:
+        if scenario == "dispatching":
+            assert await BirthDataRevisionRepository(db).claim_dispatch(revision_id=revision_id, stale_before=NOW)
+            await db.commit()
+        elif scenario != "pending":
+            assert await dispatch_birth_data_revision(db, revision_id=revision_id, sender=send)
+
+    if scenario in {"pending", "dispatching"}:
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        async with session_factory() as db:
+            revision = await db.get(ProfileBirthDataRevision, revision_id)
+            assert revision is not None and (revision.status, revision.dispatch_status) == ("queued", scenario)
+            assert await db.scalar(select(self_models.NatalReportGeneration.status)) == "queued"
+            assert (await db.scalars(select(BusinessEvent.event_type))).all() == ["report_requested"]
+        return
+
+    assert sent == [dict(revision_id=revision_id, profile_id=profile_id, user_id=user_id, generation_id=generation_id)]
+
+    if scenario == "delayed":
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        async with session_factory() as fresh:
+            revision = await fresh.get(ProfileBirthDataRevision, revision_id)
+            assert revision is not None and (revision.status, revision.dispatch_status) == ("queued", "dispatched")
+            assert revision.dispatched_at is not None and revision.dispatched_at < cutoff
+            assert await fresh.scalar(select(self_models.NatalReportGeneration.status)) == "queued"
+            assert (await fresh.scalars(select(BusinessEvent.event_type))).all() == ["report_requested"]
+        assert (await deliver())["status"] == "complete"  # Local deterministic fallback, no provider.
+        async with session_factory() as fresh:
+            revision = await fresh.get(ProfileBirthDataRevision, revision_id)
+            job = (await fresh.scalars(select(self_models.NatalReportGeneration))).one()
+            assert revision is not None and (revision.status, revision.dispatch_status) == ("ready", "dispatched")
+            assert job.status == "complete" and job.report_id == revision.report_id is not None
+            assert set((await fresh.scalars(select(BusinessEvent.event_type))).all()) == {
+                "basic_report_ready",
+                "report_ready",
+                "report_requested",
+            }
+        return
+
+    if scenario != "worker-before-receipt":
+        await interrupt_worker()
+
+    async with session_factory.begin() as db:
+        revision = await db.get(ProfileBirthDataRevision, revision_id)
+        assert revision is not None and revision.status == "processing" and revision.dispatched_at is not None
+        dispatched_at = revision.dispatched_at
+        assert await db.scalar(select(self_models.NatalReportGeneration.status)) == "running"
+        if scenario == "outbox-rollback":
+            await db.execute(
+                text("ALTER TABLE business_event_outbox ADD CONSTRAINT t03_refine CHECK (false) NOT VALID")
+            )
+
+    # The generation predates the dispatch receipt, which must also be stale.
+    assert await self_worker._reconcile_interrupted_narratives(before=dispatched_at) == 0
+    if scenario == "outbox-rollback":
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        async with session_factory.begin() as db:
+            revision = await db.get(ProfileBirthDataRevision, revision_id)
+            assert revision is not None and revision.status == "processing" and revision.error_code is None
+            assert await db.scalar(select(self_models.NatalReportGeneration.status)) == "running"
+            assert (await db.scalars(select(BusinessEvent.event_type))).all() == ["report_requested"]
+            assert await db.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
+            await db.execute(text("ALTER TABLE business_event_outbox DROP CONSTRAINT t03_refine"))
+
+    if scenario == "worker-before-receipt":
+        # The dispatcher does not hold the generation advisory guard; it writes
+        # the revision row directly. Skip an in-flight update without waiting.
+        async with session_factory.begin() as dispatcher:
+            assert await dispatcher.get(ProfileBirthDataRevision, revision_id, with_for_update=True)
+            assert await asyncio.wait_for(self_worker._reconcile_interrupted_narratives(before=cutoff), 5) == 0
+        recovered = await asyncio.gather(
+            self_worker._reconcile_interrupted_narratives(before=cutoff),
+            self_worker._reconcile_interrupted_narratives(before=cutoff),
+        )
+        assert sorted(recovered) == [0, 1]
+    else:
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 1
+    assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+    assert (await deliver())["status"] == "failed"
+    async with session_factory() as db:
+        assert await dispatch_pending_birth_data_revisions(db, sender=send) == (0, 0)
+        assert len(sent) == 1
+        revision = await db.get(ProfileBirthDataRevision, revision_id)
+        assert revision is not None
+        assert (revision.status, revision.error_code, revision.report_id, revision.chart_id) == (
+            "failed",
+            "report_generation_failed",
+            None,
+            None,
+        )
+        assert (revision.dispatch_status, revision.dispatch_attempts, revision.dispatched_at) == (
+            "dispatched",
+            1,
+            dispatched_at,
+        )
+        assert revision.new_snapshot == snapshot
+        profile = await db.get(PersonProfile, profile_id)
+        assert profile is not None and profile.birth_time == time(13)
+        job = (await db.scalars(select(self_models.NatalReportGeneration))).one()
+        assert job.status == "failed" and job.report_id is None
+        assert job.diagnostics == {
+            "stage": "pipeline",
+            "source": "birth_data_refinement",
+            "error_code": "self_refinement_interrupted",
+        }
+        assert await db.scalar(select(func.count()).select_from(self_models.NatalReport)) == 0
+        assert await db.scalar(select(func.count()).select_from(self_models.NatalChart)) == 0
+        facts = (await db.scalars(select(BusinessEvent))).all()
+        assert sorted(fact.event_type for fact in facts) == (["report_failed", "report_requested"] if enabled else [])
+        if enabled:
+            failure = next(fact for fact in facts if fact.event_type == "report_failed")
+            assert (failure.entity_id, failure.subject_id, failure.product, failure.occurred_at, failure.details) == (
+                generation_id,
+                user_id,
+                "self",
+                job.updated_at,
+                {},
+            )
+        assert await db.scalar(select(func.count()).select_from(BusinessEventOutbox)) == len(facts)
+
+
+@pytest.mark.usefixtures("self_report_tables")
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "off",
+        "on",
+        "outbox-failure",
+        "publish-error",
+        "publish-error-off",
+        "terminal-rollback",
+        "claimed",
+        "late-receipt",
+        "delayed-delivery",
+    ],
+)
 async def test_self_request_is_persisted_with_event_before_queue_dispatch(
     monkeypatch: pytest.MonkeyPatch, scenario: str
 ) -> None:
-    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", scenario != "off")
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", scenario not in {"off", "publish-error-off"})
+    monkeypatch.setattr(settings, "LLM_ENABLED", False)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "mock")
+    monkeypatch.setattr(self_worker, "async_session_factory", session_factory)
     user_id, profile_id = UUID(int=11), UUID(int=12)
     async with session_factory.begin() as db:
         db.add(User(id=user_id, email="request-owner@example.invalid", hashed_password="", is_verified=True))
@@ -415,9 +698,54 @@ async def test_self_request_is_persisted_with_event_before_queue_dispatch(
 
     def dispatch(**kwargs: object) -> SimpleNamespace:
         calls.append(kwargs)
+        if scenario in {"publish-error", "publish-error-off", "terminal-rollback", "claimed"}:
+            raise OSError("private broker diagnostic")
         return SimpleNamespace(id="fixture-task-id")
 
+    async def deliver() -> dict[str, object]:
+        (message,) = calls
+        return await self_worker._generate_natal_report_v2_async(
+            profile_id=str(message["profile_id"]),
+            user_id=str(message["user_id"]),
+            generation_id=str(message["generation_id"]),
+            force=True,
+        )
+
     async with session_factory() as db:
+        refresh = db.refresh
+
+        async def refresh_after_publish(
+            generation: self_models.NatalReportGeneration,
+            *,
+            with_for_update: bool = False,
+            attribute_names: list[str] | None = None,
+        ) -> None:
+            if not with_for_update:
+                await refresh(generation, attribute_names=attribute_names)
+                return
+            assert len(calls) == 1 and generation.status == "queued"
+            if scenario in {"claimed", "late-receipt"}:
+
+                async def interrupt_profile(*_args: object, **_kwargs: object) -> None:
+                    raise asyncio.CancelledError
+
+                # The publisher still has a stale queued object when delivery wins the real claim.
+                with monkeypatch.context() as worker_patch:
+                    worker_patch.setattr(self_worker, "_load_profile", interrupt_profile)
+                    with pytest.raises(asyncio.CancelledError):
+                        await deliver()
+            elif scenario == "delayed-delivery":
+                assert (
+                    await self_worker._reconcile_interrupted_narratives(before=datetime.now(UTC) + timedelta(hours=1))
+                    == 0
+                )
+            else:
+                async with session_factory.begin() as other:
+                    await other.execute(text("ALTER TABLE business_event_outbox ADD CHECK (false) NOT VALID"))
+            await refresh(generation, with_for_update=with_for_update)
+
+        if scenario in {"terminal-rollback", "claimed", "late-receipt", "delayed-delivery"}:
+            monkeypatch.setattr(db, "refresh", refresh_after_publish)
         request = self_router._enqueue_persisted_v2_generation(
             repository=AstrotypeV2Repository(db),
             db=db,
@@ -426,10 +754,15 @@ async def test_self_request_is_persisted_with_event_before_queue_dispatch(
             queue=SimpleNamespace(delay=dispatch),
             force=True,
         )
-        if scenario == "outbox-failure":
+        if scenario in {"outbox-failure", "terminal-rollback"}:
             with pytest.raises(IntegrityError):
                 await request
             await db.commit()
+        elif scenario in {"publish-error", "publish-error-off"}:
+            with pytest.raises(HTTPException) as error:
+                await request
+            assert error.value.status_code == 503
+            assert (await deliver())["status"] == "failed"
         else:
             accepted = await request
             assert accepted.status_code == 202
@@ -442,16 +775,42 @@ async def test_self_request_is_persisted_with_event_before_queue_dispatch(
                 }
             ]
 
+    if scenario == "delayed-delivery":
+        cutoff = datetime.now(UTC) + timedelta(hours=1)
+        assert await self_worker._reconcile_interrupted_narratives(before=cutoff) == 0
+        async with session_factory() as fresh:
+            job = (await fresh.scalars(select(self_models.NatalReportGeneration))).one()
+            assert job.updated_at < cutoff and job.status == "queued" and job.celery_task_id == "fixture-task-id"
+            assert (await fresh.scalars(select(BusinessEvent.event_type))).all() == ["report_requested"]
+        assert (await deliver())["status"] == "complete"  # Local deterministic fallback, no provider.
+        async with session_factory() as fresh:
+            job = (await fresh.scalars(select(self_models.NatalReportGeneration))).one()
+            assert job.status == "complete" and job.report_id is not None
+            assert set((await fresh.scalars(select(BusinessEvent.event_type))).all()) == {
+                "basic_report_ready",
+                "report_ready",
+                "report_requested",
+            }
+        return
+
     async with session_factory() as fresh:
         jobs = list((await fresh.scalars(select(self_models.NatalReportGeneration))).all())
         events = list((await fresh.scalars(select(BusinessEvent))).all())
         if scenario == "outbox-failure":
             assert not calls and not jobs
-        else:
+        elif scenario in {"off", "on"}:
             assert len(jobs) == 1 and jobs[0].celery_task_id == "fixture-task-id"
-        if scenario == "on":
-            assert len(events) == 1
-            recorded = events[0]
+        else:
+            (job,) = jobs
+            assert job.status == {"terminal-rollback": "queued", "claimed": "running", "late-receipt": "running"}.get(
+                scenario, "failed"
+            )
+            assert job.celery_task_id is None and job.report_id is None
+            assert len(calls) == 1
+        by_type = {recorded.event_type: recorded for recorded in events}
+        assert len(by_type) == len(events)
+        if scenario in {"on", "claimed", "late-receipt", "terminal-rollback", "publish-error"}:
+            recorded = by_type.pop("report_requested")
             assert (recorded.entity_id, recorded.subject_id, recorded.product, recorded.occurred_at) == (
                 jobs[0].generation_id,
                 user_id,
@@ -459,8 +818,16 @@ async def test_self_request_is_persisted_with_event_before_queue_dispatch(
                 jobs[0].created_at,
             )
             assert (recorded.event_type, recorded.details) == ("report_requested", {})
-        else:
-            assert not events
+        if scenario == "publish-error":
+            failed = by_type.pop("report_failed")
+            assert (failed.entity_id, failed.subject_id, failed.product, failed.occurred_at, failed.details) == (
+                jobs[0].generation_id,
+                user_id,
+                "self",
+                jobs[0].updated_at,
+                {},
+            )
+        assert not by_type
         assert await fresh.scalar(select(func.count()).select_from(BusinessEventOutbox)) == len(events)
 
 

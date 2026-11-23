@@ -6,6 +6,7 @@ registers concrete task definitions.
 
 from workers.tasks import (
     astrotype_v2,
+    business_operations,
     career,
     child,
     notifications,
@@ -17,6 +18,7 @@ from workers.tasks import (
 
 __all__ = [
     "astrotype_v2",
+    "business_operations",
     "career",
     "child",
     "notifications",

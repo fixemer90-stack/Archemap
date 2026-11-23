@@ -8,6 +8,15 @@ const playwrightDevOrigin = process.env.PLAYWRIGHT_BASE_URL
 const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: playwrightDevOrigin ? [playwrightDevOrigin] : undefined,
+  async headers() {
+    // All documents, including unknown/private routes, suppress raw referrers.
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

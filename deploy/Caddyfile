@@ -13,7 +13,7 @@ astrotype.ru, www.astrotype.ru {
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options "nosniff"
-    Referrer-Policy "strict-origin-when-cross-origin"
+    >Referrer-Policy "no-referrer"
     X-Frame-Options "SAMEORIGIN"
   }
 }
@@ -27,7 +27,7 @@ staging.astrotype.ru {
     X-Robots-Tag "noindex, nofollow, noarchive"
     Strict-Transport-Security "max-age=31536000; includeSubDomains"
     X-Content-Type-Options "nosniff"
-    Referrer-Policy "no-referrer"
+    >Referrer-Policy "no-referrer"
     X-Frame-Options "SAMEORIGIN"
   }
 }

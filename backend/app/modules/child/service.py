@@ -176,6 +176,7 @@ async def _dispatch_accepted_generation(
     await repository.record_generation_dispatch_outcome(
         generation_id=generation_id,
         task_id=task_id,
+        claimed_at=claimed_at,
         succeeded=succeeded,
         now=datetime.now(UTC),
     )

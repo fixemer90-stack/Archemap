@@ -26,6 +26,7 @@ from app.infrastructure.database import async_session_factory
 from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
 from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2 import models
+from app.modules.astrotype_v2.business_events import emit_self_generation_failure
 from app.modules.astrotype_v2.chart_adapter import NatalTimingProvenance, build_natal_chart_rows
 from app.modules.astrotype_v2.chart_persistence import persist_natal_chart_rows
 from app.modules.astrotype_v2.fact_extractor import (
@@ -360,13 +361,30 @@ def reconcile_interrupted_narratives() -> int:
 async def _reconcile_interrupted_narratives(*, before: datetime) -> int:
     generation = models.NatalReportGeneration
     report = models.NatalReport
-    eligible = (
-        generation.status == "narrative_generating",
-        generation.updated_at < before,
-        report.status == "narrative_generating",
-        report.generation_id == generation.generation_id,
+    revision = ProfileBirthDataRevision
+    stale_refinement = (
+        (revision.status == "processing")
+        & revision.report_id.is_(None)
+        & (revision.dispatch_status == "dispatched")
+        & (revision.dispatched_at < before)
+        & (revision.updated_at < before)
     )
-    query = select(generation, report).join(report, report.id == generation.report_id).where(*eligible)
+    # Age and broker acceptance do not prove worker execution. Only a committed
+    # worker claim is eligible; refinements without a receipt belong to their dispatcher.
+    abandoned = (
+        (generation.status == "running") & generation.report_id.is_(None) & (revision.id.is_(None) | stale_refinement)
+    )
+    interrupted = (
+        (generation.status == "narrative_generating")
+        & (report.status == "narrative_generating")
+        & (report.generation_id == generation.generation_id)
+    )
+    query = (
+        select(generation, report, revision.id)
+        .outerjoin(report, report.id == generation.report_id)
+        .outerjoin(revision, revision.generation_id == generation.generation_id)
+        .where(generation.updated_at < before, abandoned | interrupted)
+    )
     async with async_session_factory() as db:
         candidates = list(
             (
@@ -379,18 +397,52 @@ async def _reconcile_interrupted_narratives(*, before: datetime) -> int:
         )
     recovered = 0
     for generation_id in candidates:
-        async with async_session_factory.begin() as db:
-            if not await db.scalar(
-                text("SELECT pg_try_advisory_xact_lock(hashtextextended(:name, 0))"),
-                _generation_lock_params(generation_id),
-            ):
-                continue
-            rows = (
-                await db.execute(query.where(generation.generation_id == generation_id).with_for_update())
-            ).one_or_none()
-            if rows is not None:
-                await _recover_self_narrative(AstrotypeV2Repository(db), rows[0], rows[1])
-                recovered += 1
+        try:
+            async with async_session_factory.begin() as db:
+                if not await db.scalar(
+                    text("SELECT pg_try_advisory_xact_lock(hashtextextended(:name, 0))"),
+                    _generation_lock_params(generation_id),
+                ):
+                    continue
+                rows = (
+                    await db.execute(
+                        query.where(generation.generation_id == generation_id).with_for_update(
+                            of=generation, skip_locked=True
+                        )
+                    )
+                ).one_or_none()
+                if rows is None:
+                    continue
+                job, foundation, revision_id = rows
+                if foundation is None:
+                    diagnostics = {"stage": "pipeline", "error_code": "self_worker_interrupted"}
+                    if revision_id is not None:
+                        # Recheck under the revision lock as well: a dispatch update may have won
+                        # between reading the candidate and taking ownership of the revision.
+                        abandoned_revision = await db.scalar(
+                            select(revision)
+                            .where(
+                                revision.id == revision_id,
+                                revision.user_id == job.user_id,
+                                revision.profile_id == job.profile_id,
+                                stale_refinement,
+                            )
+                            .with_for_update(skip_locked=True)
+                        )
+                        if abandoned_revision is None:
+                            continue
+                        abandoned_revision.status = "failed"
+                        abandoned_revision.error_code = "report_generation_failed"
+                        diagnostics.update(source="birth_data_refinement", error_code="self_refinement_interrupted")
+                    job.status = "failed"
+                    job.diagnostics = diagnostics
+                    await emit_self_generation_failure(db, job)
+                else:
+                    await _recover_self_narrative(AstrotypeV2Repository(db), job, foundation)
+        except Exception:
+            logger.warning("astrotype_v2_generation_recovery_failed", generation_id=str(generation_id))
+        else:
+            recovered += 1
     return recovered
 
 
@@ -427,6 +479,14 @@ async def _generate_natal_report_v2_async(
             generation = await db.scalar(generation_query)
             if generation is None:
                 raise ValueError("Generation not found")
+            if generation.status == "failed" and generation.report_id is None:
+                return {
+                    "contract_version": "astrotype_v2_generation_task_v1",
+                    "generation_id": generation_id,
+                    "profile_id": profile_id,
+                    "status": "failed",
+                    "force": force,
+                }
             if generation.report_id is None:
                 await _persist_generation_status(
                     repository=repository,
@@ -506,7 +566,9 @@ async def _generate_natal_report_v2_async(
                     status="running",
                     diagnostics={"force": force, "stage": "started", "source": "birth_data_refinement"},
                 )
-                await repository.flush()
+                # Persist evidence of delivery before any foundation work. The session
+                # advisory lock still owns execution while dispatch records its receipt independently.
+                await db.commit()
             existing_report = await repository.get_latest_report_for_profile(
                 profile_id=profile_uuid,
                 user_id=user_uuid,
@@ -797,17 +859,12 @@ async def _generate_natal_report_v2_async(
             if generation_query is not None:
                 # A competing delivery may have completed while this one was rolling back.
                 generation = await db.scalar(generation_query)
-                can_mark_failed = generation is not None and generation.report_id is None
             else:
                 generation = await repository.get_generation(generation_uuid)
-                can_mark_failed = generation is not None and generation.report_id is None
-            if can_mark_failed:
-                await _persist_generation_status(
-                    repository=repository,
-                    generation_id=generation_uuid,
-                    status="failed",
-                    diagnostics={"stage": "pipeline", "error": "generation aborted"},
-                )
+            if generation is not None and generation.report_id is None and generation.status != "failed":
+                generation.status = "failed"
+                generation.diagnostics = {"stage": "pipeline", "error": "generation aborted"}
+                await emit_self_generation_failure(db, generation)
             if revision_uuid is not None:
                 failed_revision = await db.scalar(
                     select(ProfileBirthDataRevision).where(ProfileBirthDataRevision.id == revision_uuid)

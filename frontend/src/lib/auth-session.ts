@@ -1,4 +1,5 @@
 import { useAuthStore, type User } from "@/stores/auth-store";
+import { attachPendingAttribution } from "@/lib/analytics/first-party";
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -47,6 +48,7 @@ export async function bootstrapSession(): Promise<User | null> {
     const currentUser = await fetchCurrentUser();
     if (currentUser) {
       store.login(currentUser);
+      void attachPendingAttribution();
       return currentUser;
     }
 
@@ -59,6 +61,7 @@ export async function bootstrapSession(): Promise<User | null> {
     const userAfterRefresh = await fetchCurrentUser();
     if (userAfterRefresh) {
       store.login(userAfterRefresh);
+      void attachPendingAttribution();
       return userAfterRefresh;
     }
 

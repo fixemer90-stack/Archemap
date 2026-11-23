@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -16,6 +16,7 @@ from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
 from app.modules.child import models
 from app.modules.child.repository import ChildRepository
 from app.modules.child.service import (
+    _dispatch_accepted_generation,
     accept_full_generation,
     accept_narrative_retry_generation,
     run_claimed_full_generation,
@@ -84,6 +85,70 @@ async def _accept(db: AsyncSession, seed: LifecycleSeed) -> tuple[UUID, bool]:
         operation_payload={"private fixture": "must not reach analytics"},
     )
     return result.generation.generation_id, result.created
+
+
+@pytest.mark.parametrize("winner", ["worker", "new-lease"])
+async def test_child_late_dispatch_error_cannot_clear_current_owner(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch, winner: str
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    seed = await _seed_lifecycle(db_session)
+    generation_id, created = await _accept(db_session, seed)
+    assert created
+    await db_session.commit()
+    commit = db_session.commit
+    interleaved = False
+    newer = datetime.now(UTC) + timedelta(days=1)
+
+    async def commit_then_interleave() -> None:
+        nonlocal interleaved
+        await commit()
+        if interleaved:
+            return
+        interleaved = True
+        async with _sessions(db_session).begin() as other:
+            repository = ChildRepository(other)
+            if winner == "worker":
+                assert (
+                    await repository.claim_generation(
+                        generation_id=generation_id,
+                        task_id=f"child-generation-{generation_id}",
+                        now=newer,
+                        lease_duration=timedelta(minutes=5),
+                    )
+                    is not None
+                )
+            else:
+                assert (
+                    await repository.claim_generation_dispatch(
+                        generation_id=generation_id, now=newer, lease_duration=timedelta(minutes=5)
+                    )
+                    == f"child-generation-{generation_id}"
+                )
+
+    def lost_publish_reply(*, generation_id: UUID) -> str:
+        raise OSError("private broker error")
+
+    monkeypatch.setattr(db_session, "commit", commit_then_interleave)
+    assert (
+        await _dispatch_accepted_generation(
+            db_session,
+            repository=ChildRepository(db_session),
+            generation_id=generation_id,
+            dispatcher=lost_publish_reply,
+        )
+        is None
+    )
+    async with _sessions(db_session)() as fresh:
+        saved = (await fresh.scalars(select(models.ChildGeneration))).one()
+        assert saved.celery_task_id == f"child-generation-{generation_id}"
+        if winner == "worker":
+            assert saved.status == "calculating_pair" and saved.claim_token is not None
+        else:
+            assert saved.status == "queued" and saved.dispatched_at == newer
+            assert saved.dispatch_expires_at == newer + timedelta(minutes=5)
+        assert (await fresh.scalars(select(BusinessEvent.event_type))).all() == ["report_requested"]
+        assert (await fresh.scalars(select(models.ChildGenerationEvent.event_code))).all().count("dispatch_failed") == 0
 
 
 @pytest.mark.parametrize("retry", [False, True], ids=["full", "retry"])

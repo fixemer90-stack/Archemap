@@ -27,6 +27,10 @@ from app.core.models import BaseModel
 from app.infrastructure.database import Base
 from app.modules.admin.models import *
 from app.modules.analytics.models import *
+from app.modules.analytics.operations_models import *
+from app.modules.analytics.usage_backfill import child_usage_projection
+from app.modules.analytics.usage_evidence import transport_usage
+from app.modules.analytics.yandex_conversion_models import YandexConversionExport
 from app.modules.astrotype_v2.models import *
 from app.modules.auth.models import *
 from app.modules.authorization.models import *

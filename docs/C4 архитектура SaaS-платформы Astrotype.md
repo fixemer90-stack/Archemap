@@ -22,12 +22,12 @@
 
 Ниже — базовые доменные сервисы и их общие зависимости.
 
-| Продуктовый домен | Основные сценарии | Общие платформенные зависимости |
-|---|---|---|
-| Astrotype Self | онбординг, базовый архетипический профиль, персональный отчёт, обновления контента | identity, chart engine, rules, content, subscription, notifications |
-| Astrotype Love | пары, совместимость, сценарии общения, отношения | identity, chart engine, relationship rules, content, billing, entitlements |
-| Astrotype Child | детский профиль, родительский кабинет, семейные рекомендации | identity, parental consent, chart engine, child-safe content, audit |
-| Astrotype Career | роли, способности, профили развития, карьерные пакеты | identity, chart engine, career rules, content, billing, analytics |
+| Продуктовый домен | Основные сценарии                                                                  | Общие платформенные зависимости                                            |
+| ----------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Astrotype Self    | онбординг, базовый архетипический профиль, персональный отчёт, обновления контента | identity, chart engine, rules, content, subscription, notifications        |
+| Astrotype Love    | пары, совместимость, сценарии общения, отношения                                   | identity, chart engine, relationship rules, content, billing, entitlements |
+| Astrotype Child   | детский профиль, родительский кабинет, семейные рекомендации                       | identity, parental consent, chart engine, child-safe content, audit        |
+| Astrotype Career  | роли, способности, профили развития, карьерные пакеты                              | identity, chart engine, career rules, content, billing, analytics          |
 
 ## C4 уровень System Context
 
@@ -175,22 +175,22 @@ flowchart LR
 
 Рекомендуемый набор контейнеров и их ответственность выглядит так:
 
-| Контейнер | Ответственность | Основные данные | Технологический класс |
-|---|---|---|---|
-| Web Frontend | web UI, onboarding, checkout initiation, account area | нет долговременного хранилища | SPA/SSR web stack |
-| Mobile App | future native UX, offline-aware flows, in-app purchase entry | device-local cache | iOS / Android / KMP |
-| API Gateway | единая ingress-точка, TLS termination, WAF, routing, throttling, coarse auth checks | конфигурация gateway | managed gateway / ingress |
-| Web BFF | web-oriented aggregation, session endpoints, view models | краткоживущий кэш | server-side API |
-| Mobile BFF | mobile-optimized payloads, device registration, push bootstrap, lighter contracts | краткоживущий кэш | server-side API |
-| Identity Broker | local auth, OAuth/OIDC federation, account linking, sessions, password reset | users, provider links, sessions | Keycloak/Auth0/эквивалент |
-| User/Profile/Consent | birth profiles, consents, parental flags, account preferences | PostgreSQL | typed backend service |
-| Chart & Archetype Engine | deterministic chart calculation, normalized features, rule evaluation | PostgreSQL + object snapshots | typed backend service |
-| Content/Template Service | версии шаблонов, локализация, CMS, explainable snippets | PostgreSQL + object storage | CMS/API |
-| Subscription/Entitlement | планы, subscriptions, grace periods, access grants | PostgreSQL | billing domain service |
-| Payment Orchestrator | checkout sessions, provider adapters, idempotency, webhook inbox | PostgreSQL + Redis | integration service |
-| Notification Service | e-mail/SMS/push delivery orchestration | delivery logs, templates | async worker/service |
-| Analytics Collector | product events, consent-aware analytics normalization | events store / warehouse sink | event ingestion service |
-| Audit/Compliance | immutable-ish audit trail, admin actions, consent history | PostgreSQL / archive | security/compliance service |
+| Контейнер                | Ответственность                                                                     | Основные данные                 | Технологический класс       |
+| ------------------------ | ----------------------------------------------------------------------------------- | ------------------------------- | --------------------------- |
+| Web Frontend             | web UI, onboarding, checkout initiation, account area                               | нет долговременного хранилища   | SPA/SSR web stack           |
+| Mobile App               | future native UX, offline-aware flows, in-app purchase entry                        | device-local cache              | iOS / Android / KMP         |
+| API Gateway              | единая ingress-точка, TLS termination, WAF, routing, throttling, coarse auth checks | конфигурация gateway            | managed gateway / ingress   |
+| Web BFF                  | web-oriented aggregation, session endpoints, view models                            | краткоживущий кэш               | server-side API             |
+| Mobile BFF               | mobile-optimized payloads, device registration, push bootstrap, lighter contracts   | краткоживущий кэш               | server-side API             |
+| Identity Broker          | local auth, OAuth/OIDC federation, account linking, sessions, password reset        | users, provider links, sessions | Keycloak/Auth0/эквивалент   |
+| User/Profile/Consent     | birth profiles, consents, parental flags, account preferences                       | PostgreSQL                      | typed backend service       |
+| Chart & Archetype Engine | deterministic chart calculation, normalized features, rule evaluation               | PostgreSQL + object snapshots   | typed backend service       |
+| Content/Template Service | версии шаблонов, локализация, CMS, explainable snippets                             | PostgreSQL + object storage     | CMS/API                     |
+| Subscription/Entitlement | планы, subscriptions, grace periods, access grants                                  | PostgreSQL                      | billing domain service      |
+| Payment Orchestrator     | checkout sessions, provider adapters, idempotency, webhook inbox                    | PostgreSQL + Redis              | integration service         |
+| Notification Service     | e-mail/SMS/push delivery orchestration                                              | delivery logs, templates        | async worker/service        |
+| Analytics Collector      | product events, consent-aware analytics normalization                               | events store / warehouse sink   | event ingestion service     |
+| Audit/Compliance         | immutable-ish audit trail, admin actions, consent history                           | PostgreSQL / archive            | security/compliance service |
 
 На уровне хранилищ базовая тройка — **PostgreSQL + Redis + Object Storage** — обычно достаточна. PostgreSQL хранит транзакционные доменные агрегаты; Redis нужен для session-adjacent data, idempotency keys, short-lived rate-limit buckets и очередей/locks; object storage полезно использовать для report artifacts, static template assets и архивов событий. Шифрование на уровне at-rest storage не должно быть единственной защитой: OWASP рекомендует начинать с threat model, минимизировать хранение чувствительных данных, а ключи держать отдельно от данных и управлять ими через dedicated secrets/key systems, которыми облака обычно уже располагают. citeturn41view0turn42view2turn24view1turn24view5
 
@@ -408,20 +408,20 @@ OWASP для forgot-password рекомендует одинаковые отв�
 
 В этой платформе основной риск-профиль задают: публичные API, вход через federated providers, локальные пароли, recurring billing, обработка webhook’ов, Child-данные и админский контур. OWASP ASVS даёт каркас требований для secure development и проверки технических контролей; OWASP API Security Top 10 напоминает, что для SaaS с множеством сущностей особенно опасны object-level authorization bugs, broken authentication и excessive data exposure. citeturn4view3turn4view4turn4view1turn4view2
 
-| Область | Базовая мера | Почему это обязательно | Основание |
-|---|---|---|---|
-| OAuth/OIDC | Authorization Code + PKCE `S256`, `state`, `nonce`, без implicit | снижает риск code interception, injection и token leakage | citeturn3view0turn3view3turn3view4turn11view0 |
-| Сессии браузера | `Secure` + `HttpOnly` + `SameSite=Strict/Lax`, префикс `__Host-` | снижает риск MitM, cookie theft, CSRF и subdomain forgery | citeturn8view2turn8view3 |
-| Пароли | Argon2id, уникальная соль, при необходимости pepper | plaintext/reversible storage неприемлемы | citeturn5view0 |
-| Forgot password | единый ответ, одинаковое время ответа, одноразовые expiry tokens, без auto-login | защищает от enumeration и упрощает безопасный recovery | citeturn7view0 |
-| TLS | TLS 1.3 по умолчанию, TLS 1.2 для совместимости, запрет TLS 1.0/1.1 и SSL | современный минимум для публичных сервисов и webhook endpoints | citeturn6view3turn6view4 |
-| Secrets | централизованный secrets manager/vault, ротация, аудит доступа, никаких секретов в коде | секреты часто утекают через код/конфиги, нужен lifecycle control | citeturn6view0turn6view1turn24view1turn24view5 |
-| Encryption at rest | KMS/envelope encryption, отдельные ключи по назначению, ключи отдельно от данных | снижает blast radius и упрощает ротацию/восстановление | citeturn41view0turn42view1turn42view2 |
-| API authorization | ownership checks + entitlements + field/property authorization | закрывает BOLA/BOPLA-класс ошибок | citeturn4view2turn4view1 |
-| Webhooks | signature verification, raw-event storage, fast `2xx`, idempotency, dedupe | платежные события асинхронны и могут приходить повторно | citeturn20view1turn19view2turn19view3 |
-| Logging | не логировать персональные и чувствительные данные без правового основания; логировать auth failures, lockouts и admin actions | баланс между расследованием и privacy | citeturn6view2turn8view0 |
-| SSRF/egress | allowlist для внутренних и внешних вызовов, отдельный egress policy | особенно важно для webhook callbacks, media fetch и geocoding | citeturn8view4 |
-| Child-данные | минимизация данных, parental-consent workflow, отдельные retention rules | детские данные требуют усиленной защиты; в ЕС статья 8 GDPR прямо задаёт рамку child consent | citeturn38view2turn38view3 |
+| Область            | Базовая мера                                                                                                                   | Почему это обязательно                                                                       | Основание                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| OAuth/OIDC         | Authorization Code + PKCE `S256`, `state`, `nonce`, без implicit                                                               | снижает риск code interception, injection и token leakage                                    | citeturn3view0turn3view3turn3view4turn11view0  |
+| Сессии браузера    | `Secure` + `HttpOnly` + `SameSite=Strict/Lax`, префикс `__Host-`                                                               | снижает риск MitM, cookie theft, CSRF и subdomain forgery                                    | citeturn8view2turn8view3                         |
+| Пароли             | Argon2id, уникальная соль, при необходимости pepper                                                                            | plaintext/reversible storage неприемлемы                                                     | citeturn5view0                                    |
+| Forgot password    | единый ответ, одинаковое время ответа, одноразовые expiry tokens, без auto-login                                               | защищает от enumeration и упрощает безопасный recovery                                       | citeturn7view0                                    |
+| TLS                | TLS 1.3 по умолчанию, TLS 1.2 для совместимости, запрет TLS 1.0/1.1 и SSL                                                      | современный минимум для публичных сервисов и webhook endpoints                               | citeturn6view3turn6view4                         |
+| Secrets            | централизованный secrets manager/vault, ротация, аудит доступа, никаких секретов в коде                                        | секреты часто утекают через код/конфиги, нужен lifecycle control                             | citeturn6view0turn6view1turn24view1turn24view5 |
+| Encryption at rest | KMS/envelope encryption, отдельные ключи по назначению, ключи отдельно от данных                                               | снижает blast radius и упрощает ротацию/восстановление                                       | citeturn41view0turn42view1turn42view2           |
+| API authorization  | ownership checks + entitlements + field/property authorization                                                                 | закрывает BOLA/BOPLA-класс ошибок                                                            | citeturn4view2turn4view1                         |
+| Webhooks           | signature verification, raw-event storage, fast `2xx`, idempotency, dedupe                                                     | платежные события асинхронны и могут приходить повторно                                      | citeturn20view1turn19view2turn19view3           |
+| Logging            | не логировать персональные и чувствительные данные без правового основания; логировать auth failures, lockouts и admin actions | баланс между расследованием и privacy                                                        | citeturn6view2turn8view0                         |
+| SSRF/egress        | allowlist для внутренних и внешних вызовов, отдельный egress policy                                                            | особенно важно для webhook callbacks, media fetch и geocoding                                | citeturn8view4                                    |
+| Child-данные       | минимизация данных, parental-consent workflow, отдельные retention rules                                                       | детские данные требуют усиленной защиты; в ЕС статья 8 GDPR прямо задаёт рамку child consent | citeturn38view2turn38view3                       |
 
 Дополнительно я бы закладывал **ASVS L2** как общий baseline для продукта и относил auth, payments и admin surface к повышенному внутреннему профилю контроля. Не потому, что так «требует стандарт» в данной формулировке, а как архитектурный вывод: эти поверхности в Astrotype одновременно и публичные, и финансово, и репутационно критичные. citeturn4view3turn4view4
 
@@ -521,36 +521,40 @@ POST   /v1/mobile/stores/google/notifications
 
 ## Рекомендуемые провайдеры, сервисы, библиотеки и развилки выбора
 
+### Реализационное решение E23
+
+Для текущего MVP выбраны [собственные business facts и read-only owner dashboard + consent-aware Яндекс Метрика только на публичной поверхности](architecture/business-monitoring-contract.md). [E23](features/E23-business-monitoring/FEATURE.md) заменяет нижеизложенную предварительную рекомендацию PostHog для текущего этапа: PostHog/session replay/второй внешний трекер не подключаются. Метрика не является финансовым ledger, кабинет и персональные отчёты не являются разрешённой поверхностью SDK. Операторские/юридические gates остаются открытыми; выбор поставщика не означает его production-активацию.
+
 Ниже — компактный набор практических сравнений, который можно использовать как decision matrix до выбора конкретного стека.
 
-| OAuth / login provider | Когда уместен | Сильные стороны | Риски / ограничения | Источники |
-|---|---|---|---|---|
-| **VK ID** | обязателен по бизнес-требованию для RU-аудитории | высокая узнаваемость в RU-контуре; важен как social login канал | протокольные детали и policy-поведение нужно верифицировать по актуальной документации на этапе интеграции | бизнес-требование проекта |
-| **Yandex ID** | RU-сценарий, локальный рынок | официальная OAuth-реализация, русскоязычная документация | зависимость от внешнего IdP и его доступности | citeturn11view3 |
-| **Google** | международная аудитория, web/mobile | OIDC, официальный server flow, client libraries, anti-forgery state guidance | для iOS social login в app-сценарии придётся учитывать Apple rules | citeturn11view0turn21view1 |
-| **Apple** | обязателен/почти обязателен для iOS-social-login сценариев | privacy-oriented UX, совместимость с Apple platform rules | дополнительная сложность настройки, особенно если web+android+iOS | citeturn21view1turn21view2 |
-| **Локальная учётная запись** | fallback и password-reset сценарии | независимость от внешних IdP, полный контроль recovery | самый высокий security burden: passwords, brute force, reset, session hygiene | citeturn5view0turn7view0turn8view0 |
+| OAuth / login provider       | Когда уместен                                              | Сильные стороны                                                              | Риски / ограничения                                                                                        | Источники                               |
+| ---------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **VK ID**                    | обязателен по бизнес-требованию для RU-аудитории           | высокая узнаваемость в RU-контуре; важен как social login канал              | протокольные детали и policy-поведение нужно верифицировать по актуальной документации на этапе интеграции | бизнес-требование проекта               |
+| **Yandex ID**                | RU-сценарий, локальный рынок                               | официальная OAuth-реализация, русскоязычная документация                     | зависимость от внешнего IdP и его доступности                                                              | citeturn11view3                      |
+| **Google**                   | международная аудитория, web/mobile                        | OIDC, официальный server flow, client libraries, anti-forgery state guidance | для iOS social login в app-сценарии придётся учитывать Apple rules                                         | citeturn11view0turn21view1          |
+| **Apple**                    | обязателен/почти обязателен для iOS-social-login сценариев | privacy-oriented UX, совместимость с Apple platform rules                    | дополнительная сложность настройки, особенно если web+android+iOS                                          | citeturn21view1turn21view2          |
+| **Локальная учётная запись** | fallback и password-reset сценарии                         | независимость от внешних IdP, полный контроль recovery                       | самый высокий security burden: passwords, brute force, reset, session hygiene                              | citeturn5view0turn7view0turn8view0 |
 
-| Платёжный вариант | Recurring / subscription | Webhooks / async events | Когда выбирать | Источники |
-|---|---|---|---|---|
-| **YooKassa** | есть автоплатежи и сохранение способа оплаты | есть входящие уведомления в API | сильный кандидат для RU web-billing | citeturn18view0 |
-| **CloudPayments** | есть рекуррентные платежи, подписки и смена графика/суммы | есть Pay/Fail/Recurrent и др. уведомления | хороший выбор для подписочной модели в RU | citeturn19view0turn19view2turn19view3 |
-| **Stripe** | зрелый subscription lifecycle, invoices, entitlements | развитая webhook/event модель | международный сценарий и богатая биллинговая логика | citeturn20view0turn20view1 |
-| **Apple / Google in-app billing** | да, для native mobile subscriptions | store notifications / lifecycle events | обязательно учитывать, если подписка продаётся как digital good внутри mobile app | citeturn21view2turn23view0turn23view3 |
+| Платёжный вариант                 | Recurring / subscription                                  | Webhooks / async events                   | Когда выбирать                                                                    | Источники                                  |
+| --------------------------------- | --------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------ |
+| **YooKassa**                      | есть автоплатежи и сохранение способа оплаты              | есть входящие уведомления в API           | сильный кандидат для RU web-billing                                               | citeturn18view0                         |
+| **CloudPayments**                 | есть рекуррентные платежи, подписки и смена графика/суммы | есть Pay/Fail/Recurrent и др. уведомления | хороший выбор для подписочной модели в RU                                         | citeturn19view0turn19view2turn19view3 |
+| **Stripe**                        | зрелый subscription lifecycle, invoices, entitlements     | развитая webhook/event модель             | международный сценарий и богатая биллинговая логика                               | citeturn20view0turn20view1             |
+| **Apple / Google in-app billing** | да, для native mobile subscriptions                       | store notifications / lifecycle events    | обязательно учитывать, если подписка продаётся как digital good внутри mobile app | citeturn21view2turn23view0turn23view3 |
 
-| Hosting option | Плюсы | Минусы | Кому подходит | Источники |
-|---|---|---|---|---|
-| **Yandex Managed Service for Kubernetes** | русскоязычная документация, managed k8s, интеграция с Lockbox, соответствие RU data-localization контексту | меньшая глобальная экосистема, чем у hyperscalers | RU-first запуск, локальный data residency | citeturn24view0turn24view1 |
-| **Amazon EKS** | mature managed Kubernetes, масштабируемость и широкий ecosystem fit | выше complexity/cost profile, возможные jurisdictional ограничения проекта | международный запуск и мульти-регион | citeturn24view4turn24view5 |
-| **Self-managed Kubernetes / on-prem** | полный контроль, удобно для жёстких требований по локализации и интеграции | максимальная операционная нагрузка и самая высокая цена ошибок | если compliance или инфраструктурный контроль доминируют над скоростью | архитектурный вариант |
+| Hosting option                            | Плюсы                                                                                                      | Минусы                                                                     | Кому подходит                                                          | Источники                      |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
+| **Yandex Managed Service for Kubernetes** | русскоязычная документация, managed k8s, интеграция с Lockbox, соответствие RU data-localization контексту | меньшая глобальная экосистема, чем у hyperscalers                          | RU-first запуск, локальный data residency                              | citeturn24view0turn24view1 |
+| **Amazon EKS**                            | mature managed Kubernetes, масштабируемость и широкий ecosystem fit                                        | выше complexity/cost profile, возможные jurisdictional ограничения проекта | международный запуск и мульти-регион                                   | citeturn24view4turn24view5 |
+| **Self-managed Kubernetes / on-prem**     | полный контроль, удобно для жёстких требований по локализации и интеграции                                 | максимальная операционная нагрузка и самая высокая цена ошибок             | если compliance или инфраструктурный контроль доминируют над скоростью | архитектурный вариант          |
 
-| Категория | Предпочтительные варианты | Комментарий | Источники |
-|---|---|---|---|
-| Identity broker | **Keycloak** / **Auth0** | Keycloak — контроль и self-host; Auth0 — managed CIAM | citeturn35view0turn35view1turn36view1turn36view2 |
-| Domain engine | **Swiss Ephemeris** + **Flatlib** | deterministic runtime без heavy AI | citeturn33view0turn34view0 |
-| Geo/Timezone | **IANA TZ DB** + **GeoNames** | корректность исторических часовых правил и нормализация места | citeturn32view0turn32view1 |
-| Observability | **OpenTelemetry** + **Prometheus** + **Loki** | переносимая telemetry stack | citeturn30view0turn30view1turn30view2 |
-| Product analytics | **PostHog** | product analytics + session replay + feature flags, но Child-формы лучше маскировать/исключать | citeturn30view3turn30view4 |
-| Delivery | **GitHub Actions** или **GitLab CI/CD** + **Argo CD** + **Helm** + **OpenTofu/Terraform** | declarative version-controlled pipeline | citeturn26view0turn27view0turn27view1turn27view2turn27view3turn27view4 |
+| Категория         | Предпочтительные варианты                                                                 | Комментарий                                                                                    | Источники                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Identity broker   | **Keycloak** / **Auth0**                                                                  | Keycloak — контроль и self-host; Auth0 — managed CIAM                                          | citeturn35view0turn35view1turn36view1turn36view2                         |
+| Domain engine     | **Swiss Ephemeris** + **Flatlib**                                                         | deterministic runtime без heavy AI                                                             | citeturn33view0turn34view0                                                 |
+| Geo/Timezone      | **IANA TZ DB** + **GeoNames**                                                             | корректность исторических часовых правил и нормализация места                                  | citeturn32view0turn32view1                                                 |
+| Observability     | **OpenTelemetry** + **Prometheus** + **Loki**                                             | переносимая telemetry stack                                                                    | citeturn30view0turn30view1turn30view2                                     |
+| Product analytics | **PostHog**                                                                               | product analytics + session replay + feature flags, но Child-формы лучше маскировать/исключать | citeturn30view3turn30view4                                                 |
+| Delivery          | **GitHub Actions** или **GitLab CI/CD** + **Argo CD** + **Helm** + **OpenTofu/Terraform** | declarative version-controlled pipeline                                                        | citeturn26view0turn27view0turn27view1turn27view2turn27view3turn27view4 |
 
 Открытые вопросы и ограничения остаются такими. Технический стек приложения не задан, поэтому выше предложен **stack-agnostic** контейнерный и компонентный дизайн, а не выбор конкретного языка/фреймворка. Целевой масштаб не указан, поэтому я сознательно рекомендую эволюционную архитектуру с чёткими контрактами и будущим выделением hot paths, а не «чистые микросервисы с первого дня». Комплаенс-рамка не определена; если платформа будет работать с данными детей в ЕС, Великобритании или США, юридическую модель consent/retention/access нужно утверждать отдельно до продакшена. И наконец, интеграция с **VK ID** должна быть заложена архитектурно уже сейчас, но точные протокольные и policy-параметры этого провайдера следует перепроверить по актуальной документации непосредственно перед реализацией.

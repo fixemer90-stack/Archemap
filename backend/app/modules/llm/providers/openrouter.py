@@ -13,7 +13,7 @@ from app.modules.llm.exceptions import (
     LLMProviderUnavailableError,
     LLMTimeoutError,
 )
-from app.modules.llm.http_dispatch import guard_llm_http_request
+from app.modules.llm.usage import track_http_attempt
 from app.modules.report_narratives.schemas import NarrativeInput
 
 StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
@@ -51,30 +51,36 @@ class OpenRouterProvider:
             "Content-Type": "application/json",
         }
 
-        try:
-            async with httpx.AsyncClient(
-                timeout=self.timeout_seconds, event_hooks={"request": [guard_llm_http_request]}
-            ) as client:
-                response = await client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers=headers,
-                    json=request_payload,
-                )
-                response.raise_for_status()
-        except httpx.TimeoutException as exc:
-            raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout") from exc
-        except httpx.HTTPStatusError as exc:
-            raise LLMProviderUnavailableError(
-                f"LLM provider request failed with status {exc.response.status_code}",
-                code="llm_provider_unavailable",
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise LLMProviderUnavailableError(
-                "LLM provider request failed",
-                code="llm_provider_unavailable",
-            ) from exc
-
-        return self._parse_response(response.json(), schema)
+        async with track_http_attempt("openrouter", self.model_name) as tracking:
+            try:
+                async with httpx.AsyncClient(
+                    timeout=self.timeout_seconds, event_hooks={"request": [tracking.admit]}
+                ) as client:
+                    response = await client.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers=headers,
+                        json=request_payload,
+                    )
+                    tracking.received = True
+                    response.raise_for_status()
+            except httpx.TimeoutException as exc:
+                raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout") from exc
+            except httpx.HTTPStatusError as exc:
+                tracking.error_response(exc.response)
+                raise LLMProviderUnavailableError(
+                    f"LLM provider request failed with status {exc.response.status_code}",
+                    code="llm_provider_unavailable",
+                ) from exc
+            except httpx.HTTPError as exc:
+                raise LLMProviderUnavailableError(
+                    "LLM provider request failed",
+                    code="llm_provider_unavailable",
+                ) from exc
+            response_payload = response.json()
+            tracking.response(response_payload)
+            parsed = self._parse_response(response_payload, schema)
+            tracking.accepted = True
+            return parsed
 
     def _parse_response(self, response_payload: dict[str, Any], schema: type[StructuredSchemaT]) -> StructuredSchemaT:
         try:

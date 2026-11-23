@@ -37,6 +37,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      BUSINESS_MONITORING_ENABLED: ${BUSINESS_MONITORING_ENABLED:-false}
       DATABASE_URL: postgresql+asyncpg://astrotype:astrotype@postgres:5432/astrotype
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -84,6 +85,7 @@ services:
       dockerfile: Dockerfile
     container_name: astrotype-worker
     environment:
+      BUSINESS_MONITORING_ENABLED: ${BUSINESS_MONITORING_ENABLED:-false}
       DATABASE_URL: postgresql+asyncpg://astrotype:astrotype@postgres:5432/astrotype
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -169,6 +171,7 @@ services:
       dockerfile: Dockerfile
     container_name: astrotype-scheduler
     environment:
+      BUSINESS_MONITORING_ENABLED: ${BUSINESS_MONITORING_ENABLED:-false}
       DATABASE_URL: postgresql+asyncpg://astrotype:astrotype@postgres:5432/astrotype
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import select, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.config import settings
@@ -377,6 +377,192 @@ async def test_career_ready_is_bound_to_new_result_and_not_reemitted_on_redelive
         assert report.status == generation.status == "ready"
         await _assert_terminal_event(
             readback, generation, event_type="report_ready", entity_id=report.id, occurred_at=report.updated_at
+        )
+
+
+@pytest.mark.parametrize("interruption", ["cancel", "disconnect"])
+async def test_career_reconciles_interrupted_provider_without_replay(
+    db_session: AsyncSession,
+    career_profile: CareerProfile,
+    career_worker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+    interruption: str,
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    source = await _historical_report(db_session, career_profile)
+    operation = await _queued_regeneration(db_session, career_profile, source)
+    query = select(CareerGeneration).where(CareerGeneration.generation_id == operation)
+    entered = asyncio.Event()
+    resume = asyncio.Event()
+    provider_calls = 0
+
+    async def stall_provider(**_: Any) -> Any:
+        nonlocal provider_calls
+        provider_calls += 1
+        entered.set()
+        await resume.wait()
+        raise RuntimeError("test provider result cannot be published by a disconnected owner")
+
+    monkeypatch.setattr(career, "_run_narrative_quality_pipeline", stall_provider)
+    owner = asyncio.create_task(career._generate_career_report_async(generation_id=operation, section_keys=[]))
+    try:
+        await asyncio.wait_for(entered.wait(), timeout=5)
+        assert await career._reconcile_career_publications() == 0  # Still fresh.
+        async with career_worker.begin() as fresh:
+            saved = (await fresh.scalars(query.with_for_update())).one()
+            assert saved.status == "generating_sections"
+            report_id = saved.report_id
+            await fresh.execute(
+                text("UPDATE career_generations SET updated_at = now() - interval '1 day' WHERE generation_id = :id"),
+                {"id": operation},
+            )
+        assert await career._reconcile_career_publications() == 0  # Old but still owned.
+        if interruption == "disconnect":
+            async with career_worker() as killer:
+                pid = await killer.scalar(text("SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND granted"))
+                assert pid is not None
+                assert await killer.scalar(text("SELECT pg_terminate_backend(:pid)"), {"pid": pid})
+        else:
+            owner.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await owner
+
+        async with career_worker.begin() as fresh:
+            await fresh.execute(
+                text("ALTER TABLE business_event_outbox ADD CONSTRAINT reject_loss CHECK (false) NOT VALID")
+            )
+        assert await career._reconcile_career_publications() == 0
+        async with career_worker.begin() as fresh:
+            saved = (await fresh.scalars(query)).one()
+            assert saved.status == "generating_sections"
+            assert (
+                await fresh.scalar(select(BusinessEvent.id).where(BusinessEvent.event_type == "report_failed")) is None
+            )
+            await fresh.execute(text("ALTER TABLE business_event_outbox DROP CONSTRAINT reject_loss"))
+        assert await career._reconcile_career_publications() == 1
+        assert await career._reconcile_career_publications() == 0
+        if interruption == "disconnect":
+            resume.set()
+            with pytest.raises(DBAPIError):
+                await owner
+        replay = await career._generate_career_report_async(generation_id=operation, section_keys=[])
+        assert replay["status"] == "narrative_failed" and replay["duplicate_delivery"] is True
+        assert provider_calls == 1
+        async with career_worker() as fresh:
+            saved = (await fresh.scalars(query)).one()
+            assert saved.report_id == report_id is not None
+            assert saved.pending_publication is None
+            report = await fresh.get(CareerReport, report_id)
+            assert report is not None and report.status == saved.status == "narrative_failed"
+            assert report.deterministic_payload == source.deterministic_payload
+            assert report.narrative_payload["sections"] == []
+            assert len((await fresh.scalars(select(CareerReport))).all()) == 2
+            await _assert_terminal_event(
+                fresh, saved, event_type="report_failed", entity_id=operation, occurred_at=saved.updated_at
+            )
+    finally:
+        if not owner.done():
+            owner.cancel()
+            await asyncio.gather(owner, return_exceptions=True)
+
+
+@pytest.mark.parametrize("before_receipt", [True, False], ids=["before-receipt", "after-receipt"])
+async def test_career_stale_queue_still_accepts_delayed_delivery(
+    db_session: AsyncSession,
+    career_profile: CareerProfile,
+    career_worker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+    before_receipt: bool,
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    source = await _historical_report(db_session, career_profile)
+    operation = await _queued_regeneration(db_session, career_profile, source)
+    query = select(CareerGeneration).where(CareerGeneration.generation_id == operation)
+    messages: list[dict[str, Any]] = []
+    task_id = "delayed-career-delivery"
+
+    def publish(**message: Any) -> SimpleNamespace:
+        messages.append(message)
+        return SimpleNamespace(id=task_id)
+
+    async def assert_queued_during_sweep(*, receipt: str | None) -> None:
+        assert len(messages) == 1  # The broker already accepted the message.
+        assert await career._reconcile_career_publications() == 0
+        async with career_worker() as fresh:
+            saved = (await fresh.scalars(query)).one()
+            assert saved.status == "queued"
+            assert saved.celery_task_id == receipt
+            assert (await fresh.scalars(select(BusinessEvent.event_type))).all() == ["report_requested"]
+
+    refresh = db_session.refresh
+
+    async def refresh_before_recording_receipt(*args: Any, **kwargs: Any) -> None:
+        await assert_queued_during_sweep(receipt=None)
+        await refresh(*args, **kwargs)
+
+    monkeypatch.setattr(career.generate_career_report, "delay", publish)
+    if before_receipt:
+        # The API has the broker receipt but has not acquired its row lock yet.
+        monkeypatch.setattr(db_session, "refresh", refresh_before_recording_receipt)
+        async with career_worker.begin() as fresh:
+            (await fresh.scalars(query)).one().updated_at = datetime.now(UTC) - timedelta(days=1)
+    generation = (await db_session.scalars(query)).one()
+    await _enqueue_generation(db=db_session, generation=generation, section_keys=[])
+    if not before_receipt:
+        # Persisting the receipt updates updated_at; age it after that commit.
+        async with career_worker.begin() as fresh:
+            (await fresh.scalars(query)).one().updated_at = datetime.now(UTC) - timedelta(days=1)
+        await assert_queued_during_sweep(receipt=task_id)
+
+    (message,) = messages
+    assert UUID(message["generation_id"]) == operation
+    result = await career._generate_career_report_async(
+        generation_id=UUID(message["generation_id"]), section_keys=message["section_keys"]
+    )
+    assert result["status"] == "ready"
+    assert not result.get("duplicate_delivery")
+    async with career_worker() as fresh:
+        saved = (await fresh.scalars(query)).one()
+        report = await fresh.get(CareerReport, saved.report_id)
+        assert report is not None and report.id != source.id
+        assert saved.status == report.status == "ready"
+        assert saved.celery_task_id == task_id
+        await _assert_terminal_event(
+            fresh, saved, event_type="report_ready", entity_id=report.id, occurred_at=report.updated_at
+        )
+
+
+async def test_career_recovers_abandoned_worker_claim_before_the_foundation(
+    db_session: AsyncSession,
+    career_profile: CareerProfile,
+    career_worker: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    source = await _historical_report(db_session, career_profile)
+    operation = await _queued_regeneration(db_session, career_profile, source)
+
+    def prohibit_provider() -> MockCareerSegmentProvider:
+        pytest.fail("recovering an abandoned worker must not call the narrative provider")
+
+    monkeypatch.setattr(career, "_career_provider", prohibit_provider)
+    async with career_worker.begin() as other:
+        claimed = await CareerRepository(other).claim_generation(operation)
+        assert claimed is not None and claimed.status == "calculating_dimensions"
+        assert claimed.celery_task_id is None  # A worker can win before the API records a receipt.
+        claimed.updated_at = datetime.now(UTC) - timedelta(days=1)
+    assert await career._reconcile_career_publications() == 1
+    assert await career._reconcile_career_publications() == 0
+    replay = await career._generate_career_report_async(generation_id=operation, section_keys=[])
+    assert replay["status"] == "failed" and replay["duplicate_delivery"] is True
+    async with career_worker() as fresh:
+        (saved,) = (await fresh.scalars(select(CareerGeneration))).all()
+        assert saved.report_id is None and saved.status == "failed"
+        assert saved.diagnostics["error"] == "career_worker_interrupted"
+        (unchanged,) = (await fresh.scalars(select(CareerReport))).all()
+        assert unchanged.id == source.id and unchanged.status == "ready"
+        await _assert_terminal_event(
+            fresh, saved, event_type="report_failed", entity_id=operation, occurred_at=saved.updated_at
         )
 
 

@@ -42,8 +42,26 @@ app.conf.update(
     task_time_limit=600,
     task_routes={
         "profiles.monitor_birth_data_refinements": {"queue": "birth-data-monitor"},
+        "analytics.project_business_events": {"queue": "celery"},
+        "analytics.evaluate_business_operations": {"queue": "celery"},
     },
     beat_schedule={
+        **(
+            {
+                "project-business-events": {
+                    "task": "analytics.project_business_events",
+                    "schedule": 60.0,
+                    "options": {"expires": 110},
+                },
+                "evaluate-business-operations": {
+                    "task": "analytics.evaluate_business_operations",
+                    "schedule": 60.0,
+                    "options": {"expires": 110},
+                },
+            }
+            if settings.BUSINESS_MONITORING_ENABLED
+            else {}
+        ),
         "check-subscription-renewals": {
             "task": "workers.tasks.renewals.check_and_renew_subscriptions",
             "schedule": 3600.0,  # every hour

@@ -77,6 +77,7 @@ Platform runtime features:
 
 - `E9` — [Isolated staging environment](./E9-staging-environment/FEATURE.md)
 - `E10` — [Birth data refinement in Settings](./E10-birth-data-refinement/FEATURE.md) ([workflow](./E10-birth-data-refinement/WORKFLOW.md), [SRS](../SRS/SRS-E10-birth-data-refinement.md))
+- `E23` — [Business monitoring and privacy-safe acquisition analytics](./E23-business-monitoring/FEATURE.md) ([contract](../architecture/business-monitoring-contract.md), [event registry](../architecture/analytics-event-registry.md)); implementation in progress, external analytics OFF until explicit operator/privacy gates.
 
 Product report features:
 

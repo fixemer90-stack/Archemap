@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll the Archemap business projector independently each minute
+
+[Timer]
+OnCalendar=minutely
+AccuracySec=1s
+Persistent=true
+Unit=archemap-business-watchdog.service
+
+[Install]
+WantedBy=timers.target

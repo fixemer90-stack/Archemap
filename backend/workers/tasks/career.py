@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from typing import Any, cast
 
 import structlog
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select, text
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.config import settings
 from app.core.models import BaseModel
@@ -49,6 +50,37 @@ from app.modules.llm.provider import get_llm_provider
 from workers.celery_app import app
 
 logger = structlog.get_logger()
+_CAREER_HARD_LIMIT_SECONDS = max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720)
+# Only these stages prove a worker claimed the job. A queued job may still
+# arrive, even if the API has not yet persisted its broker receipt.
+_WORKER_CLAIMED_STATUSES = ("calculating_dimensions", "deterministic_ready", "generating_sections")
+
+
+def _generation_lock_params(generation_id: uuid.UUID) -> dict[str, str]:
+    return {"name": f"career-generation:{generation_id}"}
+
+
+@asynccontextmanager
+async def _owned_generation_session(generation_id: uuid.UUID) -> AsyncIterator[AsyncSession]:
+    async with async_session_factory() as session:
+        engine = session.bind
+        if not isinstance(engine, AsyncEngine):
+            raise RuntimeError("Career generation requires an async PostgreSQL engine")
+        # The same physical connection owns all commits; there is no open
+        # transaction or row lock during the narrative provider request.
+        async with engine.connect() as connection:
+            params = _generation_lock_params(generation_id)
+            try:
+                await connection.execute(text("SELECT pg_advisory_lock(hashtextextended(:name, 0))"), params)
+                await connection.commit()
+                async with AsyncSession(bind=connection, expire_on_commit=False) as owned:
+                    yield owned
+                await connection.execute(text("SELECT pg_advisory_unlock(hashtextextended(:name, 0))"), params)
+                await connection.commit()
+            except BaseException:
+                # Even a cancelled acquisition may have obtained the lock.
+                await connection.invalidate()
+                raise
 
 
 async def _persist_parent_rows_before_children(
@@ -130,6 +162,7 @@ async def _publish_career_checkpoint(
     generation_id: uuid.UUID,
     *,
     skip_locked: bool = False,
+    interrupted_before: datetime | None = None,
 ) -> tuple[models.CareerGeneration | None, bool]:
     generation = (
         await db.execute(
@@ -139,9 +172,20 @@ async def _publish_career_checkpoint(
             .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
-    if generation is None or generation.pending_publication is None:
+    if generation is None:
         return generation, False
     candidate = generation.pending_publication
+    if candidate is None:
+        if (
+            interrupted_before is None
+            or generation.status not in _WORKER_CLAIMED_STATUSES
+            or generation.updated_at >= interrupted_before
+        ):
+            return generation, False
+        candidate = {
+            "status": failure_status_for_generation(report_id=generation.report_id),
+            "diagnostics": {"stage": "failed", "error": "career_worker_interrupted"},
+        }
     status = candidate["status"]
     report = None
     if generation.report_id is not None:
@@ -180,12 +224,20 @@ def reconcile_career_publications() -> int:
 
 
 async def _reconcile_career_publications() -> int:
+    # Also allow a pre-fence worker's full hard limit during a rolling restart.
+    before = datetime.now(UTC) - timedelta(
+        seconds=max(settings.CAREER_STUCK_AFTER_MINUTES * 60, _CAREER_HARD_LIMIT_SECONDS + 60)
+    )
+    generation = models.CareerGeneration
     async with async_session_factory() as db:
         identifiers = (
             await db.scalars(
-                select(models.CareerGeneration.generation_id)
-                .where(models.CareerGeneration.pending_publication.is_not(None))
-                .order_by(models.CareerGeneration.updated_at, models.CareerGeneration.generation_id)
+                select(generation.generation_id)
+                .where(
+                    generation.pending_publication.is_not(None)
+                    | (generation.status.in_(_WORKER_CLAIMED_STATUSES) & (generation.updated_at < before))
+                )
+                .order_by(generation.updated_at, generation.generation_id)
                 .limit(50)
             )
         ).all()
@@ -193,8 +245,15 @@ async def _reconcile_career_publications() -> int:
     for generation_id in identifiers:
         async with async_session_factory() as db:
             try:
-                # A concurrent publisher can clear the candidate before we acquire its lock.
-                _, published = await _publish_career_checkpoint(db, generation_id, skip_locked=True)
+                if not await db.scalar(
+                    text("SELECT pg_try_advisory_xact_lock(hashtextextended(:name, 0))"),
+                    _generation_lock_params(generation_id),
+                ):
+                    continue
+                # Recheck eligibility under both the delivery fence and the row lock.
+                _, published = await _publish_career_checkpoint(
+                    db, generation_id, skip_locked=True, interrupted_before=before
+                )
                 if published:
                     await db.commit()
                     recovered += 1
@@ -210,7 +269,7 @@ async def _reconcile_career_publications() -> int:
     max_retries=settings.LLM_MAX_RETRIES,
     default_retry_delay=30,
     soft_time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4, 600),
-    time_limit=max(settings.LLM_TIMEOUT_SECONDS * 4 + 120, 720),
+    time_limit=_CAREER_HARD_LIMIT_SECONDS,
 )
 def generate_career_report(
     self: object,
@@ -292,7 +351,7 @@ async def _generate_career_report_async(
     generation_id: uuid.UUID,
     section_keys: list[str],
 ) -> dict[str, Any]:
-    async with async_session_factory() as db:
+    async with _owned_generation_session(generation_id) as db:
         repository = CareerRepository(db)
         generation = await repository.claim_generation(generation_id)
         if generation is None:
@@ -523,6 +582,8 @@ async def _generate_career_report_async(
                 "status": generation.status,
             }
         except Exception as exc:
+            if isinstance(db.bind, AsyncConnection) and db.bind.invalidated:
+                raise  # A reconnect would no longer own this generation.
             await db.rollback()
             if publishing_result:
                 # An outbox/commit error is not a narrative failure. Also never

@@ -24,6 +24,7 @@ from app.modules.astrotype_v2.api_runtime import (
     build_report_progress_v2,
     build_report_read_payload_v2,
 )
+from app.modules.astrotype_v2.business_events import emit_self_generation_failure
 from app.modules.astrotype_v2.fact_view import build_fact_evidence_payload
 from app.modules.astrotype_v2.infographic_data import build_infographic_api_payload_v2
 from app.modules.astrotype_v2.pdf import generate_v2_report_pdf
@@ -339,15 +340,32 @@ async def _enqueue_persisted_v2_generation(
         )
     await db.commit()
 
-    task = queue.delay(
-        profile_id=str(profile_id),
-        user_id=str(user_id),
-        generation_id=str(generation_id),
-        force=force,
-    )
-    generation.celery_task_id = str(getattr(task, "id", "")) or None
-    await repository.flush()
-    await db.commit()
+    try:
+        task = queue.delay(
+            profile_id=str(profile_id),
+            user_id=str(user_id),
+            generation_id=str(generation_id),
+            force=force,
+        )
+    except Exception as exc:
+        # A publish error is ambiguous. Only abandon work that has not been
+        # claimed under the same row lock; late deliveries of it will no-op.
+        async with db.begin():
+            await db.refresh(generation, with_for_update=True)
+            abandoned = generation.status == "queued"
+            if abandoned:
+                generation.status = "failed"
+                generation.diagnostics = {"force": force, "error_code": "self_queue_unavailable"}
+                await emit_self_generation_failure(db, generation)
+        if abandoned:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Self queue unavailable"
+            ) from exc
+    else:
+        async with db.begin():
+            await db.refresh(generation, with_for_update=True)
+            if generation.status == "queued":
+                generation.celery_task_id = str(getattr(task, "id", "")) or None
     payload = build_generation_accepted_response(
         profile_id=profile_id,
         user_id=user_id,

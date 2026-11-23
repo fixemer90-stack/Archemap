@@ -336,6 +336,8 @@ Astrotype/
 
 ## 📚 Документация
 
+Business monitoring / acquisition analytics: [E23 feature](docs/features/E23-business-monitoring/FEATURE.md), [KPI/privacy contract](docs/architecture/business-monitoring-contract.md), [event registry](docs/architecture/analytics-event-registry.md). В разработке; внешний счётчик и conversion export по умолчанию выключены, подключение требует отдельной приёмки.
+
 | Документ                                                                                                                                       | Назначение                                                           |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | [`PATCHLOG.md`](PATCHLOG.md)                                                                                                                   | Production patches, runtime evidence и rollback anchors              |

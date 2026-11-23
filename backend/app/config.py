@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import AwareDatetime, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +68,7 @@ class Settings(BaseSettings):
 
     # ── Business monitoring / outbound analytics ───────────────────────
     BUSINESS_MONITORING_ENABLED: bool = False
+    BUSINESS_MONITORING_COVERAGE_SINCE: AwareDatetime | None = None
     BUSINESS_ALERTS_ENABLED: bool = False
     YANDEX_METRICA_EXPORT_ENABLED: bool = False
 

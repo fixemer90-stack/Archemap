@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PublicAnalytics } from "@/components/analytics/public-analytics";
 import { ArrowRight, CheckCircle2, MoonStar, Sparkles } from "lucide-react";
 
 import {
@@ -94,10 +95,10 @@ export default function HomePage() {
         </Link>
         <nav className="flex items-center gap-2">
           <Button variant="ghost" asChild className="text-text-secondary">
-            <Link href="/login">Войти</Link>
+            <a href="/login">Войти</a>
           </Button>
           <Button asChild>
-            <Link href="/register">Регистрация</Link>
+            <a href="/register">Регистрация</a>
           </Button>
         </nav>
       </header>
@@ -117,13 +118,13 @@ export default function HomePage() {
         >
           <SurfaceActionRow>
             <Button asChild size="lg">
-              <Link href="/register">
+              <a href="/register">
                 Построить свой отчёт
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
             </Button>
             <Button variant="outline" asChild size="lg">
-              <Link href="/login">У меня уже есть аккаунт</Link>
+              <a href="/login">У меня уже есть аккаунт</a>
             </Button>
           </SurfaceActionRow>
         </ProductSurfaceHero>
@@ -171,6 +172,7 @@ export default function HomePage() {
           </ProductSurfaceCard>
         </section>
       </div>
+      <PublicAnalytics />
     </ProductSurfaceShell>
   );
 }

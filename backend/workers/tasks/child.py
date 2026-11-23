@@ -113,9 +113,10 @@ async def _reconcile_child_generations_async() -> dict[str, int]:
         dispatched = 0
         failed = 0
         for generation_id in generation_ids:
+            claimed_at = datetime.now(UTC)
             task_id = await repository.claim_generation_dispatch(
                 generation_id=generation_id,
-                now=datetime.now(UTC),
+                now=claimed_at,
                 lease_duration=timedelta(seconds=settings.CHILD_GENERATION_DISPATCH_LEASE_SECONDS),
             )
             if task_id is None:
@@ -132,6 +133,7 @@ async def _reconcile_child_generations_async() -> dict[str, int]:
             await repository.record_generation_dispatch_outcome(
                 generation_id=generation_id,
                 task_id=task_id,
+                claimed_at=claimed_at,
                 succeeded=succeeded,
                 now=datetime.now(UTC),
             )

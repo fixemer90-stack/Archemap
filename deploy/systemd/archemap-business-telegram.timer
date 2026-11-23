@@ -1,0 +1,11 @@
+[Unit]
+Description=Send at most one Archemap operator notice per minute
+
+[Timer]
+OnCalendar=minutely
+AccuracySec=1s
+Persistent=false
+Unit=archemap-business-telegram.service
+
+[Install]
+WantedBy=timers.target

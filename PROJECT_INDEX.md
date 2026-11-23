@@ -13,6 +13,7 @@ Astrotype — full-stack narrative-first платформа для астрол�
 - AsyncAPI: `contracts/asyncapi.yaml`
 - LLM design: `docs/design/llm-report-narrative-architecture.md`
 - Report generation data flow: `docs/architecture/report-generation-data-flow.md`
+- E23 business monitoring (implementation in progress, external tracking default OFF): [Feature](docs/features/E23-business-monitoring/FEATURE.md), [contract](docs/architecture/business-monitoring-contract.md), [event registry](docs/architecture/analytics-event-registry.md)
 - E11 feature pack: `docs/features/E11-llm-report-narrative/FEATURE.md`
 - E13 report depth improvements: `docs/features/E13-report-depth-improvements/FEATURE.md`
 - E14 staged narrative pipeline: `docs/features/E14-staged-narrative-pipeline/FEATURE.md`

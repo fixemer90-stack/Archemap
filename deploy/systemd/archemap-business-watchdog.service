@@ -1,0 +1,18 @@
+[Unit]
+Description=Check committed Archemap projector heartbeat (PostgreSQL only)
+After=network.target
+
+[Service]
+Type=oneshot
+Environment=BUSINESS_MONITORING_ENABLED=false DATABASE_ECHO=false
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONNOUSERSITE=1
+EnvironmentFile=/etc/archemap/business-watchdog.env
+UnsetEnvironment=BUSINESS_TELEGRAM_BOT_TOKEN BUSINESS_TELEGRAM_CHAT_ID BUSINESS_TELEGRAM_ACTIVE_SINCE
+WorkingDirectory=/opt/archemap-business/backend
+ExecStart=/opt/archemap-business/backend/.venv/bin/python -m app.modules.analytics.dead_man
+TimeoutStartSec=20s
+DynamicUser=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true

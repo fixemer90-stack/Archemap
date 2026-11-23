@@ -24,6 +24,7 @@ from app.modules.child.prompts.v1 import SECTION_METADATA, build_child_section_p
 from app.modules.child.quality import fact_matches_section, guidance_prompt_content, section_contracts
 from app.modules.child.safety import ChildSafetyViolation, NarrativeSectionCandidate, validate_child_narrative
 from app.modules.llm.exceptions import LLMTimeoutError
+from app.modules.llm.usage import capture_provider_usage, validated_usage_aggregate
 
 CHILD_PROMPT_VERSION: Final = "child-section-prompt-v1"
 CURRENT_CHILD_PROMPT_VERSION: Final = "child-section-prompt-v5"
@@ -120,27 +121,7 @@ def prompt_version_for_input(section_input: ChildSectionRenderInput) -> str:
 
 def _provider_usage_is_valid(value: object) -> bool:
     """Validate optional v3 accounting before publication, total over hostile JSON."""
-    if not isinstance(value, dict):
-        return False
-    counters = {"http_attempts", "responses_with_usage", "responses_without_usage"}
-    tokens = {"prompt_tokens", "completion_tokens", "total_tokens"}
-    cache = {"prompt_cache_hit_tokens", "prompt_cache_miss_tokens"}
-    if not counters <= value.keys() or value.keys() - (counters | tokens | cache):
-        return False
-    if any(type(number) is not int or not 0 <= number <= 2**63 - 1 for number in value.values()):
-        return False
-    if value["responses_with_usage"] + value["responses_without_usage"] > value["http_attempts"]:
-        return False
-    if value["responses_with_usage"] == 0:
-        return value.keys() == counters  # No measured tokens is not measured zero tokens.
-    if not tokens <= value.keys() or value["total_tokens"] != value["prompt_tokens"] + value["completion_tokens"]:
-        return False
-    if cache.intersection(value):
-        return (
-            cache <= value.keys()
-            and value["prompt_cache_hit_tokens"] + value["prompt_cache_miss_tokens"] == value["prompt_tokens"]
-        )
-    return True
+    return bool(validated_usage_aggregate(value))
 
 
 def _provider_name_is_valid(value: object) -> bool:
@@ -969,8 +950,6 @@ async def run_child_segment_generation(
             "child_section_render_input_v4",
             "child_section_render_input_v5",
         }:
-            from app.modules.llm.usage import capture_provider_usage
-
             with capture_provider_usage() as usage:
                 try:
                     raw = await provider.generate_segment(prompt=prompt, section_input=canonical)

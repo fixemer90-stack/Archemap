@@ -1538,18 +1538,26 @@ class ChildRepository:
         *,
         generation_id: UUID,
         task_id: str,
+        claimed_at: datetime,
         succeeded: bool,
         now: datetime,
     ) -> None:
         current = _server_now(now)
         generation = await self.session.scalar(
-            select(models.ChildGeneration).where(
+            select(models.ChildGeneration)
+            .where(
                 models.ChildGeneration.generation_id == generation_id,
                 models.ChildGeneration.celery_task_id == task_id,
+                models.ChildGeneration.dispatched_at == _server_now(claimed_at),
+                models.ChildGeneration.status.in_([status.value for status in CLAIMABLE_STATUSES]),
             )
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if generation is None:
-            raise ChildLineageMismatchError("Generation dispatch lost its claim")
+            # Stable broker ID is not a dispatch lease identity; a worker or a
+            # newer dispatcher has already taken ownership. Ignore this reply.
+            return
         if not succeeded:
             generation.celery_task_id = None
             generation.dispatched_at = None

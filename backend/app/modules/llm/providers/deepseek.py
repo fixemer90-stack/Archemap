@@ -17,16 +17,10 @@ from app.modules.llm.exceptions import (
     LLMProviderUnavailableError,
     LLMTimeoutError,
 )
-from app.modules.llm.http_dispatch import guard_llm_http_request
-from app.modules.llm.usage import record_provider_attempt, record_provider_response
+from app.modules.llm.usage import track_http_attempt
 from app.modules.report_narratives.schemas import NarrativeInput
 
 StructuredSchemaT = TypeVar("StructuredSchemaT", bound=BaseModel)
-
-
-async def _admit_provider_attempt(request: httpx.Request) -> None:
-    await guard_llm_http_request(request)
-    record_provider_attempt()
 
 
 class DeepSeekProvider:
@@ -63,48 +57,48 @@ class DeepSeekProvider:
             "Content-Type": "application/json",
         }
 
-        response: httpx.Response | None = None
         for attempt in range(self.max_retries + 1):
-            try:
-                async with httpx.AsyncClient(
-                    timeout=self.timeout_seconds, event_hooks={"request": [_admit_provider_attempt]}
-                ) as client:
-                    response = await client.post(
-                        "https://api.deepseek.com/chat/completions",
-                        headers=headers,
-                        json=request_payload,
-                    )
+            async with track_http_attempt("deepseek", self.model_name) as tracking:
+                try:
+                    async with httpx.AsyncClient(
+                        timeout=self.timeout_seconds, event_hooks={"request": [tracking.admit]}
+                    ) as client:
+                        response = await client.post(
+                            "https://api.deepseek.com/chat/completions",
+                            headers=headers,
+                            json=request_payload,
+                        )
+                        tracking.received = True
                     response.raise_for_status()
-                break
-            except httpx.TimeoutException as exc:
-                if attempt >= self.max_retries:
-                    raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout") from exc
-                await asyncio.sleep(min(2**attempt, 5))
-            except httpx.HTTPStatusError as exc:
-                status_code = exc.response.status_code
-                if attempt >= self.max_retries or status_code < 500:
-                    raise LLMProviderUnavailableError(
-                        f"LLM provider request failed with status {status_code}",
-                        code="llm_provider_unavailable",
-                    ) from exc
-                await asyncio.sleep(min(2**attempt, 5))
-            except httpx.HTTPError as exc:
-                if attempt >= self.max_retries:
-                    raise LLMProviderUnavailableError(
-                        "LLM provider request failed",
-                        code="llm_provider_unavailable",
-                    ) from exc
-                await asyncio.sleep(min(2**attempt, 5))
+                except httpx.TimeoutException as exc:
+                    if attempt >= self.max_retries:
+                        raise LLMTimeoutError("LLM provider request timed out", code="llm_timeout") from exc
+                except httpx.HTTPStatusError as exc:
+                    tracking.error_response(exc.response)
+                    status_code = exc.response.status_code
+                    if attempt >= self.max_retries or status_code < 500:
+                        raise LLMProviderUnavailableError(
+                            f"LLM provider request failed with status {status_code}",
+                            code="llm_provider_unavailable",
+                        ) from exc
+                except httpx.HTTPError as exc:
+                    if attempt >= self.max_retries:
+                        raise LLMProviderUnavailableError(
+                            "LLM provider request failed",
+                            code="llm_provider_unavailable",
+                        ) from exc
+                else:
+                    response_payload = response.json()
+                    tracking.response(response_payload)
+                    parsed = self._parse_response(response_payload, schema, narrative_input)
+                    tracking.accepted = True
+                    return parsed
+            await asyncio.sleep(min(2**attempt, 5))
 
-        if response is None:
-            raise LLMProviderUnavailableError(
-                "LLM provider request failed",
-                code="llm_provider_unavailable",
-            )
-
-        response_payload = response.json()
-        record_provider_response(response_payload)
-        return self._parse_response(response_payload, schema, narrative_input)
+        raise LLMProviderUnavailableError(
+            "LLM provider request failed",
+            code="llm_provider_unavailable",
+        )
 
     def _parse_response(
         self,

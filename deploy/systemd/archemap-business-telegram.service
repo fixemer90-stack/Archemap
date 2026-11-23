@@ -1,0 +1,20 @@
+[Unit]
+Description=Send a fenced Archemap business notice to Telegram
+After=network.target
+
+[Service]
+Type=oneshot
+Environment=BUSINESS_MONITORING_ENABLED=false BUSINESS_ALERTS_ENABLED=false DATABASE_ECHO=false
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONNOUSERSITE=1
+EnvironmentFile=/etc/archemap/business-telegram.env
+LoadCredential=telegram_token:/etc/archemap/business-telegram.token
+LoadCredential=telegram_chat_id:/etc/archemap/business-telegram.chat-id
+WorkingDirectory=/opt/archemap-business/backend
+ExecStart=/opt/archemap-business/backend/.venv/bin/python -m app.modules.analytics.telegram_delivery
+TimeoutStartSec=30s
+DynamicUser=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true
+LimitCORE=0

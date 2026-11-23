@@ -4,6 +4,7 @@ import asyncio
 import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -16,9 +17,11 @@ from sqlalchemy.pool import NullPool
 
 from app.config import settings
 from app.core.exceptions import ValidationError
-from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
+from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox, SelfReadinessEvidence
+from app.modules.analytics.overview import build_overview
 from app.modules.analytics.repository import BusinessEventConflictError
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
+from app.modules.analytics.self_readiness import observe_self_readiness
 from app.modules.analytics.service import claim_outbox, complete_outbox, emit_business_event, retry_outbox
 from app.modules.astrotype_v2 import models as self_models
 from app.modules.astrotype_v2 import router as self_router
@@ -45,9 +48,11 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 async def _setup_database() -> AsyncGenerator[None, None]:
-    """Install only the two tables owned by the outbox in the disposable database."""
+    """Install only the fact, outbox and readiness tables in the disposable database."""
     metadata = BusinessEvent.metadata
-    tables = tuple(metadata.tables[model.__tablename__] for model in (BusinessEvent, BusinessEventOutbox))
+    tables = tuple(
+        metadata.tables[model.__tablename__] for model in (BusinessEvent, BusinessEventOutbox, SelfReadinessEvidence)
+    )
     async with test_engine.begin() as conn:
         if await conn.scalar(text("SELECT current_database()")) != "e23_tests":
             pytest.fail("outbox fixture requires the dedicated e23_tests database")
@@ -63,6 +68,7 @@ async def _setup_database() -> AsyncGenerator[None, None]:
 
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
+NO_LOGIN_HASH = "!"
 
 
 def fact() -> BusinessEventInput:
@@ -1265,12 +1271,11 @@ async def migration(*arguments: str) -> tuple[int, str]:
 
 async def test_migration_roundtrip_live_schema_parity_and_nonempty_guard(
     migration_sessions: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from sqlalchemy import Connection, MetaData, Table, inspect
 
     session_factory = migration_sessions
-
-    from app.modules.analytics.models import BusinessEvent, BusinessEventOutbox
 
     code, output = await migration("upgrade", "head")
     assert code == 0, output
@@ -1278,13 +1283,13 @@ async def test_migration_roundtrip_live_schema_parity_and_nonempty_guard(
     def parity(connection: Connection) -> None:
         connection.execute(text("CREATE SCHEMA t02_expected"))
         expected = MetaData(schema="t02_expected")
-        for model in (BusinessEvent, BusinessEventOutbox):
+        for model in (BusinessEvent, BusinessEventOutbox, SelfReadinessEvidence):
             table = model.__table__
             assert isinstance(table, Table)
             table.to_metadata(expected, schema="t02_expected")
         expected.create_all(connection)
         inspector = inspect(connection)
-        for model in (BusinessEvent, BusinessEventOutbox):
+        for model in (BusinessEvent, BusinessEventOutbox, SelfReadinessEvidence):
             table = model.__table__
             assert isinstance(table, Table)
             for actual, reference in zip(
@@ -1336,12 +1341,34 @@ async def test_migration_roundtrip_live_schema_parity_and_nonempty_guard(
     async with session_factory() as session:
         assert await session.scalar(text("SELECT id FROM t02_migration_sentinel")) == 42
         assert await session.scalar(text("SELECT to_regclass('business_events')")) is None
+    code, output = await migration("upgrade", "e23s08b001")
+    assert code == 0, output
+    async with session_factory.begin() as session:
+        legacy = await emit_business_event(
+            session,
+            BusinessEventInput(
+                event_type=EventType.BASIC_REPORT_READY,
+                entity_id=UUID(int=49),
+                subject_id=UUID(int=50),
+                product=Product.SELF,
+                occurred_at=NOW,
+            ),
+            recorded_at=NOW,
+        )
     code, output = await migration("upgrade", "head")
     assert code == 0, output
-    async with session_factory() as session:
+    async with session_factory.begin() as session:
         await (await session.connection()).run_sync(parity)
-        await emit_business_event(session, fact(), recorded_at=NOW)
-        await session.commit()
+        assert await session.scalar(select(func.count()).select_from(SelfReadinessEvidence)) == 0
+        stored_legacy = await session.get(BusinessEvent, legacy.id)
+        assert stored_legacy is not None and stored_legacy.event_type == "basic_report_ready"
+        assert (stored_legacy.entity_id, stored_legacy.subject_id, stored_legacy.product) == (
+            UUID(int=49),
+            UUID(int=50),
+            "self",
+        )
+        assert stored_legacy.occurred_at == stored_legacy.created_at == NOW
+        assert await session.scalar(select(BusinessEventOutbox.event_id)) == legacy.id
     for sql in (
         "UPDATE business_events SET mode = 'test'",
         "DELETE FROM business_events",
@@ -1357,3 +1384,93 @@ async def test_migration_roundtrip_live_schema_parity_and_nonempty_guard(
         assert await session.scalar(select(func.count()).select_from(BusinessEvent)) == 1
         assert await session.scalar(select(func.count()).select_from(BusinessEventOutbox)) == 1
         assert await session.scalar(text("SELECT id FROM t02_migration_sentinel")) == 42
+
+    await _assert_migrated_d7_history(session_factory, monkeypatch)
+    code, output = await migration("downgrade", "e23s08b001")
+    assert code != 0
+    assert "keep retained Self readiness evidence" in output
+    async with session_factory() as session:
+        assert await session.scalar(text("SELECT version_num FROM alembic_version")) == "e23d7b001"
+        assert await session.scalar(select(func.count()).select_from(SelfReadinessEvidence)) == 1
+
+
+async def _assert_migrated_d7_history(
+    sessions: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", True)
+    monkeypatch.setattr(settings, "LLM_ENABLED", False)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "mock")
+    monkeypatch.setattr(self_worker, "async_session_factory", sessions)
+    user_id, profile_id, generation_id = UUID(int=51), UUID(int=52), UUID(int=53)
+    signup = datetime.now(UTC) - timedelta(days=1)
+    async with sessions.begin() as db:
+        db.add(User(id=user_id, email="migrated-d7@example.com", hashed_password=NO_LOGIN_HASH, is_verified=True))
+        await db.flush()
+        db.add(
+            PersonProfile(
+                id=profile_id,
+                user_id=user_id,
+                name="Fixture",
+                birth_date=date(1990, 1, 1),
+                birth_time=time(12),
+                birth_time_accuracy="exact",
+                birth_place="Moscow",
+                latitude=55.75,
+                longitude=37.61,
+                timezone="Europe/Moscow",
+            )
+        )
+        await db.flush()
+        db.add(self_models.NatalReportGeneration(generation_id=generation_id, user_id=user_id, profile_id=profile_id))
+        await emit_business_event(
+            db,
+            BusinessEventInput(event_type=EventType.REGISTRATION_COMPLETED, entity_id=user_id, occurred_at=signup),
+        )
+    result = await self_worker._generate_natal_report_v2_async(
+        user_id=str(user_id), profile_id=str(profile_id), generation_id=str(generation_id), force=True
+    )
+    assert result["status"] == "complete"
+    report_id = UUID(result["report_id"])
+    async with sessions() as db:
+        proof = (await db.scalars(select(SelfReadinessEvidence))).one()
+        assert proof.observed_at is not None and proof.report_id == report_id
+        assert proof.generation_id == generation_id and proof.owner_id == user_id
+    assert await observe_self_readiness(sessions, event_id=proof.event_id) == 0
+
+    async def assert_historical_overview() -> None:
+        async with sessions.begin() as db:
+            await db.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
+            overview = await build_overview(
+                db,
+                as_of=signup + timedelta(days=7),
+                from_date=signup.date(),
+                to_date=signup.date() + timedelta(days=1),
+                timezone="UTC",
+                enabled=True,
+                coverage_since=datetime.combine(signup.date(), time.min, tzinfo=UTC),
+            )
+        d7 = overview.activation_d7
+        assert (d7.status, d7.mature_count, d7.activated_count, d7.rate) == ("available", 1, 1, Decimal(1))
+
+    await assert_historical_overview()
+    for sql in (
+        "UPDATE business_self_readiness_evidence SET event_id = (SELECT id FROM business_events WHERE entity_id = "
+        "'00000000-0000-0000-0000-000000000031')",
+        "UPDATE business_self_readiness_evidence SET generation_id = '00000000-0000-0000-0000-000000000001'",
+        "UPDATE business_self_readiness_evidence SET owner_id = '00000000-0000-0000-0000-000000000001'",
+        "UPDATE business_self_readiness_evidence SET report_id = '00000000-0000-0000-0000-000000000001'",
+        "UPDATE business_self_readiness_evidence SET publish_not_before = publish_not_before - interval '1 second'",
+        "UPDATE business_self_readiness_evidence SET observed_at = observed_at + interval '1 second'",
+        "UPDATE business_self_readiness_evidence SET observed_at = NULL",
+        "DELETE FROM business_self_readiness_evidence",
+        "TRUNCATE business_self_readiness_evidence",
+    ):
+        async with sessions() as db:
+            with pytest.raises(DBAPIError, match="Self readiness evidence is write-once"):
+                await db.execute(text(sql))
+
+    async with sessions.begin() as db:
+        await db.execute(text("DELETE FROM astrotype_v2_natal_reports WHERE id = :id"), {"id": report_id})
+    async with sessions() as db:
+        assert await db.get(self_models.NatalReport, report_id) is None
+    await assert_historical_overview()

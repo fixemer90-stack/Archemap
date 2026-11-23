@@ -105,6 +105,8 @@ _EVENT_COUNTS = _query(
     "as_of",
 )
 
+# Neither timestamp on a readiness fact is proof of first visibility. Use retained
+# evidence rather than the live report; only a strictly later lower bound rules out a candidate.
 _D7 = _query(
     """
     WITH signups AS (
@@ -114,20 +116,33 @@ _D7 = _query(
            AND semantic_key = 'v1:registration_completed:' || entity_id::text || ':-'
            AND occurred_at >= :cohort_from AND occurred_at < :cohort_to AND occurred_at <= :as_of
            AND created_at <= :as_of
-    ), first_ready AS (
-        SELECT e.subject_id, min(e.occurred_at) AS ready_at
-          FROM business_events e JOIN signups s ON s.entity_id = e.subject_id
+    ), readiness AS (
+        SELECT s.entity_id,
+               CASE WHEN p.observed_at IS NULL OR p.observed_at > :as_of THEN 'unknown'
+                    WHEN p.observed_at < s.signup_at THEN 'before_signup'
+                    WHEN p.publish_not_before >= s.deadline THEN 'late'
+                    WHEN p.publish_not_before >= s.signup_at AND p.observed_at < s.deadline THEN 'in_window'
+                    ELSE 'unknown' END AS qualification
+          FROM signups s
+          JOIN business_events e ON e.subject_id = s.entity_id
+          LEFT JOIN business_self_readiness_evidence p
+            ON p.event_id = e.id AND p.report_id = e.entity_id AND p.owner_id = s.entity_id
          WHERE e.event_type = 'basic_report_ready' AND e.product = 'self'
-           AND e.occurred_at < s.deadline
            AND e.semantic_key = 'v1:basic_report_ready:' || e.entity_id::text || ':-'
-           AND e.occurred_at <= :as_of AND e.created_at <= :as_of
-         GROUP BY e.subject_id
+           AND (p.publish_not_before IS NULL OR p.publish_not_before <= :as_of)
+           AND s.deadline <= :as_of
+    ), classified AS (
+        SELECT entity_id,
+               bool_or(qualification = 'unknown') AS unknown,
+               bool_or(qualification = 'before_signup') AS before_signup,
+               bool_or(qualification = 'in_window') AS in_window
+          FROM readiness GROUP BY entity_id
     )
     SELECT count(*) FILTER (WHERE s.deadline <= :as_of) AS mature,
            count(*) FILTER (WHERE s.deadline > :as_of) AS immature,
-           count(*) FILTER (WHERE s.deadline <= :as_of AND r.ready_at >= s.signup_at
-                            AND r.ready_at < s.deadline) AS activated
-      FROM signups s LEFT JOIN first_ready r ON r.subject_id = s.entity_id
+           count(*) FILTER (WHERE s.deadline <= :as_of AND c.unknown) AS unproven,
+           count(*) FILTER (WHERE NOT c.unknown AND NOT c.before_signup AND c.in_window) AS activated
+      FROM signups s LEFT JOIN classified c ON c.entity_id = s.entity_id
     """,
     "cohort_from",
     "cohort_to",
@@ -305,7 +320,9 @@ async def build_overview(
             )
         ).one()
         rate = None
-        if activation.immature:
+        if activation.unproven:
+            result.activation_d7.status = "unavailable"
+        elif activation.immature:
             result.activation_d7.status = "insufficient_history"
         elif not activation.mature:
             result.activation_d7.status = "no_data"
@@ -315,7 +332,7 @@ async def build_overview(
                 rate = Decimal(activation.activated) / Decimal(activation.mature)
         result.activation_d7.mature_count = activation.mature
         result.activation_d7.immature_count = activation.immature
-        result.activation_d7.activated_count = activation.activated
+        result.activation_d7.activated_count = None if activation.unproven else activation.activated
         result.activation_d7.rate = rate
 
     active = (await db.execute(_ACTIVE_PLUS, {"as_of": as_of})).one()

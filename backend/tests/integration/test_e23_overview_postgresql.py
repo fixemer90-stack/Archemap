@@ -16,7 +16,7 @@ from app.api import middleware
 from app.config import settings
 from app.main import app
 from app.modules.admin import router as admin
-from app.modules.analytics.models import BusinessEvent
+from app.modules.analytics.models import BusinessEvent, SelfReadinessEvidence
 from app.modules.analytics.overview import build_overview
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
 from app.modules.authorization.models import Entitlement
@@ -45,6 +45,7 @@ async def overview_tables(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[None
             Payment,
             Entitlement,
             BusinessEvent,
+            SelfReadinessEvidence,
         )
     ]
     async with test_engine.begin() as conn:
@@ -73,6 +74,95 @@ def fact(value: BusinessEventInput, recorded: datetime | None = None) -> Busines
         product=value.product.value if value.product else None,
         details=value.details.model_dump(mode="json", exclude_none=True),
     )
+
+
+@pytest.mark.usefixtures("overview_tables")
+@pytest.mark.parametrize(
+    ("scenario", "expected"),
+    [
+        ("no-fact", 0),  # A covered mature signup without a readiness transition is a non-activation.
+        ("legacy", None),
+        ("legacy-and-proven", None),
+        ("wrong-owner", None),
+        ("wrong-report", None),
+        ("signup-straddle", None),
+        ("as-of-straddle", None),
+        ("as-of-equality", None),
+        ("after-as-of-observed", 0),
+        ("after-as-of-pending", 0),
+        ("late", 0),
+        ("signup-inclusive", 1),
+    ],
+)
+async def test_mature_d7_does_not_infer_first_visibility_from_the_fact(scenario: str, expected: int | None) -> None:
+    signup = datetime(2026, 1, 2, tzinfo=UTC)
+    deadline = signup + timedelta(days=7)
+    as_of = deadline + timedelta(seconds=1)
+    owner, report = uuid4(), uuid4()
+    async with sessions.begin() as db:
+        db.add(
+            fact(BusinessEventInput(event_type=EventType.REGISTRATION_COMPLETED, entity_id=owner, occurred_at=signup))
+        )
+        if scenario == "legacy-and-proven":
+            db.add(
+                fact(
+                    BusinessEventInput(
+                        event_type=EventType.BASIC_REPORT_READY,
+                        entity_id=uuid4(),
+                        subject_id=owner,
+                        product=Product.SELF,
+                        occurred_at=signup - timedelta(seconds=1),
+                    )
+                )
+            )
+        if scenario != "no-fact":
+            readiness = fact(
+                BusinessEventInput(
+                    event_type=EventType.BASIC_REPORT_READY,
+                    entity_id=report,
+                    subject_id=owner,
+                    product=Product.SELF,
+                    occurred_at=signup + timedelta(days=1),
+                )
+            )
+            db.add(readiness)
+            await db.flush()
+            if scenario != "legacy":
+                lower = {
+                    "signup-straddle": signup - timedelta(microseconds=1),
+                    "late": deadline,
+                    "as-of-straddle": as_of - timedelta(microseconds=1),
+                    "as-of-equality": as_of,
+                    "after-as-of-observed": as_of + timedelta(microseconds=1),
+                    "after-as-of-pending": as_of + timedelta(microseconds=1),
+                }.get(scenario, signup)
+                upper = as_of + timedelta(seconds=1) if "as-of" in scenario else max(lower, signup)
+                db.add(
+                    SelfReadinessEvidence(
+                        event_id=readiness.id,
+                        owner_id=uuid4() if scenario == "wrong-owner" else owner,
+                        report_id=uuid4() if scenario == "wrong-report" else report,
+                        generation_id=uuid4(),
+                        publish_not_before=lower,
+                        observed_at=None if scenario == "after-as-of-pending" else upper,
+                    )
+                )
+    async with sessions.begin() as db:
+        await db.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
+        overview = await build_overview(
+            db,
+            as_of=as_of,
+            from_date=signup.date(),
+            to_date=signup.date() + timedelta(days=1),
+            timezone="UTC",
+            enabled=True,
+            coverage_since=signup,
+        )
+    activation = overview.activation_d7
+    assert activation.status == ("unavailable" if expected is None else "available")
+    assert activation.mature_count == 1 and activation.immature_count == 0
+    assert activation.activated_count == expected
+    assert activation.rate == (None if expected is None else Decimal(expected))
 
 
 @pytest.mark.usefixtures("overview_tables")
@@ -108,15 +198,26 @@ async def test_overview_cohort_boundaries_and_financial_truth() -> None:
             (4, signup + timedelta(minutes=2)),
             (3, start + timedelta(minutes=1)),
         ]:
+            report_id = uuid4()
+            ready = fact(
+                BusinessEventInput(
+                    event_type=EventType.BASIC_REPORT_READY,
+                    entity_id=report_id,
+                    subject_id=account_ids[index],
+                    occurred_at=at,
+                    product=Product.SELF,
+                )
+            )
+            db.add(ready)
+            await db.flush()
             db.add(
-                fact(
-                    BusinessEventInput(
-                        event_type=EventType.BASIC_REPORT_READY,
-                        entity_id=uuid4(),
-                        subject_id=account_ids[index],
-                        occurred_at=at,
-                        product=Product.SELF,
-                    )
+                SelfReadinessEvidence(
+                    event_id=ready.id,
+                    owner_id=account_ids[index],
+                    report_id=report_id,
+                    generation_id=uuid4(),
+                    publish_not_before=at,
+                    observed_at=at,
                 )
             )
         duplicate = fact(

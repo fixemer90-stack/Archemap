@@ -24,6 +24,7 @@ from app.config import settings
 from app.infrastructure.celery_async import check_worker_soft_timeout, run_async_in_worker
 from app.infrastructure.database import async_session_factory
 from app.modules.analytics.schemas import BusinessEventInput, EventType, Product
+from app.modules.analytics.self_readiness import observe_self_readiness, stage_self_readiness
 from app.modules.analytics.service import emit_business_event
 from app.modules.astrotype_v2 import models
 from app.modules.astrotype_v2.business_events import emit_self_generation_failure
@@ -443,6 +444,8 @@ async def _reconcile_interrupted_narratives(*, before: datetime) -> int:
             logger.warning("astrotype_v2_generation_recovery_failed", generation_id=str(generation_id))
         else:
             recovered += 1
+    # Also recovers proofs for already terminal foundations, without replaying generation.
+    await observe_self_readiness(async_session_factory)
     return recovered
 
 
@@ -720,9 +723,10 @@ async def _generate_natal_report_v2_async(
                     report_id=report_id,
                 )
             await repository.flush()
+            readiness_event_id = None
             if settings.BUSINESS_MONITORING_ENABLED:
-                # This commit makes the calculation usable regardless of the later narrative outcome.
-                await emit_business_event(
+                # The fact/outbox commit with the foundation; occurred_at is not D7 proof.
+                readiness = await emit_business_event(
                     db,
                     BusinessEventInput(
                         event_type=EventType.BASIC_REPORT_READY,
@@ -732,7 +736,17 @@ async def _generate_natal_report_v2_async(
                         occurred_at=report.created_at,
                     ),
                 )
+                readiness_event_id = readiness.id
+                await stage_self_readiness(
+                    db,
+                    event_id=readiness_event_id,
+                    report_id=report_id,
+                    owner_id=user_uuid,
+                    generation_id=generation_uuid,
+                )
             await db.commit()
+            if readiness_event_id is not None:
+                await observe_self_readiness(async_session_factory, event_id=readiness_event_id)
 
             publishing_terminal = False
             try:

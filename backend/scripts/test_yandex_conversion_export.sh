@@ -26,19 +26,21 @@ sql() { "$pg/psql" -h "$scratch" -U e23_s08 -d e23_s08_tests -v ON_ERROR_STOP=1 
 [[ $(sql "SELECT current_database() || ':' || array_to_string(current_schemas(false), ',')") == e23_s08_tests:public ]]
 [[ $(sql "SELECT count(*) FROM pg_tables WHERE schemaname='public'") == 0 ]]
 parent=e23s07t001
-latest=e23s08b001
-[[ $("$python" -m alembic heads) == "$latest (head)" ]]
+s08_revision=e23s08b001
+heads=$("$python" -m alembic heads)
+[[ $heads =~ ^([[:alnum:]_]+)\ \(head\)$ ]] || { printf 'Expected one Alembic head, got: %s\n' "$heads" >&2; exit 1; }
+head=${BASH_REMATCH[1]}
 "$python" -m alembic upgrade "$parent"
 legacy=00000000-0000-0000-0000-000000000018
 sql "INSERT INTO users (id,email,name,hashed_password,is_active,is_verified,is_superuser,created_at,updated_at)
   VALUES ('$legacy','synthetic@example.invalid','','',true,false,false,now(),now());
   INSERT INTO analytics_attributions (owner_id,policy_version,client_id,captured_at,bound_at,expires_at)
   VALUES ('$legacy','approved-v1','123456',now(),now(),now()+interval '1 day');" >/dev/null
-"$python" -m alembic upgrade "$latest"
+"$python" -m alembic upgrade "$s08_revision"
 [[ $(sql "SELECT counter_id IS NULL AND client_id='123456' FROM analytics_attributions WHERE owner_id='$legacy'") == t ]]
 "$python" -m alembic downgrade "$parent"
 [[ $(sql "SELECT client_id FROM analytics_attributions WHERE owner_id='$legacy'") == 123456 ]]
-"$python" -m alembic upgrade "$latest"
+"$python" -m alembic upgrade "$s08_revision"
 # Inherit asynchronous commit everywhere else. Real INSERTs, including the winner's
 # permanent fence, must override it in their own transaction, not just emit SQL.
 [[ $(sql "SHOW synchronous_commit") == off ]]
@@ -50,6 +52,9 @@ fi
 rg --fixed-strings --max-count 1 'refusing S08 downgrade: keep retained attribution counter provenance' "$scratch/blocked-attribution.log"
 [[ $(sql "SELECT counter_id FROM analytics_attributions WHERE owner_id='$legacy'") == 123 ]]
 sql "UPDATE analytics_attributions SET counter_id=NULL WHERE owner_id='$legacy'" >/dev/null
+"$python" -m alembic upgrade "$head"
+[[ $(sql "SELECT version_num FROM alembic_version") == "$head" ]]
+export TEST_YANDEX_EXPORT_SCHEMA_REVISION="$head"
 sql 'CREATE FUNCTION fixture_require_sync_fence() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
   IF current_setting($s$synchronous_commit$s$) <> $s$on$s$ THEN
     RAISE EXCEPTION $s$fence must commit synchronously$s$;
@@ -64,5 +69,6 @@ if "$python" -m alembic downgrade "$parent" >"$scratch/blocked.log" 2>&1; then
     exit 1
 fi
 rg --fixed-strings --max-count 1 'refusing S08 downgrade: keep existing offline conversion fences' "$scratch/blocked.log"
-[[ $(sql "SELECT version_num FROM alembic_version") == "$latest" ]]
+# PostgreSQL rolls back the entire failed Alembic transaction, including later revisions.
+[[ $(sql "SELECT version_num FROM alembic_version") == "$head" ]]
 [[ $(sql "SELECT EXISTS (SELECT FROM analytics_yandex_conversion_exports WHERE status='outcome_unknown')") == t ]]

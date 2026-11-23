@@ -26,6 +26,8 @@ Implementation task T08. Do not infer live readiness from code/tests. External o
 
 ## Evidence
 
+- The isolated S08 runner now checks the historical S08 upgrade/downgrade separately and runs all 44 tests on the current Alembic head (`e23d7b001`) using mock transport. A blocked downgrade retained that head and the unknown-outcome export fence. No live requests were sent.
+
 From the repository root, with `TMPDIR` pointing at a private scratch directory:
 
 ```bash

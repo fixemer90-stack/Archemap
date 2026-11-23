@@ -55,7 +55,8 @@ async def sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
             assert await connection.scalar(text("SELECT current_database()")) == "e23_s08_tests"
             assert await connection.scalar(text("SELECT current_schemas(false)")) == ["public"]
             assert await connection.scalar(text("SELECT inet_server_addr() IS NULL")) is True
-            assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == "e23s08b001"
+            expected = os.getenv("TEST_YANDEX_EXPORT_SCHEMA_REVISION", "e23s08b001")
+            assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == expected
         yield async_sessionmaker(engine, expire_on_commit=False)
     finally:
         await engine.dispose()

@@ -199,12 +199,13 @@ function OverviewDetails({ overview }: { overview: AdminBusinessOverview }) {
             ]}
           />
           <MetricGroup
-            title="Доставка отчётов"
+            title="Формирование отчётов"
+            note="Запросы и результаты учитываются по дате каждого события. Доставка и прочтение отчётов не отслеживаются в этом обзоре."
             metrics={[
-              ["Запрошены", count(reports.requested)],
-              ["Готовы", count(reports.ready)],
-              ["Готовы частично", count(reports.partial)],
-              ["Завершились ошибкой", count(reports.failed)],
+              ["Принятые запросы", count(reports.requested)],
+              ["Готовые отчёты", count(reports.ready)],
+              ["Частично готовые отчёты", count(reports.partial)],
+              ["Ошибки формирования", count(reports.failed)],
             ]}
           />
         </div>
@@ -324,7 +325,7 @@ export function BusinessOverview() {
             <p className={styles.eyebrow}>Администрирование</p>
             <h1>Бизнес-обзор</h1>
             <p className={styles.muted}>
-              Регистрации, активация, платежи и доставка отчётов.
+              Регистрации, активация, платежи и формирование отчётов.
             </p>
           </div>
           {canReload && (

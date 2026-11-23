@@ -17,6 +17,32 @@ const metric = (page: Page, label: string) =>
 
 const widthMatrix = [320, 820, 1440];
 
+test("report KPIs describe generation, not delivery or reading", async ({
+  page,
+}) => {
+  await page.route(`**${overviewPath}`, (route) =>
+    route.fulfill({ json: observedOverview }),
+  );
+  await page.goto(pagePath);
+
+  await expect(page.getByText(/доставка отч[её]тов/i)).toHaveCount(0);
+  await expect(
+    page.getByText("Регистрации, активация, платежи и формирование отчётов."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Формирование отчётов", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Запросы и результаты учитываются по дате каждого события. Доставка и прочтение отчётов не отслеживаются в этом обзоре.",
+    ),
+  ).toBeVisible();
+  await expect(metric(page, "Принятые запросы")).toHaveText("12");
+  await expect(metric(page, "Готовые отчёты")).toHaveText("8");
+  await expect(metric(page, "Частично готовые отчёты")).toHaveText("3");
+  await expect(metric(page, "Ошибки формирования")).toHaveText("1");
+});
+
 for (const theme of ["light", "dark"] as const) {
   test(`observed amounts and responsive layout (${theme})`, async ({
     page,

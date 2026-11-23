@@ -31,6 +31,8 @@ Initial admission is a read-only preflight. Final S08 admission uses `for_dispat
 
 ## Local evidence
 
+- Follow-up on the integrated frontend: the privacy primitive/lifecycle check and all 14 desktop/mobile Chromium cases passed with synthetic approval and legacy analytics flags. Cross-origin requests were intercepted; no actual SDK, counter, or back/forward-cache restoration was certified by this run.
+
 - Base before changes: `d70623c477d69cb0b97563e8affbbcc92559012e`; verified Alembic head `b5c6d7e8f9a0`. Additive revision `c1e2f3a4b5d6` follows it. Downgrade refuses to drop nonempty attribution storage; deployment rollback should disable ingestion first, not delete retained consent.
 - Pre-review S05 source fingerprint (historical; this privacy fix supersedes it): `67b656eb47606fb65ad76ebc9625bc34376e846f8c8f70fb4bca49259df23d5b`.
 - Privacy-review fingerprint (SHA-256 of the ordered `sha256sum` manifest for the S05 attribution/collector modules, both S05 pytest files, both Caddyfiles, and nine frontend source/config/test files): `cf2237307ba883823d9a0dfedae14d4814de28f34baf67de2923004d4e8aa449`.

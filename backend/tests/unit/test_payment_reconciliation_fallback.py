@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.exc import MultipleResultsFound
 
 from app.modules.payments.service import PaymentsService
 
@@ -22,6 +23,11 @@ class _ListScalarResult:
     def all(self) -> list[object]:
         return self.values
 
+    def scalar_one_or_none(self) -> object | None:
+        if len(self.values) > 1:
+            raise MultipleResultsFound
+        return self.values[0] if self.values else None
+
 
 class _BillingStateDb:
     def __init__(
@@ -32,6 +38,7 @@ class _BillingStateDb:
     ) -> None:
         self.results = [
             _ListScalarResult(payments),
+            _ListScalarResult(payments[:1]),  # fresh locked read after the provider response
             _ListScalarResult(entitlements),
             _ListScalarResult(subscriptions or []),
         ]

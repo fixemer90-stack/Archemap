@@ -38,6 +38,12 @@ If any mature signup has unresolved readiness evidence, return `unavailable` wit
 
 ## Seeded PostgreSQL benchmark
 
+The original timeouts below are baseline evidence. The optimized queries passed the unchanged 1,000-account/day benchmark on two fresh clusters (5 and 12 repetitions per window). The maximum observed wall time for the complete 90-day overview was 1.50 s with the same 5 s statement timeout; both windows matched completed baseline outputs, including intentionally unavailable cash and D7 values. This unblocks the synthetic performance gate, not production data coverage or concurrent traffic acceptance.
+
+- D7 now aggregates canonical signup counts and mature readiness outcomes independently. This avoids the generic nested-loop rejoin that reproduced `57014` without changing which candidates are unproven or activated.
+- Payment counts pair in-window confirmations and ledger rows by canonical identity once, preserving a single unknown for mismatches and a separate unknown for true orphans. A same-snapshot 90-day plan measured 137 ms versus 215 ms before the rewrite; the earlier payment timeout did not recur during the A/B run, so its precise runtime cause remains unproven. Tests cover paid-window boundaries and merchant account ambiguity.
+- The default release runner passed 205 tests after the query changes. No new schema migration is needed.
+
 Run from `backend/` as a non-root user with the backend venv and local PostgreSQL server tools installed (`pg_config --bindir` must locate `initdb`, `pg_ctl`, `createdb`, and `psql`). Use a short, private `TMPDIR` on local storage.
 
 ```sh

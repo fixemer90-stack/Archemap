@@ -494,22 +494,32 @@ async def test_overview_cash_and_checkout_coverage() -> None:
 @pytest.mark.usefixtures("overview_tables")
 async def test_orphan_confirmation_and_duplicate_psp_receipt_fail_closed() -> None:
     start = datetime(2026, 1, 1, tzinfo=UTC)
-    uid, binding, orphan = uuid4(), uuid4(), uuid4()
+    uid, binding, rotated_binding, other_shop, orphan, late_ledger = (uuid4() for _ in range(6))
     async with sessions.begin() as db:
         db.add(User(id=uid, email="duplicate@example.com", hashed_password=NO_LOGIN_HASH))
-        db.add(YooKassaMerchantBinding(id=binding, payment_mode="live", merchant_account_id="duplicate-shop"))
+        merchant_accounts = {binding: "duplicate-shop", rotated_binding: "duplicate-shop", other_shop: "other-shop"}
+        db.add_all(
+            YooKassaMerchantBinding(id=merchant, payment_mode="live", merchant_account_id=account)
+            for merchant, account in merchant_accounts.items()
+        )
         await db.flush()
-        for day, payment_id in [(1, orphan), (2, uuid4()), (2, uuid4())]:
+        for day, payment_id, merchant, receipt in [
+            (1, orphan, binding, None),
+            (1, late_ledger, binding, None),
+            (2, uuid4(), binding, "same-account"),
+            (2, uuid4(), rotated_binding, "same-account"),
+            (3, uuid4(), binding, "different-account"),
+        ]:
             occurred = start + timedelta(days=day - 1, hours=1)
-            if day == 2:
+            if receipt is not None:
                 db.add(
                     Payment(
                         id=payment_id,
                         user_id=uid,
                         provider="yookassa",
-                        provider_payment_id="same-receipt",
-                        merchant_binding_id=binding,
-                        merchant_account_id="duplicate-shop",
+                        provider_payment_id=receipt,
+                        merchant_binding_id=merchant,
+                        merchant_account_id=merchant_accounts[merchant],
                         payment_mode="live",
                         amount=10,
                         currency="RUB",
@@ -522,7 +532,7 @@ async def test_orphan_confirmation_and_duplicate_psp_receipt_fail_closed() -> No
                     BusinessEventInput(
                         event_type=EventType.PAYMENT_CONFIRMED,
                         entity_id=payment_id,
-                        source_id=binding,
+                        source_id=merchant,
                         subject_id=uid,
                         occurred_at=occurred,
                         mode=Mode.LIVE,
@@ -530,8 +540,30 @@ async def test_orphan_confirmation_and_duplicate_psp_receipt_fail_closed() -> No
                     )
                 )
             )
+        # A match outside the selected paid range is still an orphan in that range.
+        # The same receipt with different/NULL merchant identity does not make day 3 ambiguous.
+        for payment_id, historical_merchant, receipt in [
+            (late_ledger, None, "late-ledger"),
+            (uuid4(), other_shop, "different-account"),
+            (uuid4(), None, "different-account"),
+        ]:
+            db.add(
+                Payment(
+                    id=payment_id,
+                    user_id=uid,
+                    provider="yookassa",
+                    provider_payment_id=receipt,
+                    merchant_binding_id=historical_merchant,
+                    merchant_account_id=merchant_accounts[historical_merchant] if historical_merchant else None,
+                    payment_mode="live" if historical_merchant else None,
+                    amount=10,
+                    currency="RUB",
+                    status="succeeded",
+                    paid_at=start + timedelta(days=3),
+                )
+            )
     async with sessions() as db:
-        for day in (1, 2):
+        for day in (1, 2, 3):
             result = await build_overview(
                 db,
                 as_of=start + timedelta(days=4),
@@ -541,8 +573,13 @@ async def test_orphan_confirmation_and_duplicate_psp_receipt_fail_closed() -> No
                 enabled=True,
                 coverage_since=start,
             )
-            assert result.payments.model_dump() == {"live": 0, "test": 0, "unknown": day}
-            assert result.live_cash_received is None
+            if day < 3:
+                assert result.payments.model_dump() == {"live": 0, "test": 0, "unknown": 2}
+                assert result.live_cash_received is None
+            else:
+                assert result.payments.model_dump() == {"live": 1, "test": 0, "unknown": 0}
+                assert result.live_cash_received is not None
+                assert [(item.currency, item.amount) for item in result.live_cash_received] == [("RUB", Decimal("10"))]
 
 
 @pytest.mark.usefixtures("overview_tables")

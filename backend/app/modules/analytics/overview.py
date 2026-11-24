@@ -107,6 +107,8 @@ _EVENT_COUNTS = _query(
 
 # Neither timestamp on a readiness fact is proof of first visibility. Use retained
 # evidence rather than the live report; only a strictly later lower bound rules out a candidate.
+# Canonical signup keys are unique and classified only includes mature signups. Count the
+# two populations separately so a generic plan cannot nested-loop them back together.
 _D7 = _query(
     """
     WITH signups AS (
@@ -138,11 +140,17 @@ _D7 = _query(
                bool_or(qualification = 'in_window') AS in_window
           FROM readiness GROUP BY entity_id
     )
-    SELECT count(*) FILTER (WHERE s.deadline <= :as_of) AS mature,
-           count(*) FILTER (WHERE s.deadline > :as_of) AS immature,
-           count(*) FILTER (WHERE s.deadline <= :as_of AND c.unknown) AS unproven,
-           count(*) FILTER (WHERE NOT c.unknown AND NOT c.before_signup AND c.in_window) AS activated
-      FROM signups s LEFT JOIN classified c ON c.entity_id = s.entity_id
+    SELECT cohort.mature, cohort.immature, outcomes.unproven, outcomes.activated
+      FROM (
+          SELECT count(*) FILTER (WHERE deadline <= :as_of) AS mature,
+                 count(*) FILTER (WHERE deadline > :as_of) AS immature
+            FROM signups
+      ) cohort
+      CROSS JOIN (
+          SELECT count(*) FILTER (WHERE unknown) AS unproven,
+                 count(*) FILTER (WHERE NOT unknown AND NOT before_signup AND in_window) AS activated
+            FROM classified
+      ) outcomes
     """,
     "cohort_from",
     "cohort_to",
@@ -165,23 +173,23 @@ _CANONICAL = """
                             OR other.merchant_account_id = p.merchant_account_id))
 """
 
+# Pair window rows by identity before classifying proof. A mismatched fact for a ledger row
+# is one unknown, not an extra orphan; a fact without an in-window ledger row is also unknown.
 _PAYMENT_COUNTS = _query(
     f"""
-    WITH receipts AS (
-        SELECT CASE WHEN EXISTS (SELECT 1 FROM business_events e WHERE {_CANONICAL})
-                    THEN p.payment_mode ELSE 'unknown' END AS mode,
+    WITH window_payments AS (
+        SELECT * FROM payments WHERE paid_at >= :window_from AND paid_at < :window_to
+    ), window_confirmations AS (
+        SELECT * FROM business_events
+         WHERE event_type = 'payment_confirmed' AND product = 'plus'
+           AND semantic_key = 'v1:payment_confirmed:' || entity_id::text || ':-'
+           AND occurred_at >= :window_from AND occurred_at < :window_to
+           AND created_at <= :as_of
+    ), receipts AS (
+        SELECT CASE WHEN {_CANONICAL} THEN p.payment_mode ELSE 'unknown' END AS mode,
                p.currency, CASE WHEN p.amount > 0 AND p.amount < 10000000000000
                                 THEN p.amount::text::numeric END AS amount
-          FROM payments p WHERE p.paid_at >= :window_from AND p.paid_at < :window_to
-        UNION ALL
-        SELECT 'unknown', NULL, NULL
-          FROM business_events orphan
-         WHERE orphan.event_type = 'payment_confirmed' AND orphan.product = 'plus'
-           AND orphan.semantic_key = 'v1:payment_confirmed:' || orphan.entity_id::text || ':-'
-           AND orphan.occurred_at >= :window_from AND orphan.occurred_at < :window_to
-           AND orphan.created_at <= :as_of
-           AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.id = orphan.entity_id
-                            AND p.paid_at >= :window_from AND p.paid_at < :window_to)
+          FROM window_payments p FULL JOIN window_confirmations e ON e.entity_id = p.id
     )
     SELECT mode, currency, count(*) AS n,
            sum(round(amount, 2)) AS amount,

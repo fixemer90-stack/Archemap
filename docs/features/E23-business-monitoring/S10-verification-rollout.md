@@ -18,6 +18,12 @@ Implementation task T10. Do not infer live readiness from code/tests. External o
 
 ## Evidence
 
+On 2026-11-24, the code-only rollout deployed `a70372a858605ca360a4a0f998ecd16ed7abb544` after exact-SHA CI run `45451098764` passed all eight jobs (including 16 Chromium analytics privacy cases). The 7-/90-day timing evidence is from synthetic PostgreSQL in S04, not from live traffic.
+
+- A fresh off-host dump (709,251 bytes, mode 0600, SHA-256 `0a344f79a8e336852e046643525fa718a980cebcc8591a0037a02ada38747723`) restored successfully into a network-isolated PostgreSQL 16 container. The restore verified `e23d7b001` and the presence of all nine named core tables.
+- The production schema remained at `e23d7b001`. Counts matched for 18 protected tables during the stopped-writer comparison; PostgreSQL, Redis and Caddy container IDs were unchanged. All five application services matched the exact image revision, two Celery nodes replied, and public health reported API, database and Redis OK. The dashboard shell returned 200 and anonymous overview returned 401. Rollback was not needed.
+- Monitoring, alerting, attribution and Yandex export remained disabled. This verifies the code rollout, not authenticated production aggregates, live coverage or outbound delivery.
+
 On 2026-11-23, the follow-up rollout deployed `819f654bab35131bb32f7a8dcbd60f1327d0ce68` (tree `f0cc3166eb01b62da650a51f4796616e8abe1e3b`). CI run `45252936775` passed all eight jobs; the no-argument E23 release runner passed 205 tests, including all six D7 commit cases. Independent re-review passed the three D7 code corrections and found the default release runner omitted those cases; the final revision adds them to the runner without changing the reviewed application code. The separate registry workflow skipped publication and deployment.
 
 - The owner confirmed that the production business dashboard rendered under their verified administrator account. This is owner-observed browser evidence. The signed-in API status/header and an ordinary-user 403 were not independently captured in that session; the combined authenticated smoke criterion remains open.

@@ -298,3 +298,54 @@ test("revoke discards an in-flight capture without attaching a late receipt", as
   await expect(page.getByRole("button", { name: allow })).toBeEnabled();
   expect(attached).toEqual([]);
 });
+
+test("persisted-page restore discards the pending receipt if consent was removed while hidden", async ({
+  page,
+  baseURL,
+}) => {
+  test.skip(!enabled, "synthetic policy fixture only");
+  const captures: unknown[] = [];
+  const discarded: unknown[] = [];
+  const external: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).origin !== new URL(baseURL!).origin) {
+      external.push(request.url());
+    }
+  });
+  await page.route(`${attribution}capture`, async (route) => {
+    captures.push(route.request().postDataJSON());
+    await route.fulfill({ status: 201, json: { receipt } });
+  });
+  await page.route(`${attribution}discard`, async (route) => {
+    discarded.push(route.request().postDataJSON());
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: allow }).click();
+  await expect
+    .poll(() =>
+      page.evaluate((key) => sessionStorage.getItem(key), snapshotKey),
+    )
+    .toContain(receipt);
+
+  // Simulate the browser lifecycle, not a guaranteed bfcache hit in Playwright.
+  // Same-document localStorage removal intentionally emits no storage event.
+  await page.evaluate((key) => {
+    window.dispatchEvent(
+      new PageTransitionEvent("pagehide", { persisted: true }),
+    );
+    localStorage.removeItem(key);
+    window.dispatchEvent(
+      new PageTransitionEvent("pageshow", { persisted: true }),
+    );
+  }, consentKey);
+
+  await expect.poll(() => discarded).toEqual([{ receipt }]);
+  expect(
+    await page.evaluate((key) => sessionStorage.getItem(key), snapshotKey),
+  ).toBeNull();
+  expect(captures).toEqual([
+    { granted: true, client_id: null, policy_version: version },
+  ]);
+  expect(external).toEqual([]);
+});

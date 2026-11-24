@@ -31,7 +31,7 @@ Initial admission is a read-only preflight. Final S08 admission uses `for_dispat
 
 ## Local evidence
 
-- Follow-up on the integrated frontend: the privacy primitive/lifecycle check and all 14 desktop/mobile Chromium cases passed with synthetic approval and legacy analytics flags. Cross-origin requests were intercepted; no actual SDK, counter, or back/forward-cache restoration was certified by this run.
+- Follow-up on the integrated frontend: the privacy primitive/lifecycle check passed. The extended suite passed all 16 desktop/mobile Chromium cases with synthetic approval and legacy analytics flags. The added case drives `pagehide`/`pageshow` with `persisted: true`, removes consent while hidden, and proves the pending receipt is discarded without recapture or cross-origin requests. These are synthetic lifecycle events, not proof that the browser restored a real cached document. No real SDK or counter was used.
 
 - Base before changes: `d70623c477d69cb0b97563e8affbbcc92559012e`; verified Alembic head `b5c6d7e8f9a0`. Additive revision `c1e2f3a4b5d6` follows it. Downgrade refuses to drop nonempty attribution storage; deployment rollback should disable ingestion first, not delete retained consent.
 - Pre-review S05 source fingerprint (historical; this privacy fix supersedes it): `67b656eb47606fb65ad76ebc9625bc34376e846f8c8f70fb4bca49259df23d5b`.

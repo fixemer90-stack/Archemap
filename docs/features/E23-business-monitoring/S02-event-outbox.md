@@ -2,7 +2,7 @@
 
 **Цель (SMART):** закрыть перечисленные критерии S02 воспроизводимыми tests/review/evidence до смены статуса на complete.
 
-Status: ✅ Complete (local verification; not deployed)
+Status: ✅ Local acceptance complete; code deployed with internal recording off. See [S10](./S10-verification-rollout.md#evidence) for rollout evidence.
 
 [Feature](./FEATURE.md) · [Contract](../../architecture/business-monitoring-contract.md) · [Registry](../../architecture/analytics-event-registry.md)
 

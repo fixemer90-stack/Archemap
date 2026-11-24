@@ -2,7 +2,7 @@
 
 **Цель (SMART):** завершить S01–S10 проверяемыми срезами: owner-only business dashboard, typed atomic events, quality/cost visibility и default-off external analytics с отдельной live приёмкой.
 
-Status: 🟡 Code deployed to production with monitoring and outbound integrations disabled; live acceptance remains open. No external counter, legal approval or Telegram recipient supplied. See [S10](./S10-verification-rollout.md#evidence).
+Status: 🟡 Release `819f654` is running in production with internal recording and outbound integrations disabled. The owner confirmed that the admin dashboard opens; authenticated API evidence and activation acceptance remain open. See [S10](./S10-verification-rollout.md#evidence).
 
 ## Canonical contracts
 
@@ -30,6 +30,12 @@ Status: 🟡 Code deployed to production with monitoring and outbound integratio
 - [ ] Every Story closed with spec and code-quality review and fresh local verification.
 - [ ] No changes to paid access, merchant credentials, saved reports or LLM retry policy for analytics convenience.
 - [ ] External activation has explicit owner inputs and actual network/delivery/financial readback evidence.
+
+## What remains before closure
+
+1. **Verify access and data quality.** Capture the production overview API's `200` and `Cache-Control: no-store` from an admin session, and `403` from an ordinary session. Run the [overview performance and coverage checks](./S04-business-overview-api.md). Owner-confirmed rendering and anonymous `401` are already recorded; neither proves the remaining API checks.
+2. **Accept internal recording independently.** Approve the data retention and deletion rules, name the rollout operator, and run the [recording go/no-go checklist](./S10-verification-rollout.md#internal-recording-gono-go). Start coverage only after capture is verified; report D7 from a complete seven-day window, not from historical guesses or an incomplete cohort.
+3. **Close source and external gaps independently.** [S03](./S03-authoritative-producers.md) still needs authoritative renewal/refund evidence. [S05](./S05-consent-attribution-metrica.md) needs browser history/cache coverage and a separately approved isolated SDK origin. [S07](./S07-aggregation-alerts.md) needs live timer and Telegram receipt/recovery evidence; [S08](./S08-yandex-conversion-export.md) needs the approved counter and real export/readback. [S09](./S09-cost-coverage-backfill.md) has local cost/backfill tests, not approval to run a production backfill. Keep these gates open even if the internal dashboard is accepted.
 
 ## Delivery order
 

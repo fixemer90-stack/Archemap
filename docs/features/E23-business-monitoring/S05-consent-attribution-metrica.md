@@ -31,6 +31,8 @@ Initial admission is a read-only preflight. Final S08 admission uses `for_dispat
 
 ## Local evidence
 
+- The GitHub `Test & Build Frontend` job has a dedicated `Run E23 analytics privacy browser checks` step for both Chromium projects. Its synthetic policy and counter flags are scoped to the test step, not the release build. The exact configured command passed all 16 cases locally; this does not substitute for approval or actual SDK network evidence.
+
 - Follow-up on the integrated frontend: the privacy primitive/lifecycle check passed. The extended suite passed all 16 desktop/mobile Chromium cases with synthetic approval and legacy analytics flags. The added case drives `pagehide`/`pageshow` with `persisted: true`, removes consent while hidden, and proves the pending receipt is discarded without recapture or cross-origin requests. These are synthetic lifecycle events, not proof that the browser restored a real cached document. No real SDK or counter was used.
 
 - Base before changes: `d70623c477d69cb0b97563e8affbbcc92559012e`; verified Alembic head `b5c6d7e8f9a0`. Additive revision `c1e2f3a4b5d6` follows it. Downgrade refuses to drop nonempty attribution storage; deployment rollback should disable ingestion first, not delete retained consent.

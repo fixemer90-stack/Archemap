@@ -123,7 +123,7 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
 
-      - name: Install WeasyPrint native dependencies
+      - name: Install native test dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -136,6 +136,7 @@ jobs:
             libpango-1.0-0 \
             libpangocairo-1.0-0 \
             shared-mime-info \
+            redis-server \
             fonts-dejavu-core
 
       - name: Install dependencies

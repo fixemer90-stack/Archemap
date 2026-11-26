@@ -2,8 +2,9 @@
 
 import asyncio
 import logging
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from functools import cache
+from time import time_ns
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, PositiveInt
@@ -21,9 +22,16 @@ _MOSCOW = ZoneInfo("Europe/Moscow")
 _RETENTION_DAYS = 30  # expiry is 30 days from the start of the bucket, not its last write
 _PREFIX = "business:landing-documents:v1:"
 _SIGNAL_PATH = "/_internal/landing-document"
+_WRITE_BUDGET_MS = 250
 _WRITE = """
+local deadline_us = tonumber(ARGV[2])
+if not deadline_us then return 0 end
+local now = redis.call('TIME')
+local now_us = tonumber(now[1]) * 1000000 + tonumber(now[2])
+if now_us >= deadline_us then return 0 end
 redis.call('INCR', KEYS[1])
 redis.call('EXPIREAT', KEYS[1], ARGV[1])
+return 1
 """
 
 
@@ -109,12 +117,18 @@ class LandingDocumentSignalMiddleware:
             and not any(name in headers for name in ("origin", "cookie", "authorization", "transfer-encoding"))
             and headers.get("content-length", "0") == "0"
         ):
-            day = datetime.now(UTC).astimezone(_MOSCOW).date()
+            # A client timeout cannot retract queued bytes. Pass an absolute
+            # deadline, checked atomically by the co-located Redis before INCR.
+            received_us = time_ns() // 1_000
+            deadline_us = received_us + _WRITE_BUDGET_MS * 1_000
+            day = datetime.fromtimestamp(received_us // 1_000_000, _MOSCOW).date()
             expires = datetime.combine(day + timedelta(days=_RETENTION_DAYS), time.min, _MOSCOW)
+            status = 503
             try:
-                async with asyncio.timeout(0.25):
-                    await _redis().eval(_WRITE, 1, _key(day), int(expires.timestamp()))
-                status = 204
+                async with asyncio.timeout(_WRITE_BUDGET_MS / 1_000):
+                    admitted = await _redis().eval(_WRITE, 1, _key(day), int(expires.timestamp()), deadline_us)
+                if admitted == 1:
+                    status = 204
             except (RedisError, OSError, TimeoutError, ValueError):
-                status = 503
+                pass
         await Response(status_code=status, headers={"Cache-Control": "no-store"})(scope, receive, send)

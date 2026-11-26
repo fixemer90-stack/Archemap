@@ -3,6 +3,7 @@ import logging
 import re
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
+from time import time_ns
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -155,7 +156,7 @@ async def test_disposable_redis_expires_buckets_and_does_not_restore_after_resta
                 assert total == (await landing.read_landing_documents(datetime.now(UTC))).observed == 20
 
                 expiration = int(datetime.now(UTC).timestamp()) + 2
-                await redis.eval(landing._WRITE, 1, expired, expiration)
+                assert await redis.eval(landing._WRITE, 1, expired, expiration, time_ns() // 1_000 + 1_000_000) == 1
                 assert await redis.mget([expired]) == ["1"]
                 for _ in range(60):
                     if await redis.mget([expired]) == [None]:
@@ -188,3 +189,78 @@ async def test_disposable_redis_expires_buckets_and_does_not_restore_after_resta
         if landing._redis_for_url.cache_info().currsize:
             await landing._redis().aclose()
             landing._redis_for_url.cache_clear()
+
+
+async def test_queued_increment_does_not_land_on_redis_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Hold the actual wire command beyond the HTTP timeout. Keep it independently
+    # of the client's socket lifetime, as a transport queue can retain sent bytes.
+    store = tmp_path.parent / "s05s.sock"
+    proxy = tmp_path.parent / "s05p.sock"
+    captured = asyncio.Event()
+    release = asyncio.Event()
+    replies: asyncio.Queue[bytes] = asyncio.Queue()
+
+    async def relay(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        upstream, connection = await asyncio.open_unix_connection(store)
+        try:
+            while header := await reader.readline():
+                # The test proxies only the Redis handshake and EVAL, whose
+                # replies each occupy a single line. Read a complete RESP command.
+                chunks = [header]
+                fields = []
+                for _ in range(int(header[1:])):
+                    length = await reader.readline()
+                    field = await reader.readexactly(int(length[1:]) + 2)
+                    chunks.extend((length, field))
+                    fields.append(field[:-2])
+                queued = fields[0].upper() == b"EVAL" and not captured.is_set()
+                if queued:
+                    captured.set()
+                    await release.wait()
+                connection.writelines(chunks)
+                await connection.drain()
+                reply = await upstream.readline()
+                if queued:
+                    await replies.put(reply)
+                    return  # The sender has already timed out.
+                writer.write(reply)
+                await writer.drain()
+        finally:
+            connection.close()
+            writer.close()
+            await connection.wait_closed()
+            await writer.wait_closed()
+
+    monkeypatch.setattr(settings, "LANDING_DOCUMENT_COUNTER_ENABLED", True)
+    monkeypatch.setattr(settings, "LANDING_DOCUMENT_REDIS_URL", f"unix://{proxy}?protocol=2")
+    app = FastAPI()
+    app.add_middleware(landing.LandingDocumentSignalMiddleware)
+
+    async with disposable_landing_redis(store, tmp_path) as url, Redis.from_url(url) as redis:
+        server = await asyncio.start_unix_server(relay, proxy)
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://backend") as client:
+                headers = {"X-Astrotype-Landing-Signal": "1"}
+                response = await client.post("/_internal/landing-document", headers=headers)
+                assert response.status_code == 503
+                assert captured.is_set(), "the complete write was queued before the sink timed out"
+                assert await redis.dbsize() == 0
+
+                release.set()
+                reply = await asyncio.wait_for(replies.get(), 2)
+                assert await redis.dbsize() == 0, f"the relayed stale write changed storage: {reply!r}"
+                assert reply == b":0\r\n"  # Redis itself ran the write script and rejected it.
+
+                assert (await client.post("/_internal/landing-document", headers=headers)).status_code == 204
+                key = landing._key(datetime.now(UTC).astimezone(ZoneInfo("Europe/Moscow")).date())
+                assert await redis.mget([key]) == [b"1"]
+                assert await redis.dbsize() == 1
+        finally:
+            server.close()
+            release.set()
+            await landing._redis().aclose()
+            landing._redis_for_url.cache_clear()
+            await server.wait_closed()
+            proxy.unlink(missing_ok=True)

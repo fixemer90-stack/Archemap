@@ -58,6 +58,7 @@ services:
       - "+ping"
       - "+mget"
       - "+eval"
+      - "+time"
       - "+incr"
       - "+expireat"
       - "+info"

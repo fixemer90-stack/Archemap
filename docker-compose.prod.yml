@@ -30,6 +30,47 @@ services:
       timeout: 5s
       retries: 10
 
+  landing-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Override the image's /data VOLUME with tmpfs, not an anonymous Docker volume.
+    read_only: true
+    # Equal memory and memory+swap limits disallow container swap.
+    mem_limit: 64m
+    memswap_limit: 64m
+    tmpfs:
+      - /data:rw,noexec,nosuid,nodev,size=16m
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --save
+      - ""
+      - --dir
+      - /data
+      - --user
+      - default
+      - reset
+      - "on"
+      - nopass
+      - "~business:landing-documents:v1:*"
+      - "-@all"
+      - "+ping"
+      - "+mget"
+      - "+eval"
+      - "+incr"
+      - "+expireat"
+      - "+info"
+      - "+config|get"
+      - "+dbsize"
+      - "+expiretime"
+    networks: [landing-storage]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   backend:
     build:
       context: ./backend
@@ -42,6 +83,8 @@ services:
       APP_DEBUG: "false"
       APP_HOST: 0.0.0.0
       APP_PORT: 8000
+      LANDING_DOCUMENT_COUNTER_ENABLED: ${LANDING_DOCUMENT_COUNTER_ENABLED:-false}
+      LANDING_DOCUMENT_REDIS_URL: redis://landing-redis:6379/0
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-astrotype}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-astrotype}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -55,6 +98,7 @@ services:
       BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES: ${BIRTH_DATA_REFINEMENT_MONITOR_WINDOW_MINUTES:-15}
       BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS: ${BIRTH_DATA_REFINEMENT_MONITOR_INTERVAL_SECONDS:-300}
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}"
+    networks: [default, landing-storage]
     depends_on:
       postgres:
         condition: service_healthy
@@ -164,6 +208,7 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:8000
+      LANDING_DOCUMENT_COUNTER_ENABLED: ${LANDING_DOCUMENT_COUNTER_ENABLED:-false}
       NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED: ${NEXT_PUBLIC_BIRTH_DATA_REFINEMENT_ENABLED:-false}
     depends_on:
       backend:
@@ -172,6 +217,8 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      LANDING_DOCUMENT_COUNTER_ENABLED: ${LANDING_DOCUMENT_COUNTER_ENABLED:-false}
     ports:
       - "80:80"
       - "443:443"
@@ -196,6 +243,8 @@ volumes:
   caddy_config:
 
 networks:
+  landing-storage:
+    internal: true
   edge:
     external: true
     name: astrotype_edge

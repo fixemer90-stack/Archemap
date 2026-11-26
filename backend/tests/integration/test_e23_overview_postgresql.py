@@ -4,6 +4,7 @@ import os
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -16,6 +17,7 @@ from app.api import middleware
 from app.config import settings
 from app.main import app
 from app.modules.admin import router as admin
+from app.modules.analytics import landing_documents as landing
 from app.modules.analytics.models import BusinessEvent, SelfReadinessEvidence
 from app.modules.analytics.overview import build_overview
 from app.modules.analytics.schemas import BusinessEventInput, EventDetails, EventType, Mode, Product
@@ -25,6 +27,7 @@ from app.modules.subscriptions.models import Subscription, SubscriptionPlan
 from app.modules.users.models import User
 from tests.conftest import test_engine
 from tests.conftest import test_session_factory as sessions
+from tests.landing_redis import disposable_landing_redis
 
 pytestmark = pytest.mark.skipif(
     os.getenv("E23_DISPOSABLE_TEST_DATABASES") != "1", reason="requires dedicated disposable E23 databases"
@@ -583,7 +586,7 @@ async def test_orphan_confirmation_and_duplicate_psp_receipt_fail_closed() -> No
 
 
 @pytest.mark.usefixtures("overview_tables")
-async def test_overview_real_rbac_and_read_only_transaction(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_overview_real_rbac_and_read_only_transaction(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     async with sessions.begin() as db:
         ordinary = User(id=uuid4(), email="ordinary@example.com", hashed_password=NO_LOGIN_HASH, is_verified=True)
         operator = User(
@@ -621,6 +624,30 @@ async def test_overview_real_rbac_and_read_only_transaction(monkeypatch: pytest.
         monkeypatch.setattr(settings, "BUSINESS_MONITORING_COVERAGE_SINCE", datetime(2026, 1, 1, tzinfo=UTC))
         enabled = await client.get(url, headers=headers, params={"from_date": "2026-01-02", "to_date": "2026-01-03"})
         assert enabled.status_code == 200 and enabled.json()["live_cash_received"] == []
+        # Keep landing observations independent of the business collection switch and date filters.
+        monkeypatch.setattr(settings, "BUSINESS_MONITORING_ENABLED", False)
+        monkeypatch.setattr(settings, "LANDING_DOCUMENT_COUNTER_ENABLED", True)
+        async with disposable_landing_redis(tmp_path.parent / "s05-rbac.sock", tmp_path) as landing_url:
+            monkeypatch.setattr(settings, "LANDING_DOCUMENT_REDIS_URL", landing_url)
+            redis = landing._redis()
+            try:
+                assert (await client.get(url, headers=headers)).json()["landing_documents"]["observed"] is None
+                signal = await client.post("/_internal/landing-document", headers={"X-Astrotype-Landing-Signal": "1"})
+                assert signal.status_code == 204
+                for bearer, status in [(None, 401), (str(ordinary.id), 403)]:
+                    denied = await client.get(url, headers={"Authorization": f"Bearer {bearer}"} if bearer else {})
+                    assert denied.status_code == status and "landing_documents" not in denied.json()
+                readback = await client.get(
+                    url, headers=headers, params={"from_date": "2026-01-02", "to_date": "2026-01-03"}
+                )
+                assert readback.status_code == 200 and readback.headers["Cache-Control"] == "no-store"
+                assert readback.json()["landing_documents"]["observed"] == 1
+                assert await redis.dbsize() == 1
+                monkeypatch.setattr(settings, "LANDING_DOCUMENT_COUNTER_ENABLED", False)
+                assert (await client.get(url, headers=headers)).json()["landing_documents"]["observed"] is None
+            finally:
+                await redis.aclose()
+                landing._redis_for_url.cache_clear()
     generator = admin.business_read_session()
     db = await anext(generator)
     try:

@@ -10,6 +10,8 @@ from sqlalchemy import DateTime, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
+from app.modules.analytics.landing_documents import LandingDocuments
+
 BusinessTimezone = Literal["Europe/Moscow", "UTC"]
 
 
@@ -75,6 +77,7 @@ class BusinessOverview(BaseModel):
     timezone: BusinessTimezone
     coverage: Coverage = Coverage()
     registrations: Registrations = Registrations()
+    landing_documents: LandingDocuments | None = None
     verified: int | None = None
     activation_d7: Activation
     checkouts: int | None = None

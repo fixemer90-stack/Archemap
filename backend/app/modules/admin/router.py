@@ -17,6 +17,7 @@ from app.dependencies import get_current_superuser, get_db
 from app.infrastructure.database import async_session_factory
 from app.modules.admin.schemas import SubscriptionReconcileRequest, SubscriptionSupportResponse
 from app.modules.admin.service import AdminService
+from app.modules.analytics.landing_documents import read_landing_documents
 from app.modules.analytics.overview import BusinessOverview, BusinessTimezone, build_overview
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -41,7 +42,7 @@ async def get_business_overview(
 ) -> BusinessOverview:
     response.headers["Cache-Control"] = "no-store"
     try:
-        return await build_overview(
+        overview = await build_overview(
             db,
             as_of=datetime.now(UTC),
             from_date=from_date,
@@ -52,6 +53,8 @@ async def get_business_overview(
         )
     except (ValueError, OverflowError) as exc:
         raise HTTPException(status_code=422, detail="Invalid business date range") from exc
+    overview.landing_documents = await read_landing_documents(datetime.now(UTC))
+    return overview
 
 
 @router.get("/subscriptions/support", response_model=SubscriptionSupportResponse)

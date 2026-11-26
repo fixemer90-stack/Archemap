@@ -18,7 +18,7 @@ Status: 🟡 Release `819f654` is running in production with internal recording 
 | [S02](./S02-event-outbox.md)                | Typed business events и transactional outbox (T02)   | ✅ Local complete                            |
 | [S03](./S03-authoritative-producers.md)     | Authoritative domain producers (T03)                 | 🟡 In progress                               |
 | [S04](./S04-business-overview-api.md)       | Read-only business overview API (T04)                | 🟡 Implemented; review pending               |
-| [S05](./S05-consent-attribution-metrica.md) | Consent, attribution и public-only Метрика (T05)     | 🟡 In progress                               |
+| [S05](./S05-consent-attribution-metrica.md) | Consent, attribution и public-only Метрика (T05)     | 🟡 Собственный счётчик реализован; production-включение и приёмка открыты, SDK Яндекса отложен |
 | [S06](./S06-business-dashboard.md)          | Защищённый business dashboard (T06)                  | 🟡 Local browser checks passed               |
 | [S07](./S07-aggregation-alerts.md)          | Aggregation, digest и alerts (T07)                   | 🟡 Local runtime checks passed               |
 | [S08](./S08-yandex-conversion-export.md)    | Gated initial LIVE conversion export (T08)           | 🟡 Local runtime checks passed               |

@@ -5,10 +5,22 @@
 astrotype.ru, www.astrotype.ru {
   encode zstd gzip
 
+  respond /_internal/landing-document 404
+
   @api path /api/*
   reverse_proxy @api backend:8000
 
-  reverse_proxy frontend:3000
+  @landingDocument {
+    host astrotype.ru
+    method GET
+    expression `'{$LANDING_DOCUMENT_COUNTER_ENABLED:false}' == 'true' && {http.request.uri} == '/'`
+  }
+  reverse_proxy @landingDocument frontend:3000 {
+    header_up X-Astrotype-Landing-Document 1
+  }
+  reverse_proxy frontend:3000 {
+    header_up -X-Astrotype-Landing-Document
+  }
 
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"

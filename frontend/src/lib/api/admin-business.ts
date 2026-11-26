@@ -21,6 +21,12 @@ const overviewSchema = z.object({
     window_complete: z.boolean(),
   }),
   registrations: z.object({ email: count, oauth: count, unknown: count }),
+  landing_documents: z
+    .object({
+      through_date: z.iso.date(),
+      observed: z.int().positive().nullable(),
+    })
+    .nullish(),
   verified: count,
   activation_d7: z.object({
     cohort_from: z.iso.date(),

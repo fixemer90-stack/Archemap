@@ -17,6 +17,38 @@ const metric = (page: Page, label: string) =>
 
 const widthMatrix = [320, 820, 1440];
 
+test("landing documents show observations separately, never an inferred zero", async ({
+  page,
+}) => {
+  await page.route(`**${overviewPath}`, (route) =>
+    route.fulfill({
+      json: {
+        ...observedOverview,
+        landing_documents: { through_date: "2026-11-22", observed: 1234 },
+      },
+    }),
+  );
+  await page.goto(pagePath);
+  const landing = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Загрузки главной", exact: true }),
+  });
+  await expect(landing.getByText(/покрытие не подтверждено/i)).toBeVisible();
+  await expect(metric(page, "Учтённые загрузки")).toHaveText(/1\s234/);
+  await expect(metric(page, "По email")).toHaveText("16");
+
+  await page.unroute(`**${overviewPath}`);
+  await page.route(`**${overviewPath}`, (route) =>
+    route.fulfill({
+      json: {
+        ...observedOverview,
+        landing_documents: { through_date: "2026-11-22", observed: null },
+      },
+    }),
+  );
+  await page.reload();
+  await expect(metric(page, "Учтённые загрузки")).toHaveText("Нет данных");
+});
+
 test("report KPIs describe generation, not delivery or reading", async ({
   page,
 }) => {

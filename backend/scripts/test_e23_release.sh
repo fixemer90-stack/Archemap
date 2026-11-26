@@ -31,7 +31,7 @@ export E23_DISPOSABLE_TEST_DATABASES=1 LLM_ENABLED=false LLM_PROVIDER=mock CAREE
 export BUSINESS_ALERTS_ENABLED=false YANDEX_METRICA_EXPORT_ENABLED=false
 "$python" -m pytest -q --tb=short \
     tests/unit/test_business_cohorts.py tests/unit/test_business_event_schema.py \
-    tests/unit/test_e23_overview_route.py tests/unit/test_e23_s05_collector.py \
+    tests/unit/test_e23_overview_route.py tests/unit/test_e23_s05_collector.py tests/unit/test_landing_document_counter.py \
     tests/integration/test_e23_overview_postgresql.py tests/integration/test_business_event_outbox.py \
     tests/integration/test_e23_self_d7_commit.py \
     tests/integration/test_career_report_requested.py tests/integration/test_child_business_events.py "$@"

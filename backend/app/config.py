@@ -68,6 +68,8 @@ class Settings(BaseSettings):
 
     # ── Business monitoring / outbound analytics ───────────────────────
     BUSINESS_MONITORING_ENABLED: bool = False
+    LANDING_DOCUMENT_COUNTER_ENABLED: bool = False
+    LANDING_DOCUMENT_REDIS_URL: str | None = None
     BUSINESS_MONITORING_COVERAGE_SINCE: AwareDatetime | None = None
     BUSINESS_ALERTS_ENABLED: bool = False
     YANDEX_METRICA_EXPORT_ENABLED: bool = False

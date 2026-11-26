@@ -12,6 +12,7 @@ export const observedOverview = {
     window_complete: true,
   },
   registrations: { email: 16, oauth: 7, unknown: 0 },
+  landing_documents: { through_date: "2026-11-22", observed: 1234 },
   verified: 14,
   activation_d7: {
     cohort_from: "2026-10-16",

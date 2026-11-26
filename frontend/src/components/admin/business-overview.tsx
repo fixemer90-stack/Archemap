@@ -97,6 +97,7 @@ function OverviewDetails({ overview }: { overview: AdminBusinessOverview }) {
     timezone,
     coverage,
     registrations,
+    landing_documents: landing,
     activation_d7: activation,
     checkout_outcomes: outcomes,
     payments,
@@ -169,6 +170,21 @@ function OverviewDetails({ overview }: { overview: AdminBusinessOverview }) {
       </section>
       <div className={styles.grid}>
         <div className={styles.column}>
+          <MetricGroup
+            title="Загрузки главной"
+            note="Только учтённые HTML-ответы сервера на открытие astrotype.ru. Открытия из кеша браузера без запроса к серверу не учитываются. Покрытие не подтверждено; это не число посетителей."
+            metrics={[
+              ["Учтённые загрузки", count(landing?.observed ?? null)],
+              [
+                "Последние 30 дней · Москва",
+                landing ? (
+                  <>По {cohortTime(landing.through_date)} включительно</>
+                ) : (
+                  "Нет данных"
+                ),
+              ],
+            ]}
+          />
           <MetricGroup
             title="Регистрации"
             metrics={[

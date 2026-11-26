@@ -22,6 +22,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.infrastructure.observability import configure_metrics
+from app.modules.analytics.landing_documents import LandingDocumentSignalMiddleware, omit_signal_access_log
 
 logger = structlog.get_logger()
 
@@ -99,6 +100,8 @@ def create_app() -> FastAPI:
         sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE)
 
     FastAPIInstrumentor.instrument_app(application)
+    application.add_middleware(LandingDocumentSignalMiddleware)
+    omit_signal_access_log()
 
     return application
 

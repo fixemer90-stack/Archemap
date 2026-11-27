@@ -80,7 +80,7 @@ jobs:
   # ── Backend Tests ───────────────────────────────────────────────────────
   test-backend:
     name: Test Backend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: lint-backend
     services:
       postgres:
